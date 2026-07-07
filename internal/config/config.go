@@ -13,7 +13,13 @@ type ServerConfig struct {
 	WriteTimeout time.Duration `yaml:"write_timeout"`
 }
 
+type HooksConfig struct {
+	// maybe individual timeout for each hook?
+	TimeoutMS int `yaml:"timeout_ms"`
+}
+
 type Config struct {
 	Server    ServerConfig        `yaml:"server"`
 	Providers map[string]Provider `yaml:"providers"`
+	Hooks     HooksConfig         `yaml:"hooks"`
 }
