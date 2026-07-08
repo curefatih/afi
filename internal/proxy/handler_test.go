@@ -42,6 +42,9 @@ func TestHandler(t *testing.T) {
 		"provider1": &captureProvider{lastReq: &types.ChatCompletionRequest{Model: "model1", Messages: []types.ChatMessage{{Role: "user", Content: json.RawMessage(`{"Hello, world!"}`)}}}},
 		"provider2": &captureProvider{lastReq: &types.ChatCompletionRequest{Model: "model2", Messages: []types.ChatMessage{{Role: "user", Content: json.RawMessage(`{"Hello, world!"}`)}}}},
 	})
-	handler := NewHandler(cfg, registry)
+	handler := NewHandler(HandlerDeps{
+		Config:   cfg,
+		Registry: registry,
+	})
 	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil))
 }

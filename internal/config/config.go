@@ -25,16 +25,9 @@ type HooksConfig struct {
 	TimeoutMS int `yaml:"timeout_ms"`
 }
 
-type Route struct {
-	Match    string `yaml:"match"`
-	Provider string `yaml:"provider"`
-	Fallback string `yaml:"fallback,omitempty"`
-}
-
 type Config struct {
 	Server    ServerConfig        `yaml:"server"`
 	Providers map[string]Provider `yaml:"providers"`
-	Routes    []Route             `yaml:"routes"`
 	Hooks     HooksConfig         `yaml:"hooks"`
 }
 
