@@ -4,23 +4,28 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/curefatih/afi/internal/config"
 	"github.com/curefatih/afi/internal/providers"
 	"github.com/curefatih/afi/internal/routing"
+	"github.com/curefatih/afi/internal/telemetry"
 	"github.com/curefatih/afi/internal/types"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type Handler struct {
 	cfg      *config.Config
 	registry *providers.Registry
 	hooks    *HookRunner
+	otel     *telemetry.Provider
 }
 
 type HandlerDeps struct {
 	Config   *config.Config
 	Registry *providers.Registry
 	Hooks    *HookRunner
+	Otel     *telemetry.Provider
 }
 
 func NewHandler(deps HandlerDeps) *Handler {
@@ -28,6 +33,7 @@ func NewHandler(deps HandlerDeps) *Handler {
 		cfg:      deps.Config,
 		registry: deps.Registry,
 		hooks:    deps.Hooks,
+		otel:     deps.Otel,
 	}
 }
 
@@ -46,6 +52,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	ctx, span := h.otel.Tracer().Start(r.Context(), "chat.completions")
+	defer span.End()
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "failed to read request body")
@@ -86,12 +96,15 @@ func (h *Handler) handleChatCompletions(w http.ResponseWriter, r *http.Request) 
 	h.hooks.Run(r.Context(), HookOnBeforeUpstream, reqCtx)
 	resp, err := provider.UpstreamChatCompletion(r.Context(), &req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	provider.WriteResponse(resp, &req, w)
 
 	h.hooks.Run(r.Context(), HookOnResponse, reqCtx)
+	h.otel.RecordRequest(ctx, req.Model, provider.Name(), resp.StatusCode, time.Since(start), 0)
 }
 
 func (h *Handler) resolveRouting(r *http.Request, req *types.ChatCompletionRequest) (routing.Decision, bool) {

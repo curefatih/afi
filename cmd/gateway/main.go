@@ -1,13 +1,17 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/curefatih/afi/internal/config"
 	"github.com/curefatih/afi/internal/providers"
 	"github.com/curefatih/afi/internal/proxy"
+	"github.com/curefatih/afi/internal/telemetry"
 )
 
 func main() {
@@ -18,6 +22,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("load config: %v", err)
 	}
+
+	ctx := context.Background()
+
+	otelProvider, err := telemetry.Init(ctx, cfg.Telemetry)
+	if err != nil {
+		slog.Error("init telemetry", "error", err)
+		os.Exit(1)
+	}
+	defer otelProvider.Shutdown(ctx)
 
 	hooks, err := proxy.NewHookRunner(cfg)
 	if err != nil {
