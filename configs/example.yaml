@@ -7,7 +7,7 @@ hooks:
   timeout_ms: 50
   hook_specs:
     - name: onRequest
-      path: ../hooks/example.js
+      path: hooks/example.js
 
 providers:
   openai:

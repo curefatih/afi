@@ -20,6 +20,9 @@ func main() {
 	}
 
 	hooks, err := proxy.NewHookRunner(cfg)
+	if err != nil {
+		log.Fatalf("init hooks: %v", err)
+	}
 
 	proxyHandler := proxy.NewHandler(proxy.HandlerDeps{
 		Config:   cfg,

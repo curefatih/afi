@@ -82,30 +82,14 @@ func (h *Handler) handleChatCompletions(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	reqCtx.Model = decision.Model
-	reqCtx.Metadata["_routing_decision"] = decision
+	// reqCtx.Metadata["_routing_decision"] = decision.Provider + "/" + decision.Model
 	h.hooks.Run(r.Context(), HookOnBeforeUpstream, reqCtx)
-	resp, err := provider.UpstreamChatCompletion(r.Context(), &types.ChatCompletionRequest{
-		Model: decision.Model,
-		Messages: []types.ChatMessage{
-			{
-				Role:    "user",
-				Content: json.RawMessage(r.URL.Query().Get("content")),
-			},
-		},
-	})
+	resp, err := provider.UpstreamChatCompletion(r.Context(), &req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	provider.WriteResponse(resp, &types.ChatCompletionRequest{
-		Model: decision.Model,
-		Messages: []types.ChatMessage{
-			{
-				Role:    "user",
-				Content: json.RawMessage(r.URL.Query().Get("content")),
-			},
-		},
-	}, w)
+	provider.WriteResponse(resp, &req, w)
 
 	h.hooks.Run(r.Context(), HookOnResponse, reqCtx)
 }

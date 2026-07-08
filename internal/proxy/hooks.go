@@ -40,20 +40,20 @@ func NewHookRunner(cfg *config.Config) (*HookRunner, error) {
 	for _, spec := range cfg.Hooks.HookSpecs {
 		hook := HookName(spec.Name)
 		if hook != HookOnRequest && hook != HookOnBeforeUpstream && hook != HookOnResponse {
-			return nil, fmt.Errorf("unknown hook %q in middleware %q", spec.Name, spec.Path)
+			return nil, fmt.Errorf("unknown hook %q in hook %q", spec.Name, spec.Path)
 		}
 
 		src, err := os.ReadFile(spec.Path)
 		if err != nil {
-			return nil, fmt.Errorf("read middleware %q: %w", spec.Path, err)
+			return nil, fmt.Errorf("read hook %q: %w", spec.Path, err)
 		}
 
 		vm := goja.New()
 		if _, err := vm.RunString(string(src)); err != nil {
-			return nil, fmt.Errorf("compile middleware %q: %w", spec.Path, err)
+			return nil, fmt.Errorf("compile hook %q: %w", spec.Path, err)
 		}
 		if vm.Get(spec.Name) == nil {
-			return nil, fmt.Errorf("middleware %q: function %q not found", spec.Path, spec.Name)
+			return nil, fmt.Errorf("hook %q: function %q not found", spec.Path, spec.Name)
 		}
 
 		r.scripts = append(r.scripts, hookScript{
