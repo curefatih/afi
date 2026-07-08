@@ -10,12 +10,20 @@ import (
 type Handler struct {
 	cfg      *config.Config
 	registry *providers.Registry
+	hooks    *HookRunner
 }
 
-func NewHandler(cfg *config.Config, registry *providers.Registry) *Handler {
+type HandlerDeps struct {
+	Config   *config.Config
+	Registry *providers.Registry
+	Hooks    *HookRunner
+}
+
+func NewHandler(deps HandlerDeps) *Handler {
 	return &Handler{
-		cfg:      cfg,
-		registry: registry,
+		cfg:      deps.Config,
+		registry: deps.Registry,
+		hooks:    deps.Hooks,
 	}
 }
 
