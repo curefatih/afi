@@ -62,6 +62,13 @@ func (h *Handler) handleChatCompletions(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "model is required")
 		return
 	}
+	reqCtx := &RequestContext{
+		Model:   req.Model,
+		Headers: r.Header,
+		Body:    json.RawMessage(body),
+	}
+	h.hooks.Run(r.Context(), HookOnRequest, reqCtx)
+	req.Model = reqCtx.Model
 
 	decision, ok := h.resolveRouting(r, &req)
 	if !ok {
@@ -74,6 +81,9 @@ func (h *Handler) handleChatCompletions(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Provider not found", http.StatusInternalServerError)
 		return
 	}
+	reqCtx.Model = decision.Model
+	reqCtx.Metadata["_routing_decision"] = decision
+	h.hooks.Run(r.Context(), HookOnBeforeUpstream, reqCtx)
 	resp, err := provider.UpstreamChatCompletion(r.Context(), &types.ChatCompletionRequest{
 		Model: decision.Model,
 		Messages: []types.ChatMessage{
@@ -96,6 +106,8 @@ func (h *Handler) handleChatCompletions(w http.ResponseWriter, r *http.Request) 
 			},
 		},
 	}, w)
+
+	h.hooks.Run(r.Context(), HookOnResponse, reqCtx)
 }
 
 func (h *Handler) resolveRouting(r *http.Request, req *types.ChatCompletionRequest) (routing.Decision, bool) {

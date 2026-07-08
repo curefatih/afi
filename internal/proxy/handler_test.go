@@ -48,3 +48,34 @@ func TestHandler(t *testing.T) {
 	})
 	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil))
 }
+
+func TestHandler_ResolveRouting(t *testing.T) {
+	cfg := &config.Config{
+		Server: config.ServerConfig{
+			Addr: ":8080",
+		},
+		Providers: map[string]config.Provider{
+			"provider1": {
+				BaseURL: "https://provider1.com",
+			},
+			"provider2": {
+				BaseURL: "https://provider2.com",
+			},
+		},
+	}
+	registry := providers.NewRegistry(map[string]providers.Provider{
+		"provider1": &captureProvider{lastReq: &types.ChatCompletionRequest{Model: "model1", Messages: []types.ChatMessage{{Role: "user", Content: json.RawMessage(`{"Hello, world!"}`)}}}},
+		"provider2": &captureProvider{lastReq: &types.ChatCompletionRequest{Model: "model2", Messages: []types.ChatMessage{{Role: "user", Content: json.RawMessage(`{"Hello, world!"}`)}}}},
+	})
+	handler := NewHandler(HandlerDeps{
+		Config:   cfg,
+		Registry: registry,
+	})
+	decision, ok := handler.resolveRouting(httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil), &types.ChatCompletionRequest{Model: "provider1/model1"})
+	if !ok {
+		t.Errorf("expected ok to be true")
+	}
+	if decision.Model != "model1" {
+		t.Errorf("expected model to be model1, got %s", decision.Model)
+	}
+}
