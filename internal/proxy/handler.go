@@ -1,10 +1,14 @@
 package proxy
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/curefatih/afi/internal/config"
 	"github.com/curefatih/afi/internal/providers"
+	"github.com/curefatih/afi/internal/routing"
+	"github.com/curefatih/afi/internal/types"
 )
 
 type Handler struct {
@@ -42,5 +46,67 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "failed to read request body")
+		return
+	}
+	defer r.Body.Close()
 
+	var req types.ChatCompletionRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if req.Model == "" {
+		writeError(w, http.StatusBadRequest, "model is required")
+		return
+	}
+
+	decision, ok := h.resolveRouting(r, &req)
+	if !ok {
+		http.Error(w, "Failed to resolve routing", http.StatusBadRequest)
+		return
+	}
+
+	provider, ok := h.registry.Get(decision.Provider)
+	if !ok {
+		http.Error(w, "Provider not found", http.StatusInternalServerError)
+		return
+	}
+	resp, err := provider.UpstreamChatCompletion(r.Context(), &types.ChatCompletionRequest{
+		Model: decision.Model,
+		Messages: []types.ChatMessage{
+			{
+				Role:    "user",
+				Content: json.RawMessage(r.URL.Query().Get("content")),
+			},
+		},
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	provider.WriteResponse(resp, &types.ChatCompletionRequest{
+		Model: decision.Model,
+		Messages: []types.ChatMessage{
+			{
+				Role:    "user",
+				Content: json.RawMessage(r.URL.Query().Get("content")),
+			},
+		},
+	}, w)
+}
+
+func (h *Handler) resolveRouting(r *http.Request, req *types.ChatCompletionRequest) (routing.Decision, bool) {
+	return routing.NewEngine(h.cfg).Resolve(routing.Input{
+		Request: req,
+		Headers: r.Header,
+	})
+}
+
+func writeError(w http.ResponseWriter, code int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
