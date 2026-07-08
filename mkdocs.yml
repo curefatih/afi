@@ -1,0 +1,10 @@
+site_name: AFI Documentation
+site_url: https://afi.fatihcure.com
+theme:
+  name: material
+  palette:
+    primary: black
+  font:
+    code: Roboto Mono
+  language: en 
+  copyright: ""
