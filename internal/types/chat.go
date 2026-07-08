@@ -3,6 +3,8 @@ package types
 import "encoding/json"
 
 // ChatCompletionRequest is an OpenAI-compatible chat completion payload.
+// This will be used as internal representation of the chat completion request.
+// Providers will be responsible for converting this to their own request format.
 type ChatCompletionRequest struct {
 	Model          string          `json:"model"`
 	Messages       []ChatMessage   `json:"messages"`
