@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/curefatih/afi/internal/config"
+	"github.com/curefatih/afi/internal/providers"
 	"github.com/curefatih/afi/internal/proxy"
 )
 
@@ -21,8 +22,9 @@ func main() {
 	hooks, err := proxy.NewHookRunner(cfg)
 
 	proxyHandler := proxy.NewHandler(proxy.HandlerDeps{
-		Config: cfg,
-		Hooks:  hooks,
+		Config:   cfg,
+		Registry: providers.BuildRegistry(cfg),
+		Hooks:    hooks,
 	})
 
 	apiHandler := http.Handler(proxyHandler)
