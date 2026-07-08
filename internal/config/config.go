@@ -22,7 +22,12 @@ type ServerConfig struct {
 
 type HooksConfig struct {
 	// maybe individual timeout for each hook?
-	TimeoutMS int `yaml:"timeout_ms"`
+	TimeoutMS int        `yaml:"timeout_ms"`
+	HookSpecs []HookSpec `yaml:"hook_specs"`
+}
+type HookSpec struct {
+	Name string `yaml:"name"`
+	Path string `yaml:"path"`
 }
 
 type Config struct {
