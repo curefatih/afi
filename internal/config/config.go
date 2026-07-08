@@ -30,10 +30,18 @@ type HookSpec struct {
 	Path string `yaml:"path"`
 }
 
+type TelemetryConfig struct {
+	Enabled      bool   `yaml:"enabled"`
+	ServiceName  string `yaml:"service_name"`
+	OTLPEndpoint string `yaml:"otlp_endpoint"`
+	Insecure     bool   `yaml:"insecure"`
+}
+
 type Config struct {
 	Server    ServerConfig        `yaml:"server"`
 	Providers map[string]Provider `yaml:"providers"`
 	Hooks     HooksConfig         `yaml:"hooks"`
+	Telemetry TelemetryConfig     `yaml:"telemetry"`
 }
 
 func Load(path string) (*Config, error) {
