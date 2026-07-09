@@ -37,11 +37,18 @@ type TelemetryConfig struct {
 	Insecure     bool   `yaml:"insecure"`
 }
 
+type DatabaseConfig struct {
+	URL           string `yaml:"url"`
+	MigrationsDir string `yaml:"migrations_dir"`
+	AutoMigrate   bool   `yaml:"auto_migrate"`
+}
+
 type Config struct {
 	Server    ServerConfig        `yaml:"server"`
 	Providers map[string]Provider `yaml:"providers"`
 	Hooks     HooksConfig         `yaml:"hooks"`
 	Telemetry TelemetryConfig     `yaml:"telemetry"`
+	Database  DatabaseConfig      `yaml:"database"`
 }
 
 func Load(path string) (*Config, error) {
