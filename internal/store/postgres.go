@@ -15,23 +15,38 @@ import (
 )
 
 type PostgresStore struct {
-	db *sql.DB
+	db               *sql.DB
+	connectionString string
+	autoMigrate      bool
+	migrationsDir    string
 }
 
-func NewPostgresStore(db *sql.DB) *PostgresStore {
-	return &PostgresStore{db: db}
+var _ domain.Store = (*PostgresStore)(nil)
+
+func NewPostgresStore(connectionString string, autoMigrate bool, migrationsDir string) domain.Store {
+	return &PostgresStore{connectionString: connectionString, autoMigrate: autoMigrate, migrationsDir: migrationsDir}
 }
 
-func (s *PostgresStore) Open() (*PostgresStore, error) {
-	// need to open the database connection here or in NewPostgresStore. leaving it as a placeholder for now.
-	return NewPostgresStore(s.db), nil
+func (s *PostgresStore) Open() error {
+	db, err := sql.Open("postgres", s.connectionString)
+	if err != nil {
+		return fmt.Errorf("open database connection: %w", err)
+	}
+
+	s.db = db
+	if s.autoMigrate {
+		if err := s.Migrate(); err != nil {
+			return fmt.Errorf("migrate database: %w", err)
+		}
+	}
+	return nil
 }
 
 func (s *PostgresStore) Close() error {
 	return s.db.Close()
 }
 
-func (s *PostgresStore) Migrate(migrationsDir string) error {
+func (s *PostgresStore) Migrate() error {
 	if _, err := s.db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
 			version TEXT PRIMARY KEY,
 			applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -39,7 +54,7 @@ func (s *PostgresStore) Migrate(migrationsDir string) error {
 		return fmt.Errorf("ensure migrations table: %w", err)
 	}
 
-	entries, err := os.ReadDir(migrationsDir)
+	entries, err := os.ReadDir(s.migrationsDir)
 	if err != nil {
 		return fmt.Errorf("read migrations dir: %w", err)
 	}
@@ -62,7 +77,7 @@ func (s *PostgresStore) Migrate(migrationsDir string) error {
 			continue
 		}
 
-		sqlBytes, err := os.ReadFile(filepath.Join(migrationsDir, name))
+		sqlBytes, err := os.ReadFile(filepath.Join(s.migrationsDir, name))
 		if err != nil {
 			return fmt.Errorf("read migration %s: %w", name, err)
 		}

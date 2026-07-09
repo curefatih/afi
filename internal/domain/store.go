@@ -3,9 +3,9 @@ package domain
 import "context"
 
 type Store interface {
-	Open() (*Store, error)
+	Open() error
 	Close() error
-	Migrate(migrationsDir string) error
+	Migrate() error
 	ListOrganizations(ctx context.Context) ([]Organization, error)
 	GetOrganization(ctx context.Context, id string) (*Organization, error)
 	CreateOrganization(ctx context.Context, name string, budgetCents int64) (*Organization, error)
