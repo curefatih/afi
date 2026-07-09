@@ -2,6 +2,9 @@
 
 AI gateway with OpenAI-compatible API
 
+> [!WARNING]  
+> Under development
+
 ## Quick Start 
 
 Create your config file,
