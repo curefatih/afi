@@ -30,4 +30,10 @@ type Store interface {
 	AddProjectMember(ctx context.Context, projectID, userID, role string) error
 	RemoveProjectMember(ctx context.Context, projectID, userID string) error
 	UpdateProjectMemberRole(ctx context.Context, projectID, userID, role string) error
+
+	// API keys
+	LookupAPIKey(ctx context.Context, rawKey string) (*APIKeyRecord, error)
+	CreateAPIKey(ctx context.Context, projectID, name, rawKey string, modelAllowlist []string, requiredTags map[string]string, rateLimitRPM int) (*APIKeyRecord, error)
+	UpdateAPIKey(ctx context.Context, id, name string, modelAllowlist []string, requiredTags map[string]string, rateLimitRPM int) (*APIKeyRecord, error)
+	DeleteAPIKey(ctx context.Context, id string) error
 }

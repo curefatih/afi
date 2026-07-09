@@ -40,3 +40,14 @@ type ProjectMember struct {
 	Email     string `json:"email"`
 	Role      string `json:"role"`
 }
+
+type APIKeyRecord struct {
+	ID             string
+	ProjectID      string
+	TeamID         string
+	OrgID          string
+	Name           string
+	ModelAllowlist []string
+	RequiredTags   map[string]string
+	RateLimitRPM   int
+}
