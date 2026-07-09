@@ -9,8 +9,10 @@ import (
 	"os"
 
 	"github.com/curefatih/afi/internal/config"
+	"github.com/curefatih/afi/internal/domain"
 	"github.com/curefatih/afi/internal/providers"
 	"github.com/curefatih/afi/internal/proxy"
+	"github.com/curefatih/afi/internal/store"
 	"github.com/curefatih/afi/internal/telemetry"
 )
 
@@ -31,6 +33,20 @@ func main() {
 		os.Exit(1)
 	}
 	defer otelProvider.Shutdown(ctx)
+
+	var st domain.Store
+	if cfg.Database.URL != "" {
+		st = store.NewPostgresStore(cfg.Database.URL, cfg.Database.AutoMigrate, cfg.Database.MigrationsDir)
+		if err := st.Open(); err != nil {
+			slog.Error("init store", "error", err)
+			os.Exit(1)
+		}
+		defer func() {
+			if err := st.Close(); err != nil {
+				slog.Error("close store", "error", err)
+			}
+		}()
+	}
 
 	hooks, err := proxy.NewHookRunner(cfg)
 	if err != nil {
