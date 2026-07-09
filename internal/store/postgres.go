@@ -2,7 +2,9 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -338,5 +340,76 @@ func (s *PostgresStore) UpdateProjectMemberRole(ctx context.Context, projectID, 
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE project_members SET role = $3 WHERE project_id = $1 AND user_id = $2
 	`, projectID, userID, role)
+	return err
+}
+
+func (s *PostgresStore) LookupAPIKey(ctx context.Context, rawKey string) (*domain.APIKeyRecord, error) {
+	var rec domain.APIKeyRecord
+	var allowlistJSON, tagsJSON []byte
+	prefix := rawKey[:12]
+	hash := HashAPIKey(rawKey)
+	err := s.db.QueryRowContext(ctx, `
+		SELECT id, project_id, team_id, org_id, name, model_allowlist, required_tags, rate_limit_rpm FROM api_keys WHERE key_prefix = $1 AND key_hash = $2 AND revoked_at IS NULL
+	`, prefix, hash).Scan(&rec.ID, &rec.ProjectID, &rec.TeamID, &rec.OrgID, &rec.Name, &allowlistJSON, &tagsJSON, &rec.RateLimitRPM)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("api key not found")
+	}
+	if err := json.Unmarshal(allowlistJSON, &rec.ModelAllowlist); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(tagsJSON, &rec.RequiredTags); err != nil {
+		return nil, err
+	}
+	return &rec, err
+}
+
+func HashAPIKey(raw string) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(raw)))
+}
+
+func (s *PostgresStore) CreateAPIKey(ctx context.Context, projectID, name, rawKey string, modelAllowlist []string, requiredTags map[string]string, rateLimitRPM int) (*domain.APIKeyRecord, error) {
+	var rec domain.APIKeyRecord
+	prefix := rawKey[:12]
+	hash := HashAPIKey(rawKey)
+	modelAllowlistJSON, err := json.Marshal(modelAllowlist)
+	if err != nil {
+		return nil, err
+	}
+	requiredTagsJSON, err := json.Marshal(requiredTags)
+	if err != nil {
+		return nil, err
+	}
+	_, err = s.db.ExecContext(ctx, `
+		INSERT INTO api_keys (project_id, name, key_prefix, key_hash, model_allowlist, required_tags, rate_limit_rpm) VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, projectID, name, prefix, hash, modelAllowlistJSON, requiredTagsJSON, rateLimitRPM)
+	if err != nil {
+		return nil, err
+	}
+	return &rec, err
+}
+
+func (s *PostgresStore) UpdateAPIKey(ctx context.Context, id, name string, modelAllowlist []string, requiredTags map[string]string, rateLimitRPM int) (*domain.APIKeyRecord, error) {
+	var rec domain.APIKeyRecord
+	modelAllowlistJSON, err := json.Marshal(modelAllowlist)
+	if err != nil {
+		return nil, err
+	}
+	requiredTagsJSON, err := json.Marshal(requiredTags)
+	if err != nil {
+		return nil, err
+	}
+	_, err = s.db.ExecContext(ctx, `
+		UPDATE api_keys SET name = $2, model_allowlist = $3, required_tags = $4, rate_limit_rpm = $5 WHERE id = $1
+	`, id, name, modelAllowlistJSON, requiredTagsJSON, rateLimitRPM)
+	if err != nil {
+		return nil, err
+	}
+	return &rec, nil
+}
+
+func (s *PostgresStore) DeleteAPIKey(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `
+		DELETE FROM api_keys WHERE id = $1
+	`, id)
 	return err
 }
