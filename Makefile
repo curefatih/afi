@@ -1,10 +1,10 @@
 .PHONY: serve build deploy
 
-serve:
+doc-serve:
 	uvx --from mkdocs-material mkdocs serve
 
-build:
+doc-build:
 	uvx --from mkdocs-material mkdocs build
 
-deploy:
+doc-deploy:
 	uvx --from mkdocs-material mkdocs gh-deploy
