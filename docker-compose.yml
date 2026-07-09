@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: afi # change this to your desired username
+      POSTGRES_PASSWORD: afi # change this to your desired password for the database
+      POSTGRES_DB: afi # change this to your desired database name
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "5050:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
