@@ -43,8 +43,11 @@ type Condition struct {
 
 // Evaluate checks if the incoming request payload matches this specific condition.
 func (c *Condition) Evaluate(req *InternalRequest) bool {
-	var fieldValue string
+	if c.Field == "" {
+		return true
+	}
 
+	var fieldValue string
 	switch c.Field {
 	case FieldOrganizationID:
 		fieldValue = req.Metadata.OrganizationID
@@ -86,20 +89,19 @@ func (c *Condition) Evaluate(req *InternalRequest) bool {
 
 // TargetDestination defines where the traffic should be routed and how it should be transformed.
 type TargetDestination struct {
-	Provider    string             `json:"provider"`           // e.g., "openai", "anthropic"
-	TargetModel string             `json:"target_model"`       // e.g., "claude-3-5-sonnet"
+	Provider    string             `json:"provider"` // e.g., "openai", "anthropic"
+	TargetModel string             `json:"target_model" yaml:"target_model"`
 	Fallback    *TargetDestination `json:"fallback,omitempty"` // Nested failover strategy
 }
 
 // RoutingRule combines conditions and a destination. It is ordered by priority.
 type RoutingRule struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Priority    int               `json:"priority"` // Higher number evaluated first
-	IsActive    bool              `json:"is_active"`
-	Conditions  []Condition       `json:"conditions"`
-	Target      TargetDestination `json:"target"`
+	ID         string            `json:"id" yaml:"id"`
+	Name       string            `json:"name" yaml:"name"`
+	Priority   int               `json:"priority" yaml:"priority"`
+	IsActive   bool              `json:"is_active" yaml:"is_active"`
+	Conditions []Condition       `json:"conditions" yaml:"conditions"`
+	Target     TargetDestination `json:"target" yaml:"target"`
 }
 
 // Matches checks if all conditions inside the rule evaluate to true (AND logic).
