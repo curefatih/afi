@@ -8,31 +8,31 @@
       
       
       
-        <link rel="canonical" href="https://afi.fatihcure.com/deployment/">
+        <link rel="canonical" href="https://afi.fatihcure.com/development/core/">
       
       
-        <link rel="prev" href="..">
+        <link rel="prev" href="../../deployment/">
       
       
-        <link rel="next" href="../development/core/">
+        <link rel="next" href="../local/">
       
       
         
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Deployment - AFI Documentation</title>
+        <title>Core - AFI Documentation</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -51,7 +51,7 @@
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -73,6 +73,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#high-level-system-components" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -85,7 +90,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="AFI Documentation" class="md-header__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
+    <a href="../.." title="AFI Documentation" class="md-header__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -105,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Deployment
+              Core
             
           </span>
         </div>
@@ -183,7 +188,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="AFI Documentation" class="md-nav__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
+    <a href="../.." title="AFI Documentation" class="md-nav__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -201,7 +206,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -225,17 +230,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../deployment/" class="md-nav__link">
         
   
   
@@ -251,7 +249,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -260,18 +257,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -292,7 +291,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -307,10 +306,35 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../development/core/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -326,6 +350,52 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#high-level-system-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-level system components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="High-level system components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -338,7 +408,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/local/" class="md-nav__link">
+      <a href="../local/" class="md-nav__link">
         
   
   
@@ -420,7 +490,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../hooks/usage/" class="md-nav__link">
+      <a href="../../hooks/usage/" class="md-nav__link">
         
   
   
@@ -466,6 +536,42 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#high-level-system-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-level system components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="High-level system components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -481,9 +587,112 @@
 
 
 
-  <h1>Deployment</h1>
+  <h1>Core</h1>
 
+<h2 id="high-level-system-components">High-level system components</h2>
+<pre class="mermaid"><code>graph TD
+    %% Define Styles
+    classDef inbound fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef core fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px;
+    classDef outbound fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    classDef plugin fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;
 
+    %% Inbound Adapters (Driving)
+    subgraph Inbound Adapters
+        HTTP[HTTP OpenAI Handler]:::inbound
+        StreamHandler[SSE Streaming Layer]:::inbound
+    end
+
+    %% Hexagonal Core Domain Boundary
+    subgraph Core Domain Application Engine
+        AuthUC[Auth UseCase]:::core
+        GatewaySvc[Gateway Core Service]:::core
+        BudgetSvc[Budget / Usage Service]:::core
+        RouterSvc[Router Evaluation Engine]:::core
+    end
+
+    %% Extensible Sandbox Engine
+    subgraph Plugin System Sandbox
+        JSEngine[Goja JS Runtime Engine]:::plugin
+        Hooks[onRequest / onResponse Hooks]:::plugin
+    end
+
+    %% Outbound Adapters (Driven)
+    subgraph Outbound Adapters
+        LocalStatic[Local Static Adapter / Memory Vault]:::outbound
+        OpenAIClient[OpenAI Upstream Client]:::outbound
+    end
+
+    %% Dependency Layout Connections
+    HTTP --&gt;|1. AuthenticateKey| AuthUC
+    HTTP --&gt;|2. Execute Request| GatewaySvc
+    StreamHandler &lt;--&gt;|Pipe SSE Chunks| GatewaySvc
+
+    GatewaySvc &lt;--&gt;|Sanitize Payload Context| JSEngine
+    JSEngine --- Hooks
+
+    GatewaySvc --&gt;|3. Evaluate Metadata Rules| RouterSvc
+    RouterSvc --&gt;|Read active configs| LocalStatic
+
+    GatewaySvc --&gt;|4. Resolve Target Secret Key| LocalStatic
+    GatewaySvc --&gt;|5. Forward Stream Dispatch| OpenAIClient
+
+    GatewaySvc --&gt;|6. Commit Accumulated Usage| BudgetSvc
+    BudgetSvc --&gt;|Increment Memory Balances| LocalStatic
+
+    %% Apply Layout Classings
+    class HTTP,StreamHandler inbound;
+    class AuthUC,GatewaySvc,BudgetSvc,RouterSvc core;
+    class LocalStatic,OpenAIClient outbound;
+    class JSEngine,Hooks plugin;</code></pre>
+<h3 id="user-flow">User flow</h3>
+<pre class="mermaid"><code>sequenceDiagram
+    autonumber
+    actor Client
+    participant HTTP as Inbound HTTP Adapter
+    participant Core as Core Gateway Service (ExecuteStream)
+    participant JS as JS Engine Sandbox (onRequest)
+    participant Router as Local Static Router
+    participant Vendor as Upstream LLM Provider (OpenAI)
+    participant Budget as Budget Service (CommitUsage)
+
+    Client-&gt;&gt;HTTP: cURL Request (stream: true + Bearer Token)
+    HTTP-&gt;&gt;Core: Forward InternalRequest
+    activate Core
+    Note over Core: Snapshot req.Metadata&lt;br/&gt;(System Context Backup)
+
+    Core-&gt;&gt;JS: Execute Hook: "onRequest" (Pass Request)
+    activate JS
+    JS--&gt;&gt;Core: Return Mutated Request (Accidentally dropped metadata)
+    deactivate JS
+
+    Note over Core: Force-Restore req.Metadata&lt;br/&gt;from Stack Backup 🛡️
+
+    Core-&gt;&gt;Router: Route(req)
+    activate Router
+    Router--&gt;&gt;Core: Match Catch-all Rule (Target: gpt-4o)
+    deactivate Router
+
+    Core-&gt;&gt;Vendor: StreamCall (Force stream_options.include_usage: true)
+    activate Vendor
+
+    loop Stream Output Iteration
+        Vendor--&gt;&gt;Core: Stream Chunk (Choices Delta or Trailing Usage)
+        alt chunk.Usage.TotalTokens &gt; 0
+            Note over Core: Intercept &amp; Capture finalUsage snapshot
+        end
+        Core--&gt;&gt;Client: Forward Clean SSE Stream Frame
+    end
+    deactivate Vendor
+
+    Note over Core: Stream Channel Closed (!ok)
+    Core-&gt;&gt;Budget: CommitUsage(context.Background(), BackupMeta, finalUsage)
+    activate Budget
+    Note over Budget: Recalculate Balance &amp; Print [BUDGET MONITOR]
+    Budget--&gt;&gt;Core: Success
+    deactivate Budget
+
+    deactivate Core</code></pre>
 
 
 
@@ -533,10 +742,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
