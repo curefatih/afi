@@ -53,23 +53,23 @@ const data = {
   navMain: [
     {
       title: "Playground",
-      url: "#",
+      url: "/playground",
       icon: <TerminalSquareIcon />,
-      isActive: true,
-      items: [
-        {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
+      // isActive: true,
+      // items: [
+      //   {
+      //     title: "History",
+      //     url: "#",
+      //   },
+      //   {
+      //     title: "Starred",
+      //     url: "#",
+      //   },
+      //   {
+      //     title: "Settings",
+      //     url: "#",
+      //   },
+      // ],
     },
     {
       title: "Models",
@@ -115,24 +115,20 @@ const data = {
     },
     {
       title: "Settings",
-      url: "#",
+      url: "/app/settings",
       icon: <Settings2Icon />,
       items: [
         {
           title: "General",
-          url: "#",
+          url: "/app/settings",
         },
         {
           title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
+          url: "/app/settings/teams",
         },
         {
           title: "Limits",
-          url: "#",
+          url: "/app/settings/limits",
         },
       ],
     },

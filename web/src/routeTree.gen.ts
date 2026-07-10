@@ -21,6 +21,9 @@ import { Route as AppPlaygroundRouteImport } from './routes/app/playground'
 import { Route as AppOrganizationsRouteImport } from './routes/app/organizations'
 import { Route as AppKeysRouteImport } from './routes/app/keys'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
+import { Route as AppSettingsIndexRouteImport } from './routes/app/settings/index'
+import { Route as AppSettingsTeamsRouteImport } from './routes/app/settings/teams'
+import { Route as AppSettingsLimitsRouteImport } from './routes/app/settings/limits'
 
 const AppRoute = AppRouteImport.update({
   id: '/app',
@@ -82,6 +85,21 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsTeamsRoute = AppSettingsTeamsRouteImport.update({
+  id: '/settings/teams',
+  path: '/settings/teams',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsLimitsRoute = AppSettingsLimitsRouteImport.update({
+  id: '/settings/limits',
+  path: '/settings/limits',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -96,6 +114,9 @@ export interface FileRoutesByFullPath {
   '/app/users': typeof AppUsersRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/app/settings/limits': typeof AppSettingsLimitsRoute
+  '/app/settings/teams': typeof AppSettingsTeamsRoute
+  '/app/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -110,6 +131,9 @@ export interface FileRoutesByTo {
   '/app/users': typeof AppUsersRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/app/settings/limits': typeof AppSettingsLimitsRoute
+  '/app/settings/teams': typeof AppSettingsTeamsRoute
+  '/app/settings': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,6 +149,9 @@ export interface FileRoutesById {
   '/app/users': typeof AppUsersRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/app/settings/limits': typeof AppSettingsLimitsRoute
+  '/app/settings/teams': typeof AppSettingsTeamsRoute
+  '/app/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +168,9 @@ export interface FileRouteTypes {
     | '/app/users'
     | '/auth/login'
     | '/auth/signup'
+    | '/app/settings/limits'
+    | '/app/settings/teams'
+    | '/app/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -155,6 +185,9 @@ export interface FileRouteTypes {
     | '/app/users'
     | '/auth/login'
     | '/auth/signup'
+    | '/app/settings/limits'
+    | '/app/settings/teams'
+    | '/app/settings'
   id:
     | '__root__'
     | '/'
@@ -169,6 +202,9 @@ export interface FileRouteTypes {
     | '/app/users'
     | '/auth/login'
     | '/auth/signup'
+    | '/app/settings/limits'
+    | '/app/settings/teams'
+    | '/app/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -263,6 +299,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/settings/': {
+      id: '/app/settings/'
+      path: '/settings'
+      fullPath: '/app/settings/'
+      preLoaderRoute: typeof AppSettingsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/settings/teams': {
+      id: '/app/settings/teams'
+      path: '/settings/teams'
+      fullPath: '/app/settings/teams'
+      preLoaderRoute: typeof AppSettingsTeamsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/settings/limits': {
+      id: '/app/settings/limits'
+      path: '/settings/limits'
+      fullPath: '/app/settings/limits'
+      preLoaderRoute: typeof AppSettingsLimitsRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -288,6 +345,9 @@ interface AppRouteChildren {
   AppProjectsRoute: typeof AppProjectsRoute
   AppTeamsRoute: typeof AppTeamsRoute
   AppUsersRoute: typeof AppUsersRoute
+  AppSettingsLimitsRoute: typeof AppSettingsLimitsRoute
+  AppSettingsTeamsRoute: typeof AppSettingsTeamsRoute
+  AppSettingsIndexRoute: typeof AppSettingsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -298,6 +358,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppProjectsRoute: AppProjectsRoute,
   AppTeamsRoute: AppTeamsRoute,
   AppUsersRoute: AppUsersRoute,
+  AppSettingsLimitsRoute: AppSettingsLimitsRoute,
+  AppSettingsTeamsRoute: AppSettingsTeamsRoute,
+  AppSettingsIndexRoute: AppSettingsIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
