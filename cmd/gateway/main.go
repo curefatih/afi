@@ -1,72 +1,46 @@
-// gateway is a standalone gateway server that can be used to proxy requests to the AFI API.
 package main
 
 import (
-	"context"
-	"flag"
+	"database/sql"
 	"log"
-	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
-	"github.com/curefatih/afi/internal/config"
-	"github.com/curefatih/afi/internal/domain"
-	"github.com/curefatih/afi/internal/providers"
-	"github.com/curefatih/afi/internal/proxy"
-	"github.com/curefatih/afi/internal/store"
-	"github.com/curefatih/afi/internal/telemetry"
+	"github.com/curefatih/afi/internal/core/services"
+	"github.com/curefatih/afi/internal/ports"
+	"github.com/curefatih/afi/pkg/adapters/outbound/llmproviders/anthropic"
+	"github.com/curefatih/afi/pkg/adapters/outbound/vault"
 )
 
 func main() {
-	configPath := flag.String("config", "configs/example.yaml", "path to gateway config file")
-	flag.Parse()
-
-	cfg, err := config.Load(*configPath)
+	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
 	if err != nil {
-		log.Fatalf("load config: %v", err)
+		log.Fatalf("Failed to open database: %v", err)
+	}
+	defer db.Close()
+
+	vaultAdapter := vault.NewDatabaseVaultAdapter(db)
+
+	sharedHTTPClient := &http.Client{Timeout: 60 * time.Second}
+
+	anthropicProvider := anthropic.NewAdapter(vaultAdapter, sharedHTTPClient)
+	// openaiProvider := openai.NewAdapter(vaultAdapter, sharedHTTPClient)
+
+	// 3. Mount clients into your gateway engine mapping map
+	providerCluster := map[string]ports.LLMClient{
+		"anthropic": anthropicProvider,
+		// "openai":    openaiProvider,
 	}
 
-	ctx := context.Background()
+	// 4. Instantiate core domain services with pure interfaces
+	_ = services.NewGatewayService(
+		nil, // jsEngine
+		nil, // pluginService
+		nil, // budgetService
+		nil, // routerService
+		providerCluster,
+	)
 
-	otelProvider, err := telemetry.Init(ctx, cfg.Telemetry)
-	if err != nil {
-		slog.Error("init telemetry", "error", err)
-		os.Exit(1)
-	}
-	defer otelProvider.Shutdown(ctx)
-
-	var st domain.Store
-	if cfg.Database.URL != "" {
-		st = store.NewPostgresStore(cfg.Database.URL, cfg.Database.AutoMigrate, cfg.Database.MigrationsDir)
-		if err := st.Open(); err != nil {
-			slog.Error("init store", "error", err)
-			os.Exit(1)
-		}
-		defer func() {
-			if err := st.Close(); err != nil {
-				slog.Error("close store", "error", err)
-			}
-		}()
-	}
-
-	hooks, err := proxy.NewHookRunner(cfg)
-	if err != nil {
-		log.Fatalf("init hooks: %v", err)
-	}
-
-	proxyHandler := proxy.NewHandler(proxy.HandlerDeps{
-		Config:   cfg,
-		Registry: providers.BuildRegistry(cfg),
-		Hooks:    hooks,
-	})
-
-	apiHandler := http.Handler(proxyHandler)
-
-	mux := http.NewServeMux()
-	mux.Handle("/", apiHandler)
-
-	server := proxy.NewServer(cfg.Server.Addr, proxyHandler, cfg.Server.ReadTimeout, cfg.Server.WriteTimeout)
-	if err := server.Run(); err != nil {
-		log.Fatalf("listen and serve: %v", err)
-	}
+	// Boot transport listener...
 }
