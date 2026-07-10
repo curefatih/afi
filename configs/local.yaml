@@ -35,13 +35,12 @@ budgets:
     max_cost: 50.00
     used_cost: 0.00
 
-# Rule-Based Routing
 routing_rules:
   - id: "rule_1"
     name: "Catch-all Local Dev Rule"
     priority: 1
     is_active: true
-    conditions: [] # Empty acts as wildcard catch-all
+    conditions: [] # Ensure this array is explicitly empty to match EVERYTHING
     target:
       provider: "openai"
       target_model: "gpt-4o"
@@ -50,7 +49,7 @@ routing_rules:
 hooks:
   - project_id: "proj_local"
     stage: "onRequest"
-    file_path: "config/hooks/req_mask_cc.js"
+    file_path: "configs/hooks/req_mask_cc.js"
   - project_id: "proj_local"
     stage: "onResponse"
-    file_path: "config/hooks/res_inject_meta.js"
+    file_path: "configs/hooks/res_inject_meta.js"
