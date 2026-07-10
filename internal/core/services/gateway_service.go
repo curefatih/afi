@@ -16,7 +16,7 @@ var (
 
 type GatewayService struct {
 	jsEngine      ports.JSEngine
-	pluginService ports.PluginService        // Mockable service to fetch scripts from DB/Cache
+	pluginService ports.PluginService        // Service to fetch scripts from DB/Cache
 	budgetService ports.BudgetService        // Orchestrates multi-checkpoint evaluations
 	routerService ports.RouterService        // Matches rules to get domain.TargetDestination
 	providers     map[string]ports.LLMClient // Keyed by provider string like "openai", "anthropic"
@@ -43,8 +43,8 @@ func (s *GatewayService) ExecuteUnary(ctx context.Context, req *domain.InternalR
 	// ----------------------------------------------------
 	// HOOK 1: onRequest
 	// ----------------------------------------------------
-	if script, ok := s.pluginService.GetHook(req.Metadata.ProjectID, "onRequest"); ok {
-		mutated, err := s.jsEngine.ExecuteHook(ctx, script, "onRequest", req)
+	if plugin, ok := s.pluginService.GetHook(ctx, req.Metadata.ProjectID, domain.StageOnRequest); ok {
+		mutated, err := s.jsEngine.ExecuteHook(ctx, plugin.Script, domain.StageOnRequest, req)
 		if err != nil {
 			return nil, fmt.Errorf("onRequest hook execution failure: %w", err)
 		}
@@ -53,9 +53,7 @@ func (s *GatewayService) ExecuteUnary(ctx context.Context, req *domain.InternalR
 		}
 	}
 
-	// ----------------------------------------------------
-	// PRE-FLIGHT CHECK: Hierarchical Budgets & Routing
-	// ----------------------------------------------------
+	// Budget & Router Verification Checklist Matrix
 	if err := s.budgetService.Check(ctx, req.Metadata); err != nil {
 		return nil, fmt.Errorf("budget enforcement block: %w", err)
 	}
@@ -65,7 +63,6 @@ func (s *GatewayService) ExecuteUnary(ctx context.Context, req *domain.InternalR
 		return nil, fmt.Errorf("routing resolution matrix failed: %w", err)
 	}
 
-	// Mutate model signature to map downstream target requirements
 	req.Model = target.TargetModel
 	providerClient, exists := s.providers[target.Provider]
 	if !exists {
@@ -75,8 +72,8 @@ func (s *GatewayService) ExecuteUnary(ctx context.Context, req *domain.InternalR
 	// ----------------------------------------------------
 	// HOOK 2: onBeforeUpstreamCall
 	// ----------------------------------------------------
-	if script, ok := s.pluginService.GetHook(req.Metadata.ProjectID, "onBeforeUpstreamCall"); ok {
-		mutated, err := s.jsEngine.ExecuteHook(ctx, script, "onBeforeUpstreamCall", req)
+	if plugin, ok := s.pluginService.GetHook(ctx, req.Metadata.ProjectID, domain.StageOnBeforeUpstreamCall); ok {
+		mutated, err := s.jsEngine.ExecuteHook(ctx, plugin.Script, domain.StageOnBeforeUpstreamCall, req)
 		if err != nil {
 			return nil, fmt.Errorf("onBeforeUpstreamCall hook execution failure: %w", err)
 		}
@@ -85,7 +82,7 @@ func (s *GatewayService) ExecuteUnary(ctx context.Context, req *domain.InternalR
 		}
 	}
 
-	// Execute Actual External Network Operation
+	// Execute Actual Upstream Network Operation
 	resp, err := providerClient.Call(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("upstream destination execution error: %w", err)
@@ -94,8 +91,8 @@ func (s *GatewayService) ExecuteUnary(ctx context.Context, req *domain.InternalR
 	// ----------------------------------------------------
 	// HOOK 3: onResponse
 	// ----------------------------------------------------
-	if script, ok := s.pluginService.GetHook(req.Metadata.ProjectID, "onResponse"); ok {
-		mutated, err := s.jsEngine.ExecuteHook(ctx, script, "onResponse", resp)
+	if plugin, ok := s.pluginService.GetHook(ctx, req.Metadata.ProjectID, domain.StageOnResponse); ok {
+		mutated, err := s.jsEngine.ExecuteHook(ctx, plugin.Script, domain.StageOnResponse, resp)
 		if err != nil {
 			return nil, fmt.Errorf("onResponse hook execution failure: %w", err)
 		}
@@ -104,7 +101,6 @@ func (s *GatewayService) ExecuteUnary(ctx context.Context, req *domain.InternalR
 		}
 	}
 
-	// Asynchronously commit usage logs to prevent downstream latency amplification
 	go s.budgetService.CommitUsage(context.Background(), req.Metadata, resp.Usage)
 
 	return resp, nil
@@ -116,8 +112,8 @@ func (s *GatewayService) ExecuteStream(ctx context.Context, req *domain.Internal
 	outErr := make(chan error, 1)
 
 	// Execute pre-flight hook adjustments before setting up channels
-	if script, ok := s.pluginService.GetHook(req.Metadata.ProjectID, "onRequest"); ok {
-		if mutated, err := s.jsEngine.ExecuteHook(ctx, script, "onRequest", req); err == nil {
+	if plugin, ok := s.pluginService.GetHook(ctx, req.Metadata.ProjectID, "onRequest"); ok {
+		if mutated, err := s.jsEngine.ExecuteHook(ctx, plugin.Script, domain.StageOnRequest, req); err == nil {
 			if incoming, validation := mutated.(*domain.InternalRequest); validation {
 				req = incoming
 			}
@@ -188,8 +184,8 @@ func (s *GatewayService) ExecuteStream(ctx context.Context, req *domain.Internal
 				}
 
 				// Apply possible real-time inline chunk modification scripts safely
-				if script, ok := s.pluginService.GetHook(req.Metadata.ProjectID, "onResponseChunk"); ok {
-					if mutated, err := s.jsEngine.ExecuteHook(ctx, script, "onResponseChunk", chunk); err == nil {
+				if plugin, ok := s.pluginService.GetHook(ctx, req.Metadata.ProjectID, domain.StageOnResponseChunk); ok {
+					if mutated, err := s.jsEngine.ExecuteHook(ctx, plugin.Script, domain.StageOnResponseChunk, chunk); err == nil {
 						if modifiedChunk, validation := mutated.(domain.StreamChunk); validation {
 							chunk = modifiedChunk
 						}
