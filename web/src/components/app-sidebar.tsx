@@ -53,7 +53,7 @@ const data = {
   navMain: [
     {
       title: "Playground",
-      url: "/playground",
+      url: "/app/playground",
       icon: <TerminalSquareIcon />,
       // isActive: true,
       // items: [
@@ -72,55 +72,13 @@ const data = {
       // ],
     },
     {
-      title: "Models",
-      url: "#",
-      icon: <BotIcon />,
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: <BookOpenIcon />,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
       title: "Settings",
       url: "/app/settings",
       icon: <Settings2Icon />,
       items: [
         {
           title: "General",
-          url: "/app/settings",
+          url: "/app/settings/general",
         },
         {
           title: "Team",
