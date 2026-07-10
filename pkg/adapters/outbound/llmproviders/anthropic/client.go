@@ -88,7 +88,3 @@ func (a *AnthropicAdapter) StreamCall(ctx context.Context, req *domain.InternalR
 
 	return nil, nil
 }
-
-func mapToAnthropic(req *domain.InternalRequest) any                              { return nil }
-func mapToInternalResponse(resp *http.Response) (*domain.InternalResponse, error) { return nil, nil }
-func mapToAnthropicStreamReq(req *domain.InternalRequest) any                     { return nil }
