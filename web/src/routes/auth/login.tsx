@@ -2,7 +2,7 @@ import { Button } from "#/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "#/components/ui/card";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/auth/login")({
   component: RouteComponent,
@@ -17,7 +17,9 @@ function RouteComponent() {
           Enter your email below to login to your account
         </CardDescription>
         <CardAction>
-          <Button variant="link">Sign Up</Button>
+          <Button variant="link">
+            <Link to="/auth/signup">Sign Up</Link>
+          </Button>
         </CardAction>
       </CardHeader>
       <CardContent>
