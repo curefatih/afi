@@ -40,9 +40,9 @@ func NewGatewayService(
 
 // ExecuteUnary processes a non-streaming, standard request/response lifecycle.
 func (s *GatewayService) ExecuteUnary(ctx context.Context, req *domain.InternalRequest) (*domain.InternalResponse, error) {
-	// ----------------------------------------------------
-	// HOOK 1: onRequest
-	// ----------------------------------------------------
+	// 1. Snapshot the untamperable system context parameters securely
+	systemMetadataBackup := req.Metadata
+
 	if plugin, ok := s.pluginService.GetHook(ctx, req.Metadata.ProjectID, domain.StageOnRequest); ok {
 		mutated, err := s.jsEngine.ExecuteHook(ctx, plugin.Script, domain.StageOnRequest, req, plugin.Config)
 		if err != nil {
@@ -50,6 +50,8 @@ func (s *GatewayService) ExecuteUnary(ctx context.Context, req *domain.InternalR
 		}
 		if incoming, validation := mutated.(*domain.InternalRequest); validation {
 			req = incoming
+			// 2. Force-restore the context metadata so JavaScript code can never drop or forge it
+			req.Metadata = systemMetadataBackup
 		}
 	}
 
@@ -69,9 +71,6 @@ func (s *GatewayService) ExecuteUnary(ctx context.Context, req *domain.InternalR
 		return nil, fmt.Errorf("%w: %s", ErrProviderNotFound, target.Provider)
 	}
 
-	// ----------------------------------------------------
-	// HOOK 2: onBeforeUpstreamCall
-	// ----------------------------------------------------
 	if plugin, ok := s.pluginService.GetHook(ctx, req.Metadata.ProjectID, domain.StageOnBeforeUpstreamCall); ok {
 		mutated, err := s.jsEngine.ExecuteHook(ctx, plugin.Script, domain.StageOnBeforeUpstreamCall, req, plugin.Config)
 		if err != nil {
@@ -88,9 +87,6 @@ func (s *GatewayService) ExecuteUnary(ctx context.Context, req *domain.InternalR
 		return nil, fmt.Errorf("upstream destination execution error: %w", err)
 	}
 
-	// ----------------------------------------------------
-	// HOOK 3: onResponse
-	// ----------------------------------------------------
 	if plugin, ok := s.pluginService.GetHook(ctx, req.Metadata.ProjectID, domain.StageOnResponse); ok {
 		mutated, err := s.jsEngine.ExecuteHook(ctx, plugin.Script, domain.StageOnResponse, resp, plugin.Config)
 		if err != nil {
@@ -107,29 +103,41 @@ func (s *GatewayService) ExecuteUnary(ctx context.Context, req *domain.InternalR
 }
 
 // ExecuteStream pipes real-time streaming chunks back safely without thread blocking.
-func (s *GatewayService) ExecuteStream(ctx context.Context, req *domain.InternalRequest) (<-chan domain.StreamChunk, <-chan error) {
-	outChunks := make(chan domain.StreamChunk, 100)
-	outErr := make(chan error, 1)
 
-	// Execute pre-flight hook adjustments before setting up channels
-	if plugin, ok := s.pluginService.GetHook(ctx, req.Metadata.ProjectID, "onRequest"); ok {
-		if mutated, err := s.jsEngine.ExecuteHook(ctx, plugin.Script, domain.StageOnRequest, req, plugin.Config); err == nil {
-			if incoming, validation := mutated.(*domain.InternalRequest); validation {
-				req = incoming
-			}
+func (s *GatewayService) ExecuteStream(ctx context.Context, req *domain.InternalRequest) (<-chan domain.StreamChunk, <-chan error) {
+	outChunks := make(chan domain.StreamChunk)
+	outErr := make(chan error)
+
+	// 1. Securely snapshot the authenticated context properties
+	systemMetadataBackup := req.Metadata
+
+	if plugin, ok := s.pluginService.GetHook(ctx, req.Metadata.ProjectID, domain.StageOnRequest); ok {
+		mutated, err := s.jsEngine.ExecuteHook(ctx, plugin.Script, domain.StageOnRequest, req, plugin.Config)
+		if err != nil {
+			outErr <- fmt.Errorf("onRequest streaming hook failure: %w", err)
+			close(outChunks)
+			close(outErr)
+			return outChunks, outErr
+		}
+		if incoming, validation := mutated.(*domain.InternalRequest); validation {
+			req = incoming
+			// 2. Force-restore context parameters back onto the mutated object
+			req.Metadata = systemMetadataBackup
 		}
 	}
 
+	// Budget Check
 	if err := s.budgetService.Check(ctx, req.Metadata); err != nil {
-		outErr <- err
+		outErr <- fmt.Errorf("budget blocking error: %w", err)
 		close(outChunks)
 		close(outErr)
 		return outChunks, outErr
 	}
 
+	// Route Resolution
 	target, err := s.routerService.Route(req)
 	if err != nil {
-		outErr <- err
+		outErr <- fmt.Errorf("routing streaming target failed: %w", err)
 		close(outChunks)
 		close(outErr)
 		return outChunks, outErr
@@ -138,67 +146,75 @@ func (s *GatewayService) ExecuteStream(ctx context.Context, req *domain.Internal
 	req.Model = target.TargetModel
 	providerClient, exists := s.providers[target.Provider]
 	if !exists {
-		outErr <- fmt.Errorf("%w: %s", ErrProviderNotFound, target.Provider)
+		outErr <- fmt.Errorf("provider match missing: %s", target.Provider)
 		close(outChunks)
 		close(outErr)
 		return outChunks, outErr
 	}
 
-	// Call underlying streaming capability from the downstream provider
-	providerChunks, providerErr := providerClient.StreamCall(ctx, req)
+	if plugin, ok := s.pluginService.GetHook(ctx, req.Metadata.ProjectID, domain.StageOnBeforeUpstreamCall); ok {
+		mutated, err := s.jsEngine.ExecuteHook(ctx, plugin.Script, domain.StageOnBeforeUpstreamCall, req, plugin.Config)
+		if err != nil {
+			outErr <- fmt.Errorf("onBeforeUpstreamCall streaming hook failure: %w", err)
+			close(outChunks)
+			close(outErr)
+			return outChunks, outErr
+		}
+		if incoming, validation := mutated.(*domain.InternalRequest); validation {
+			req = incoming
+			// 3. Keep metadata completely intact right before upstream dispatch
+			req.Metadata = systemMetadataBackup
+		}
+	}
 
-	// Spin asynchronous pipeline processing orchestration
+	// 4. Initialize Core Upstream SSE Stream Pipeline Channel Link
+	vendorChunks, vendorErrCh := providerClient.StreamCall(ctx, req)
+
 	go func() {
 		defer close(outChunks)
 		defer close(outErr)
 
-		var fullContent strings.Builder
-		var accumulatedUsage domain.TokenUsage
+		var finalUsage domain.TokenUsage
 
 		for {
 			select {
 			case <-ctx.Done():
-				outErr <- ctx.Err()
 				return
-			case err, ok := <-providerErr:
+			case err, ok := <-vendorErrCh:
 				if ok && err != nil {
 					outErr <- err
-					return
 				}
-			case chunk, ok := <-providerChunks:
+				return
+			case chunk, ok := <-vendorChunks:
 				if !ok {
-					// End of Stream reached successfully. Calculate fallback usage parameters if required.
-					if accumulatedUsage.TotalTokens == 0 {
-						accumulatedUsage = s.estimateStreamingTokens(req.Model, fullContent.String())
+					fmt.Printf("[GATEWAY TRACE] Channel closed. Final total tracking tokens gathered: %d\n", finalUsage.TotalTokens)
+					if finalUsage.TotalTokens > 0 {
+						s.budgetService.CommitUsage(context.Background(), systemMetadataBackup, finalUsage)
 					}
-
-					// Async tracking persistence
-					go s.budgetService.CommitUsage(context.Background(), req.Metadata, accumulatedUsage)
 					return
 				}
 
-				// Capture generation text updates for background operations
-				fullContent.WriteString(chunk.DeltaText)
 				if chunk.Usage.TotalTokens > 0 {
-					accumulatedUsage = chunk.Usage
+					finalUsage = chunk.Usage
+					fmt.Printf("[GATEWAY TRACE] Captured usage snapshot directly from chunk: %d tokens\n", finalUsage.TotalTokens)
 				}
 
-				// Apply possible real-time inline chunk modification scripts safely
-				if plugin, ok := s.pluginService.GetHook(ctx, req.Metadata.ProjectID, domain.StageOnResponseChunk); ok {
-					if mutated, err := s.jsEngine.ExecuteHook(ctx, plugin.Script, domain.StageOnResponseChunk, chunk, plugin.Config); err == nil {
-						if modifiedChunk, validation := mutated.(domain.StreamChunk); validation {
-							chunk = modifiedChunk
+				if plugin, ok := s.pluginService.GetHook(ctx, systemMetadataBackup.ProjectID, domain.StageOnResponseChunk); ok {
+					mutated, err := s.jsEngine.ExecuteHook(ctx, plugin.Script, domain.StageOnResponseChunk, chunk, plugin.Config)
+					if err == nil {
+						if processedChunk, validation := mutated.(domain.StreamChunk); validation {
+							chunk = processedChunk
 						}
 					}
 				}
 
-				// Pipe the downstream chunk instantly out to the caller HTTP connection thread
 				outChunks <- chunk
 			}
 		}
 	}()
 
 	return outChunks, outErr
+
 }
 
 // Helper calculation technique if providers do not pass analytical metadata via stream endings

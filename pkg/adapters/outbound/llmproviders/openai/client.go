@@ -64,8 +64,8 @@ func (a *OpenAIAdapter) Call(ctx context.Context, req *domain.InternalRequest) (
 }
 
 func (a *OpenAIAdapter) StreamCall(ctx context.Context, req *domain.InternalRequest) (<-chan domain.StreamChunk, <-chan error) {
-	outChunks := make(chan domain.StreamChunk, 100)
-	outErr := make(chan error, 1)
+	outChunks := make(chan domain.StreamChunk)
+	outErr := make(chan error)
 
 	vendorKey, err := a.vault.GetProviderKey(ctx, req.Metadata.ProjectID, "openai")
 	if err != nil {
@@ -139,10 +139,21 @@ func (a *OpenAIAdapter) StreamCall(ctx context.Context, req *domain.InternalRequ
 					continue
 				}
 
-				// Safely abstract structural details out into standard Gateway chunks
 				var textDelta string
 				if len(chunk.Choices) > 0 {
 					textDelta = chunk.Choices[0].Delta.Content
+				}
+
+				// Safely extract the usage block if it's included in this frame
+				var domainUsage domain.TokenUsage
+				if chunk.Usage.TotalTokens > 0 {
+					domainUsage = domain.TokenUsage{
+						InputTokens:  chunk.Usage.PromptTokens,
+						OutputTokens: chunk.Usage.CompletionTokens,
+						TotalTokens:  chunk.Usage.TotalTokens,
+					}
+					// Temporarily keep this print to confirm the adapter caught it over the wire!
+					fmt.Printf("[ADAPTER TRACE] Extracted usage from stream chunk: %d total tokens\n", domainUsage.TotalTokens)
 				}
 
 				outChunks <- domain.StreamChunk{
@@ -150,11 +161,7 @@ func (a *OpenAIAdapter) StreamCall(ctx context.Context, req *domain.InternalRequ
 					CreatedAt: chunk.Created,
 					Model:     chunk.Model,
 					DeltaText: textDelta,
-					Usage: domain.TokenUsage{
-						InputTokens:  chunk.Usage.PromptTokens,
-						OutputTokens: chunk.Usage.CompletionTokens,
-						TotalTokens:  chunk.Usage.TotalTokens,
-					},
+					Usage:     domainUsage, // Pass the cleanly parsed struct down the channel
 				}
 			}
 		}
