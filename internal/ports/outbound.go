@@ -32,11 +32,11 @@ type BudgetService interface {
 
 // JSEngine provides a sandboxed execution runtime environment for untrusted user hooks.
 type JSEngine interface {
-	ExecuteHook(ctx context.Context, script string, stage string, payload any) (any, error)
+	ExecuteHook(ctx context.Context, script string, stage domain.HookStage, payload any) (any, error)
 }
 
 // PluginService handles fast lookup retrieval of raw dynamic hook logic definitions.
 type PluginService interface {
-	GetHook(projectID string, stage string) (string, bool)
-	SaveHook(ctx context.Context, projectID string, stage string, script string) error
+	GetHook(ctx context.Context, projectID string, stage domain.HookStage) (*domain.CustomPlugin, bool)
+	SaveHook(ctx context.Context, projectID string, stage domain.HookStage, script string) error
 }
