@@ -1,24 +1,55 @@
-server:
-  addr: ":8080"
-  read_timeout: 30s
-  write_timeout: 0s
+# Setup Local Platform Context Matrix
+organizations:
+  - id: "org_local"
+    name: "Development Corp"
 
-database:
-  url: postgres://afi:afi@localhost:5433/afi?sslmode=disable
-  migrations_dir: migrations
-  auto_migrate: true
-  
+teams:
+  - id: "team_local"
+    org_id: "org_local"
+    name: "Engineering Team"
+
+projects:
+  - id: "proj_local"
+    team_id: "team_local"
+    name: "LLM Sandbox"
+
+# Seed valid API Keys
+api_keys:
+  - raw_key_prefix: "sk-project-local-dev-token-12345" # Becomes sk-project-local-dev-token-12345...
+    type: "SERVICE_ACCOUNT"
+    project_id: "proj_local"
+
+# Local Vault Provider Mapping
+upstream_credentials:
+  - project_id: "proj_local"
+    provider: "openai"
+    env_var_key: "LOCAL_OPENAI_API_KEY" # Reads from your local shell environment
+  - project_id: "proj_local"
+    provider: "anthropic"
+    env_var_key: "LOCAL_ANTHROPIC_API_KEY"
+
+# Hierarchical Budgets Checkpoints Setup
+budgets:
+  - scope: "PROJECT"
+    target_id: "proj_local"
+    max_cost: 50.00
+    used_cost: 0.00
+
+routing_rules:
+  - id: "rule_1"
+    name: "Catch-all Local Dev Rule"
+    priority: 1
+    is_active: true
+    conditions: [] # Ensure this array is explicitly empty to match EVERYTHING
+    target:
+      provider: "openai"
+      target_model: "gpt-4o"
+
+# Dynamic JavaScript Hooks Intercept Binding Locations
 hooks:
-  timeout_ms: 50
-  hook_specs:
-    - name: onRequest
-      path: hooks/example.js
-
-providers:
-  openai:
-    base_url: https://api.openai.com
-    api_key: ${OPENAI_API_KEY}
-  anthropic:
-    base_url: https://api.anthropic.com
-    api_key: ${ANTHROPIC_API_KEY}
-
+  - project_id: "proj_local"
+    stage: "onRequest"
+    file_path: "configs/hooks/req_mask_cc.js"
+  - project_id: "proj_local"
+    stage: "onResponse"
+    file_path: "configs/hooks/res_inject_meta.js"

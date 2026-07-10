@@ -1,72 +1,66 @@
-// gateway is a standalone gateway server that can be used to proxy requests to the AFI API.
+// cmd/gateway/main.go
 package main
 
 import (
-	"context"
-	"flag"
 	"log"
-	"log/slog"
 	"net/http"
-	"os"
+	"time"
 
-	"github.com/curefatih/afi/internal/config"
-	"github.com/curefatih/afi/internal/domain"
-	"github.com/curefatih/afi/internal/providers"
-	"github.com/curefatih/afi/internal/proxy"
-	"github.com/curefatih/afi/internal/store"
-	"github.com/curefatih/afi/internal/telemetry"
+	"github.com/curefatih/afi/internal/core/services"
+	"github.com/curefatih/afi/internal/ports"
+	"github.com/curefatih/afi/pkg/adapters/inbound/http/openai"
+	"github.com/curefatih/afi/pkg/adapters/outbound/jsengine"
+	"github.com/curefatih/afi/pkg/adapters/outbound/llmproviders/anthropic"
+	openaiOutbound "github.com/curefatih/afi/pkg/adapters/outbound/llmproviders/openai"
 )
 
 func main() {
-	configPath := flag.String("config", "configs/example.yaml", "path to gateway config file")
-	flag.Parse()
+	// 1. Initialize DB / Infrastructure Outbound Components
+	// In production, instantiate your actual database and cache repositories here.
+	var vaultAdapter ports.CredentialVault // Your DB secret-store adapter
+	var pluginRepo ports.PluginService     // Your Postgres script tracker repo
+	var budgetRepo ports.BudgetService     // Your Distributed Redis atomic storage repo
+	var routerRepo ports.RouterService     // Your active configuration rule repo
+	var authRepo services.AuthRepository   // Your secure hash token lookups repo
 
-	cfg, err := config.Load(*configPath)
-	if err != nil {
-		log.Fatalf("load config: %v", err)
+	httpClient := &http.Client{Timeout: 90 * time.Second}
+
+	// 2. Assemble Outbound Adapter Implementations
+	jsSandboxEngine := jsengine.NewGojaEngineAdapter()
+	anthropicClient := anthropic.NewAdapter(vaultAdapter, httpClient)
+	openaiClient := openaiOutbound.NewAdapter(vaultAdapter, httpClient)
+
+	providerRegistry := map[string]ports.LLMClient{
+		"openai":    openaiClient,
+		"anthropic": anthropicClient,
 	}
 
-	ctx := context.Background()
+	// 3. Assemble Core Business Logic Services
+	authService := services.NewAuthService(authRepo)
+	gatewayService := services.NewGatewayService(
+		jsSandboxEngine,
+		pluginRepo,
+		budgetRepo,
+		routerRepo,
+		providerRegistry,
+	)
 
-	otelProvider, err := telemetry.Init(ctx, cfg.Telemetry)
-	if err != nil {
-		slog.Error("init telemetry", "error", err)
-		os.Exit(1)
-	}
-	defer otelProvider.Shutdown(ctx)
-
-	var st domain.Store
-	if cfg.Database.URL != "" {
-		st = store.NewPostgresStore(cfg.Database.URL, cfg.Database.AutoMigrate, cfg.Database.MigrationsDir)
-		if err := st.Open(); err != nil {
-			slog.Error("init store", "error", err)
-			os.Exit(1)
-		}
-		defer func() {
-			if err := st.Close(); err != nil {
-				slog.Error("close store", "error", err)
-			}
-		}()
-	}
-
-	hooks, err := proxy.NewHookRunner(cfg)
-	if err != nil {
-		log.Fatalf("init hooks: %v", err)
-	}
-
-	proxyHandler := proxy.NewHandler(proxy.HandlerDeps{
-		Config:   cfg,
-		Registry: providers.BuildRegistry(cfg),
-		Hooks:    hooks,
-	})
-
-	apiHandler := http.Handler(proxyHandler)
+	// 4. Mount Inbound Driving Adapters
+	openAIHTTPHandler := openai.NewHandler(gatewayService, authService)
 
 	mux := http.NewServeMux()
-	mux.Handle("/", apiHandler)
+	// Expose our clean proxy route endpoint
+	mux.Handle("/v1/chat/completions", openAIHTTPHandler)
 
-	server := proxy.NewServer(cfg.Server.Addr, proxyHandler, cfg.Server.ReadTimeout, cfg.Server.WriteTimeout)
-	if err := server.Run(); err != nil {
-		log.Fatalf("listen and serve: %v", err)
+	server := &http.Server{
+		Addr:         ":8080",
+		Handler:      mux,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 6 * time.Minute, // Elevated budget threshold limit to allow lengthy streams
+	}
+
+	log.Println("⚡ LLM Gateway Engine online and listening for requests on structural port :8080...")
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("Fatal container engine termination: %v", err)
 	}
 }
