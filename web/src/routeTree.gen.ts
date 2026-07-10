@@ -10,11 +10,26 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as AuthRouteRouteImport } from './routes/auth/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthSignupRouteImport } from './routes/auth/signup'
+import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AppUsersRouteImport } from './routes/app/users'
+import { Route as AppTeamsRouteImport } from './routes/app/teams'
+import { Route as AppProjectsRouteImport } from './routes/app/projects'
+import { Route as AppPlaygroundRouteImport } from './routes/app/playground'
+import { Route as AppOrganizationsRouteImport } from './routes/app/organizations'
+import { Route as AppKeysRouteImport } from './routes/app/keys'
+import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
 
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRouteRoute = AuthRouteRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -22,31 +37,144 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthSignupRoute = AuthSignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => AuthRouteRoute,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AuthRouteRoute,
+} as any)
+const AppUsersRoute = AppUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTeamsRoute = AppTeamsRouteImport.update({
+  id: '/teams',
+  path: '/teams',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProjectsRoute = AppProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlaygroundRoute = AppPlaygroundRouteImport.update({
+  id: '/playground',
+  path: '/playground',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOrganizationsRoute = AppOrganizationsRouteImport.update({
+  id: '/organizations',
+  path: '/organizations',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppKeysRoute = AppKeysRouteImport.update({
+  id: '/keys',
+  path: '/keys',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/auth': typeof AuthRouteRouteWithChildren
+  '/app': typeof AppRouteWithChildren
+  '/app/dashboard': typeof AppDashboardRoute
+  '/app/keys': typeof AppKeysRoute
+  '/app/organizations': typeof AppOrganizationsRoute
+  '/app/playground': typeof AppPlaygroundRoute
+  '/app/projects': typeof AppProjectsRoute
+  '/app/teams': typeof AppTeamsRoute
+  '/app/users': typeof AppUsersRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/signup': typeof AuthSignupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/auth': typeof AuthRouteRouteWithChildren
+  '/app': typeof AppRouteWithChildren
+  '/app/dashboard': typeof AppDashboardRoute
+  '/app/keys': typeof AppKeysRoute
+  '/app/organizations': typeof AppOrganizationsRoute
+  '/app/playground': typeof AppPlaygroundRoute
+  '/app/projects': typeof AppProjectsRoute
+  '/app/teams': typeof AppTeamsRoute
+  '/app/users': typeof AppUsersRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/signup': typeof AuthSignupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/auth': typeof AuthRouteRouteWithChildren
+  '/app': typeof AppRouteWithChildren
+  '/app/dashboard': typeof AppDashboardRoute
+  '/app/keys': typeof AppKeysRoute
+  '/app/organizations': typeof AppOrganizationsRoute
+  '/app/playground': typeof AppPlaygroundRoute
+  '/app/projects': typeof AppProjectsRoute
+  '/app/teams': typeof AppTeamsRoute
+  '/app/users': typeof AppUsersRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/signup': typeof AuthSignupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/app'
+    | '/app/dashboard'
+    | '/app/keys'
+    | '/app/organizations'
+    | '/app/playground'
+    | '/app/projects'
+    | '/app/teams'
+    | '/app/users'
+    | '/auth/login'
+    | '/auth/signup'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app'
-  id: '__root__' | '/' | '/app'
+  to:
+    | '/'
+    | '/auth'
+    | '/app'
+    | '/app/dashboard'
+    | '/app/keys'
+    | '/app/organizations'
+    | '/app/playground'
+    | '/app/projects'
+    | '/app/teams'
+    | '/app/users'
+    | '/auth/login'
+    | '/auth/signup'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/app'
+    | '/app/dashboard'
+    | '/app/keys'
+    | '/app/organizations'
+    | '/app/playground'
+    | '/app/projects'
+    | '/app/teams'
+    | '/app/users'
+    | '/auth/login'
+    | '/auth/signup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AppRoute: typeof AppRoute
+  AuthRouteRoute: typeof AuthRouteRouteWithChildren
+  AppRoute: typeof AppRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -58,6 +186,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -65,12 +200,112 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/signup': {
+      id: '/auth/signup'
+      path: '/signup'
+      fullPath: '/auth/signup'
+      preLoaderRoute: typeof AuthSignupRouteImport
+      parentRoute: typeof AuthRouteRoute
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRouteRoute
+    }
+    '/app/users': {
+      id: '/app/users'
+      path: '/users'
+      fullPath: '/app/users'
+      preLoaderRoute: typeof AppUsersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/teams': {
+      id: '/app/teams'
+      path: '/teams'
+      fullPath: '/app/teams'
+      preLoaderRoute: typeof AppTeamsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/projects': {
+      id: '/app/projects'
+      path: '/projects'
+      fullPath: '/app/projects'
+      preLoaderRoute: typeof AppProjectsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/playground': {
+      id: '/app/playground'
+      path: '/playground'
+      fullPath: '/app/playground'
+      preLoaderRoute: typeof AppPlaygroundRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/organizations': {
+      id: '/app/organizations'
+      path: '/organizations'
+      fullPath: '/app/organizations'
+      preLoaderRoute: typeof AppOrganizationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/keys': {
+      id: '/app/keys'
+      path: '/keys'
+      fullPath: '/app/keys'
+      preLoaderRoute: typeof AppKeysRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/dashboard': {
+      id: '/app/dashboard'
+      path: '/dashboard'
+      fullPath: '/app/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AuthRouteRouteChildren {
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthSignupRoute: typeof AuthSignupRoute
+}
+
+const AuthRouteRouteChildren: AuthRouteRouteChildren = {
+  AuthLoginRoute: AuthLoginRoute,
+  AuthSignupRoute: AuthSignupRoute,
+}
+
+const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
+  AuthRouteRouteChildren,
+)
+
+interface AppRouteChildren {
+  AppDashboardRoute: typeof AppDashboardRoute
+  AppKeysRoute: typeof AppKeysRoute
+  AppOrganizationsRoute: typeof AppOrganizationsRoute
+  AppPlaygroundRoute: typeof AppPlaygroundRoute
+  AppProjectsRoute: typeof AppProjectsRoute
+  AppTeamsRoute: typeof AppTeamsRoute
+  AppUsersRoute: typeof AppUsersRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppDashboardRoute: AppDashboardRoute,
+  AppKeysRoute: AppKeysRoute,
+  AppOrganizationsRoute: AppOrganizationsRoute,
+  AppPlaygroundRoute: AppPlaygroundRoute,
+  AppProjectsRoute: AppProjectsRoute,
+  AppTeamsRoute: AppTeamsRoute,
+  AppUsersRoute: AppUsersRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AppRoute: AppRoute,
+  AuthRouteRoute: AuthRouteRouteWithChildren,
+  AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
