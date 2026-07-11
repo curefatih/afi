@@ -8,6 +8,7 @@ const (
 	// Organization Scope Management Permissions
 	PermOrgUserRead   ActionPermission = "org:user:read"
 	PermOrgUserWrite  ActionPermission = "org:user:write"
+	PermOrgRoleWrite  ActionPermission = "org:role:write"
 	PermProjectCreate ActionPermission = "org:project:create"
 	PermOrgSpendRead  ActionPermission = "org:spend:read"
 
