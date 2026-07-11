@@ -60,7 +60,11 @@ func (e *GojaEngineAdapter) ExecuteHook(ctx context.Context, script string, stag
 	}
 
 	// 5. Pull out the transformed state variant object back from JS global landscape
-	resultObj := vm.Get("payload").Export()
+	val := vm.Get("payload")
+	if val == nil {
+		return nil, fmt.Errorf("payload variable not found in JS VM")
+	}
+	resultObj := val.Export()
 
 	// 6. Remap clean unstructured JS data types safely back onto expected Go Struct Pointers
 	finalizedBytes, err := json.Marshal(resultObj)
