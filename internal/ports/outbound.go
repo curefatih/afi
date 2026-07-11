@@ -41,13 +41,9 @@ type PluginService interface {
 	SaveHook(ctx context.Context, projectID string, stage domain.HookStage, script string) error
 }
 
-// PlatformAdminRepository defines the persistence operations for platform user management.
-type PlatformAdminRepository interface {
-	SaveUser(ctx context.Context, user *domain.PlatformUser) error
-	GetUserByEmail(ctx context.Context, email string) (*domain.PlatformUser, error)
-
-	SaveCustomRole(ctx context.Context, role *domain.CustomRole) error
-	SaveRoleAssignment(ctx context.Context, assignment *domain.UserAssignment) error
-
+// PlatformTokenService manages the generation and validation of platform user tokens.
+type PlatformAuthService interface {
+	GenerateToken(ctx context.Context, user *domain.PlatformUser) (string, error)
+	ValidateToken(ctx context.Context, tokenStr string) (string, error) // Returns UserID string on successful validation
 	GetUserPermissions(ctx context.Context, userID string, orgID string, projectID string) ([]domain.ActionPermission, error)
 }
