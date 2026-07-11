@@ -65,7 +65,7 @@ func (a *OpenAIAdapter) Call(ctx context.Context, req *domain.InternalRequest) (
 
 func (a *OpenAIAdapter) StreamCall(ctx context.Context, req *domain.InternalRequest) (<-chan domain.StreamChunk, <-chan error) {
 	outChunks := make(chan domain.StreamChunk)
-	outErr := make(chan error)
+	outErr := make(chan error, 1)
 
 	vendorKey, err := a.vault.GetProviderKey(ctx, req.Metadata.ProjectID, "openai")
 	if err != nil {
