@@ -1,28 +1,58 @@
-import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 type User = {
-  id: string
-  name: string
-  email: string
-  role: string
-}
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  accessToken: string | null;
+  refreshToken: string | null;
+};
 
 type AuthState = {
-  isAuthenticated: boolean
-  setIsAuthenticated: (isAuthenticated: boolean) => void
-  user: User | null
-  setUser: (user: User | null) => void
-  logout: () => void
-}
+  isAuthenticated: boolean;
+  user: User | null;
+  actions: {
+    setUser: (user: User | null) => void;
+    logout: () => void;
+  };
+};
 
-export const useAuthState = create<AuthState>()(persist((set) => ({
-  isAuthenticated: false,
-  user: null,
-  setIsAuthenticated: (isAuthenticated: boolean) => set({ isAuthenticated }),
-  setUser: (user: User | null) => set({ user, isAuthenticated: user !== null && user !== undefined }),
-  logout: () => set({ isAuthenticated: false, user: null }),
-}), {
-  name: 'auth-state',
-  storage: createJSONStorage(() => localStorage),
-}))
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      isAuthenticated: false,
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+      actions: {
+        setUser: (user) =>
+          set({
+            user,
+            isAuthenticated: !!user,
+          }),
+        logout: () =>
+          set({
+            isAuthenticated: false,
+            user: null,
+          }),
+      },
+    }),
+    {
+      name: "auth-state",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        isAuthenticated: state.isAuthenticated,
+        user: state.user,
+        accessToken: state.user?.accessToken,
+        refreshToken: state.user?.refreshToken,
+      }),
+    },
+  ),
+);
+
+export const useAuthUser = () => useAuthStore((state) => state.user);
+export const useIsAuthenticated = () =>
+  useAuthStore((state) => state.isAuthenticated);
+export const useAuthActions = () => useAuthStore((state) => state.actions);
