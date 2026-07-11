@@ -8,11 +8,11 @@ import (
 )
 
 type UserHandler struct {
-	adminUseCase ports.PlatformAdminUseCase
+	userUseCase ports.PlatformUserUseCase
 }
 
-func NewUserHandler(auc ports.PlatformAdminUseCase) *UserHandler {
-	return &UserHandler{adminUseCase: auc}
+func NewUserHandler(auc ports.PlatformUserUseCase) *UserHandler {
+	return &UserHandler{userUseCase: auc}
 }
 
 type LoginRequest struct {
@@ -38,7 +38,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Route down to core authentication logic
-	token, err := h.adminUseCase.LoginPlatformWithEmailAndPassword(r.Context(), req.Email, req.Password)
+	token, err := h.userUseCase.LoginPlatformWithEmailAndPassword(r.Context(), req.Email, req.Password)
 	if err != nil {
 		h.respondError(w, http.StatusUnauthorized, "Invalid platform administration credentials")
 		return
@@ -59,9 +59,9 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.adminUseCase.RegisterAdminUser(r.Context(), req.Email, req.Password)
+	user, err := h.userUseCase.RegisterPlatformUser(r.Context(), req.Email, req.Password)
 	if err != nil {
-		h.respondError(w, http.StatusInternalServerError, "Failed to register new platform administrator")
+		h.respondError(w, http.StatusInternalServerError, "Failed to register new platform user")
 		return
 	}
 

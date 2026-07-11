@@ -27,13 +27,13 @@ type AuthUseCase interface {
 	AuthenticateKey(ctx context.Context, rawKey string) (*domain.RequestContext, error)
 }
 
-type PlatformAdminUseCase interface {
-	RegisterAdminUser(ctx context.Context, email string, password string) (*domain.PlatformUser, error)
+type PlatformUserUseCase interface {
+	RegisterPlatformUser(ctx context.Context, email string, password string) (*domain.PlatformUser, error)
 	LoginPlatformWithEmailAndPassword(ctx context.Context, email string, password string) (*domain.Token, error)
 
 	CreateCustomRole(ctx context.Context, role *domain.CustomRole) (*domain.CustomRole, error)
 	AssignCustomRoleToUser(ctx context.Context, assignment *domain.UserAssignment) error
 
-	ValidateSessionToken(ctx context.Context, tokenStr string) (*domain.Token, error)
+	ValidatePlatformUserToken(ctx context.Context, tokenStr string) (*domain.Token, error)
 	GetUserPermissions(ctx context.Context, userID string, orgID string, projectID string) ([]domain.ActionPermission, error)
 }
