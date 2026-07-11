@@ -2,8 +2,12 @@ package services
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/curefatih/afi/internal/core/domain"
+	"github.com/curefatih/afi/internal/ports"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // PlatformUserRepository defines the persistence operations for platform user management.
@@ -18,23 +22,99 @@ type PlatformUserRepository interface {
 }
 
 type PlatformUserService struct {
-	repo PlatformUserRepository
+	repo     PlatformUserRepository
+	tokenSvc ports.PlatformTokenService
 }
 
-func NewPlatformUserService(repo PlatformUserRepository) *PlatformUserService {
-	return &PlatformUserService{repo: repo}
+var _ ports.PlatformUserUseCase = &PlatformUserService{}
+
+func NewPlatformUserService(repo PlatformUserRepository, tokenSvc ports.PlatformTokenService) *PlatformUserService {
+	return &PlatformUserService{repo: repo, tokenSvc: tokenSvc}
 }
 
-func (s *PlatformUserService) GenerateToken(ctx context.Context, user *domain.PlatformUser) (string, error) {
-	// TODO: Implement token generation
-	return "", nil
+// ValidatePlatformUserToken implements ports.PlatformUserUseCase.
+func (s *PlatformUserService) ValidatePlatformUserToken(ctx context.Context, tokenStr string) (*domain.Token, error) {
+	_, err := s.tokenSvc.ValidateToken(ctx, tokenStr)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.Token{Token: tokenStr}, nil
 }
 
-func (s *PlatformUserService) ValidateToken(ctx context.Context, tokenStr string) (string, error) {
-	// TODO: Implement token validation
-	return "", nil
+// GeneratePlatformUserToken implements ports.PlatformUserUseCase.
+func (s *PlatformUserService) GeneratePlatformUserToken(ctx context.Context, user *domain.PlatformUser) (*domain.Token, error) {
+	token, err := s.tokenSvc.GenerateToken(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.Token{Token: token}, nil
 }
 
+// RegisterPlatformUser handles password hashing and user creation
+func (s *PlatformUserService) RegisterPlatformUser(ctx context.Context, email string, password string) (*domain.PlatformUser, error) {
+	// 1. Hash the incoming raw password securely
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process password credentials: %w", err)
+	}
+
+	user := &domain.PlatformUser{
+		Email:        email,
+		PasswordHash: string(hashedPassword),
+	}
+
+	// 2. Persist to storage layer
+	if err := s.repo.SaveUser(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// LoginPlatformWithEmailAndPassword validates password matching hashes and issues a session token
+func (s *PlatformUserService) LoginPlatformWithEmailAndPassword(ctx context.Context, email string, password string) (*domain.Token, error) {
+	user, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil, errors.New("invalid platform user credentials")
+	}
+
+	// Compare cryptographically secure bcrypt hashes
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
+	if err != nil {
+		return nil, errors.New("invalid platform user credentials")
+	}
+
+	// Delegate stateless string creation up to the out-of-core crypto wrapper
+	token, err := s.tokenSvc.GenerateToken(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.Token{Token: token}, nil
+}
+
+// CreateCustomRole commits a granular policy schema rule layout definition
+func (s *PlatformUserService) CreateCustomRole(ctx context.Context, role *domain.CustomRole) (*domain.CustomRole, error) {
+	if role.Name == "" || len(role.Permissions) == 0 {
+		return nil, errors.New("invalid custom role configuration parameters: name and permissions required")
+	}
+	if err := s.repo.SaveCustomRole(ctx, role); err != nil {
+		return nil, err
+	}
+	return role, nil
+}
+
+// AssignCustomRoleToUser maps a user identification profile directly to a policy layout
+func (s *PlatformUserService) AssignCustomRoleToUser(ctx context.Context, assignment *domain.UserAssignment) error {
+	if assignment.UserID == "" || assignment.RoleName == "" {
+		return errors.New("invalid role assignment matrix: userID and role reference target required")
+	}
+	return s.repo.SaveRoleAssignment(ctx, assignment)
+}
+
+// GetUserPermissions gathers all explicit and custom permissions a user holds
 func (s *PlatformUserService) GetUserPermissions(ctx context.Context, userID string, orgID string, projectID string) ([]domain.ActionPermission, error) {
+	if userID == "" || orgID == "" {
+		return nil, errors.New("missing minimum verification context identity: userID and orgID required")
+	}
 	return s.repo.GetUserPermissions(ctx, userID, orgID, projectID)
 }
