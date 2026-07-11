@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 type APIKeyType string
 
 const (
@@ -12,4 +14,6 @@ type APIKey struct {
 	Type      APIKeyType
 	UserID    string // Set if Personal
 	ProjectID string // Set if Service Account (inherits TeamID/OrgID)
+	IsActive  bool
+	CreatedAt time.Time
 }
