@@ -9,14 +9,14 @@ import (
 )
 
 type RoleHandler struct {
-	adminUseCase ports.PlatformAdminUseCase
-	authUseCase  ports.AuthUseCase // Combined here to bridge API key mutations
+	userUseCase ports.PlatformUserUseCase
+	authUseCase ports.AuthUseCase // Combined here to bridge API key mutations
 }
 
-func NewRoleHandler(auc ports.PlatformAdminUseCase, auth ports.AuthUseCase) *RoleHandler {
+func NewRoleHandler(userUseCase ports.PlatformUserUseCase, authUseCase ports.AuthUseCase) *RoleHandler {
 	return &RoleHandler{
-		adminUseCase: auc,
-		authUseCase:  auth,
+		userUseCase: userUseCase,
+		authUseCase: authUseCase,
 	}
 }
 
@@ -45,7 +45,7 @@ func (h *RoleHandler) CreateCustomRole(w http.ResponseWriter, r *http.Request) {
 		Permissions: req.Permissions,
 	}
 
-	role, err := h.adminUseCase.CreateCustomRole(r.Context(), roleDomain)
+	role, err := h.userUseCase.CreateCustomRole(r.Context(), roleDomain)
 	if err != nil {
 		h.respondError(w, http.StatusInternalServerError, "Failed to persist custom policy layout definition")
 		return
