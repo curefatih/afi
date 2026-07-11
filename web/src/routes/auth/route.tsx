@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { GalleryVerticalEnd } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   beforeLoad: ({ location }) => {
@@ -13,13 +14,15 @@ export const Route = createFileRoute("/auth")({
 
 function RouteComponent() {
   return (
-    <div className="flex flex-row h-screen">
-      <div className="w-1/2 h-full border-r border-gray-200 bg-gray-100">
-      </div>
-      <div className="flex-1">
-        <div className="w-full h-full bg-white flex items-center justify-center">
-          <Outlet />
-        </div>
+    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
+      <div className="flex w-full max-w-sm flex-col gap-6">
+        <a href="#" className="flex items-center gap-2 self-center font-medium">
+          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <GalleryVerticalEnd className="size-4" />
+          </div>
+          Acme Inc.
+        </a>
+        <Outlet />
       </div>
     </div>
   );
