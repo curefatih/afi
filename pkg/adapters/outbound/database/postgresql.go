@@ -186,3 +186,12 @@ func (s *PostgresStore) GetProviderKey(ctx context.Context, projectID string, pr
 	}
 	return key, err
 }
+
+// RouterService implementation
+func (s *PostgresStore) Route(req *domain.InternalRequest) (domain.TargetDestination, error) {
+	return domain.TargetDestination{}, errors.New("not implemented")
+}
+
+func (a *PostgresStore) AddRule(ctx context.Context, rule domain.RoutingRule) error {
+	return errors.New("not implemented")
+}
