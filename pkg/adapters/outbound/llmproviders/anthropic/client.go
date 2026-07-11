@@ -63,28 +63,52 @@ func (a *AnthropicAdapter) StreamCall(ctx context.Context, req *domain.InternalR
 		defer close(ch)
 		defer close(errCh)
 
+		vendorKey, err := a.vault.GetProviderKey(ctx, req.Metadata.ProjectID, "anthropic")
+		if err != nil {
+			errCh <- fmt.Errorf("anthropic credentials retrieval breakdown: %w", err)
+			return
+		}
+
 		anthropicReq := mapToAnthropicStreamReq(req)
 		jsonBytes, _ := json.Marshal(anthropicReq)
-		respStream, err := a.httpClient.Post("https://api.anthropic.com/v1/messages", "application/json", bytes.NewBuffer(jsonBytes))
+
+		httpReq, err := http.NewRequestWithContext(ctx, "POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(jsonBytes))
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("x-api-key", vendorKey)
+		httpReq.Header.Set("anthropic-version", "2023-06-01")
+
+		respStream, err := a.httpClient.Do(httpReq)
 		if err != nil {
 			errCh <- err
 			return
 		}
 		defer respStream.Body.Close()
+
+		if respStream.StatusCode != http.StatusOK {
+			errCh <- fmt.Errorf("anthropic upstream stream error status %d", respStream.StatusCode)
+			return
+		}
+
 		for {
 			var event map[string]any
 			if err := json.NewDecoder(respStream.Body).Decode(&event); err != nil {
-				errCh <- err
 				return
 			}
 			if event["type"] == "message" {
-				chunk := domain.StreamChunk{
-					DeltaText: event["delta_text"].(string),
+				if deltaText, ok := event["delta_text"].(string); ok {
+					chunk := domain.StreamChunk{
+						DeltaText: deltaText,
+					}
+					ch <- chunk
 				}
-				ch <- chunk
 			}
 		}
 	}()
 
-	return nil, nil
+	return ch, errCh
 }
