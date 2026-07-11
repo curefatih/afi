@@ -40,3 +40,14 @@ type PluginService interface {
 	GetHook(ctx context.Context, projectID string, stage domain.HookStage) (*domain.CustomPlugin, bool)
 	SaveHook(ctx context.Context, projectID string, stage domain.HookStage, script string) error
 }
+
+// PlatformAdminRepository defines the persistence operations for platform user management.
+type PlatformAdminRepository interface {
+	SaveUser(ctx context.Context, user *domain.PlatformUser) error
+	GetUserByEmail(ctx context.Context, email string) (*domain.PlatformUser, error)
+
+	SaveCustomRole(ctx context.Context, role *domain.CustomRole) error
+	SaveRoleAssignment(ctx context.Context, assignment *domain.UserAssignment) error
+
+	GetUserPermissions(ctx context.Context, userID string, orgID string, projectID string) ([]domain.ActionPermission, error)
+}

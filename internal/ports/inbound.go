@@ -26,3 +26,13 @@ type AuthUseCase interface {
 	IssueAPIKey(ctx context.Context, keyType domain.APIKeyType, targetID string) (string, error) // Returns raw key string once
 	AuthenticateKey(ctx context.Context, rawKey string) (*domain.RequestContext, error)
 }
+
+type PlatformAdminUseCase interface {
+	RegisterAdminUser(ctx context.Context, email string, password string) (*domain.PlatformUser, error)
+	LoginPlatformWithEmailAndPassword(ctx context.Context, email string, password string) (*domain.PlatformUser, error)
+
+	CreateCustomRole(ctx context.Context, role *domain.CustomRole) (*domain.CustomRole, error)
+	AssignCustomRoleToUser(ctx context.Context, assignment *domain.UserAssignment) error
+
+	ValidateSessionToken(ctx context.Context, token string) (string, error)
+}
