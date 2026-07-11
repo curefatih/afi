@@ -1,19 +1,18 @@
-package http
+package handlers
 
 import (
 	"net/http"
 
 	"github.com/curefatih/afi/internal/core/domain"
 	"github.com/curefatih/afi/internal/ports"
-	"github.com/curefatih/afi/pkg/adapters/inbound/http/handlers"
 	"github.com/curefatih/afi/pkg/adapters/inbound/http/middleware"
 )
 
 func RegisterPlatformRoutes(
 	mux *http.ServeMux,
 	tokenSvc ports.PlatformTokenService,
-	userHandler *handlers.UserHandler,
-	roleHandler *handlers.RoleHandler,
+	userHandler *UserHandler,
+	roleHandler *RoleHandler,
 ) {
 
 	protect := func(required domain.ActionPermission, next http.Handler) http.Handler {
