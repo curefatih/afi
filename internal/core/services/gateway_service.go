@@ -106,7 +106,7 @@ func (s *GatewayService) ExecuteUnary(ctx context.Context, req *domain.InternalR
 
 func (s *GatewayService) ExecuteStream(ctx context.Context, req *domain.InternalRequest) (<-chan domain.StreamChunk, <-chan error) {
 	outChunks := make(chan domain.StreamChunk)
-	outErr := make(chan error)
+	outErr := make(chan error, 1)
 
 	// 1. Securely snapshot the authenticated context properties
 	systemMetadataBackup := req.Metadata
