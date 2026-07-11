@@ -40,3 +40,8 @@ type UserAssignment struct {
 	ProjectID string `json:"project_id,omitempty"`
 	RoleName  string `json:"role_name"`
 }
+
+type Token struct {
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expires_at"`
+}

@@ -6,8 +6,8 @@ import (
 	"github.com/curefatih/afi/internal/core/domain"
 )
 
-// PlatformAdminRepository defines the persistence operations for platform user management.
-type PlatformAdminRepository interface {
+// PlatformUserRepository defines the persistence operations for platform user management.
+type PlatformUserRepository interface {
 	SaveUser(ctx context.Context, user *domain.PlatformUser) error
 	GetUserByEmail(ctx context.Context, email string) (*domain.PlatformUser, error)
 
@@ -17,24 +17,24 @@ type PlatformAdminRepository interface {
 	GetUserPermissions(ctx context.Context, userID string, orgID string, projectID string) ([]domain.ActionPermission, error)
 }
 
-type PlatformTokenService struct {
-	repo PlatformAdminRepository
+type PlatformUserService struct {
+	repo PlatformUserRepository
 }
 
-func NewPlatformTokenService(repo PlatformAdminRepository) *PlatformTokenService {
-	return &PlatformTokenService{repo: repo}
+func NewPlatformUserService(repo PlatformUserRepository) *PlatformUserService {
+	return &PlatformUserService{repo: repo}
 }
 
-func (s *PlatformTokenService) GenerateToken(ctx context.Context, user *domain.PlatformUser) (string, error) {
+func (s *PlatformUserService) GenerateToken(ctx context.Context, user *domain.PlatformUser) (string, error) {
 	// TODO: Implement token generation
 	return "", nil
 }
 
-func (s *PlatformTokenService) ValidateToken(ctx context.Context, tokenStr string) (string, error) {
+func (s *PlatformUserService) ValidateToken(ctx context.Context, tokenStr string) (string, error) {
 	// TODO: Implement token validation
 	return "", nil
 }
 
-func (s *PlatformTokenService) GetUserPermissions(ctx context.Context, userID string, orgID string, projectID string) ([]domain.ActionPermission, error) {
+func (s *PlatformUserService) GetUserPermissions(ctx context.Context, userID string, orgID string, projectID string) ([]domain.ActionPermission, error) {
 	return s.repo.GetUserPermissions(ctx, userID, orgID, projectID)
 }
