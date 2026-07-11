@@ -23,6 +23,9 @@ func (v *DatabaseVaultAdapter) GetProviderKey(ctx context.Context, projectID str
 	var encryptedKey string
 	err := v.db.QueryRowContext(ctx, query, projectID, provider).Scan(&encryptedKey)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrCredentialNotFound
+		}
 		return "", err
 	}
 	return encryptedKey, nil
