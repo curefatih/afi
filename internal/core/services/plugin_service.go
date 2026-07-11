@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/core/domain"
+	"github.com/curefatih/afi/internal/ports"
 )
 
 type PluginRepository interface {
@@ -17,6 +18,8 @@ type PluginRepository interface {
 type PluginService struct {
 	repo PluginRepository
 }
+
+var _ ports.PluginService = &PluginService{}
 
 func NewPluginService(repo PluginRepository) *PluginService {
 	return &PluginService{repo: repo}
@@ -42,7 +45,7 @@ func (s *PluginService) SaveHook(ctx context.Context, projectID string, stage do
 	return s.repo.SavePlugin(ctx, plugin)
 }
 
-func (s *PluginService) GetHook(ctx context.Context, projectID string, stage string) (*domain.CustomPlugin, bool) {
+func (s *PluginService) GetHook(ctx context.Context, projectID string, stage domain.HookStage) (*domain.CustomPlugin, bool) {
 	plugin, err := s.repo.GetActivePlugin(ctx, projectID, domain.HookStage(stage))
 	if err != nil || plugin == nil || !plugin.IsActive {
 		return nil, false
