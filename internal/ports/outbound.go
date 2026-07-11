@@ -42,7 +42,7 @@ type PluginService interface {
 }
 
 // PlatformTokenService manages the generation and validation of platform user tokens.
-type PlatformAuthService interface {
+type PlatformTokenService interface {
 	GenerateToken(ctx context.Context, user *domain.PlatformUser) (string, error)
 	ValidateToken(ctx context.Context, tokenStr string) (string, error) // Returns UserID string on successful validation
 	GetUserPermissions(ctx context.Context, userID string, orgID string, projectID string) ([]domain.ActionPermission, error)

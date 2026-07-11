@@ -15,7 +15,7 @@ type contextKey string
 const UserIDKey contextKey = "userID"
 
 func RequirePermission(
-	platformAuthSvc ports.PlatformAuthService,
+	tokenSvc ports.PlatformTokenService,
 	required domain.ActionPermission,
 ) func(http.Handler) http.Handler {
 
@@ -28,7 +28,7 @@ func RequirePermission(
 			}
 
 			tokenStr := extractToken(authHeader)
-			userID, err := platformAuthSvc.ValidateToken(r.Context(), tokenStr)
+			userID, err := tokenSvc.ValidateToken(r.Context(), tokenStr)
 			if err != nil {
 				respondWithError(w, http.StatusUnauthorized, "Invalid token")
 				return
@@ -37,7 +37,7 @@ func RequirePermission(
 			orgID := r.PathValue("org_id")
 			projectID := r.PathValue("project_id")
 
-			permissions, err := platformAuthSvc.GetUserPermissions(r.Context(), userID, orgID, projectID)
+			permissions, err := tokenSvc.GetUserPermissions(r.Context(), userID, orgID, projectID)
 			if err != nil {
 				respondWithError(w, http.StatusInternalServerError, "Failed to fetch user permissions")
 				return

@@ -11,13 +11,13 @@ import (
 
 func RegisterPlatformRoutes(
 	mux *http.ServeMux,
-	platformAuthSvc ports.PlatformAuthService,
+	tokenSvc ports.PlatformTokenService,
 	userHandler *handlers.UserHandler,
 	roleHandler *handlers.RoleHandler,
 ) {
 
 	protect := func(required domain.ActionPermission, next http.Handler) http.Handler {
-		return middleware.RequirePermission(platformAuthSvc, required)(next)
+		return middleware.RequirePermission(tokenSvc, required)(next)
 	}
 
 	mux.HandleFunc("POST /api/v1/platform/auth/login", userHandler.Login)
