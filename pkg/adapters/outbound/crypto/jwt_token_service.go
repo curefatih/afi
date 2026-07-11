@@ -1,11 +1,13 @@
 package crypto
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/curefatih/afi/internal/core/domain"
+	"github.com/curefatih/afi/internal/ports"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -21,6 +23,8 @@ type UserClaims struct {
 	jwt.RegisteredClaims
 }
 
+var _ ports.PlatformTokenService = &JWTTokenService{}
+
 // NewJWTTokenService constructs a standard cryptographically signed session manager
 func NewJWTTokenService(secret string, issuer string, duration time.Duration) *JWTTokenService {
 	return &JWTTokenService{
@@ -31,7 +35,7 @@ func NewJWTTokenService(secret string, issuer string, duration time.Duration) *J
 }
 
 // GenerateToken wraps user identity components into a signed JWT string
-func (s *JWTTokenService) GenerateToken(user *domain.PlatformUser) (string, error) {
+func (s *JWTTokenService) GenerateToken(ctx context.Context, user *domain.PlatformUser) (string, error) {
 	now := time.Now()
 	claims := UserClaims{
 		UserID: user.ID,
@@ -54,7 +58,7 @@ func (s *JWTTokenService) GenerateToken(user *domain.PlatformUser) (string, erro
 }
 
 // ValidateToken decodes, parses, and cryptographically verifies the raw token string
-func (s *JWTTokenService) ValidateToken(tokenStr string) (string, error) {
+func (s *JWTTokenService) ValidateToken(ctx context.Context, tokenStr string) (string, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &UserClaims{}, func(t *jwt.Token) (interface{}, error) {
 		// Enforce validation of symmetric cryptographic algorithm integrity
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -79,4 +83,8 @@ func (s *JWTTokenService) ValidateToken(tokenStr string) (string, error) {
 	}
 
 	return "", errors.New("untrusted session token structure")
+}
+
+func (s *JWTTokenService) GetUserPermissions(ctx context.Context, userID string, orgID string, projectID string) ([]domain.ActionPermission, error) {
+	return nil, nil
 }
