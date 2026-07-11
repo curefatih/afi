@@ -35,7 +35,7 @@ const data = {
   },
   projectsSwitcher: [
     {
-      name: "Acme Inc",
+      name: "AFI Inc",
       logo: <GalleryVerticalEndIcon />,
       plan: "Enterprise",
     },
@@ -112,7 +112,7 @@ const data = {
   organizations: [
     {
       id: "org_1",
-      name: "Acme Inc.",
+      name: "AFI Inc.",
       logo: "https://github.com/vercel.png",
     },
     {
