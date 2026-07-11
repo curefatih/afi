@@ -72,7 +72,7 @@ func (p *CustomPlugin) Validate() error {
 		return fmt.Errorf("plugin execution runtime body script payload is blank")
 	}
 	if p.Config.Timeout <= 0 {
-		p.Config = DefaultRuntimeConfig()
+		p.Config.Timeout = DefaultRuntimeConfig().Timeout
 	}
 	return nil
 }
