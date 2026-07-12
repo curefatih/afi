@@ -65,6 +65,16 @@ func (s *PostgresStore) GetUserByEmail(ctx context.Context, email string) (*doma
 	return &u, err
 }
 
+func (s *PostgresStore) GetUserByID(ctx context.Context, id string) (*domain.PlatformUser, error) {
+	query := `SELECT id, email, password_hash, provider, external_id, created_at FROM platform_users WHERE id = $1`
+	var u domain.PlatformUser
+	err := s.pool.QueryRow(ctx, query, id).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Provider, &u.ExternalID, &u.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("user not found: %s", id)
+	}
+	return &u, err
+}
+
 func (s *PostgresStore) SaveCustomRole(ctx context.Context, r *domain.CustomRole) error {
 	query := `INSERT INTO custom_roles (id, name, scope, target_id, permissions) VALUES ($1, $2, $3, $4, $5)`
 	_, err := s.pool.Exec(ctx, query, r.ID, r.Name, r.Scope, r.TargetID, r.Permissions)

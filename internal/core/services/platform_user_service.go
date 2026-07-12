@@ -19,11 +19,19 @@ type PlatformUserRepository interface {
 	SaveRoleAssignment(ctx context.Context, assignment *domain.UserAssignment) error
 
 	GetUserPermissions(ctx context.Context, userID string, orgID string, projectID string) ([]domain.ActionPermission, error)
+	GetUserByID(ctx context.Context, userID string) (*domain.PlatformUser, error)
 }
 
 type PlatformUserService struct {
 	repo     PlatformUserRepository
 	tokenSvc ports.PlatformTokenService
+}
+
+// GetProfileByID implements ports.PlatformUserUseCase.
+func (s *PlatformUserService) GetProfileByID(ctx context.Context, userID string) (*domain.PlatformUser, error) {
+	// Simply delegate database fetching downstream to your PlatformUserRepository
+	// If needed, your repository can support a standard GetUserByID method.
+	return s.repo.GetUserByID(ctx, userID)
 }
 
 var _ ports.PlatformUserUseCase = &PlatformUserService{}

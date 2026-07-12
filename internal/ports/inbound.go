@@ -31,6 +31,8 @@ type PlatformUserUseCase interface {
 	RegisterPlatformUser(ctx context.Context, email string, password string) (*domain.PlatformUser, error)
 	LoginPlatformWithEmailAndPassword(ctx context.Context, email string, password string) (*domain.Token, error)
 
+	GetProfileByID(ctx context.Context, userID string) (*domain.PlatformUser, error)
+
 	CreateCustomRole(ctx context.Context, role *domain.CustomRole) (*domain.CustomRole, error)
 	AssignCustomRoleToUser(ctx context.Context, assignment *domain.UserAssignment) error
 
