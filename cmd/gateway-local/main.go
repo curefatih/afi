@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
+	"github.com/curefatih/afi/internal/core/config"
 	"github.com/curefatih/afi/internal/core/services"
 	"github.com/curefatih/afi/pkg/adapters/inbound/http/middleware"
 	"github.com/curefatih/afi/pkg/adapters/inbound/http/openai"
@@ -23,17 +26,28 @@ import (
 func main() {
 	log.Println("Initializing standalone local gateway container service runtime...")
 
-	// Initialize token system configuration parameters
-	jwtSecret := "super-secure-dev-platform-secret-key-change-in-prod"
-	tokenDuration := 12 * time.Hour
+	// 1. Determine config path (e.g., from env or flag)
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		configPath = "configs/local.yaml"
+	}
 
-	tokenSvc := crypto.NewJWTTokenService(jwtSecret, "afi-gateway-platform", tokenDuration)
+	// 2. Load Configuration
+	cfg, err := config.LoadConfig(configPath)
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	// 3. Inject only what's necessary into your Adapters
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	// Initialize token system configuration parameters
+	tokenSvc := crypto.NewJWTTokenService(cfg.Auth.TokenSecret, cfg.Auth.Issuer, cfg.Auth.TokenDuration)
 
 	ctx := context.Background()
-	// TODO: Use environment variables to set the connection string. These are mock
-	connStr := "postgresql://postgres:secret@localhost:5432/afi_gateway?sslmode=disable"
-
-	pool, err := pgxpool.New(ctx, connStr)
+	pool, err := pgxpool.New(ctx, cfg.Database.ConnectionString)
 	if err != nil {
 		log.Fatalf("Unable to establish connect connection pool: %v", err)
 	}
@@ -86,13 +100,13 @@ func main() {
 
 	// 6. Configure a production-hardened Server to prevent streaming timeout drops
 	server := &http.Server{
-		Addr:         ":8080",
+		Addr:         fmt.Sprintf(":%d", cfg.HTTP.Port),
 		Handler:      finalHandler,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 0, // 🚨 CRITICAL: Keep 0 to prevent cutting off long-running SSE chunk responses!
+		ReadTimeout:  cfg.HTTP.ReadTimeout,
+		WriteTimeout: cfg.HTTP.WriteTimeout,
 	}
 
-	log.Println("🚀 Local Hexagonal Gateway running smoothly on port :8080! Test via cURL targeting key: 'sk-project-local-dev-token-12345'")
+	log.Println(fmt.Sprintf("🚀 Local Hexagonal Gateway running smoothly on port %d! Test via cURL targeting key: 'sk-project-local-dev-token-12345'", cfg.HTTP.Port))
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Server crashed: %v", err)
 	}

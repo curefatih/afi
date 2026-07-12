@@ -7,11 +7,15 @@ teams:
   - id: "team_local"
     org_id: "org_local"
     name: "Engineering Team"
-
 projects:
   - id: "proj_local"
     team_id: "team_local"
     name: "LLM Sandbox"
+
+auth:
+  token_secret: "super-secure-dev-platform-secret-key-change-in-prod"
+  token_duration: 12h
+  issuer: "afi-gateway-platform"
 
 # Seed valid API Keys
 api_keys:
@@ -47,9 +51,14 @@ routing_rules:
 
 # Dynamic JavaScript Hooks Intercept Binding Locations
 hooks:
-  - project_id: "proj_local"
-    stage: "onRequest"
-    file_path: "configs/hooks/req_mask_cc.js"
-  - project_id: "proj_local"
-    stage: "onResponse"
-    file_path: "configs/hooks/res_inject_meta.js"
+  timeout_ms: 50
+  specs:
+    - name: "onRequest"
+      path: "configs/hooks/req_mask_cc.js"
+    - name: "onResponse"
+      path: "configs/hooks/res_inject_meta.js"
+
+http:
+  port: 8080
+  read_timeout: 15s
+  write_timeout: 0s
