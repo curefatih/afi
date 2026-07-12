@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthRouteRouteImport } from './routes/auth/route'
@@ -25,6 +27,16 @@ import { Route as AppSettingsTeamsRouteImport } from './routes/app/settings/team
 import { Route as AppSettingsLimitsRouteImport } from './routes/app/settings/limits'
 import { Route as AppSettingsGeneralRouteImport } from './routes/app/settings/general'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
@@ -104,6 +116,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteRouteWithChildren
   '/': typeof AuthenticatedRoute
   '/app': typeof AppRouteWithChildren
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/keys': typeof AppKeysRoute
   '/app/organizations': typeof AppOrganizationsRoute
@@ -121,6 +135,8 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRouteRouteWithChildren
   '/': typeof AuthenticatedRoute
   '/app': typeof AppRouteWithChildren
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/keys': typeof AppKeysRoute
   '/app/organizations': typeof AppOrganizationsRoute
@@ -139,6 +155,8 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteRouteWithChildren
   '/_authenticated': typeof AuthenticatedRoute
   '/app': typeof AppRouteWithChildren
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/keys': typeof AppKeysRoute
   '/app/organizations': typeof AppOrganizationsRoute
@@ -158,6 +176,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/'
     | '/app'
+    | '/privacy'
+    | '/terms'
     | '/app/dashboard'
     | '/app/keys'
     | '/app/organizations'
@@ -175,6 +195,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/'
     | '/app'
+    | '/privacy'
+    | '/terms'
     | '/app/dashboard'
     | '/app/keys'
     | '/app/organizations'
@@ -192,6 +214,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated'
     | '/app'
+    | '/privacy'
+    | '/terms'
     | '/app/dashboard'
     | '/app/keys'
     | '/app/organizations'
@@ -210,10 +234,26 @@ export interface RootRouteChildren {
   AuthRouteRoute: typeof AuthRouteRouteWithChildren
   AuthenticatedRoute: typeof AuthenticatedRoute
   AppRoute: typeof AppRouteWithChildren
+  PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app': {
       id: '/app'
       path: '/app'
@@ -368,6 +408,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRouteRoute: AuthRouteRouteWithChildren,
   AuthenticatedRoute: AuthenticatedRoute,
   AppRoute: AppRouteWithChildren,
+  PrivacyRoute: PrivacyRoute,
+  TermsRoute: TermsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
