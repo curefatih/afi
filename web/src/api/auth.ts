@@ -51,6 +51,9 @@ export const loginMutationOptions = () =>
         throw new Error("Failed to fetch user after login");
       }
       const user = await res.json();
+      if (!user) {
+        throw new Error("Failed to fetch user after login");
+      }
       useAuthStore.getState().actions.setUser({
         accessToken: token,
         refreshToken: null,

@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/app/settings/limits')({
+export const Route = createFileRoute('/_authenticated/app/projects')({
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  return <div>Hello "/app/settings/limits"!</div>
+  return <div>Hello "/app/projects"!</div>
 }
