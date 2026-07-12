@@ -17,14 +17,26 @@ import {
 import { Input } from "#/components/ui/input";
 import { cn } from "#/lib/utils";
 import { loginFormSchema } from "#/schemas/login-form.schema";
+import { useMutation } from "@tanstack/react-query";
 import { useForm } from "@tanstack/react-form";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { loginMutationOptions } from "#/api/auth";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth/login")({
   component: RouteComponent,
 });
 
 function RouteComponent() {
+  const loginMutation = useMutation({
+    ...loginMutationOptions(),
+    onSuccess: () => {
+      toast.success("You are now logged in");
+    },
+    onError: (error) => {
+      toast.error(`There was an error: ${error.message}`);
+    },
+  });
   const form = useForm({
     validators: {
       onChange: loginFormSchema,
@@ -34,14 +46,10 @@ function RouteComponent() {
       password: "",
     },
     onSubmit: async (values) => {
-      // TODO: Implement login logic
-      console.log(values);
-      // const response = await fetch("/api/auth/login", {
-      //   method: "POST",
-      //   body: JSON.stringify(values),
-      // });
-      // const data = await response.json();
-      // console.log(data);
+      loginMutation.mutate({
+        email: values.value.email,
+        password: values.value.password,
+      });
     },
   });
 

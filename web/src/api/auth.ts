@@ -29,6 +29,9 @@ export const loginMutationOptions = () =>
     mutationFn: async (data: LoginRequest) => {
       const res = await fetch("http://localhost:8080/api/v1/platform/auth/login", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error("Failed to login");
