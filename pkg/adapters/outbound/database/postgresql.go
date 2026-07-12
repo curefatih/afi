@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"os"
 	"time"
 
 	"github.com/curefatih/afi/internal/core/domain"
@@ -17,6 +19,28 @@ type PostgresStore struct {
 
 func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore {
 	return &PostgresStore{pool: pool}
+}
+
+func (s *PostgresStore) Migrate(ctx context.Context, path string) error {
+	// 1. Read the SQL file from the file system
+	script, err := os.ReadFile(path)
+	log.Println("Starting database migration...")
+	if err != nil {
+		log.Printf("Error reading migration file at %s: %v", path, err)
+		return fmt.Errorf("failed to read migration file at %s: %w", path, err)
+	}
+
+	// 2. Execute the entire script against the connection pool
+	// pgx pool.Exec handles multi-statement SQL strings seamlessly
+	_, err = s.pool.Exec(ctx, string(script))
+	if err != nil {
+		log.Printf("Error executing migration script: %v", err)
+		return fmt.Errorf("failed to execute migration script: %w", err)
+	}
+
+	log.Println("Database migration completed successfully.")
+
+	return nil
 }
 
 // =========================================================================

@@ -56,6 +56,9 @@ func main() {
 	// Instantiate the multi-interface matching adapter wrapper instance
 	dbStore := database.NewPostgresStore(pool)
 
+	localSeed := "database/postgres-local-seed.sql"
+	dbStore.Migrate(ctx, localSeed) // Ensure database schema is up to date
+
 	// Inject cleanly across core decoupling paths
 	authService := services.NewAuthService(dbStore)                       // Consumes AuthRepository
 	budgetService := services.NewBudgetService(dbStore)                   // Consumes BudgetRepository

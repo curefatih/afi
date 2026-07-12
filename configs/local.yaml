@@ -62,3 +62,12 @@ http:
   port: 8080
   read_timeout: 15s
   write_timeout: 0s
+
+database:
+  host: localhost
+  port: 5433
+  user: afi
+  password: afi
+  name: afi
+  ssl_mode: disable
+  connection_string: postgresql://afi:afi@localhost:5433/afi?sslmode=disable
