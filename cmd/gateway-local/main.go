@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/core/services"
+	"github.com/curefatih/afi/pkg/adapters/inbound/http/middleware"
 	"github.com/curefatih/afi/pkg/adapters/inbound/http/openai"
 	"github.com/curefatih/afi/pkg/adapters/outbound/database"
 	"github.com/curefatih/afi/pkg/adapters/outbound/jsengine"
@@ -78,9 +79,21 @@ func main() {
 	userHandler := routerAdapter.NewUserHandler(platformUserSvc)
 
 	routerAdapter.RegisterPlatformRoutes(mux, tokenSvc, userHandler, roleHandler)
+	// 5. Build your global infrastructure middleware chain wrapper
+	// CORS acts as the entry guard, converting our *http.ServeMux into an http.Handler
+	corsConfig := middleware.DefaultCORSConfig()
+	var finalHandler http.Handler = middleware.CORS(corsConfig)(mux)
+
+	// 6. Configure a production-hardened Server to prevent streaming timeout drops
+	server := &http.Server{
+		Addr:         ":8080",
+		Handler:      finalHandler,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 0, // 🚨 CRITICAL: Keep 0 to prevent cutting off long-running SSE chunk responses!
+	}
 
 	log.Println("🚀 Local Hexagonal Gateway running smoothly on port :8080! Test via cURL targeting key: 'sk-project-local-dev-token-12345'")
-	if err := http.ListenAndServe(":8080", mux); err != nil {
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Server crashed: %v", err)
 	}
 }
