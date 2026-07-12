@@ -15,6 +15,7 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthRouteRouteImport } from './routes/auth/route'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AppUsersRouteImport } from './routes/app/users'
 import { Route as AppTeamsRouteImport } from './routes/app/teams'
@@ -54,6 +55,11 @@ const AuthRouteRoute = AuthRouteRouteImport.update({
 const AuthSignupRoute = AuthSignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => AuthRouteRoute,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => AuthRouteRoute,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/app/teams': typeof AppTeamsRoute
   '/app/users': typeof AppUsersRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/settings/general': typeof AppSettingsGeneralRoute
   '/app/settings/limits': typeof AppSettingsLimitsRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByTo {
   '/app/teams': typeof AppTeamsRoute
   '/app/users': typeof AppUsersRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/settings/general': typeof AppSettingsGeneralRoute
   '/app/settings/limits': typeof AppSettingsLimitsRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   '/app/teams': typeof AppTeamsRoute
   '/app/users': typeof AppUsersRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/settings/general': typeof AppSettingsGeneralRoute
   '/app/settings/limits': typeof AppSettingsLimitsRoute
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
     | '/app/teams'
     | '/app/users'
     | '/auth/login'
+    | '/auth/reset-password'
     | '/auth/signup'
     | '/app/settings/general'
     | '/app/settings/limits'
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
     | '/app/teams'
     | '/app/users'
     | '/auth/login'
+    | '/auth/reset-password'
     | '/auth/signup'
     | '/app/settings/general'
     | '/app/settings/limits'
@@ -224,6 +235,7 @@ export interface FileRouteTypes {
     | '/app/teams'
     | '/app/users'
     | '/auth/login'
+    | '/auth/reset-password'
     | '/auth/signup'
     | '/app/settings/general'
     | '/app/settings/limits'
@@ -280,6 +292,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/auth/signup'
       preLoaderRoute: typeof AuthSignupRouteImport
+      parentRoute: typeof AuthRouteRoute
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
       parentRoute: typeof AuthRouteRoute
     }
     '/auth/login': {
@@ -364,11 +383,13 @@ declare module '@tanstack/react-router' {
 
 interface AuthRouteRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   AuthSignupRoute: typeof AuthSignupRoute
 }
 
 const AuthRouteRouteChildren: AuthRouteRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
   AuthSignupRoute: AuthSignupRoute,
 }
 
