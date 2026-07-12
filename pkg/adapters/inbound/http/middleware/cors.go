@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"log"
 	"net/http"
 	"strings"
 )
@@ -65,7 +64,6 @@ func CORS(config CORSConfig) func(http.Handler) http.Handler {
 				return
 			}
 
-			log.Println("CORS middleware applied")
 			next.ServeHTTP(w, r)
 		})
 	}
