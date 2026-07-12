@@ -1,5 +1,7 @@
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { useAuthStore } from "#/state/auth-state";
+import { redirect } from "@tanstack/react-router";
+import { toast } from "sonner";
 
 export const meQueryOptions = () =>
   queryOptions({
@@ -24,36 +26,32 @@ type LoginRequest = {
   password: string;
 };
 
+
 export const loginMutationOptions = () =>
   mutationOptions({
     mutationFn: async (data: LoginRequest) => {
-      const res = await fetch("http://localhost:8080/api/v1/platform/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const res = await fetch(
+        "http://localhost:8080/api/v1/platform/auth/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
         },
-        body: JSON.stringify(data),
-      });
+      );
       if (!res.ok) throw new Error("Failed to login");
       return res.json();
-      },
+    },
     onSuccess: async (data) => {
-      // Fetch the user info after receiving the token.
       const token = data.token;
-      // Save token to store as accessToken, clear refreshToken.
-      // You may want to call /me or a user info route to populate current user.
+
       const res = await fetch("http://localhost:8080/api/v1/platform/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) {
-        throw new Error("Failed to fetch user after login");
-      }
+      if (!res.ok) throw new Error("Failed to fetch user after login");
+
       const user = await res.json();
-      if (!user) {
-        throw new Error("Failed to fetch user after login");
-      }
+
+      // Update Zustand state (Updates are synchronous)
       useAuthStore.getState().actions.setUser({
         accessToken: token,
         refreshToken: null,
@@ -62,5 +60,8 @@ export const loginMutationOptions = () =>
         email: user.email,
         role: user.role,
       });
+
+      // Return data so the component can safely handle navigation on resolve
+      return user;
     },
   });
