@@ -4,11 +4,20 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
+  CardTitle,
 } from "#/components/ui/card";
-import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator } from "#/components/ui/field";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSeparator,
+} from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
 import { cn } from "#/lib/utils";
+import { loginFormSchema } from "#/schemas/login-form.schema";
+import { useForm } from "@tanstack/react-form";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/auth/login")({
@@ -16,17 +25,40 @@ export const Route = createFileRoute("/auth/login")({
 });
 
 function RouteComponent() {
+  const form = useForm({
+    validators: {
+      onChange: loginFormSchema,
+    },
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+    onSubmit: async (values) => {
+      // TODO: Implement login logic
+      console.log(values);
+      // const response = await fetch("/api/auth/login", {
+      //   method: "POST",
+      //   body: JSON.stringify(values),
+      // });
+      // const data = await response.json();
+      // console.log(data);
+    },
+  });
+
   return (
     <div className={cn("flex flex-col gap-6")}>
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Welcome back</CardTitle>
-          <CardDescription>
-            Login with your Google account
-          </CardDescription>
+          <CardDescription>Login with your Google account</CardDescription>
         </CardHeader>
         <CardContent>
-          <form>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              form.handleSubmit(e);
+            }}
+          >
             <FieldGroup>
               <Field>
                 <Button variant="outline" type="button">
@@ -42,31 +74,59 @@ function RouteComponent() {
               <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
                 Or continue with
               </FieldSeparator>
-              <Field>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  required
-                />
-              </Field>
-              <Field>
-                <div className="flex items-center">
-                  <FieldLabel htmlFor="password">Password</FieldLabel>
-                  <a
-                    href="#"
-                    className="ml-auto text-sm underline-offset-4 hover:underline"
-                  >
-                    Forgot your password?
-                  </a>
-                </div>
-                <Input id="password" type="password" required />
-              </Field>
+              <form.Field name="email">
+                {(field) => (
+                  <>
+                    <Field id="email">
+                      <FieldLabel htmlFor="email">Email</FieldLabel>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="m@example.com"
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                      />
+                      {!field.state.meta.isValid && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  </>
+                )}
+              </form.Field>
+              <form.Field name="password">
+                {(field) => (
+                  <>
+                    <Field id="password">
+                      <div className="flex items-center">
+                        <FieldLabel htmlFor="password">Password</FieldLabel>
+                        <Link
+                          to="/auth/reset-password"
+                          className="ml-auto text-sm underline-offset-4 hover:underline"
+                        >
+                          Forgot your password?
+                        </Link>
+                      </div>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                      />
+                      {!field.state.meta.isValid && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  </>
+                )}
+              </form.Field>
+
               <Field>
                 <Button type="submit">Login</Button>
                 <FieldDescription className="text-center">
-                  Don&apos;t have an account? <Link to="/auth/signup">Sign up</Link>
+                  Don&apos;t have an account?{" "}
+                  <Link to="/auth/signup">Sign up</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>
@@ -74,8 +134,9 @@ function RouteComponent() {
         </CardContent>
       </Card>
       <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our <Link to="/terms">Terms of Service</Link>{" "}
-        and <Link to="/privacy">Privacy Policy</Link>.
+        By clicking continue, you agree to our{" "}
+        <Link to="/terms">Terms of Service</Link> and{" "}
+        <Link to="/privacy">Privacy Policy</Link>.
       </FieldDescription>
     </div>
   );
