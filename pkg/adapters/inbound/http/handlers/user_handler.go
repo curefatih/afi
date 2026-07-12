@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/curefatih/afi/internal/ports"
+	"github.com/curefatih/afi/pkg/adapters/inbound/http/middleware"
 )
 
 type UserHandler struct {
@@ -66,6 +67,26 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.respondJSON(w, http.StatusCreated, user)
+}
+
+// GET /admin/v1/organizations/{org_id}/auth/me
+func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
+	// 1. Extract the secure UserID string injected by your RequirePermission middleware
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		h.respondError(w, http.StatusUnauthorized, "Unidentified session context")
+		return
+	}
+
+	// 2. Fetch the profile via your inbound port service layer
+	user, err := h.userUseCase.GetProfileByID(r.Context(), userID)
+	if err != nil {
+		h.respondError(w, http.StatusNotFound, "User profile record not found")
+		return
+	}
+
+	// 3. Return the clean domain representation out to your dashboard UI
+	h.respondJSON(w, http.StatusOK, user)
 }
 
 func (h *UserHandler) respondJSON(w http.ResponseWriter, code int, payload interface{}) {

@@ -20,6 +20,9 @@ func RegisterPlatformRoutes(
 	}
 
 	mux.HandleFunc("POST /api/v1/platform/auth/login", userHandler.Login)
+	mux.Handle("GET /api/v1/platform/auth/me",
+		protect(domain.PermOrgUserRead, http.HandlerFunc(userHandler.GetMe)),
+	)
 
 	mux.Handle("POST /api/v1/platform/organizations/{org_id}/users", protect(domain.PermOrgUserWrite, http.HandlerFunc(userHandler.CreateUser)))
 	mux.Handle("POST /api/v1/platform/organizations/{org_id}/roles/custom", protect(domain.PermOrgRoleWrite, http.HandlerFunc(roleHandler.CreateCustomRole)))
