@@ -106,7 +106,7 @@ func main() {
 		WriteTimeout: cfg.HTTP.WriteTimeout,
 	}
 
-	log.Println(fmt.Sprintf("🚀 Local Hexagonal Gateway running smoothly on port %d! Test via cURL targeting key: 'sk-project-local-dev-token-12345'", cfg.HTTP.Port))
+	log.Println(fmt.Sprintf("🚀 AFI Gateway running smoothly on port %d! Test via cURL targeting key: 'sk-project-local-dev-token-12345'", cfg.HTTP.Port))
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Server crashed: %v", err)
 	}

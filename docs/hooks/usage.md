@@ -1,6 +1,6 @@
 # Plugin Hooks Developer Guide
 
-This document defines the architecture, execution lifecycle, and implementation guidelines for the sandboxed JavaScript plugin hooks within the Local Hexagonal Gateway runtime.
+This document defines the architecture, execution lifecycle, and implementation guidelines for the sandboxed JavaScript plugin hooks within the AFI Gateway runtime.
 
 ---
 
