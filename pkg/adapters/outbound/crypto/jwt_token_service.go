@@ -86,5 +86,17 @@ func (s *JWTTokenService) ValidateToken(ctx context.Context, tokenStr string) (s
 }
 
 func (s *JWTTokenService) GetUserPermissions(ctx context.Context, userID string, orgID string, projectID string) ([]domain.ActionPermission, error) {
-	return nil, nil
+	// give all permissions for now
+	permissions := []domain.ActionPermission{
+		domain.PermOrgUserRead,
+		domain.PermOrgUserWrite,
+		domain.PermOrgRoleWrite,
+		domain.PermProjectCreate,
+		domain.PermOrgSpendRead,
+		domain.PermProjectKeyWrite,
+		domain.PermProjectKeyRead,
+		domain.PermModelRouteWrite,
+		domain.PermLLMInference,
+	}
+	return permissions, nil
 }
