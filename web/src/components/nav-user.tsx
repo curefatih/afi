@@ -24,6 +24,8 @@ import {
   BellIcon,
   LogOutIcon,
 } from "lucide-react";
+import { useAuthStore } from "#/state/auth-state";
+import { useRouter } from "@tanstack/react-router";
 
 type Organization = {
   id: string;
@@ -49,6 +51,7 @@ export function NavUser({
   onOrganizationChange,
 }: NavUserProps) {
   const { isMobile } = useSidebar();
+  const router = useRouter();
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -151,7 +154,10 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              useAuthStore.getState().actions.logout();
+              router.navigate({ to: "/auth/login" });
+            }}>
               <LogOutIcon />
               Log out
             </DropdownMenuItem>
