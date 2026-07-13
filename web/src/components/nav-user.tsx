@@ -35,9 +35,9 @@ type Organization = {
 
 type NavUserProps = {
   user: {
-    name: string;
+    name?: string;
     email: string;
-    avatar: string;
+    avatar?: string;
   };
   activeOrganization: Organization;
   organizations: Organization[];
@@ -67,17 +67,17 @@ export function NavUser({
                 alt={activeOrganization.name}
               />
               <AvatarFallback>
-                {activeOrganization.name.slice(0, 2)}
+                {user.name || user.email.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
 
             <div className="grid flex-1 text-left leading-tight">
               <span className="truncate text-sm font-medium">
-                {activeOrganization.name}
+                {user.name || user.email}
               </span>
 
               <span className="truncate text-xs text-muted-foreground">
-                {user.name}
+                {activeOrganization.name}
               </span>
             </div>
 

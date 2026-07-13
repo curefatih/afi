@@ -25,6 +25,7 @@ import {
   PieChartIcon,
   MapIcon,
 } from "lucide-react";
+import { useAuthUser } from "#/state/auth-state";
 
 // This is sample data.
 const data = {
@@ -129,6 +130,11 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const user = useAuthUser();
+  if (!user) {
+    return null;
+  }
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -140,7 +146,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <NavUser
-          user={data.user}
+          user={user}
           activeOrganization={data.organizations[0]}
           organizations={data.organizations}
           onOrganizationChange={() => {}}
