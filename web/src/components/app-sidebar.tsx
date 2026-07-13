@@ -2,10 +2,11 @@
 
 import * as React from "react";
 
+import { ProjectSwitcher } from "#/components/project-switcher";
+import { useAuthUser } from "#/state/auth-state";
 import { NavMain } from "@/components/nav-main";
 import { NavProjects } from "@/components/nav-projects";
 import { NavUser } from "@/components/nav-user";
-import { ProjectSwitcher } from "#/components/project-switcher";
 import {
   Sidebar,
   SidebarContent,
@@ -14,18 +15,16 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import {
-  GalleryVerticalEndIcon,
   AudioLinesIcon,
+  FrameIcon,
+  GalleryVerticalEndIcon,
+  MapIcon,
+  PieChartIcon,
+  Settings2Icon,
   TerminalIcon,
   TerminalSquareIcon,
-  BotIcon,
-  BookOpenIcon,
-  Settings2Icon,
-  FrameIcon,
-  PieChartIcon,
-  MapIcon,
+  Users2
 } from "lucide-react";
-import { useAuthUser } from "#/state/auth-state";
 
 // This is sample data.
 const data = {
@@ -73,13 +72,33 @@ const data = {
       // ],
     },
     {
+      title: "Teams",
+      url: "/app/teams",
+      icon: <Users2 />,
+      // isActive: true,
+      // items: [
+      //   {
+      //     title: "History",
+      //     url: "#",
+      //   },
+      //   {
+      //     title: "Starred",
+      //     url: "#",
+      //   },
+      //   {
+      //     title: "Settings",
+      //     url: "#",
+      //   },
+      // ],
+    },
+    {
       title: "Settings",
       url: "/app/settings",
       icon: <Settings2Icon />,
       items: [
         {
           title: "General",
-          url: "/app/settings/general",
+          url: "/app/settings",
         },
         {
           title: "Team",
