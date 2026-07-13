@@ -7,16 +7,26 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"; // Adjust path to your shadcn setup
+} from "@/components/ui/breadcrumb";
 
 export function DynamicBreadcrumb() {
-  // Get all active route matches for the current URL path
   const matches = useMatches();
 
-  // Filter out the root layout and pathless routes that don't need UI names
-  const breadcrumbMatches = matches.filter(
-    (match) => match.staticData?.getTitle && match.pathname !== "/_authenticated/app",
+  // Filter out system layout tracks
+  const baseMatches = matches.filter(
+    (match) =>
+      match.id !== "__root__" &&
+      match.pathname !== "/_authenticated/app" &&
+      match.pathname !== "/app" &&
+      !match.id.endsWith("/_layout"),
   );
+
+  // ✅ Deduplicate sequential entries with matching pathnames
+  const breadcrumbMatches = baseMatches.filter((match, index) => {
+    if (index === 0) return true;
+    // If this match has the exact same pathname as the previous one, skip it
+    return match.pathname !== baseMatches[index - 1].pathname;
+  });
 
   if (breadcrumbMatches.length === 0) return null;
 
@@ -32,7 +42,12 @@ export function DynamicBreadcrumb() {
         {breadcrumbMatches.map((match, index) => {
           const isLast = index === breadcrumbMatches.length - 1;
 
-          const routeName = match.staticData?.getTitle?.();
+          const fallbackName =
+            match.id.split("/").pop()?.replace(/-/g, " ") || "";
+          const routeName = match.staticData?.getTitle?.() || fallbackName;
+
+          if (!routeName || routeName.trim() === "" || routeName === "index")
+            return null;
 
           return (
             <React.Fragment key={match.id}>
@@ -43,9 +58,7 @@ export function DynamicBreadcrumb() {
                     {routeName}
                   </BreadcrumbPage>
                 ) : (
-                  <BreadcrumbLink className="capitalize">
-                    <Link to={match.pathname}>{routeName}</Link>
-                  </BreadcrumbLink>
+                  <Link to={match.pathname}>{routeName}</Link>
                 )}
               </BreadcrumbItem>
             </React.Fragment>
