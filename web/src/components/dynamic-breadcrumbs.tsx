@@ -34,9 +34,7 @@ export function DynamicBreadcrumb() {
     <Breadcrumb>
       <BreadcrumbList>
         <BreadcrumbItem>
-          <BreadcrumbLink>
             <Link to="/app/dashboard">Home</Link>
-          </BreadcrumbLink>
         </BreadcrumbItem>
 
         {breadcrumbMatches.map((match, index) => {
