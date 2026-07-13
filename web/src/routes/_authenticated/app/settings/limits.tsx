@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_authenticated/app/settings/limits')({
   staticData: {
-    getTitle: () => "Limit Settings",
+    getTitle: () => "Limit",
   },
   component: RouteComponent,
 })
