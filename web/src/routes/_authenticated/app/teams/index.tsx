@@ -11,20 +11,26 @@ export const Route = createFileRoute("/_authenticated/app/teams/")({
 const mockTeams = [
   {
     id: "1",
+    name: "Team Alpha",
+    description: "This is Team Alpha, focused on project A.",
     previewMembers: [
       { name: "Alice", avatarUrl: "https://example.com/alice.jpg" },
       { name: "Bob", avatarUrl: "https://example.com/bob.jpg" },
       { name: "Charlie", avatarUrl: "https://example.com/charlie.jpg" },
     ],
+    tags: ["Finance", "Engineering"],
     memberCount: 5,
   },
   {
     id: "2",
+    name: "Team Beta",
+    description: "This is Team Beta, focused on project B.",
     previewMembers: [
       { name: "David", avatarUrl: "https://example.com/david.jpg" },
       { name: "Eve", avatarUrl: "https://example.com/eve.jpg" },
       { name: "Frank", avatarUrl: "https://example.com/frank.jpg" },
     ],
+    tags: ["Marketing", "Design"],
     memberCount: 3,
   },
 ];
@@ -44,8 +50,11 @@ function RouteComponent() {
           <TeamCard
             key={team.id}
             id={team.id}
+            name={team.name}
+            description={team.description}
             previewMembers={team.previewMembers}
             memberCount={team.memberCount}
+            tags={team.tags}
           />
         ))}
       </div>
