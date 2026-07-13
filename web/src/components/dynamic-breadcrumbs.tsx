@@ -1,13 +1,12 @@
-import * as React from "react";
-import { Link, useMatches } from "@tanstack/react-router";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
+  BreadcrumbSeparator
 } from "@/components/ui/breadcrumb";
+import { Link, useMatches } from "@tanstack/react-router";
+import * as React from "react";
 
 export function DynamicBreadcrumb() {
   const matches = useMatches();
