@@ -1,5 +1,5 @@
 import { AppSidebar } from "#/components/app-sidebar";
-import { DynamicBreadcrumb } from "#/components/breadcrumbs";
+import { DynamicBreadcrumb } from "#/components/dynamic-breadcrumbs";
 import { Separator } from "#/components/ui/separator";
 import {
   SidebarInset,
