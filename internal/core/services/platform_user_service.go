@@ -23,6 +23,7 @@ type PlatformUserRepository interface {
 
 	GetUserOrganizations(ctx context.Context, userID string) ([]*domain.Organization, error)
 	GetUserOrganizationProjects(ctx context.Context, userID string, orgID string) ([]*domain.Project, error)
+	GetUserOrganizationTeams(ctx context.Context, userID string, orgID string) ([]*domain.Team, error)
 	GetUserProjects(ctx context.Context, userID string) ([]*domain.Project, error)
 }
 
@@ -153,4 +154,12 @@ func (s *PlatformUserService) GetUserOrganizationProjects(ctx context.Context, u
 		return nil, errors.New("missing userID for organization retrieval")
 	}
 	return s.repo.GetUserOrganizationProjects(ctx, userID, orgID)
+}
+
+// GetUserOrganizations implements ports.PlatformUserUseCase.
+func (s *PlatformUserService) GetUserOrganizationTeams(ctx context.Context, userID string, orgID string) ([]*domain.Team, error) {
+	if userID == "" {
+		return nil, errors.New("missing userID for organization retrieval")
+	}
+	return s.repo.GetUserOrganizationTeams(ctx, userID, orgID)
 }

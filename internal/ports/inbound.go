@@ -41,4 +41,5 @@ type PlatformUserUseCase interface {
 
 	GetUserOrganizations(ctx context.Context, userID string) ([]*domain.Organization, error)
 	GetUserOrganizationProjects(ctx context.Context, userID string, orgID string) ([]*domain.Project, error)
+	GetUserOrganizationTeams(ctx context.Context, userID string, orgID string) ([]*domain.Team, error)
 }
