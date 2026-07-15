@@ -5,7 +5,11 @@ import * as React from "react";
 import { organizationsQueryOptions } from "#/api/user";
 import { ProjectSwitcher } from "#/components/project-switcher";
 import { useAuthUser } from "#/state/auth-state";
-import { useActiveOrg, useActiveProject, useOrgStore } from "#/state/organization-state";
+import {
+  useActiveOrg,
+  useActiveProject,
+  useOrgStore,
+} from "#/state/organization-state";
 import { NavMain } from "@/components/nav-main";
 import { NavProjects } from "@/components/nav-projects";
 import { NavUser } from "@/components/nav-user";
@@ -103,24 +107,6 @@ const data = {
       icon: <FrameIcon />,
     },
   ],
-
-  organizations: [
-    {
-      id: "org_1",
-      name: "AFI Inc.",
-      logo: "https://github.com/vercel.png",
-    },
-    {
-      id: "org_2",
-      name: "Personal",
-      logo: "https://github.com/shadcn.png",
-    },
-    {
-      id: "org_3",
-      name: "AI Research",
-      logo: "https://github.com/openai.png",
-    },
-  ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -159,7 +145,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ) : (
           <>
             <NavMain items={data.navMain} />
-            <NavProjects projects={data.projects} />
+            <NavProjects
+              projects={activeOrg.projects.map((p) => ({
+                name: p.name,
+                url: `/app/projects/${p.id}`,
+              }))}
+            />
           </>
         )}
       </SidebarContent>
