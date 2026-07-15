@@ -40,4 +40,5 @@ type PlatformUserUseCase interface {
 	GetUserPermissions(ctx context.Context, userID string, orgID string, projectID string) ([]domain.ActionPermission, error)
 
 	GetUserOrganizations(ctx context.Context, userID string) ([]*domain.Organization, error)
+	GetUserOrganizationProjects(ctx context.Context, userID string, orgID string) ([]*domain.Project, error)
 }
