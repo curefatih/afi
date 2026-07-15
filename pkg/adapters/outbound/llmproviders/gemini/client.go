@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -98,7 +99,7 @@ func (a *GeminiAdapter) StreamCall(ctx context.Context, req *domain.InternalRequ
 
 		reader := bufio.NewReader(respStream.Body)
 		for {
-			line, err := reader.ReadString('\\n')
+			line, err := reader.ReadString('\n')
 			if err != nil {
 				if err != io.EOF {
 					errCh <- fmt.Errorf("gemini stream read error: %w", err)
@@ -130,10 +131,6 @@ func (a *GeminiAdapter) StreamCall(ctx context.Context, req *domain.InternalRequ
 					}
 				}
 			}
-		}
-
-		if err := scanner.Err(); err != nil {
-			errCh <- fmt.Errorf("gemini stream scanning exception: %w", err)
 		}
 	}()
 

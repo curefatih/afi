@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/curefatih/afi/internal/core/domain"
@@ -165,28 +166,16 @@ func isBase64DataURI(url string) bool {
 }
 
 func parseBase64URI(url string) (mimeType string, data string) {
-	commaIdx := -1
-	for i := 0; i < len(url); i++ {
-		if url[i] == ',' {
-			commaIdx = i
-			break
-		}
-	}
-	if commaIdx == -1 {
+	header, data, found := strings.Cut(url, ",")
+	if !found {
 		return "image/jpeg", url
 	}
-
-	header := url[:commaIdx]
-	data = url[commaIdx+1:]
 
 	mimeType = "image/jpeg"
 	if len(header) > 5 {
 		subSection := header[5:]
-		for i := 0; i < len(subSection); i++ {
-			if subSection[i] == ';' {
-				mimeType = subSection[:i]
-				break
-			}
+		if idx := strings.IndexByte(subSection, ';'); idx != -1 {
+			mimeType = subSection[:idx]
 		}
 	}
 	return mimeType, data
