@@ -9,6 +9,14 @@ import {
   CardTitle,
 } from "#/components/ui/card";
 import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "#/components/ui/combobox";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -22,11 +30,13 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "#/components/ui/empty";
+import { Input } from "#/components/ui/input";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
 } from "#/components/ui/input-group";
+import { Label } from "#/components/ui/label";
 import { MessageAnimated } from "#/components/ui/message-animated";
 import {
   MessageScroller,
@@ -36,6 +46,7 @@ import {
   MessageScrollerViewport,
 } from "#/components/ui/message-scroller";
 import { Separator } from "#/components/ui/separator";
+import { Slider } from "#/components/ui/slider";
 import {
   Tooltip,
   TooltipContent,
@@ -74,6 +85,14 @@ const initialMessages = [
   },
 ];
 
+const models = [
+  { label: "Apple", value: "apple" },
+  { label: "Banana", value: "banana" },
+  { label: "Blueberry", value: "blueberry" },
+  { label: "Grapes", value: "grapes" },
+  { label: "Pineapple", value: "pineapple" },
+];
+
 type Message = {
   id: string;
   role: "user" | "assistant";
@@ -87,7 +106,7 @@ function RouteComponent() {
   const [nextMessage, setNextMessage] = useState(null);
   const [isBusy, setIsBusy] = useState(false);
   const [messages, setMessages] = useState(initialMessages);
-  
+
   const getMessageText = (message: Message) => {
     if (!message || !message.content) {
       return "";
@@ -98,26 +117,31 @@ function RouteComponent() {
       .map((part) => part.text);
 
     return textParts.join(" ");
-  }
+  };
 
   return (
-    <div className="flex flex-row h-full gap-4">
+    <div className="flex flex-row h-full">
       <div className="chat flex-1 h-full">
-        <Card className="flex h-full flex-row p-2">
-          <div className="threads w-64 border-r p-2">
+        <div className="flex h-full flex-row">
+          <div className="threads w-64 p-2">
             <div className="">
-              <h5 className="font-bold">Threads</h5>
-              <span className="font-thin ">Conversations that you have created before</span>
+              <h5 className="">Threads</h5>
+              <span className="font-thin text-xs">
+                Conversations that you have created before
+              </span>
             </div>
-            <Separator className={"m-2"}/>
-            <Button variant={"ghost"} className={"w-full text-left cursor-pointer"}>
+            <Separator className={"m-2"} />
+            <Button
+              variant={"ghost"}
+              className={"w-full text-left cursor-pointer"}
+            >
               text
             </Button>
           </div>
-          <div className="flex-1 h-full">
+          <div className="flex-1 h-full w-full p-2">
             <MessageScrollerProvider>
-              <div className="relative h-full p-2">
-                <Card className="mx-auto h-full w-full max-w-sm gap-0">
+              <div className="relative h-full w-full p-2">
+                <Card className="mx-auto h-full w-full gap-0">
                   <CardHeader className="gap-1 border-b">
                     <CardTitle>New Chat</CardTitle>
                     <CardDescription>How can I help you today?</CardDescription>
@@ -130,7 +154,6 @@ function RouteComponent() {
                               size="icon"
                               aria-label="Reset conversation"
                               onClick={() => setMessages(initialMessages)}
-                              disabled={isBusy}
                             >
                               <RotateCwIcon />
                             </Button>
@@ -243,7 +266,6 @@ function RouteComponent() {
                             type="submit"
                             variant="default"
                             size="icon-sm"
-                            disabled={!nextMessage || isBusy}
                             className="ml-auto"
                           >
                             <ArrowUpIcon />
@@ -252,17 +274,123 @@ function RouteComponent() {
                         </InputGroupAddon>
                       </InputGroup>
                     </form>
-                    <div className="px-0.5 text-center text-xs text-muted-foreground">
-                      Press send to send messages.
-                    </div>
                   </CardFooter>
                 </Card>
               </div>
+              <div className="px-0.5 text-center text-xs text-muted-foreground">
+                Press send to send messages.
+              </div>
             </MessageScrollerProvider>
           </div>
-        </Card>
+        </div>
       </div>
-      <div className="settings w-64"></div>
+      <div className="settings w-64 flex flex-col gap-2 p-2">
+        <div className="model flex flex-col gap-2 p-2">
+          <Tooltip>
+            <TooltipTrigger>
+              <Label>Model </Label>
+            </TooltipTrigger>
+            <TooltipContent side="left" sideOffset={4}>
+              <p>Choose the model you want to use for this conversation.</p>
+            </TooltipContent>
+          </Tooltip>
+          <Combobox items={models} autoHighlight>
+            <ComboboxInput placeholder="Select a model" showClear />
+            <ComboboxContent>
+              <ComboboxEmpty>No items found.</ComboboxEmpty>
+              <ComboboxList>
+                {(item) => (
+                  <ComboboxItem key={item} value={item}>
+                    {item.label}
+                  </ComboboxItem>
+                )}
+              </ComboboxList>
+            </ComboboxContent>
+          </Combobox>
+        </div>
+
+        <div className="temperature flex flex-col gap-4 p-2">
+          <div className="flex flex-row items-center justify-between gap-2">
+            <Tooltip>
+              <TooltipTrigger>
+                <Label>Temperature</Label>
+              </TooltipTrigger>
+              <TooltipContent side="left" sideOffset={4}>
+                <p>
+                  Slide to adjust the temperature of the model. Higher values
+                  will make the model more creative, while lower values will
+                  make it more focused and deterministic.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+            <div className="text-muted-foreground text-xs">
+              <span contentEditable="true">0.02</span>
+            </div>
+          </div>
+          <div className="">
+            <Slider
+              defaultValue={[0]}
+              max={1}
+              min={-1}
+              step={0.01}
+              className="mx-auto w-full max-w-xs"
+            />
+          </div>
+        </div>
+
+        <div className="topp flex flex-col gap-4 p-2">
+          <div className="flex flex-row items-center justify-between gap-2">
+            <Tooltip>
+              <TooltipTrigger>
+                <Label>Top P</Label>
+              </TooltipTrigger>
+              <TooltipContent side="left" sideOffset={4}>
+                <p>
+                  Slide to adjust the top p of the model. Higher values will
+                  make the model more creative, while lower values will make it
+                  more focused and deterministic.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+            <div className="text-muted-foreground text-xs">
+              <span contentEditable="true">0.02</span>
+            </div>
+          </div>
+          <div className="">
+            <Slider
+              defaultValue={[0]}
+              max={1}
+              min={-1}
+              step={0.01}
+              className="mx-auto w-full max-w-xs"
+            />
+          </div>
+        </div>
+
+        <div className="max-tokens flex flex-col gap-4 p-2">
+          <div className="flex flex-row items-center justify-between gap-2">
+            <Tooltip>
+              <TooltipTrigger>
+                <Label>Max tokens</Label>
+              </TooltipTrigger>
+              <TooltipContent side="left" sideOffset={4}>
+                <p></p>
+              </TooltipContent>
+            </Tooltip>
+            <div className="text-muted-foreground text-xs">
+              <span contentEditable="true">0.02</span>
+            </div>
+          </div>
+          <div className="">
+            <Input
+              defaultValue={5076}
+              type="number"
+              min={1}
+              className="mx-auto w-full max-w-xs"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
