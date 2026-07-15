@@ -21,6 +21,7 @@ import { Route as AuthenticatedAppProjectsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAppPlaygroundRouteImport } from './routes/_authenticated/app/playground'
 import { Route as AuthenticatedAppOrganizationsRouteImport } from './routes/_authenticated/app/organizations'
 import { Route as AuthenticatedAppKeysRouteImport } from './routes/_authenticated/app/keys'
+import { Route as AuthenticatedAppHooksRouteImport } from './routes/_authenticated/app/hooks'
 import { Route as AuthenticatedAppDashboardRouteImport } from './routes/_authenticated/app/dashboard'
 import { Route as AuthenticatedAppSettingsRouteRouteImport } from './routes/_authenticated/app/settings/route'
 import { Route as AuthenticatedAppTeamsIndexRouteImport } from './routes/_authenticated/app/teams/index'
@@ -91,6 +92,11 @@ const AuthenticatedAppKeysRoute = AuthenticatedAppKeysRouteImport.update({
   path: '/keys',
   getParentRoute: () => AuthenticatedAppRouteRoute,
 } as any)
+const AuthenticatedAppHooksRoute = AuthenticatedAppHooksRouteImport.update({
+  id: '/hooks',
+  path: '/hooks',
+  getParentRoute: () => AuthenticatedAppRouteRoute,
+} as any)
 const AuthenticatedAppDashboardRoute =
   AuthenticatedAppDashboardRouteImport.update({
     id: '/dashboard',
@@ -138,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/auth/signup': typeof AuthSignupRoute
   '/app/settings': typeof AuthenticatedAppSettingsRouteRouteWithChildren
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
+  '/app/hooks': typeof AuthenticatedAppHooksRoute
   '/app/keys': typeof AuthenticatedAppKeysRoute
   '/app/organizations': typeof AuthenticatedAppOrganizationsRoute
   '/app/playground': typeof AuthenticatedAppPlaygroundRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/auth/signup': typeof AuthSignupRoute
   '/app/settings': typeof AuthenticatedAppSettingsRouteRouteWithChildren
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
+  '/app/hooks': typeof AuthenticatedAppHooksRoute
   '/app/keys': typeof AuthenticatedAppKeysRoute
   '/app/organizations': typeof AuthenticatedAppOrganizationsRoute
   '/app/playground': typeof AuthenticatedAppPlaygroundRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   '/auth/signup': typeof AuthSignupRoute
   '/_authenticated/app/settings': typeof AuthenticatedAppSettingsRouteRouteWithChildren
   '/_authenticated/app/dashboard': typeof AuthenticatedAppDashboardRoute
+  '/_authenticated/app/hooks': typeof AuthenticatedAppHooksRoute
   '/_authenticated/app/keys': typeof AuthenticatedAppKeysRoute
   '/_authenticated/app/organizations': typeof AuthenticatedAppOrganizationsRoute
   '/_authenticated/app/playground': typeof AuthenticatedAppPlaygroundRoute
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/app/settings'
     | '/app/dashboard'
+    | '/app/hooks'
     | '/app/keys'
     | '/app/organizations'
     | '/app/playground'
@@ -221,6 +231,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/app/settings'
     | '/app/dashboard'
+    | '/app/hooks'
     | '/app/keys'
     | '/app/organizations'
     | '/app/playground'
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/_authenticated/app/settings'
     | '/_authenticated/app/dashboard'
+    | '/_authenticated/app/hooks'
     | '/_authenticated/app/keys'
     | '/_authenticated/app/organizations'
     | '/_authenticated/app/playground'
@@ -345,6 +357,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppKeysRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
+    '/_authenticated/app/hooks': {
+      id: '/_authenticated/app/hooks'
+      path: '/hooks'
+      fullPath: '/app/hooks'
+      preLoaderRoute: typeof AuthenticatedAppHooksRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
     '/_authenticated/app/dashboard': {
       id: '/_authenticated/app/dashboard'
       path: '/dashboard'
@@ -425,6 +444,7 @@ const AuthenticatedAppSettingsRouteRouteWithChildren =
 interface AuthenticatedAppRouteRouteChildren {
   AuthenticatedAppSettingsRouteRoute: typeof AuthenticatedAppSettingsRouteRouteWithChildren
   AuthenticatedAppDashboardRoute: typeof AuthenticatedAppDashboardRoute
+  AuthenticatedAppHooksRoute: typeof AuthenticatedAppHooksRoute
   AuthenticatedAppKeysRoute: typeof AuthenticatedAppKeysRoute
   AuthenticatedAppOrganizationsRoute: typeof AuthenticatedAppOrganizationsRoute
   AuthenticatedAppPlaygroundRoute: typeof AuthenticatedAppPlaygroundRoute
@@ -438,6 +458,7 @@ const AuthenticatedAppRouteRouteChildren: AuthenticatedAppRouteRouteChildren = {
   AuthenticatedAppSettingsRouteRoute:
     AuthenticatedAppSettingsRouteRouteWithChildren,
   AuthenticatedAppDashboardRoute: AuthenticatedAppDashboardRoute,
+  AuthenticatedAppHooksRoute: AuthenticatedAppHooksRoute,
   AuthenticatedAppKeysRoute: AuthenticatedAppKeysRoute,
   AuthenticatedAppOrganizationsRoute: AuthenticatedAppOrganizationsRoute,
   AuthenticatedAppPlaygroundRoute: AuthenticatedAppPlaygroundRoute,
