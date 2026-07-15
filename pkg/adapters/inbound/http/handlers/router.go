@@ -25,17 +25,17 @@ func RegisterPlatformRoutes(
 
 	mux.HandleFunc("POST /api/v1/platform/auth/login", userHandler.Login)
 	mux.Handle("GET /api/v1/platform/auth/me",
-		protectPermission(domain.PermOrgUserRead, protectAuth(http.HandlerFunc(userHandler.GetMe))),
+		protectAuth(protectPermission(domain.PermOrgUserRead, http.HandlerFunc(userHandler.GetMe))),
 	)
 
 	mux.Handle("GET /api/v1/platform/organizations", protectAuth(http.HandlerFunc(userHandler.GetUserOrganizations)))
 
-	mux.Handle("POST /api/v1/platform/organizations/{org_id}/users", protectPermission(domain.PermOrgUserWrite, protectAuth(http.HandlerFunc(userHandler.CreateUser))))
-	mux.Handle("POST /api/v1/platform/organizations/{org_id}/roles/custom", protectPermission(domain.PermOrgRoleWrite, protectAuth(http.HandlerFunc(roleHandler.CreateCustomRole))))
+	mux.Handle("POST /api/v1/platform/organizations/{org_id}/users", protectAuth(protectPermission(domain.PermOrgUserWrite, http.HandlerFunc(userHandler.CreateUser))))
+	mux.Handle("POST /api/v1/platform/organizations/{org_id}/roles/custom", protectAuth(protectPermission(domain.PermOrgRoleWrite, http.HandlerFunc(roleHandler.CreateCustomRole))))
 	mux.Handle("GET /api/v1/platform/organizations/{org_id}/projects",
-		protectPermission(domain.PermOrgUserRead, protectAuth(http.HandlerFunc(userHandler.GetUserOrganizationProjects))),
+		protectAuth(protectPermission(domain.PermOrgUserRead, http.HandlerFunc(userHandler.GetUserOrganizationProjects))),
 	)
 
-	mux.Handle("POST /api/v1/platform/organizations/{org_id}/projects/{project_id}/keys", protectPermission(domain.PermProjectKeyWrite, protectAuth(http.HandlerFunc(roleHandler.RegisterProjectKey))))
+	mux.Handle("POST /api/v1/platform/organizations/{org_id}/projects/{project_id}/keys", protectAuth(protectPermission(domain.PermProjectKeyWrite, http.HandlerFunc(roleHandler.RegisterProjectKey))))
 
 }
