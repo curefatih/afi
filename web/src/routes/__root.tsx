@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import "../styles.css";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { TooltipProvider } from "#/components/ui/tooltip";
 
 const queryClient = new QueryClient();
 
@@ -18,7 +19,9 @@ function RootComponent() {
     <>
       <ThemeProvider defaultTheme="system" storageKey="theme">
         <QueryClientProvider client={queryClient}>
-          <Outlet />
+          <TooltipProvider>
+            <Outlet />
+          </TooltipProvider>
           <Toaster position="bottom-right" />
         </QueryClientProvider>
       </ThemeProvider>
