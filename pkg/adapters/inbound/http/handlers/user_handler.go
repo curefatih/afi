@@ -71,7 +71,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 // GET /admin/v1/organizations/{org_id}/auth/me
 func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
-	// 1. Extract the secure UserID string injected by your RequirePermission middleware
+	// 1. Extract the secure UserID string injected by your RequireAuth middleware
 	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok {
 		h.respondError(w, http.StatusUnauthorized, "Unidentified session context")
@@ -90,7 +90,7 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) GetUserOrganizations(w http.ResponseWriter, r *http.Request) {
-	// 1. Extract the secure UserID string injected by your RequirePermission middleware
+	// 1. Extract the secure UserID string injected by your RequireAuth middleware
 	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok {
 		h.respondError(w, http.StatusUnauthorized, "Unidentified session context")
@@ -108,9 +108,9 @@ func (h *UserHandler) GetUserOrganizations(w http.ResponseWriter, r *http.Reques
 	h.respondJSON(w, http.StatusOK, orgs)
 }
 
-// GET /platform/v1/organizations/{org_id}/auth/me
+// GET /platform/v1/organizations/{org_id}/projects
 func (h *UserHandler) GetUserOrganizationProjects(w http.ResponseWriter, r *http.Request) {
-	// 1. Extract the secure UserID string injected by your RequirePermission middleware
+	// 1. Extract the secure UserID string injected by your RequireAuth middleware
 	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok {
 		h.respondError(w, http.StatusUnauthorized, "Unidentified session context")
@@ -131,6 +131,31 @@ func (h *UserHandler) GetUserOrganizationProjects(w http.ResponseWriter, r *http
 
 	// 3. Return the clean domain representation out to your dashboard UI
 	h.respondJSON(w, http.StatusOK, orgs)
+}
+
+// GET /platform/v1/organizations/{org_id}/teams
+func (h *UserHandler) GetUserOrganizationTeams(w http.ResponseWriter, r *http.Request) {
+	// 1. Extract the secure UserID string injected by your RequireAuth middleware
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		h.respondError(w, http.StatusUnauthorized, "Unidentified session context")
+		return
+	}
+
+	orgID := r.PathValue("org_id")
+	if orgID == "" {
+		h.respondError(w, http.StatusInternalServerError, "Failed to read organization id from path: /api/v1/platform/organizations/{org_id}/teams")
+	}
+
+	// 2. Fetch the team via your inbound port service layer
+	teams, err := h.userUseCase.GetUserOrganizationTeams(r.Context(), userID, orgID)
+	if err != nil {
+		h.respondError(w, http.StatusInternalServerError, "Failed to retrieve user teams")
+		return
+	}
+
+	// 3. Return the clean domain representation out to your dashboard UI
+	h.respondJSON(w, http.StatusOK, teams)
 }
 
 func (h *UserHandler) respondJSON(w http.ResponseWriter, code int, payload interface{}) {
