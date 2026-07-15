@@ -47,17 +47,35 @@ CREATE TABLE IF NOT EXISTS api_key_providers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   api_key_id UUID NOT NULL REFERENCES api_keys(id),
   provider VARCHAR(255) NOT NULL,
-  -- Fixed from 'scope' to 'provider' to match seed data
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
--- 7. API Key Scopes (Renamed the duplicate table to avoid collisions)
+-- 7. API Key Scopes
 CREATE TABLE IF NOT EXISTS api_key_provider_scopes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   api_key_provider_id UUID NOT NULL REFERENCES api_key_providers(id),
   scope VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- 8. User assignments
+CREATE TABLE IF NOT EXISTS user_assignments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- Clean surrogate PK
+  user_id UUID NOT NULL REFERENCES platform_users(id) ON DELETE CASCADE,
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  project_id UUID,
+  -- Can be NULL if organization-wide role
+  role_name VARCHAR(100) NOT NULL
+);
+-- Create a unique index that supports NULL in project_id (by coalescing it to a default UUID)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_assignments ON user_assignments (
+  user_id,
+  organization_id,
+  COALESCE(
+    project_id,
+    '00000000-0000-0000-0000-000000000000'
+  )
 );
 ---
 -- IDEMPOTENT SEED DATA (Using valid UUID v4 formats)
@@ -124,3 +142,23 @@ VALUES (
     '',
     TRUE
   ) ON CONFLICT (id) DO NOTHING;
+-- Seed assignment 
+INSERT INTO user_assignments (
+    user_id,
+    organization_id,
+    project_id,
+    role_name
+  )
+VALUES (
+    '00000000-0000-4000-a000-000000000007',
+    '00000000-0000-4000-a000-000000000001',
+    '00000000-0000-4000-a000-000000000003',
+    'MEMBER'
+  ) ON CONFLICT (
+    user_id,
+    organization_id,
+    COALESCE(
+      project_id,
+      '00000000-0000-0000-0000-000000000000'
+    )
+  ) DO NOTHING;
