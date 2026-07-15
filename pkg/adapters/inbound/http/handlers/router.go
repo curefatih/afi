@@ -35,6 +35,9 @@ func RegisterPlatformRoutes(
 	mux.Handle("GET /api/v1/platform/organizations/{org_id}/projects",
 		protectAuth(protectPermission(domain.PermOrgUserRead, http.HandlerFunc(userHandler.GetUserOrganizationProjects))),
 	)
+	mux.Handle("GET /api/v1/platform/organizations/{org_id}/teams",
+		protectAuth(protectPermission(domain.PermOrgUserRead, http.HandlerFunc(userHandler.GetUserOrganizationProjects))),
+	)
 
 	mux.Handle("POST /api/v1/platform/organizations/{org_id}/projects/{project_id}/keys", protectAuth(protectPermission(domain.PermProjectKeyWrite, http.HandlerFunc(roleHandler.RegisterProjectKey))))
 
