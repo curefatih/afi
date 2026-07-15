@@ -1,7 +1,5 @@
-import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { useAuthStore } from "#/state/auth-state";
-import { redirect } from "@tanstack/react-router";
-import { toast } from "sonner";
+import { mutationOptions, queryOptions } from "@tanstack/react-query";
 
 export const meQueryOptions = () =>
   queryOptions({
