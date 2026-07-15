@@ -49,23 +49,22 @@ const data = {
   navMain: [
     {
       title: "Playground",
-      url: "/app/playground",
+      url: "/app/playground/chat",
       icon: <TerminalSquareIcon />,
-      // isActive: true,
-      // items: [
-      //   {
-      //     title: "History",
-      //     url: "#",
-      //   },
-      //   {
-      //     title: "Starred",
-      //     url: "#",
-      //   },
-      //   {
-      //     title: "Settings",
-      //     url: "#",
-      //   },
-      // ],
+      items: [
+        {
+          title: "Chat",
+          url: "/app/playground/chat",
+        },
+        {
+          title: "TTS",
+          url: "/app/playground/tts",
+        },
+        {
+          title: "STT",
+          url: "/app/playground/stt",
+        },
+      ],
     },
     {
       title: "Teams",
@@ -79,12 +78,12 @@ const data = {
     },
     {
       title: "Settings",
-      url: "/app/settings",
+      url: "/app/settings/general",
       icon: <Settings2Icon />,
       items: [
         {
           title: "General",
-          url: "/app/settings",
+          url: "/app/settings/general",
         },
         {
           title: "Team",
