@@ -20,6 +20,8 @@ type PlatformUserRepository interface {
 
 	GetUserPermissions(ctx context.Context, userID string, orgID string, projectID string) ([]domain.ActionPermission, error)
 	GetUserByID(ctx context.Context, userID string) (*domain.PlatformUser, error)
+
+	GetUserOrganizations(ctx context.Context, userID string) ([]*domain.Organization, error)
 }
 
 type PlatformUserService struct {
@@ -125,4 +127,12 @@ func (s *PlatformUserService) GetUserPermissions(ctx context.Context, userID str
 		return nil, errors.New("missing minimum verification context identity: userID and orgID required")
 	}
 	return s.repo.GetUserPermissions(ctx, userID, orgID, projectID)
+}
+
+// GetUserOrganizations implements ports.PlatformUserUseCase.
+func (s *PlatformUserService) GetUserOrganizations(ctx context.Context, userID string) ([]*domain.Organization, error) {
+	if userID == "" {
+		return nil, errors.New("missing userID for organization retrieval")
+	}
+	return s.repo.GetUserOrganizations(ctx, userID)
 }

@@ -113,6 +113,29 @@ func (s *PostgresStore) GetUserPermissions(ctx context.Context, userID, orgID, p
 	return perms, nil
 }
 
+func (s *PostgresStore) GetUserOrganizations(ctx context.Context, userID string) ([]*domain.Organization, error) {
+	query := `
+		SELECT DISTINCT o.id, o.name, o.created_at
+		FROM organizations o
+		JOIN user_assignments ua ON o.id = ua.org_id
+		WHERE ua.user_id = $1`
+	rows, err := s.pool.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orgs []*domain.Organization
+	for rows.Next() {
+		var o domain.Organization
+		if err := rows.Scan(&o.ID, &o.Name, &o.CreatedAt); err != nil {
+			return nil, err
+		}
+		orgs = append(orgs, &o)
+	}
+	return orgs, nil
+}
+
 // =========================================================================
 // 🔑 AuthRepository Implementation (Data Plane Fast Path)
 // =========================================================================

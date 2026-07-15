@@ -38,4 +38,6 @@ type PlatformUserUseCase interface {
 
 	ValidatePlatformUserToken(ctx context.Context, tokenStr string) (*domain.Token, error)
 	GetUserPermissions(ctx context.Context, userID string, orgID string, projectID string) ([]domain.ActionPermission, error)
+
+	GetUserOrganizations(ctx context.Context, userID string) ([]*domain.Organization, error)
 }
