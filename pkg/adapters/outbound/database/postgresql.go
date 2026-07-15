@@ -117,10 +117,11 @@ func (s *PostgresStore) GetUserOrganizations(ctx context.Context, userID string)
 	query := `
 		SELECT DISTINCT o.id, o.name, o.created_at
 		FROM organizations o
-		JOIN user_assignments ua ON o.id = ua.org_id
+		JOIN user_assignments ua ON o.id = ua.organization_id
 		WHERE ua.user_id = $1`
 	rows, err := s.pool.Query(ctx, query, userID)
 	if err != nil {
+		log.Printf("Error querying user organizations for userID %s: %v", userID, err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -129,6 +130,7 @@ func (s *PostgresStore) GetUserOrganizations(ctx context.Context, userID string)
 	for rows.Next() {
 		var o domain.Organization
 		if err := rows.Scan(&o.ID, &o.Name, &o.CreatedAt); err != nil {
+			log.Printf("Error scanning organization row for userID %s: %v", userID, err)
 			return nil, err
 		}
 		orgs = append(orgs, &o)
