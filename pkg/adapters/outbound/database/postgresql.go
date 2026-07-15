@@ -138,6 +138,31 @@ func (s *PostgresStore) GetUserOrganizations(ctx context.Context, userID string)
 	return orgs, nil
 }
 
+func (s *PostgresStore) GetUserProjects(ctx context.Context, userID string) ([]*domain.Project, error) {
+	query := `
+	SELECT DISTINCT o.id, o.name, o.created_at
+	FROM projects o
+	JOIN user_assignments ua ON o.id = ua.project_id
+	WHERE ua.user_id = $1`
+	rows, err := s.pool.Query(ctx, query, userID)
+	if err != nil {
+		log.Printf("Error querying user projects for userID %s: %v", userID, err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var projects []*domain.Project
+	for rows.Next() {
+		var o domain.Project
+		if err := rows.Scan(&o.ID, &o.Name, &o.CreatedAt); err != nil {
+			log.Printf("Error scanning project row for userID %s: %v", userID, err)
+			return nil, err
+		}
+		projects = append(projects, &o)
+	}
+	return projects, nil
+}
+
 // =========================================================================
 // 🔑 AuthRepository Implementation (Data Plane Fast Path)
 // =========================================================================
