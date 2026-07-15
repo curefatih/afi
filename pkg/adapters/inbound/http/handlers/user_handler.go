@@ -108,6 +108,10 @@ func (h *UserHandler) GetUserOrganizations(w http.ResponseWriter, r *http.Reques
 	h.respondJSON(w, http.StatusOK, orgs)
 }
 
+func (h *UserHandler) GetUserOrganizationProjects(w http.ResponseWriter, r *http.Request) {
+	panic("not implemented yet")
+}
+
 func (h *UserHandler) respondJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
