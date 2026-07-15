@@ -28,12 +28,7 @@ import {
 
 // This is sample data.
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  projectsSwitcher: [
+  organizationSwitcher: [
     {
       name: "AFI Inc",
       logo: <GalleryVerticalEndIcon />,
@@ -157,7 +152,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <ProjectSwitcher projects={data.projectsSwitcher} />
+        <ProjectSwitcher projects={data.organizationSwitcher} />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
