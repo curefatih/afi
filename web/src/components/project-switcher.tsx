@@ -1,7 +1,10 @@
-"use client"
+"use client";
 
-import * as React from "react"
-
+import {
+  useActiveProject,
+  useOrgStore,
+  type Project,
+} from "#/state/organization-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,29 +14,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { ChevronsUpDownIcon, PlusIcon } from "lucide-react"
+} from "@/components/ui/sidebar";
+import {
+  ChevronsUpDownIcon,
+  GalleryVerticalEndIcon,
+  PlusIcon,
+} from "lucide-react";
 
-export function ProjectSwitcher({
-  projects,
-}: {
-  projects: {
-    name: string
-    logo: React.ReactNode
-    plan: string
-  }[]
-}) {
-  const { isMobile } = useSidebar()
-  const [activeProject, setActiveProject] = React.useState(projects[0])
-  if (!activeProject) {
-    return null
-  }
+export function ProjectSwitcher({ projects }: { projects: Project[] }) {
+  const { isMobile } = useSidebar();
+  const activeProject = useActiveProject();
+  const setActiveProject = useOrgStore(
+    (state) => state.actions.setActiveProjectByID,
+  );
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -47,12 +47,18 @@ export function ProjectSwitcher({
             }
           >
             <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-              {activeProject.logo}
+              <GalleryVerticalEndIcon />
             </div>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">{activeProject.name}</span>
-              <span className="truncate text-xs">{activeProject.plan}</span>
-            </div>
+            {activeProject ? (
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-medium">
+                  {activeProject.name}
+                </span>
+                <span className="truncate text-xs">
+                  {activeProject.team_id}
+                </span>
+              </div>
+            ) : null}
             <ChevronsUpDownIcon className="ml-auto" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -65,16 +71,13 @@ export function ProjectSwitcher({
               <DropdownMenuLabel className="text-xs text-muted-foreground">
                 Projects
               </DropdownMenuLabel>
-              {projects.map((team, index) => (
+              {projects?.map((project, index) => (
                 <DropdownMenuItem
-                  key={team.name}
-                  onClick={() => setActiveProject(team)}
+                  key={project.name}
+                  onClick={() => setActiveProject(project.id)}
                   className="gap-2 p-2"
                 >
-                  <div className="flex size-6 items-center justify-center rounded-md border">
-                    {team.logo}
-                  </div>
-                  {team.name}
+                  {project.name}
                   <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
                 </DropdownMenuItem>
               ))}
@@ -94,5 +97,5 @@ export function ProjectSwitcher({
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }

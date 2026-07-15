@@ -5,7 +5,7 @@ import * as React from "react";
 import { organizationsQueryOptions } from "#/api/user";
 import { ProjectSwitcher } from "#/components/project-switcher";
 import { useAuthUser } from "#/state/auth-state";
-import { useOrgStore } from "#/state/organization-state";
+import { useActiveOrg, useActiveProject, useOrgStore } from "#/state/organization-state";
 import { NavMain } from "@/components/nav-main";
 import { NavProjects } from "@/components/nav-projects";
 import { NavUser } from "@/components/nav-user";
@@ -28,24 +28,22 @@ import {
   Users2,
 } from "lucide-react";
 import { useEffect } from "react";
+import { Empty, EmptyContent, EmptyDescription } from "./ui/empty";
 
 // This is sample data.
 const data = {
   organizationSwitcher: [
     {
       name: "AFI Inc",
-      logo: <GalleryVerticalEndIcon />,
-      plan: "Enterprise",
+      team: "Enterprise",
     },
     {
       name: "Acme Corp.",
-      logo: <AudioLinesIcon />,
-      plan: "Startup",
+      team: "Startup",
     },
     {
       name: "Evil Corp.",
-      logo: <TerminalIcon />,
-      plan: "Free",
+      team: "Free",
     },
   ],
   navMain: [
@@ -128,9 +126,8 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const user = useAuthUser();
   const organizations = useOrgStore();
-  if (!user) {
-    return null;
-  }
+  const activeOrg = useActiveOrg();
+  const activeProject = useActiveProject();
 
   const organizationsMutation = useMutation({
     ...organizationsQueryOptions(),
@@ -140,19 +137,36 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     organizationsMutation.mutate(undefined);
   }, []);
 
+  if (!user || !activeOrg) {
+    return null;
+  }
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <ProjectSwitcher projects={data.organizationSwitcher} />
+        {!activeOrg ? (
+          "You dont have any organization yet"
+        ) : (
+          <ProjectSwitcher projects={activeOrg.projects} />
+        )}
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+        {!activeOrg || !activeProject ? (
+          <Empty>
+            <EmptyContent>
+              <EmptyDescription>Select project first</EmptyDescription>
+            </EmptyContent>
+          </Empty>
+        ) : (
+          <>
+            <NavMain items={data.navMain} />
+            <NavProjects projects={data.projects} />
+          </>
+        )}
       </SidebarContent>
       <SidebarFooter>
         <NavUser
           user={user}
-          activeOrganization={organizations.activeOrg!}
+          activeOrganization={activeOrg!}
           organizations={organizations.orgs}
           onOrganizationChange={() => {}}
         />

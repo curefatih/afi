@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { useOrgStore } from "./organization-state";
 
 type User = {
   id: string;
@@ -32,11 +33,13 @@ export const useAuthStore = create<AuthState>()(
             user,
             isAuthenticated: !!user,
           }),
-        logout: () =>
+        logout: () => {
+          useOrgStore.setState(useOrgStore.getInitialState());
           set({
             isAuthenticated: false,
             user: null,
-          }),
+          });
+        },
       },
     }),
     {
