@@ -2,17 +2,11 @@ package middleware
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/curefatih/afi/internal/core/domain"
 	"github.com/curefatih/afi/internal/ports"
 )
-
-type contextKey string
-
-const UserIDKey contextKey = "userID"
 
 func RequirePermission(
 	tokenSvc ports.PlatformTokenService,
@@ -21,16 +15,10 @@ func RequirePermission(
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				respondWithError(w, http.StatusUnauthorized, "Missing Authorization header")
-				return
-			}
 
-			tokenStr := extractToken(authHeader)
-			userID, err := tokenSvc.ValidateToken(r.Context(), tokenStr)
-			if err != nil {
-				respondWithError(w, http.StatusUnauthorized, "Invalid token")
+			userID, ok := r.Context().Value(UserIDKey).(string)
+			if !ok || userID == "" {
+				respondWithError(w, http.StatusUnauthorized, "User ID not found in context")
 				return
 			}
 
@@ -60,14 +48,4 @@ func RequirePermission(
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
-}
-
-func respondWithError(w http.ResponseWriter, status int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	w.Write([]byte(fmt.Sprintf(`{"error": "%s"}`, message)))
-}
-
-func extractToken(authHeader string) string {
-	return strings.TrimPrefix(authHeader, "Bearer ")
 }
