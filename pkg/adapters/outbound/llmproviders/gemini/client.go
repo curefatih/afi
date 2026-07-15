@@ -95,10 +95,17 @@ func (a *GeminiAdapter) StreamCall(ctx context.Context, req *domain.InternalRequ
 			return
 		}
 
-		// Read Server-Sent Events (SSE) line-by-line using a scanner
-		scanner := bufio.NewScanner(respStream.Body)
-		for scanner.Scan() {
-			line := scanner.Text()
+		reader := bufio.NewReader(respStream.Body)
+		for {
+			line, err := reader.ReadString('\\n')
+			if err != nil {
+				if err != io.EOF {
+					errCh <- fmt.Errorf("gemini stream read error: %w", err)
+				}
+				break
+			}
+
+			line = strings.TrimSpace(line)
 			if !strings.HasPrefix(line, "data: ") {
 				continue
 			}
@@ -115,8 +122,10 @@ func (a *GeminiAdapter) StreamCall(ctx context.Context, req *domain.InternalRequ
 			if len(chunkResp.Candidates) > 0 && len(chunkResp.Candidates[0].Content.Parts) > 0 {
 				deltaText := chunkResp.Candidates[0].Content.Parts[0].Text
 				if deltaText != "" {
-					ch <- domain.StreamChunk{
-						DeltaText: deltaText,
+					select {
+					case <-ctx.Done():
+						return
+					case ch <- domain.StreamChunk{DeltaText: deltaText}:
 					}
 				}
 			}
