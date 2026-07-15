@@ -2,8 +2,10 @@
 
 import * as React from "react";
 
+import { organizationsQueryOptions } from "#/api/user";
 import { ProjectSwitcher } from "#/components/project-switcher";
 import { useAuthUser } from "#/state/auth-state";
+import { useOrgStore } from "#/state/organization-state";
 import { NavMain } from "@/components/nav-main";
 import { NavProjects } from "@/components/nav-projects";
 import { NavUser } from "@/components/nav-user";
@@ -14,18 +16,18 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { useMutation } from "@tanstack/react-query";
 import {
   AudioLinesIcon,
   FishIcon,
   FrameIcon,
   GalleryVerticalEndIcon,
-  MapIcon,
-  PieChartIcon,
   Settings2Icon,
   TerminalIcon,
   TerminalSquareIcon,
   Users2,
 } from "lucide-react";
+import { useEffect } from "react";
 
 // This is sample data.
 const data = {
@@ -101,7 +103,7 @@ const data = {
       name: "Design Engineering",
       url: "#",
       icon: <FrameIcon />,
-    }
+    },
   ],
 
   organizations: [
@@ -125,9 +127,18 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const user = useAuthUser();
+  const organizations = useOrgStore();
   if (!user) {
     return null;
   }
+
+  const organizationsMutation = useMutation({
+    ...organizationsQueryOptions(),
+  });
+
+  useEffect(() => {
+    organizationsMutation.mutate(undefined);
+  }, []);
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -141,8 +152,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <NavUser
           user={user}
-          activeOrganization={data.organizations[0]}
-          organizations={data.organizations}
+          activeOrganization={organizations.activeOrg!}
+          organizations={organizations.orgs}
           onOrganizationChange={() => {}}
         />
       </SidebarFooter>

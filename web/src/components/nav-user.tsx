@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuthStore } from "#/state/auth-state";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -16,21 +17,18 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import {
-  ChevronsUpDownIcon,
-  SparklesIcon,
-  BadgeCheckIcon,
-  CreditCardIcon,
-  BellIcon,
-  LogOutIcon,
-} from "lucide-react";
-import { useAuthStore } from "#/state/auth-state";
 import { useRouter } from "@tanstack/react-router";
+import {
+  BadgeCheckIcon,
+  BellIcon,
+  ChevronsUpDownIcon,
+  CreditCardIcon,
+  LogOutIcon
+} from "lucide-react";
 
 type Organization = {
   id: string;
   name: string;
-  logo: string;
 };
 
 type NavUserProps = {
@@ -62,10 +60,7 @@ export function NavUser({
             }
           >
             <Avatar className="rounded-md">
-              <AvatarImage
-                src={activeOrganization.logo}
-                alt={activeOrganization.name}
-              />
+              <AvatarImage alt={activeOrganization.name} />
               <AvatarFallback>
                 {user.name || user.email.slice(0, 2).toUpperCase()}
               </AvatarFallback>
@@ -99,7 +94,6 @@ export function NavUser({
                   onClick={() => onOrganizationChange(org.id)}
                 >
                   <Avatar className="size-5 rounded-md">
-                    <AvatarImage src={org.logo} />
                     <AvatarFallback>{org.name.slice(0, 2)}</AvatarFallback>
                   </Avatar>
 
@@ -111,9 +105,9 @@ export function NavUser({
                 </DropdownMenuItem>
               ))}
 
-              <DropdownMenuSeparator />
+              {/* <DropdownMenuSeparator />
 
-              <DropdownMenuItem>+ Create organization</DropdownMenuItem>
+              <DropdownMenuItem>+ Create organization</DropdownMenuItem> */}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
 
@@ -147,10 +141,12 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => {
-              useAuthStore.getState().actions.logout();
-              router.navigate({ to: "/auth/login" });
-            }}>
+            <DropdownMenuItem
+              onClick={() => {
+                useAuthStore.getState().actions.logout();
+                router.navigate({ to: "/auth/login" });
+              }}
+            >
               <LogOutIcon />
               Log out
             </DropdownMenuItem>
