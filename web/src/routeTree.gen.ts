@@ -18,16 +18,18 @@ import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthenticatedAppRouteRouteImport } from './routes/_authenticated/app/route'
 import { Route as AuthenticatedAppUsersRouteImport } from './routes/_authenticated/app/users'
 import { Route as AuthenticatedAppProjectsRouteImport } from './routes/_authenticated/app/projects'
-import { Route as AuthenticatedAppPlaygroundRouteImport } from './routes/_authenticated/app/playground'
 import { Route as AuthenticatedAppOrganizationsRouteImport } from './routes/_authenticated/app/organizations'
 import { Route as AuthenticatedAppKeysRouteImport } from './routes/_authenticated/app/keys'
 import { Route as AuthenticatedAppHooksRouteImport } from './routes/_authenticated/app/hooks'
 import { Route as AuthenticatedAppDashboardRouteImport } from './routes/_authenticated/app/dashboard'
-import { Route as AuthenticatedAppSettingsRouteRouteImport } from './routes/_authenticated/app/settings/route'
 import { Route as AuthenticatedAppTeamsIndexRouteImport } from './routes/_authenticated/app/teams/index'
 import { Route as AuthenticatedAppTeamsTeamIdRouteImport } from './routes/_authenticated/app/teams/$teamId'
 import { Route as AuthenticatedAppSettingsTeamsRouteImport } from './routes/_authenticated/app/settings/teams'
 import { Route as AuthenticatedAppSettingsLimitsRouteImport } from './routes/_authenticated/app/settings/limits'
+import { Route as AuthenticatedAppSettingsGeneralRouteImport } from './routes/_authenticated/app/settings/general'
+import { Route as AuthenticatedAppPlaygroundTtsRouteImport } from './routes/_authenticated/app/playground/tts'
+import { Route as AuthenticatedAppPlaygroundSttRouteImport } from './routes/_authenticated/app/playground/stt'
+import { Route as AuthenticatedAppPlaygroundChatRouteImport } from './routes/_authenticated/app/playground/chat'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -75,12 +77,6 @@ const AuthenticatedAppProjectsRoute =
     path: '/projects',
     getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
-const AuthenticatedAppPlaygroundRoute =
-  AuthenticatedAppPlaygroundRouteImport.update({
-    id: '/playground',
-    path: '/playground',
-    getParentRoute: () => AuthenticatedAppRouteRoute,
-  } as any)
 const AuthenticatedAppOrganizationsRoute =
   AuthenticatedAppOrganizationsRouteImport.update({
     id: '/organizations',
@@ -103,12 +99,6 @@ const AuthenticatedAppDashboardRoute =
     path: '/dashboard',
     getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
-const AuthenticatedAppSettingsRouteRoute =
-  AuthenticatedAppSettingsRouteRouteImport.update({
-    id: '/settings',
-    path: '/settings',
-    getParentRoute: () => AuthenticatedAppRouteRoute,
-  } as any)
 const AuthenticatedAppTeamsIndexRoute =
   AuthenticatedAppTeamsIndexRouteImport.update({
     id: '/teams/',
@@ -123,15 +113,39 @@ const AuthenticatedAppTeamsTeamIdRoute =
   } as any)
 const AuthenticatedAppSettingsTeamsRoute =
   AuthenticatedAppSettingsTeamsRouteImport.update({
-    id: '/teams',
-    path: '/teams',
-    getParentRoute: () => AuthenticatedAppSettingsRouteRoute,
+    id: '/settings/teams',
+    path: '/settings/teams',
+    getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
 const AuthenticatedAppSettingsLimitsRoute =
   AuthenticatedAppSettingsLimitsRouteImport.update({
-    id: '/limits',
-    path: '/limits',
-    getParentRoute: () => AuthenticatedAppSettingsRouteRoute,
+    id: '/settings/limits',
+    path: '/settings/limits',
+    getParentRoute: () => AuthenticatedAppRouteRoute,
+  } as any)
+const AuthenticatedAppSettingsGeneralRoute =
+  AuthenticatedAppSettingsGeneralRouteImport.update({
+    id: '/settings/general',
+    path: '/settings/general',
+    getParentRoute: () => AuthenticatedAppRouteRoute,
+  } as any)
+const AuthenticatedAppPlaygroundTtsRoute =
+  AuthenticatedAppPlaygroundTtsRouteImport.update({
+    id: '/playground/tts',
+    path: '/playground/tts',
+    getParentRoute: () => AuthenticatedAppRouteRoute,
+  } as any)
+const AuthenticatedAppPlaygroundSttRoute =
+  AuthenticatedAppPlaygroundSttRouteImport.update({
+    id: '/playground/stt',
+    path: '/playground/stt',
+    getParentRoute: () => AuthenticatedAppRouteRoute,
+  } as any)
+const AuthenticatedAppPlaygroundChatRoute =
+  AuthenticatedAppPlaygroundChatRouteImport.update({
+    id: '/playground/chat',
+    path: '/playground/chat',
+    getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -142,14 +156,16 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
-  '/app/settings': typeof AuthenticatedAppSettingsRouteRouteWithChildren
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/app/hooks': typeof AuthenticatedAppHooksRoute
   '/app/keys': typeof AuthenticatedAppKeysRoute
   '/app/organizations': typeof AuthenticatedAppOrganizationsRoute
-  '/app/playground': typeof AuthenticatedAppPlaygroundRoute
   '/app/projects': typeof AuthenticatedAppProjectsRoute
   '/app/users': typeof AuthenticatedAppUsersRoute
+  '/app/playground/chat': typeof AuthenticatedAppPlaygroundChatRoute
+  '/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
+  '/app/playground/tts': typeof AuthenticatedAppPlaygroundTtsRoute
+  '/app/settings/general': typeof AuthenticatedAppSettingsGeneralRoute
   '/app/settings/limits': typeof AuthenticatedAppSettingsLimitsRoute
   '/app/settings/teams': typeof AuthenticatedAppSettingsTeamsRoute
   '/app/teams/$teamId': typeof AuthenticatedAppTeamsTeamIdRoute
@@ -163,14 +179,16 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
-  '/app/settings': typeof AuthenticatedAppSettingsRouteRouteWithChildren
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/app/hooks': typeof AuthenticatedAppHooksRoute
   '/app/keys': typeof AuthenticatedAppKeysRoute
   '/app/organizations': typeof AuthenticatedAppOrganizationsRoute
-  '/app/playground': typeof AuthenticatedAppPlaygroundRoute
   '/app/projects': typeof AuthenticatedAppProjectsRoute
   '/app/users': typeof AuthenticatedAppUsersRoute
+  '/app/playground/chat': typeof AuthenticatedAppPlaygroundChatRoute
+  '/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
+  '/app/playground/tts': typeof AuthenticatedAppPlaygroundTtsRoute
+  '/app/settings/general': typeof AuthenticatedAppSettingsGeneralRoute
   '/app/settings/limits': typeof AuthenticatedAppSettingsLimitsRoute
   '/app/settings/teams': typeof AuthenticatedAppSettingsTeamsRoute
   '/app/teams/$teamId': typeof AuthenticatedAppTeamsTeamIdRoute
@@ -185,14 +203,16 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
-  '/_authenticated/app/settings': typeof AuthenticatedAppSettingsRouteRouteWithChildren
   '/_authenticated/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/_authenticated/app/hooks': typeof AuthenticatedAppHooksRoute
   '/_authenticated/app/keys': typeof AuthenticatedAppKeysRoute
   '/_authenticated/app/organizations': typeof AuthenticatedAppOrganizationsRoute
-  '/_authenticated/app/playground': typeof AuthenticatedAppPlaygroundRoute
   '/_authenticated/app/projects': typeof AuthenticatedAppProjectsRoute
   '/_authenticated/app/users': typeof AuthenticatedAppUsersRoute
+  '/_authenticated/app/playground/chat': typeof AuthenticatedAppPlaygroundChatRoute
+  '/_authenticated/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
+  '/_authenticated/app/playground/tts': typeof AuthenticatedAppPlaygroundTtsRoute
+  '/_authenticated/app/settings/general': typeof AuthenticatedAppSettingsGeneralRoute
   '/_authenticated/app/settings/limits': typeof AuthenticatedAppSettingsLimitsRoute
   '/_authenticated/app/settings/teams': typeof AuthenticatedAppSettingsTeamsRoute
   '/_authenticated/app/teams/$teamId': typeof AuthenticatedAppTeamsTeamIdRoute
@@ -208,14 +228,16 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/reset-password'
     | '/auth/signup'
-    | '/app/settings'
     | '/app/dashboard'
     | '/app/hooks'
     | '/app/keys'
     | '/app/organizations'
-    | '/app/playground'
     | '/app/projects'
     | '/app/users'
+    | '/app/playground/chat'
+    | '/app/playground/stt'
+    | '/app/playground/tts'
+    | '/app/settings/general'
     | '/app/settings/limits'
     | '/app/settings/teams'
     | '/app/teams/$teamId'
@@ -229,14 +251,16 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/reset-password'
     | '/auth/signup'
-    | '/app/settings'
     | '/app/dashboard'
     | '/app/hooks'
     | '/app/keys'
     | '/app/organizations'
-    | '/app/playground'
     | '/app/projects'
     | '/app/users'
+    | '/app/playground/chat'
+    | '/app/playground/stt'
+    | '/app/playground/tts'
+    | '/app/settings/general'
     | '/app/settings/limits'
     | '/app/settings/teams'
     | '/app/teams/$teamId'
@@ -250,14 +274,16 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/reset-password'
     | '/auth/signup'
-    | '/_authenticated/app/settings'
     | '/_authenticated/app/dashboard'
     | '/_authenticated/app/hooks'
     | '/_authenticated/app/keys'
     | '/_authenticated/app/organizations'
-    | '/_authenticated/app/playground'
     | '/_authenticated/app/projects'
     | '/_authenticated/app/users'
+    | '/_authenticated/app/playground/chat'
+    | '/_authenticated/app/playground/stt'
+    | '/_authenticated/app/playground/tts'
+    | '/_authenticated/app/settings/general'
     | '/_authenticated/app/settings/limits'
     | '/_authenticated/app/settings/teams'
     | '/_authenticated/app/teams/$teamId'
@@ -336,13 +362,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppProjectsRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
-    '/_authenticated/app/playground': {
-      id: '/_authenticated/app/playground'
-      path: '/playground'
-      fullPath: '/app/playground'
-      preLoaderRoute: typeof AuthenticatedAppPlaygroundRouteImport
-      parentRoute: typeof AuthenticatedAppRouteRoute
-    }
     '/_authenticated/app/organizations': {
       id: '/_authenticated/app/organizations'
       path: '/organizations'
@@ -371,13 +390,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppDashboardRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
-    '/_authenticated/app/settings': {
-      id: '/_authenticated/app/settings'
-      path: '/settings'
-      fullPath: '/app/settings'
-      preLoaderRoute: typeof AuthenticatedAppSettingsRouteRouteImport
-      parentRoute: typeof AuthenticatedAppRouteRoute
-    }
     '/_authenticated/app/teams/': {
       id: '/_authenticated/app/teams/'
       path: '/teams'
@@ -394,17 +406,45 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/app/settings/teams': {
       id: '/_authenticated/app/settings/teams'
-      path: '/teams'
+      path: '/settings/teams'
       fullPath: '/app/settings/teams'
       preLoaderRoute: typeof AuthenticatedAppSettingsTeamsRouteImport
-      parentRoute: typeof AuthenticatedAppSettingsRouteRoute
+      parentRoute: typeof AuthenticatedAppRouteRoute
     }
     '/_authenticated/app/settings/limits': {
       id: '/_authenticated/app/settings/limits'
-      path: '/limits'
+      path: '/settings/limits'
       fullPath: '/app/settings/limits'
       preLoaderRoute: typeof AuthenticatedAppSettingsLimitsRouteImport
-      parentRoute: typeof AuthenticatedAppSettingsRouteRoute
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/_authenticated/app/settings/general': {
+      id: '/_authenticated/app/settings/general'
+      path: '/settings/general'
+      fullPath: '/app/settings/general'
+      preLoaderRoute: typeof AuthenticatedAppSettingsGeneralRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/_authenticated/app/playground/tts': {
+      id: '/_authenticated/app/playground/tts'
+      path: '/playground/tts'
+      fullPath: '/app/playground/tts'
+      preLoaderRoute: typeof AuthenticatedAppPlaygroundTtsRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/_authenticated/app/playground/stt': {
+      id: '/_authenticated/app/playground/stt'
+      path: '/playground/stt'
+      fullPath: '/app/playground/stt'
+      preLoaderRoute: typeof AuthenticatedAppPlaygroundSttRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/_authenticated/app/playground/chat': {
+      id: '/_authenticated/app/playground/chat'
+      path: '/playground/chat'
+      fullPath: '/app/playground/chat'
+      preLoaderRoute: typeof AuthenticatedAppPlaygroundChatRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
     }
   }
 }
@@ -425,45 +465,36 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
   AuthRouteRouteChildren,
 )
 
-interface AuthenticatedAppSettingsRouteRouteChildren {
-  AuthenticatedAppSettingsLimitsRoute: typeof AuthenticatedAppSettingsLimitsRoute
-  AuthenticatedAppSettingsTeamsRoute: typeof AuthenticatedAppSettingsTeamsRoute
-}
-
-const AuthenticatedAppSettingsRouteRouteChildren: AuthenticatedAppSettingsRouteRouteChildren =
-  {
-    AuthenticatedAppSettingsLimitsRoute: AuthenticatedAppSettingsLimitsRoute,
-    AuthenticatedAppSettingsTeamsRoute: AuthenticatedAppSettingsTeamsRoute,
-  }
-
-const AuthenticatedAppSettingsRouteRouteWithChildren =
-  AuthenticatedAppSettingsRouteRoute._addFileChildren(
-    AuthenticatedAppSettingsRouteRouteChildren,
-  )
-
 interface AuthenticatedAppRouteRouteChildren {
-  AuthenticatedAppSettingsRouteRoute: typeof AuthenticatedAppSettingsRouteRouteWithChildren
   AuthenticatedAppDashboardRoute: typeof AuthenticatedAppDashboardRoute
   AuthenticatedAppHooksRoute: typeof AuthenticatedAppHooksRoute
   AuthenticatedAppKeysRoute: typeof AuthenticatedAppKeysRoute
   AuthenticatedAppOrganizationsRoute: typeof AuthenticatedAppOrganizationsRoute
-  AuthenticatedAppPlaygroundRoute: typeof AuthenticatedAppPlaygroundRoute
   AuthenticatedAppProjectsRoute: typeof AuthenticatedAppProjectsRoute
   AuthenticatedAppUsersRoute: typeof AuthenticatedAppUsersRoute
+  AuthenticatedAppPlaygroundChatRoute: typeof AuthenticatedAppPlaygroundChatRoute
+  AuthenticatedAppPlaygroundSttRoute: typeof AuthenticatedAppPlaygroundSttRoute
+  AuthenticatedAppPlaygroundTtsRoute: typeof AuthenticatedAppPlaygroundTtsRoute
+  AuthenticatedAppSettingsGeneralRoute: typeof AuthenticatedAppSettingsGeneralRoute
+  AuthenticatedAppSettingsLimitsRoute: typeof AuthenticatedAppSettingsLimitsRoute
+  AuthenticatedAppSettingsTeamsRoute: typeof AuthenticatedAppSettingsTeamsRoute
   AuthenticatedAppTeamsTeamIdRoute: typeof AuthenticatedAppTeamsTeamIdRoute
   AuthenticatedAppTeamsIndexRoute: typeof AuthenticatedAppTeamsIndexRoute
 }
 
 const AuthenticatedAppRouteRouteChildren: AuthenticatedAppRouteRouteChildren = {
-  AuthenticatedAppSettingsRouteRoute:
-    AuthenticatedAppSettingsRouteRouteWithChildren,
   AuthenticatedAppDashboardRoute: AuthenticatedAppDashboardRoute,
   AuthenticatedAppHooksRoute: AuthenticatedAppHooksRoute,
   AuthenticatedAppKeysRoute: AuthenticatedAppKeysRoute,
   AuthenticatedAppOrganizationsRoute: AuthenticatedAppOrganizationsRoute,
-  AuthenticatedAppPlaygroundRoute: AuthenticatedAppPlaygroundRoute,
   AuthenticatedAppProjectsRoute: AuthenticatedAppProjectsRoute,
   AuthenticatedAppUsersRoute: AuthenticatedAppUsersRoute,
+  AuthenticatedAppPlaygroundChatRoute: AuthenticatedAppPlaygroundChatRoute,
+  AuthenticatedAppPlaygroundSttRoute: AuthenticatedAppPlaygroundSttRoute,
+  AuthenticatedAppPlaygroundTtsRoute: AuthenticatedAppPlaygroundTtsRoute,
+  AuthenticatedAppSettingsGeneralRoute: AuthenticatedAppSettingsGeneralRoute,
+  AuthenticatedAppSettingsLimitsRoute: AuthenticatedAppSettingsLimitsRoute,
+  AuthenticatedAppSettingsTeamsRoute: AuthenticatedAppSettingsTeamsRoute,
   AuthenticatedAppTeamsTeamIdRoute: AuthenticatedAppTeamsTeamIdRoute,
   AuthenticatedAppTeamsIndexRoute: AuthenticatedAppTeamsIndexRoute,
 }
