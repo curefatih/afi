@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   AudioLinesIcon,
+  FishIcon,
   FrameIcon,
   GalleryVerticalEndIcon,
   MapIcon,
@@ -23,7 +24,7 @@ import {
   Settings2Icon,
   TerminalIcon,
   TerminalSquareIcon,
-  Users2
+  Users2,
 } from "lucide-react";
 
 // This is sample data.
@@ -70,21 +71,11 @@ const data = {
       title: "Teams",
       url: "/app/teams",
       icon: <Users2 />,
-      // isActive: true,
-      // items: [
-      //   {
-      //     title: "History",
-      //     url: "#",
-      //   },
-      //   {
-      //     title: "Starred",
-      //     url: "#",
-      //   },
-      //   {
-      //     title: "Settings",
-      //     url: "#",
-      //   },
-      // ],
+    },
+    {
+      title: "Hooks",
+      url: "/app/hooks",
+      icon: <FishIcon />,
     },
     {
       title: "Settings",
@@ -111,17 +102,7 @@ const data = {
       name: "Design Engineering",
       url: "#",
       icon: <FrameIcon />,
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: <PieChartIcon />,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: <MapIcon />,
-    },
+    }
   ],
 
   organizations: [
