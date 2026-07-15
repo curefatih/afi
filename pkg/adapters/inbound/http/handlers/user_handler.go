@@ -89,6 +89,25 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	h.respondJSON(w, http.StatusOK, user)
 }
 
+func (h *UserHandler) GetUserOrganizations(w http.ResponseWriter, r *http.Request) {
+	// 1. Extract the secure UserID string injected by your RequirePermission middleware
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		h.respondError(w, http.StatusUnauthorized, "Unidentified session context")
+		return
+	}
+
+	// 2. Fetch the organizations via your inbound port service layer
+	orgs, err := h.userUseCase.GetUserOrganizations(r.Context(), userID)
+	if err != nil {
+		h.respondError(w, http.StatusInternalServerError, "Failed to retrieve user organizations")
+		return
+	}
+
+	// 3. Return the clean domain representation out to your dashboard UI
+	h.respondJSON(w, http.StatusOK, orgs)
+}
+
 func (h *UserHandler) respondJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
