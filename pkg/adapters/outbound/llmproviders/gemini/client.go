@@ -50,7 +50,8 @@ func (a *GeminiAdapter) Call(ctx context.Context, req *domain.InternalRequest) (
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("gemini upstream returned invalid status code %d", resp.StatusCode)
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("gemini upstream error status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	return mapToInternalResponse(resp, req.Model)

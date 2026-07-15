@@ -99,10 +99,12 @@ func mapToGemini(req *domain.InternalRequest) *GeminiRequest {
 			role = "model"
 		}
 
-		geminiContents = append(geminiContents, GeminiContent{
-			Role:  role,
-			Parts: parts,
-		})
+		if len(parts) > 0 {
+			geminiContents = append(geminiContents, GeminiContent{
+				Role:  role,
+				Parts: parts,
+			})
+		}
 	}
 
 	config := &GenerationConfig{
