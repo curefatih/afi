@@ -1,9 +1,18 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+type Project = {
+  id: string;
+  team_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+};
+
 type Organization = {
   id: string;
   name: string;
+  projects: Project[];
   created_at?: string;
 };
 
@@ -19,20 +28,7 @@ type AuthState = {
 export const useOrgStore = create<AuthState>()(
   persist(
     (set) => ({
-      orgs: [
-        {
-          id: "org_1",
-          name: "AFI Inc.",
-        },
-        {
-          id: "org_2",
-          name: "Personal",
-        },
-        {
-          id: "org_3",
-          name: "AI Research",
-        },
-      ],
+      orgs: [],
       actions: {
         setOrganizations: (orgs) =>
           set({
