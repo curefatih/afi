@@ -29,7 +29,6 @@ import {
 } from "lucide-react";
 
 export function TeamSwitcher({ teams }: { teams: Team[] }) {
-  console.log('teams', teams)
   const { isMobile } = useSidebar();
   const activeTeam = useActiveTeam();
   const setActiveTeam = useOrgStore(
