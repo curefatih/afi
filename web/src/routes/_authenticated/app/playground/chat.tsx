@@ -52,7 +52,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "#/components/ui/tooltip";
-import { createFileRoute } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useNavigate,
+  useSearch,
+} from "@tanstack/react-router";
 import {
   ArrowUpIcon,
   GlobeIcon,
@@ -64,12 +68,18 @@ import {
   TelescopeIcon,
 } from "lucide-react";
 import { useState } from "react";
+import z from "zod";
+
+const chatThreadSearchSchema = z.object({
+  thread: z.string().catch(""),
+});
 
 export const Route = createFileRoute("/_authenticated/app/playground/chat")({
   staticData: {
     getTitle: () => "Playground",
   },
   component: RouteComponent,
+  validateSearch: chatThreadSearchSchema,
 });
 
 const initialMessages = [
@@ -103,6 +113,8 @@ type Message = {
 };
 
 function RouteComponent() {
+  const navigate = useNavigate();
+  const { thread } = useSearch({ strict: false });
   const [nextMessage, setNextMessage] = useState(null);
   const [isBusy, setIsBusy] = useState(false);
   const [messages, setMessages] = useState(initialMessages);
@@ -132,8 +144,16 @@ function RouteComponent() {
             </div>
             <Separator className={"m-2"} />
             <Button
-              variant={"ghost"}
-              className={"w-full text-left cursor-pointer"}
+              variant={thread && thread == "tobedone" ? "outline" : "ghost"}
+              onClick={() => {
+                navigate({
+                  to: `/app/playground/chat`,
+                  search: {
+                    thread: "tobedone",
+                  },
+                });
+              }}
+              className={"w-full text-left cursor-pointer block"}
             >
               text
             </Button>
