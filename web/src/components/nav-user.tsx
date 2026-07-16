@@ -17,13 +17,13 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useRouter } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import {
   BadgeCheckIcon,
   BellIcon,
   ChevronsUpDownIcon,
   CreditCardIcon,
-  LogOutIcon
+  LogOutIcon,
 } from "lucide-react";
 
 type Organization = {
@@ -49,7 +49,8 @@ export function NavUser({
   onOrganizationChange,
 }: NavUserProps) {
   const { isMobile } = useSidebar();
-  const router = useRouter();
+  const navigate = useNavigate();
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -132,10 +133,6 @@ export function NavUser({
                 Account
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <CreditCardIcon />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
                 <BellIcon />
                 Notifications
               </DropdownMenuItem>
@@ -144,7 +141,7 @@ export function NavUser({
             <DropdownMenuItem
               onClick={() => {
                 useAuthStore.getState().actions.logout();
-                router.navigate({ to: "/auth/login" });
+                navigate({ to: "/auth/login" });
               }}
             >
               <LogOutIcon />
