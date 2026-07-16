@@ -23,7 +23,11 @@ export const organizationsQueryOptions = () =>
       useOrgStore
         .getState()
         .actions.setOrganizations(
-          orgs.map((org: Organization) => ({ ...org, projects: [] })),
+          orgs.map((org: Organization) => ({
+            ...org,
+            projects: [],
+            teams: [],
+          })),
         );
       if (orgs.length > 0) {
         useOrgStore.getState().actions.setActiveOrg(orgs[0]);
@@ -42,7 +46,7 @@ export const organizationsQueryOptions = () =>
       }
 
       const res = await fetch(
-        `http://localhost:8080/api/v1/platform/organizations/${activeOrgId}/projects`,
+        `http://localhost:8080/api/v1/platform/organizations/${activeOrgId}/teams`,
         {
           headers: {
             Authorization: `Bearer ${useAuthStore.getState().user?.accessToken}`,
@@ -50,11 +54,10 @@ export const organizationsQueryOptions = () =>
         },
       );
       if (!res.ok) throw new Error("Failed to fetch organizations");
-      const projects = await res.json();
+      const teams = await res.json();
 
-      useOrgStore.getState().actions.addActiveOrganizationProjects(projects);
+      useOrgStore.getState().actions.addActiveOrganizationTeams(teams);
 
-      return projects;
+      return teams;
     },
   });
-

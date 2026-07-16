@@ -196,7 +196,7 @@ func (s *PostgresStore) GetUserOrganizationTeams(ctx context.Context, userID str
 	WHERE ua.user_id = $1 AND ua.organization_id = $2`
 	rows, err := s.pool.Query(ctx, query, userID, orgID)
 	if err != nil {
-		log.Printf("Error querying user projects for userID %s in organization %s: %v", userID, orgID, err)
+		log.Printf("Error querying user teams for userID %s in organization %s: %v", userID, orgID, err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -205,7 +205,7 @@ func (s *PostgresStore) GetUserOrganizationTeams(ctx context.Context, userID str
 	for rows.Next() {
 		var t domain.Team
 		if err := rows.Scan(&t.ID, &t.Name, &t.CreatedAt); err != nil {
-			log.Printf("Error scanning project row for userID %s in organization %s: %v", userID, orgID, err)
+			log.Printf("Error scanning teams row for userID %s in organization %s: %v", userID, orgID, err)
 			return nil, err
 		}
 		teams = append(teams, &t)

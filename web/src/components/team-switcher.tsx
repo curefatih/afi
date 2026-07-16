@@ -1,9 +1,10 @@
 "use client";
 
 import {
-  useActiveProject,
+  useActiveTeam,
   useOrgStore,
   type Project,
+  type Team,
 } from "#/state/organization-state";
 import {
   DropdownMenu,
@@ -27,11 +28,12 @@ import {
   PlusIcon,
 } from "lucide-react";
 
-export function ProjectSwitcher({ projects }: { projects: Project[] }) {
+export function TeamSwitcher({ teams }: { teams: Team[] }) {
+  console.log('teams', teams)
   const { isMobile } = useSidebar();
-  const activeProject = useActiveProject();
-  const setActiveProject = useOrgStore(
-    (state) => state.actions.setActiveProjectByID,
+  const activeTeam = useActiveTeam();
+  const setActiveTeam = useOrgStore(
+    (state) => state.actions.setActiveTeamById,
   );
 
   return (
@@ -49,13 +51,13 @@ export function ProjectSwitcher({ projects }: { projects: Project[] }) {
             <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
               <GalleryVerticalEndIcon />
             </div>
-            {activeProject ? (
+            {activeTeam ? (
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">
-                  {activeProject.name}
+                  {activeTeam.name}
                 </span>
                 <span className="truncate text-xs">
-                  {activeProject.team_id}
+                  {activeTeam.team_id}
                 </span>
               </div>
             ) : null}
@@ -71,13 +73,13 @@ export function ProjectSwitcher({ projects }: { projects: Project[] }) {
               <DropdownMenuLabel className="text-xs text-muted-foreground">
                 Projects
               </DropdownMenuLabel>
-              {projects?.map((project, index) => (
+              {teams?.map((team, index) => (
                 <DropdownMenuItem
-                  key={project.name}
-                  onClick={() => setActiveProject(project.id)}
+                  key={team.name}
+                  onClick={() => setActiveTeam(team.id)}
                   className="gap-2 p-2"
                 >
-                  {project.name}
+                  {team.name}
                   <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
                 </DropdownMenuItem>
               ))}

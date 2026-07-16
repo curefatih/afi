@@ -3,11 +3,11 @@
 import * as React from "react";
 
 import { organizationsQueryOptions } from "#/api/user";
-import { ProjectSwitcher } from "#/components/project-switcher";
+import { TeamSwitcher } from "#/components/team-switcher";
 import { useAuthUser } from "#/state/auth-state";
 import {
   useActiveOrg,
-  useActiveProject,
+  useActiveTeam,
   useOrgStore,
 } from "#/state/organization-state";
 import { NavMain } from "@/components/nav-main";
@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { useEffect } from "react";
 import { Empty, EmptyContent, EmptyDescription } from "./ui/empty";
+import { useNavigate } from "@tanstack/react-router";
 
 // This is sample data.
 const data = {
@@ -110,10 +111,11 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const navigate = useNavigate();
   const user = useAuthUser();
   const organizations = useOrgStore();
   const activeOrg = useActiveOrg();
-  const activeProject = useActiveProject();
+  const activeTeam = useActiveTeam();
 
   const organizationsMutation = useMutation({
     ...organizationsQueryOptions(),
@@ -122,6 +124,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   useEffect(() => {
     organizationsMutation.mutate(undefined);
   }, []);
+
+  if (!user) {
+    navigate({to: "/auth/login"})
+  }
 
   if (!user || !activeOrg) {
     return null;
@@ -132,21 +138,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {!activeOrg ? (
           "You dont have any organization yet"
         ) : (
-          <ProjectSwitcher projects={activeOrg.projects} />
+          <TeamSwitcher teams={activeOrg.teams} />
         )}
       </SidebarHeader>
       <SidebarContent>
-        {!activeOrg || !activeProject ? (
+        {!activeOrg || !activeTeam ? (
           <Empty>
             <EmptyContent>
-              <EmptyDescription>Select project first</EmptyDescription>
+              <EmptyDescription>Select team first</EmptyDescription>
             </EmptyContent>
           </Empty>
         ) : (
           <>
             <NavMain items={data.navMain} />
             <NavProjects
-              projects={activeOrg.projects.map((p) => ({
+              teams={activeOrg.projects.map((p) => ({
                 name: p.name,
                 url: `/app/projects/${p.id}`,
               }))}

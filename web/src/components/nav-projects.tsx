@@ -26,9 +26,9 @@ import {
 } from "lucide-react";
 
 export function NavProjects({
-  projects,
+  teams,
 }: {
-  projects: {
+  teams: {
     name: string;
     url: string;
   }[];
@@ -39,7 +39,7 @@ export function NavProjects({
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>Projects</SidebarGroupLabel>
       <SidebarMenu>
-        {projects.map((item) => (
+        {teams.map((item) => (
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton render={<a href={item.url} />}>
               <FrameIcon />
@@ -82,7 +82,7 @@ export function NavProjects({
         <SidebarMenuItem>
           <SidebarMenuButton
             className="text-sidebar-foreground/70"
-            onClick={() => navigate({ to: "/app/projects" })}
+            onClick={() => navigate({ to: "/app/teams" })}
           >
             <MoreHorizontalIcon className="text-sidebar-foreground/70" />
             <span>More</span>
