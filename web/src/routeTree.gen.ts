@@ -22,6 +22,7 @@ import { Route as AuthenticatedAppOrganizationsRouteImport } from './routes/_aut
 import { Route as AuthenticatedAppKeysRouteImport } from './routes/_authenticated/app/keys'
 import { Route as AuthenticatedAppHooksRouteImport } from './routes/_authenticated/app/hooks'
 import { Route as AuthenticatedAppDashboardRouteImport } from './routes/_authenticated/app/dashboard'
+import { Route as AuthenticatedAppAccountRouteImport } from './routes/_authenticated/app/account'
 import { Route as AuthenticatedAppTeamsIndexRouteImport } from './routes/_authenticated/app/teams/index'
 import { Route as AuthenticatedAppTeamsTeamIdRouteImport } from './routes/_authenticated/app/teams/$teamId'
 import { Route as AuthenticatedAppSettingsTeamsRouteImport } from './routes/_authenticated/app/settings/teams'
@@ -99,6 +100,11 @@ const AuthenticatedAppDashboardRoute =
     path: '/dashboard',
     getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
+const AuthenticatedAppAccountRoute = AuthenticatedAppAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => AuthenticatedAppRouteRoute,
+} as any)
 const AuthenticatedAppTeamsIndexRoute =
   AuthenticatedAppTeamsIndexRouteImport.update({
     id: '/teams/',
@@ -156,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/app/account': typeof AuthenticatedAppAccountRoute
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/app/hooks': typeof AuthenticatedAppHooksRoute
   '/app/keys': typeof AuthenticatedAppKeysRoute
@@ -179,6 +186,7 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/app/account': typeof AuthenticatedAppAccountRoute
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/app/hooks': typeof AuthenticatedAppHooksRoute
   '/app/keys': typeof AuthenticatedAppKeysRoute
@@ -203,6 +211,7 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/_authenticated/app/account': typeof AuthenticatedAppAccountRoute
   '/_authenticated/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/_authenticated/app/hooks': typeof AuthenticatedAppHooksRoute
   '/_authenticated/app/keys': typeof AuthenticatedAppKeysRoute
@@ -228,6 +237,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/reset-password'
     | '/auth/signup'
+    | '/app/account'
     | '/app/dashboard'
     | '/app/hooks'
     | '/app/keys'
@@ -251,6 +261,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/reset-password'
     | '/auth/signup'
+    | '/app/account'
     | '/app/dashboard'
     | '/app/hooks'
     | '/app/keys'
@@ -274,6 +285,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/reset-password'
     | '/auth/signup'
+    | '/_authenticated/app/account'
     | '/_authenticated/app/dashboard'
     | '/_authenticated/app/hooks'
     | '/_authenticated/app/keys'
@@ -390,6 +402,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppDashboardRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
+    '/_authenticated/app/account': {
+      id: '/_authenticated/app/account'
+      path: '/account'
+      fullPath: '/app/account'
+      preLoaderRoute: typeof AuthenticatedAppAccountRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
     '/_authenticated/app/teams/': {
       id: '/_authenticated/app/teams/'
       path: '/teams'
@@ -466,6 +485,7 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
 )
 
 interface AuthenticatedAppRouteRouteChildren {
+  AuthenticatedAppAccountRoute: typeof AuthenticatedAppAccountRoute
   AuthenticatedAppDashboardRoute: typeof AuthenticatedAppDashboardRoute
   AuthenticatedAppHooksRoute: typeof AuthenticatedAppHooksRoute
   AuthenticatedAppKeysRoute: typeof AuthenticatedAppKeysRoute
@@ -483,6 +503,7 @@ interface AuthenticatedAppRouteRouteChildren {
 }
 
 const AuthenticatedAppRouteRouteChildren: AuthenticatedAppRouteRouteChildren = {
+  AuthenticatedAppAccountRoute: AuthenticatedAppAccountRoute,
   AuthenticatedAppDashboardRoute: AuthenticatedAppDashboardRoute,
   AuthenticatedAppHooksRoute: AuthenticatedAppHooksRoute,
   AuthenticatedAppKeysRoute: AuthenticatedAppKeysRoute,

@@ -22,7 +22,7 @@ import {
   BadgeCheckIcon,
   BellIcon,
   ChevronsUpDownIcon,
-  LogOutIcon
+  LogOutIcon,
 } from "lucide-react";
 
 type Organization = {
@@ -127,7 +127,11 @@ export function NavUser({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  navigate({ to: "/app/account" });
+                }}
+              >
                 <BadgeCheckIcon />
                 Account
               </DropdownMenuItem>
