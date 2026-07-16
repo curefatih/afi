@@ -17,13 +17,12 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useNavigate, useRouter } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   BadgeCheckIcon,
   BellIcon,
   ChevronsUpDownIcon,
-  CreditCardIcon,
-  LogOutIcon,
+  LogOutIcon
 } from "lucide-react";
 
 type Organization = {
