@@ -11,7 +11,7 @@ import {
   useOrgStore,
 } from "#/state/organization-state";
 import { NavMain } from "@/components/nav-main";
-import { NavProjects } from "@/components/nav-projects";
+import { NavTeam } from "#/components/nav-team";
 import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
@@ -126,7 +126,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, []);
 
   if (!user) {
-    navigate({to: "/auth/login"})
+    navigate({ to: "/auth/login" });
   }
 
   if (!user || !activeOrg) {
@@ -142,16 +142,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         )}
       </SidebarHeader>
       <SidebarContent>
+        <NavMain items={data.navMain} />
         {!activeOrg || !activeTeam ? (
           <Empty>
             <EmptyContent>
-              <EmptyDescription>Select team first</EmptyDescription>
+              <EmptyDescription>Select team for team options</EmptyDescription>
             </EmptyContent>
           </Empty>
         ) : (
           <>
-            <NavMain items={data.navMain} />
-            <NavProjects
+            <NavTeam
               teams={activeOrg.projects.map((p) => ({
                 name: p.name,
                 url: `/app/projects/${p.id}`,

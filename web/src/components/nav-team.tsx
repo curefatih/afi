@@ -25,7 +25,7 @@ import {
   FrameIcon,
 } from "lucide-react";
 
-export function NavProjects({
+export function NavTeam({
   teams,
 }: {
   teams: {
@@ -37,7 +37,7 @@ export function NavProjects({
   const { isMobile } = useSidebar();
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>Projects</SidebarGroupLabel>
+      <SidebarGroupLabel>Team projects</SidebarGroupLabel>
       <SidebarMenu>
         {teams.map((item) => (
           <SidebarMenuItem key={item.name}>
