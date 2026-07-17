@@ -1,11 +1,17 @@
 package provider
 
-import "github.com/curefatih/afi/internal/core/usage"
-
 type Response struct {
-	Body any
+	ID string
 
-	Usage *usage.Report
+	Model string
+
+	Content []Content
+
+	ToolCalls []ToolCall
+
+	FinishReason FinishReason
+
+	Usage Usage
 
 	Metadata map[string]any
 }
