@@ -1,29 +1,46 @@
 package gateway
 
 import (
-	"context"
-
 	"github.com/curefatih/afi/internal/core/auth"
+	"github.com/curefatih/afi/internal/core/model"
 	"github.com/curefatih/afi/internal/core/pricing"
 	"github.com/curefatih/afi/internal/core/provider"
+	"github.com/curefatih/afi/internal/core/quota"
 	"github.com/curefatih/afi/internal/core/routing"
-	"github.com/curefatih/afi/internal/core/usage"
 )
 
 type Context struct {
-	Context context.Context
+	// Incoming request
+	request *provider.Request
 
-	Request *Request
+	// Authentication
+	principal *auth.Principal
 
-	Principal *auth.Principal
+	// Resolution
+	model *model.Model
 
-	Route *routing.Decision
+	route *routing.Decision
 
-	ProviderRequest *provider.Request
+	// Provider
+	response *provider.Response
 
-	ProviderResponse *provider.Response
+	// Quota
 
-	Usage *usage.Report
+	decision *quota.Decision
 
-	Cost *pricing.Money
+	// Pricing
+
+	cost pricing.Money
+}
+
+func (c *Context) Request() *provider.Request {
+	return c.request
+}
+
+func (c *Context) SetPrincipal(p *auth.Principal) {
+	c.principal = p
+}
+
+func (c *Context) Principal() *auth.Principal {
+	return c.principal
 }

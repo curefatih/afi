@@ -1,5 +1,12 @@
 package gateway
 
+import "context"
+
 type Stage interface {
-	Execute(*Context) error
+	Name() string
+
+	Execute(
+		context.Context,
+		*Context,
+	) error
 }

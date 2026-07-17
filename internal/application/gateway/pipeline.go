@@ -1,5 +1,7 @@
 package gateway
 
+import "context"
+
 type Pipeline struct {
 	stages []Stage
 }
@@ -10,11 +12,14 @@ func NewPipeline(stages ...Stage) *Pipeline {
 	}
 }
 
-func (p *Pipeline) Execute(ctx *Context) error {
+func (p *Pipeline) Execute(
+	ctx context.Context,
+	state *Context,
+) error {
 
 	for _, stage := range p.stages {
 
-		if err := stage.Execute(ctx); err != nil {
+		if err := stage.Execute(ctx, state); err != nil {
 			return err
 		}
 
