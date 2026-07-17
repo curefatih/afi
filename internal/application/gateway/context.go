@@ -56,3 +56,7 @@ func (c *Context) Response() *provider.Response {
 func (c *Context) SetResponse(r *provider.Response) {
 	c.response = r
 }
+
+func (c *Context) SetModel(m *model.Model) {
+	c.model = m
+}
