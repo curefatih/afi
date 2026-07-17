@@ -44,3 +44,15 @@ func (c *Context) SetPrincipal(p *auth.Principal) {
 func (c *Context) Principal() *auth.Principal {
 	return c.principal
 }
+
+func (c *Context) Route() *routing.Decision {
+	return c.route
+}
+
+func (c *Context) Response() *provider.Response {
+	return c.response
+}
+
+func (c *Context) SetResponse(r *provider.Response) {
+	c.response = r
+}
