@@ -113,7 +113,13 @@ function RouteComponent() {
   return (
     <div className="w-full h-full flex justify-center items-center">
       <Card className="w-160">
-        <CardHeader className="font-bold text-xl">Your profile</CardHeader>
+        <CardHeader className="flex flex-col gap-2">
+          <h1 className="font-bold text-xl">Your profile</h1>
+          <Alert>
+            <InfoIcon />
+            <AlertDescription>Any change will be reflected</AlertDescription>
+          </Alert>
+        </CardHeader>
         <CardContent>
           <div className="flex gap-4 border-t">
             <div className="border-r p-4 flex flex-col gap-4">
@@ -219,7 +225,6 @@ function RouteComponent() {
           </div>
         </CardContent>
         <CardFooter className="justify-end">
-          <Button variant={"default"}>Save</Button>
         </CardFooter>
       </Card>
     </div>
