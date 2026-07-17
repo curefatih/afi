@@ -4,11 +4,17 @@ import "context"
 
 type Service struct {
 	repo Repository
+
+	generator KeyGenerator
+
+	hasher Hasher
 }
 
-func NewService(repo Repository) *Service {
+func NewService(repo Repository, generator KeyGenerator, hasher Hasher) *Service {
 	return &Service{
-		repo: repo,
+		repo:      repo,
+		generator: generator,
+		hasher:    hasher,
 	}
 }
 
@@ -18,7 +24,7 @@ func (s *Service) IssueAPIKey(
 	targetID string,
 ) (string, error) {
 
-	rawKey, err := GenerateRawKey(keyType)
+	rawKey, err := s.generator.Generate(keyType)
 	if err != nil {
 		return "", err
 	}
@@ -51,7 +57,7 @@ func (s *Service) Authenticate(
 
 	reqCtx, err := s.repo.GetRequestContextByKeyHash(
 		ctx,
-		HashKey(rawKey),
+		s.hasher.Hash(rawKey),
 	)
 
 	if err != nil {
