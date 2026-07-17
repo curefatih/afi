@@ -1,6 +1,7 @@
 package provider
 
 type Request struct {
+	APIKey     string
 	Provider   Provider
 	Model      Model
 	Capability Capability
