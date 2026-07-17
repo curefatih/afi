@@ -135,7 +135,7 @@ function RouteComponent() {
     <div className="flex flex-row h-full">
       <div className="chat flex-1 h-full">
         <div className="flex h-full flex-row">
-          <div className="threads w-64 p-2">
+          {/* <div className="threads w-64 p-2">
             <div className="">
               <h5 className="">Threads</h5>
               <span className="font-thin text-xs">
@@ -157,7 +157,7 @@ function RouteComponent() {
             >
               text
             </Button>
-          </div>
+          </div> */}
           <div className="flex-1 h-full w-full p-2">
             <MessageScrollerProvider>
               <div className="relative h-full w-full p-2">
