@@ -7,3 +7,9 @@ type Decision struct {
 
 	Violated *Quota
 }
+
+type Subject struct {
+	Type string
+
+	ID string
+}
