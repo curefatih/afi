@@ -7,6 +7,7 @@ import (
 	"github.com/curefatih/afi/internal/core/provider"
 	"github.com/curefatih/afi/internal/core/quota"
 	"github.com/curefatih/afi/internal/core/routing"
+	"github.com/curefatih/afi/internal/core/usage"
 )
 
 type Context struct {
@@ -25,12 +26,13 @@ type Context struct {
 	response *provider.Response
 
 	// Quota
-
 	decision *quota.Decision
 
-	// Pricing
+	// Usage
+	usage *usage.Report
 
-	cost pricing.Money
+	// Pricing
+	cost *pricing.Money
 }
 
 func (c *Context) Request() *provider.Request {
@@ -63,4 +65,20 @@ func (c *Context) Model() *model.Model {
 
 func (c *Context) SetModel(m *model.Model) {
 	c.model = m
+}
+
+func (c *Context) Usage() *usage.Report {
+	return c.usage
+}
+
+func (c *Context) SetUsage(u *usage.Report) {
+	c.usage = u
+}
+
+func (c *Context) Cost() *pricing.Money {
+	return c.cost
+}
+
+func (c *Context) SetCost(m *pricing.Money) {
+	c.cost = m
 }
