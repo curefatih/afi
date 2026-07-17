@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/curefatih/afi/internal/core/auth"
-	"github.com/curefatih/afi/internal/core/provider"
 	"github.com/curefatih/afi/internal/core/pricing"
+	"github.com/curefatih/afi/internal/core/provider"
 	"github.com/curefatih/afi/internal/core/routing"
 	"github.com/curefatih/afi/internal/core/usage"
 )
@@ -18,6 +18,8 @@ type Context struct {
 	Principal *auth.Principal
 
 	Route *routing.Decision
+
+	ProviderRequest *provider.Request
 
 	ProviderResponse *provider.Response
 

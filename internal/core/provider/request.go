@@ -1,9 +1,13 @@
 package provider
 
 type Request struct {
-	Model string
+	Provider Provider
+
+	Model Model
 
 	Capability Capability
 
 	Body any
+
+	Metadata map[string]any
 }

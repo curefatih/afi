@@ -1,4 +1,4 @@
-package configuration
+package snapshot
 
 import (
 	"plugin"
@@ -10,15 +10,13 @@ import (
 )
 
 type Snapshot struct {
-	Version int64
+	Models map[string]*model.Model
 
-	Models []model.Model
+	Routes map[string]*routing.Route
 
-	Routes []routing.Route
+	Providers map[string]*provider.Provider
 
 	Quotas []quota.Limit
-
-	Providers []provider.Provider
 
 	Plugins []plugin.Plugin
 }

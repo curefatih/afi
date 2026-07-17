@@ -6,4 +6,6 @@ type Response struct {
 	Body any
 
 	Usage *usage.Report
+
+	Metadata map[string]any
 }

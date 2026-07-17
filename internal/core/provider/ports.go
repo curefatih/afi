@@ -4,7 +4,7 @@ import "context"
 
 type Client interface {
 	Execute(
-		ctx context.Context,
-		request *Request,
+		context.Context,
+		*Request,
 	) (*Response, error)
 }
