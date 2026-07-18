@@ -6,4 +6,6 @@ type Registry interface {
 	Client(providerID string) (Client, error)
 
 	List() []Provider
+
+	GetProviderByID(providerID string) (Provider, error)
 }

@@ -3,7 +3,7 @@ package provider
 type Model struct {
 	ID string
 
-	ProviderID string
+	ProviderModelID string
 
 	Name string
 
