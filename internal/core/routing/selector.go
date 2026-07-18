@@ -2,14 +2,11 @@ package routing
 
 import (
 	"context"
-
-	"github.com/curefatih/afi/internal/core/provider"
 )
 
 type Selector interface {
-	Resolve(
+	Select(
 		ctx context.Context,
-		model string,
-		capability provider.Capability,
+		routes []Route,
 	) (*Decision, error)
 }

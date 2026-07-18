@@ -16,6 +16,11 @@ type Repository interface {
 		ctx context.Context,
 		name string,
 	) (*Route, error)
+
+	FindCandidates(
+		ctx context.Context,
+		request ResolveRequest,
+	) ([]Route, error)
 }
 
 type HealthChecker interface {
