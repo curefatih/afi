@@ -30,7 +30,7 @@ func (s *Service) IssueAPIKey(
 	}
 
 	key := &APIKey{
-		HashedKey: HashKey(rawKey),
+		HashedKey: s.hasher.Hash(rawKey),
 		Type:      keyType,
 	}
 

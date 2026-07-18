@@ -10,11 +10,3 @@ type Repository interface {
 		hash string,
 	) (*Principal, error)
 }
-
-type KeyGenerator interface {
-	Generate(APIKeyType) (string, error)
-}
-
-type Hasher interface {
-	Hash(string) string
-}
