@@ -7,6 +7,8 @@ import (
 type Model struct {
 	ID string
 
+	ProviderID string
+
 	Name string
 
 	Description string
