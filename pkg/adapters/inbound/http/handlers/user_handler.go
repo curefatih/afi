@@ -158,6 +158,55 @@ func (h *UserHandler) GetUserOrganizationTeams(w http.ResponseWriter, r *http.Re
 	h.respondJSON(w, http.StatusOK, teams)
 }
 
+// GET /platform/v1/teams/{team_id}
+func (h *UserHandler) GetUserTeam(w http.ResponseWriter, r *http.Request) {
+	// 1. Extract the secure UserID string injected by your RequireAuth middleware
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		h.respondError(w, http.StatusUnauthorized, "Unidentified session context")
+		return
+	}
+
+	teamID := r.PathValue("team_id")
+	if teamID == "" {
+		h.respondError(w, http.StatusInternalServerError, "Failed to read organization id from path: /api/v1/platform/v1/teams/{team_id}")
+	}
+
+	// 2. Fetch the team via your inbound port service layer
+	teams, err := h.userUseCase.GetUserTeam(r.Context(), userID, teamID)
+	if err != nil {
+		h.respondError(w, http.StatusInternalServerError, "Failed to retrieve user teams")
+		return
+	}
+
+	// 3. Return the clean domain representation out to your dashboard UI
+	h.respondJSON(w, http.StatusOK, teams)
+}
+
+func (h *UserHandler) GetUserTeamMembers(w http.ResponseWriter, r *http.Request) {
+	// 1. Extract the secure UserID string injected by your RequireAuth middleware
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		h.respondError(w, http.StatusUnauthorized, "Unidentified session context")
+		return
+	}
+
+	teamID := r.PathValue("team_id")
+	if teamID == "" {
+		h.respondError(w, http.StatusInternalServerError, "Failed to read organization id from path: /api/v1/platform/v1/teams/{team_id}/members")
+	}
+
+	// 2. Fetch the team via your inbound port service layer
+	members, err := h.userUseCase.GetUserTeamMembers(r.Context(), userID, teamID)
+	if err != nil {
+		h.respondError(w, http.StatusInternalServerError, "Failed to retrieve user team members")
+		return
+	}
+
+	// 3. Return the clean domain representation out to your dashboard UI
+	h.respondJSON(w, http.StatusOK, members)
+}
+
 func (h *UserHandler) respondJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)

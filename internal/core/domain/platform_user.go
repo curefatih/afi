@@ -21,13 +21,13 @@ const (
 
 type PlatformUser struct {
 	ID           string    `json:"id"`
+	Name         string    `json:"name"`
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"-"`
 	Provider     string    `json:"provider"`
 	ExternalID   string    `json:"external_id"`
 	CreatedAt    time.Time `json:"created_at"`
 }
-
 type CustomRole struct {
 	ID          string             `json:"id"`
 	Name        string             `json:"name"`

@@ -25,6 +25,9 @@ type PlatformUserRepository interface {
 	GetUserOrganizationProjects(ctx context.Context, userID string, orgID string) ([]*domain.Project, error)
 	GetUserOrganizationTeams(ctx context.Context, userID string, orgID string) ([]*domain.Team, error)
 	GetUserProjects(ctx context.Context, userID string) ([]*domain.Project, error)
+
+	GetUserTeam(ctx context.Context, userID string, teamID string) (*domain.Team, error)
+	GetUserTeamMembers(ctx context.Context, userID string, teamID string) ([]*domain.PlatformUser, error)
 }
 
 type PlatformUserService struct {
@@ -143,7 +146,7 @@ func (s *PlatformUserService) GetUserOrganizations(ctx context.Context, userID s
 // GetUserOrganizations implements ports.PlatformUserUseCase.
 func (s *PlatformUserService) GetUserProjects(ctx context.Context, userID string) ([]*domain.Project, error) {
 	if userID == "" {
-		return nil, errors.New("missing userID for organization retrieval")
+		return nil, errors.New("missing userID for project retrieval")
 	}
 	return s.repo.GetUserProjects(ctx, userID)
 }
@@ -151,7 +154,7 @@ func (s *PlatformUserService) GetUserProjects(ctx context.Context, userID string
 // GetUserOrganizations implements ports.PlatformUserUseCase.
 func (s *PlatformUserService) GetUserOrganizationProjects(ctx context.Context, userID string, orgID string) ([]*domain.Project, error) {
 	if userID == "" {
-		return nil, errors.New("missing userID for organization retrieval")
+		return nil, errors.New("missing userID for project retrieval")
 	}
 	return s.repo.GetUserOrganizationProjects(ctx, userID, orgID)
 }
@@ -159,7 +162,31 @@ func (s *PlatformUserService) GetUserOrganizationProjects(ctx context.Context, u
 // GetUserOrganizations implements ports.PlatformUserUseCase.
 func (s *PlatformUserService) GetUserOrganizationTeams(ctx context.Context, userID string, orgID string) ([]*domain.Team, error) {
 	if userID == "" {
-		return nil, errors.New("missing userID for organization retrieval")
+		return nil, errors.New("missing userID for team retrieval")
 	}
 	return s.repo.GetUserOrganizationTeams(ctx, userID, orgID)
+}
+
+// GetUserTeam implements ports.PlatformUserUseCase.
+func (s *PlatformUserService) GetUserTeam(ctx context.Context, userID string, teamID string) (*domain.Team, error) {
+	if userID == "" {
+		return nil, errors.New("missing userID for team retrieval")
+	}
+
+	if teamID == "" {
+		return nil, errors.New("missing teamID for team retrieval")
+	}
+	return s.repo.GetUserTeam(ctx, userID, teamID)
+}
+
+// GetUserTeamMembers implements ports.PlatformUserUseCase.
+func (s *PlatformUserService) GetUserTeamMembers(ctx context.Context, userID string, teamID string) ([]*domain.PlatformUser, error) {
+	if userID == "" {
+		return nil, errors.New("missing userID for team retrieval")
+	}
+
+	if teamID == "" {
+		return nil, errors.New("missing teamID for team retrieval")
+	}
+	return s.repo.GetUserTeamMembers(ctx, userID, teamID)
 }

@@ -213,6 +213,102 @@ func (s *PostgresStore) GetUserOrganizationTeams(ctx context.Context, userID str
 	return teams, nil
 }
 
+func (s *PostgresStore) GetUserTeam(
+	ctx context.Context,
+	userID string,
+	teamID string,
+) (*domain.Team, error) {
+	query := `
+	SELECT t.id, t.name, t.organization_id, t.created_at
+	FROM teams t
+	JOIN user_assignments ua ON t.id = ua.team_id
+	WHERE ua.user_id = $1
+	  AND t.id = $2
+	LIMIT 1
+	`
+
+	var team domain.Team
+
+	err := s.pool.QueryRow(ctx, query, userID, teamID).Scan(
+		&team.ID,
+		&team.Name,
+		&team.OrgID,
+		&team.CreatedAt,
+	)
+	if err != nil {
+		log.Printf("Error getting team %s for user %s: %v", teamID, userID, err)
+		return nil, err
+	}
+
+	return &team, nil
+}
+
+func (s *PostgresStore) GetUserTeamMembers(
+	ctx context.Context,
+	userID string,
+	teamID string,
+) ([]*domain.PlatformUser, error) {
+	// Ensure the requesting user belongs to the team.
+	const authQuery = `
+	SELECT 1
+	FROM user_assignments
+	WHERE user_id = $1
+	  AND team_id = $2
+	LIMIT 1
+	`
+
+	var exists int
+	if err := s.pool.QueryRow(ctx, authQuery, userID, teamID).Scan(&exists); err != nil {
+		return nil, err
+	}
+
+	const query = `
+	SELECT DISTINCT
+		pu.id,
+		pu.name,
+		pu.email,
+		pu.provider,
+		pu.external_id,
+		pu.created_at
+	FROM platform_users pu
+	INNER JOIN user_assignments ua
+		ON ua.user_id = pu.id
+	WHERE ua.team_id = $1
+	ORDER BY pu.name
+	`
+
+	rows, err := s.pool.Query(ctx, query, teamID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var members []*domain.PlatformUser
+
+	for rows.Next() {
+		var u domain.PlatformUser
+
+		if err := rows.Scan(
+			&u.ID,
+			&u.Name,
+			&u.Email,
+			&u.Provider,
+			&u.ExternalID,
+			&u.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		members = append(members, &u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return members, nil
+}
+
 // =========================================================================
 // 🔑 AuthRepository Implementation (Data Plane Fast Path)
 // =========================================================================

@@ -1,5 +1,8 @@
+import { teamsQueryOptions } from "#/api/team";
 import TeamCard from "#/components/team-card";
+import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/app/teams/")({
   staticData: {
@@ -8,33 +11,33 @@ export const Route = createFileRoute("/_authenticated/app/teams/")({
   component: RouteComponent,
 });
 
-const mockTeams = [
-  {
-    id: "1",
-    name: "Team Alpha",
-    description: "This is Team Alpha, focused on project A.",
-    previewMembers: [
-      { name: "Alice", avatarUrl: "https://example.com/alice.jpg" },
-      { name: "Bob", avatarUrl: "https://example.com/bob.jpg" },
-      { name: "Charlie", avatarUrl: "https://example.com/charlie.jpg" },
-    ],
-    tags: ["Finance", "Engineering"],
-    memberCount: 5,
-  },
-  {
-    id: "2",
-    name: "Team Beta",
-    description: "This is Team Beta, focused on project B.",
-    previewMembers: [
-      { name: "David", avatarUrl: "https://example.com/david.jpg" },
-      { name: "Eve", avatarUrl: "https://example.com/eve.jpg" },
-      { name: "Frank", avatarUrl: "https://example.com/frank.jpg" },
-    ],
-    tags: ["Marketing", "Design"],
-    memberCount: 3,
-  },
-];
+type Team = {
+  id: string;
+  name: string;
+  description: string;
+  previewMembers: {
+    name: string;
+    avatarUrl: string;
+  }[];
+  tags: string[];
+  memberCount: number;
+};
+
 function RouteComponent() {
+  const [teams, setTeams] = useState<Team[]>([]);
+
+  const teamsMutation = useMutation({
+    ...teamsQueryOptions(),
+  });
+
+  useEffect(() => {
+    teamsMutation.mutate(undefined, {
+      onSuccess(data, variables, onMutateResult, context) {
+        setTeams(data);
+      },
+    });
+  }, []);
+
   return (
     <div>
       <h1 className="scroll-m-20 text-2xl font-extrabold tracking-tight text-balance">
@@ -46,7 +49,7 @@ function RouteComponent() {
       </span>
 
       <div className="teams flex flex-wrap gap-4 mt-2">
-        {mockTeams.map((team) => (
+        {teams.map((team) => (
           <TeamCard
             key={team.id}
             id={team.id}
