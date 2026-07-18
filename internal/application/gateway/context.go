@@ -23,6 +23,9 @@ type Context struct {
 	route *routing.Decision
 
 	// Provider
+	// providerResponses contains every provider interaction during the request.
+	// providerResponses []*provider.Response
+	// Response remains the final response returned to the client.
 	response *provider.Response
 
 	// Quota

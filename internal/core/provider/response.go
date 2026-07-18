@@ -1,5 +1,7 @@
 package provider
 
+import "github.com/curefatih/afi/internal/core/usage"
+
 type Response struct {
 	ID string
 
@@ -11,7 +13,7 @@ type Response struct {
 
 	FinishReason FinishReason
 
-	Usage Usage
+	Usage *usage.Report
 
 	Metadata map[string]any
 }
