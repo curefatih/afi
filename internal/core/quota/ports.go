@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/curefatih/afi/internal/core/auth"
+	"github.com/curefatih/afi/internal/core/usage"
 )
 
 type Repository interface {
@@ -13,11 +14,11 @@ type Repository interface {
 		targetID string,
 	) ([]Quota, error)
 
-	AddUsage(
+	Commit(
 		ctx context.Context,
 		scope Scope,
 		targetID string,
-		usage []Usage,
+		usage []usage.Usage,
 	) error
 }
 

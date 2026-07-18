@@ -1,35 +1,37 @@
 package quota
 
+import "github.com/curefatih/afi/internal/core/usage"
+
 type Evaluator struct{}
 
 func NewEvaluator() *Evaluator {
 	return &Evaluator{}
 }
 
-func (e *Evaluator) Evaluate(
+func (e Evaluator) Evaluate(
 	quotas []Quota,
-	usage []Usage,
+	use []usage.Usage,
 ) Decision {
 
-	for _, q := range quotas {
+	index := make(map[usage.Metric]Quota)
 
-		if !q.Enabled {
+	for _, q := range quotas {
+		if q.Enabled {
+			index[q.Metric] = q
+		}
+	}
+
+	for _, u := range use {
+
+		q, ok := index[u.Metric]
+		if !ok {
 			continue
 		}
 
-		for _, u := range usage {
-
-			if u.Metric != q.Metric {
-				continue
-			}
-
-			if q.Used.Add(u.Value).GreaterThan(q.Limit) {
-
-				return Decision{
-					Allowed:  false,
-					Reason:   "quota exceeded",
-					Violated: &q,
-				}
+		if q.Used.Add(u.Value).GreaterThan(q.Limit) {
+			return Decision{
+				Allowed: false,
+				Metric:  u.Metric,
 			}
 		}
 	}

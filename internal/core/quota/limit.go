@@ -1,9 +1,11 @@
 package quota
 
+import "github.com/curefatih/afi/internal/core/usage"
+
 type Limit struct {
 	ID string
 
-	Metric Metric
+	Metric usage.Metric
 
 	Max int64
 

@@ -1,11 +1,13 @@
 package quota
 
+import "github.com/curefatih/afi/internal/core/usage"
+
 type Decision struct {
 	Allowed bool
 
-	Reason string
+	Metric usage.Metric
 
-	Violated *Quota
+	Quota *Quota
 }
 
 type Subject struct {

@@ -1,6 +1,9 @@
 package quota
 
-import "github.com/shopspring/decimal"
+import (
+	"github.com/curefatih/afi/internal/core/usage"
+	"github.com/shopspring/decimal"
+)
 
 type Scope string
 
@@ -19,7 +22,7 @@ type Quota struct {
 
 	TargetID string
 
-	Metric Metric
+	Metric usage.Metric
 
 	Limit decimal.Decimal
 
