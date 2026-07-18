@@ -24,7 +24,6 @@ import {
   FieldSeparator,
 } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
-import { useAuthStore, useAuthUser } from "#/state/auth-state";
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
