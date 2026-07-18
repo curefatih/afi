@@ -8,11 +8,17 @@ import (
 )
 
 type ResolveModel struct {
-	model model.Selector
+	model model.Service
+}
+
+func NewResolveModel(modelService *model.Service) *ResolveModel {
+	return &ResolveModel{
+		model: *modelService,
+	}
 }
 
 func (s *ResolveModel) Name() string {
-	return "ResolveModel"
+	return "resolve_model"
 }
 
 func (s *ResolveModel) Execute(
