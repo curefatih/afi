@@ -54,6 +54,10 @@ func (c *Context) Route() *routing.Decision {
 	return c.route
 }
 
+func (c *Context) SetRoute(r *routing.Decision) {
+	c.route = r
+}
+
 func (c *Context) Response() *provider.Response {
 	return c.response
 }
