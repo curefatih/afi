@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/curefatih/afi/internal/core/provider"
+	"github.com/curefatih/afi/internal/core/usage"
+	"github.com/shopspring/decimal"
 )
 
 type Translator struct{}
@@ -23,7 +25,7 @@ func (t *Translator) Encode(req *provider.Request) (*ChatCompletionRequest, erro
 	}
 
 	dto := &ChatCompletionRequest{
-		Model: req.Model.ProviderID,
+		Model: req.Model.ProviderModelID,
 	}
 
 	// System prompt
@@ -118,9 +120,18 @@ func (t *Translator) Decode(resp *ChatCompletionResponse) (*provider.Response, e
 	result := &provider.Response{
 		ID:    resp.ID,
 		Model: resp.Model,
-		Usage: provider.Usage{
-			InputTokens:  resp.Usage.PromptTokens,
-			OutputTokens: resp.Usage.CompletionTokens,
+		Usage: &usage.Report{
+			Model: resp.Model,
+			Items: []usage.Usage{
+				usage.Usage{
+					Metric: usage.MetricInputTokens,
+					Value:  decimal.New(resp.Usage.PromptTokens, 10),
+				},
+				usage.Usage{
+					Metric: usage.MetricOutputTokens,
+					Value:  decimal.New(resp.Usage.CompletionTokens, 10),
+				},
+			},
 		},
 		Metadata: map[string]any{},
 	}
