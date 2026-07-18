@@ -12,10 +12,10 @@ type CheckQuota struct {
 }
 
 func NewCheckQuota(
-	service quota.Service,
+	service *quota.Service,
 ) *CheckQuota {
 	return &CheckQuota{
-		service: service,
+		service: *service,
 	}
 }
 
