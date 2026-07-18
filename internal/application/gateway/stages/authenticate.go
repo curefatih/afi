@@ -11,6 +11,12 @@ type Authenticate struct {
 	auth auth.Service
 }
 
+func NewAuthenticate(authService *auth.Service) *Authenticate {
+	return &Authenticate{
+		auth: *authService,
+	}
+}
+
 func (s *Authenticate) Name() string {
 	return "authenticate"
 }
