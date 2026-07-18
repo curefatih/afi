@@ -3,7 +3,7 @@ package routing
 type Target struct {
 	ProviderID string
 
-	ModelID string
+	ProviderModelID string
 
 	Weight int
 

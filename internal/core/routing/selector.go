@@ -7,6 +7,6 @@ import (
 type Selector interface {
 	Select(
 		ctx context.Context,
-		routes []Route,
+		route Route,
 	) (*Decision, error)
 }

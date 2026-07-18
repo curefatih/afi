@@ -20,12 +20,12 @@ func NewService(
 
 func (s *Service) Resolve(
 	ctx context.Context,
-	request ResolveRequest,
+	req ResolveRequest,
 ) (*Decision, error) {
 
-	candidates, err := s.repo.FindCandidates(
+	route, err := s.repo.Find(
 		ctx,
-		request,
+		req,
 	)
 
 	if err != nil {
@@ -34,6 +34,6 @@ func (s *Service) Resolve(
 
 	return s.selector.Select(
 		ctx,
-		candidates,
+		*route,
 	)
 }
