@@ -12,10 +12,10 @@ type ResolveRoute struct {
 }
 
 func NewResolveRoute(
-	service routing.Service,
+	service *routing.Service,
 ) *ResolveRoute {
 	return &ResolveRoute{
-		service: service,
+		service: *service,
 	}
 }
 
