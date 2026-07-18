@@ -11,6 +11,12 @@ type ExecuteProvider struct {
 	registry provider.Registry
 }
 
+func NewExecuteProvider(registry provider.Registry) *ExecuteProvider {
+	return &ExecuteProvider{
+		registry: registry,
+	}
+}
+
 func (s *ExecuteProvider) Name() string {
 	return "ExecuteProvider"
 }
