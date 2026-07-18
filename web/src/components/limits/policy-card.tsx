@@ -28,10 +28,7 @@ type Props = {
   onClick(): void;
 };
 
-export function PolicyCard({
-  policy,
-  onClick,
-}: Props) {
+export function PolicyCard({ policy, onClick }: Props) {
   const Icon = {
     organization: Building2,
     team: Users,
@@ -46,33 +43,26 @@ export function PolicyCard({
     >
       <CardContent className="flex items-center justify-between p-6">
         <div className="flex gap-4">
-          <div className="rounded-md border p-3">
-            <Icon className="h-5 w-5" />
+          <div>
+            <div className="rounded-md border p-3">
+              <Icon className="h-5 w-5" />
+            </div>
           </div>
 
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-medium">{policy.name}</h3>
 
-              <Badge
-                variant={
-                  policy.enabled ? "default" : "secondary"
-                }
-              >
+              <Badge variant={policy.enabled ? "default" : "secondary"}>
                 {policy.enabled ? "Enabled" : "Disabled"}
               </Badge>
 
-              <Badge variant="outline">
-                {policy.scope}
-              </Badge>
+              <Badge variant="outline">{policy.scope}</Badge>
             </div>
 
             <div className="mt-2 flex flex-wrap gap-2">
               {policy.models.map((model) => (
-                <Badge
-                  key={model}
-                  variant="secondary"
-                >
+                <Badge key={model} variant="secondary">
                   {model}
                 </Badge>
               ))}
