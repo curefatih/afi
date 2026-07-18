@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { LimitsToolbar } from "@/components/limits/toolbar";
-import { LimitsStats } from "@/components/limits/stats";
-import { PolicyList } from "@/components/limits/policy-list";
+import { LimitsToolbar } from "#/components/limits/toolbar";
+import { LimitsStats } from "#/components/limits/stats";
+import { PolicyList } from "#/components/limits/policy-list";
 
 export const Route = createFileRoute(
   "/_authenticated/app/settings/limits",
