@@ -26,7 +26,8 @@ func New(ctx context.Context) (*App, error) {
 		return nil, err
 	}
 
-	providers, err := buildProviders(cfg)
+	transports := buildTransports()
+	providers, err := buildProviders(cfg, transports)
 	if err != nil {
 		return nil, err
 	}
