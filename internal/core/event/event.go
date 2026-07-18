@@ -1,5 +1,11 @@
 package event
 
-type Event interface {
-	Name() string
+import "time"
+
+type Event struct {
+	ID        string
+	Type      string
+	Timestamp time.Time
+
+	Payload any
 }

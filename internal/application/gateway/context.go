@@ -8,11 +8,14 @@ import (
 	"github.com/curefatih/afi/internal/core/quota"
 	"github.com/curefatih/afi/internal/core/routing"
 	"github.com/curefatih/afi/internal/core/usage"
+
+	"github.com/google/uuid"
 )
 
 type Context struct {
 	// Incoming request
-	request *provider.Request
+	requestID uuid.UUID
+	request   *provider.Request
 
 	// Authentication
 	principal *auth.Principal
@@ -96,4 +99,8 @@ func (c *Context) Decision() *quota.Decision {
 
 func (c *Context) SetDecision(q *quota.Decision) {
 	c.decision = q
+}
+
+func (c *Context) RequestID() uuid.UUID {
+	return c.requestID
 }
