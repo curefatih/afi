@@ -1,4 +1,5 @@
-import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert";
+import { meQueryOptions } from "#/api/auth";
+import { Alert, AlertDescription } from "#/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "#/components/ui/avatar";
 import { Button } from "#/components/ui/button";
 import {
@@ -9,25 +10,26 @@ import {
 } from "#/components/ui/card";
 import {
   Combobox,
-  ComboboxEmpty,
   ComboboxContent,
+  ComboboxEmpty,
   ComboboxInput,
-  ComboboxList,
   ComboboxItem,
+  ComboboxList,
 } from "#/components/ui/combobox";
 import {
-  FieldGroup,
   Field,
-  FieldSeparator,
-  FieldLabel,
   FieldError,
-  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldSeparator,
 } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
-import { Separator } from "#/components/ui/separator";
+import { useAuthStore, useAuthUser } from "#/state/auth-state";
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
 import { InfoIcon, Upload } from "lucide-react";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/_authenticated/app/account")({
   component: RouteComponent,
@@ -100,15 +102,28 @@ const timezones = [
 ];
 
 function RouteComponent() {
+  const meQuery = useQuery({
+    ...meQueryOptions(),
+  });
+
   const form = useForm({
     defaultValues: {
       name: "",
       email: "",
-      password: "",
       timezone: "",
     },
     onSubmit: async (values) => {},
   });
+
+  useEffect(() => {
+    if (!meQuery.data) return;
+
+    form.reset({
+      name: meQuery.data.name,
+      email: meQuery.data.email,
+      timezone: meQuery.data.timezone,
+    });
+  }, [meQuery.data, form]);
 
   return (
     <div className="w-full h-full flex justify-center items-center">
@@ -224,8 +239,7 @@ function RouteComponent() {
             </div>
           </div>
         </CardContent>
-        <CardFooter className="justify-end">
-        </CardFooter>
+        <CardFooter className="justify-end"></CardFooter>
       </Card>
     </div>
   );
