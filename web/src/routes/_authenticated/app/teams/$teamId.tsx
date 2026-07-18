@@ -30,7 +30,6 @@ type TeamMember = {
 };
 function RouteComponent() {
   const { teamId } = Route.useParams();
-  console.log("teamId", teamId);
 
   const teamQuery = useQuery({
     ...teamQueryOptions(teamId),
