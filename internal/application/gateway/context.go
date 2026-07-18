@@ -89,3 +89,11 @@ func (c *Context) Cost() *pricing.Money {
 func (c *Context) SetCost(m *pricing.Money) {
 	c.cost = m
 }
+
+func (c *Context) Decision() *quota.Decision {
+	return c.decision
+}
+
+func (c *Context) SetDecision(q *quota.Decision) {
+	c.decision = q
+}
