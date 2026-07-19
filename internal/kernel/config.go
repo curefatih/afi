@@ -17,9 +17,9 @@ type Config struct {
 	} `yaml:"controlplane"`
 
 	Gateway struct {
-		Addr                   string `yaml:"addr" env:"AFI_GATEWAY_ADDR" env-default:":8080"`
-		SnapshotPollIntervalRaw string `yaml:"snapshot_poll_interval" env:"AFI_SNAPSHOT_POLL_INTERVAL" env-default:"2s"`
-		SnapshotPollInterval   time.Duration `yaml:"-"`
+		Addr                    string        `yaml:"addr" env:"AFI_GATEWAY_ADDR" env-default:":8080"`
+		SnapshotPollIntervalRaw string        `yaml:"snapshot_poll_interval" env:"AFI_SNAPSHOT_POLL_INTERVAL" env-default:"2s"`
+		SnapshotPollInterval    time.Duration `yaml:"-"`
 	} `yaml:"gateway"`
 
 	Auth struct {
@@ -85,7 +85,7 @@ type Config struct {
 func LoadConfig() (*Config, error) {
 	path := os.Getenv("AFI_CONFIG")
 	if path == "" {
-		path = "configs/local.yaml"
+		path = "configs/dev.yaml"
 	}
 
 	var cfg Config
