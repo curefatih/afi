@@ -38,7 +38,7 @@ func main() {
 	store := controlplane.NewStore(pool)
 	snapStore := snapshot.NewStore(pool)
 	holder := dataplane.NewHolder()
-	pipeline := dataplane.NewPipeline(holder, dataplane.NewOpenAIClient(), log)
+	pipeline := dataplane.NewPipelineWithRegistry(holder, dataplane.DefaultRegistry(), log)
 	pipeline.Counters = controlplane.CounterAdapter{Store: store}
 	pipeline.Usage = func(e dataplane.UsageEvent) {
 		payload, err := workers.EncodeUsage(workers.UsagePayload{
