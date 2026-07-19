@@ -45,21 +45,19 @@ function RouteComponent() {
 	const applyTypeDefaults = (next: string) => {
 		setType(next);
 		if (next === "anthropic") {
-			setName((n) =>
-				n === "OpenAI" || n === "Gemini" || n === "" ? "Anthropic" : n,
-			);
+			setName("Anthropic");
 			setBaseURL("https://api.anthropic.com/v1");
 			setApiKeyEnv("ANTHROPIC_API_KEY");
 		} else if (next === "gemini") {
-			setName((n) =>
-				n === "OpenAI" || n === "Anthropic" || n === "" ? "Gemini" : n,
-			);
+			setName("Gemini");
 			setBaseURL("https://generativelanguage.googleapis.com/v1beta");
 			setApiKeyEnv("GEMINI_API_KEY");
+		} else if (next === "openai_compatible") {
+			setName("Ollama / compatible");
+			setBaseURL("http://127.0.0.1:11434/v1");
+			setApiKeyEnv("OLLAMA_API_KEY");
 		} else if (next === "openai") {
-			setName((n) =>
-				n === "Anthropic" || n === "Gemini" || n === "" ? "OpenAI" : n,
-			);
+			setName("OpenAI");
 			setBaseURL("https://api.openai.com/v1");
 			setApiKeyEnv("OPENAI_API_KEY");
 		}
@@ -93,6 +91,9 @@ function RouteComponent() {
 										</div>
 										<div className="text-muted-foreground text-xs">
 											env: {p.api_key_env}
+											{p.capabilities?.stream
+												? " · stream"
+												: " · no-stream"}
 										</div>
 									</div>
 									<Button
@@ -147,6 +148,9 @@ function RouteComponent() {
 								<option value="openai">openai</option>
 								<option value="anthropic">anthropic</option>
 								<option value="gemini">gemini</option>
+								<option value="openai_compatible">
+									openai_compatible
+								</option>
 							</select>
 						</div>
 						<div className="space-y-1">

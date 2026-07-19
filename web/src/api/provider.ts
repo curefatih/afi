@@ -1,6 +1,11 @@
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "#/lib/api-client";
 
+export type ProviderCapabilities = {
+	chat: boolean;
+	stream: boolean;
+};
+
 export type Provider = {
 	id: string;
 	organization_id: string;
@@ -8,6 +13,7 @@ export type Provider = {
 	type: string;
 	base_url: string;
 	api_key_env: string;
+	capabilities: ProviderCapabilities;
 	created_at: string;
 };
 
@@ -27,6 +33,7 @@ export type CreateProviderInput = {
 	type?: string;
 	base_url: string;
 	api_key_env?: string;
+	capabilities?: ProviderCapabilities;
 };
 
 export const createProviderMutationOptions = () =>
