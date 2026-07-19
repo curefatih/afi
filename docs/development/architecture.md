@@ -45,11 +45,12 @@ Provider adapters (`openai`, `anthropic`, `gemini`, `openai_compatible`, …) im
 
 Also exposes:
 
-* `GET /v1/models` — virtual models from the key’s organization routes (with `supports_streaming`)
+* `GET /v1/models` — virtual models from the key’s organization routes (`supports_streaming`, `supports_tts`, `supports_stt`)
 * `POST /v1/chat/completions` — OpenAI-shaped chat (adapters translate native APIs)
 * `POST /v1/messages` — Anthropic-shaped pass-through (Anthropic providers only)
+* `POST /v1/audio/speech` / `POST /v1/audio/transcriptions` — OpenAI-shaped TTS/STT (openai / openai_compatible only)
 
-The playground honors `supports_streaming` per model. Failover retries only before the response body is committed to the client.
+The playground honors streaming/TTS/STT capabilities per model. Chat failover retries only before the response body is committed to the client (audio has no failover in this build).
 
 Pipeline stages stay stateless aside from the in-memory snapshot pointer. Quota counters and the usage outbox use Postgres as operational stores.
 

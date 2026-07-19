@@ -51,10 +51,12 @@ Written on first control-plane start (or `make seed`):
 | Platform email | `admin@afi.local` |
 | Platform password | `admin` |
 | Default model route | `gpt-4o-mini` → OpenAI `gpt-4o-mini` |
+| Seeded audio routes | `tts-1`, `whisper-1` → `prov_openai` |
 | Seeded providers | `prov_openai`, `prov_anthropic`, `prov_gemini`, `prov_ollama` (`openai_compatible` → `http://127.0.0.1:11434/v1`, no default route) |
 | `OLLAMA_API_KEY` | _(any value if Ollama ignores auth)_ | gateway → openai_compatible |
 | Route `fallbacks` | optional ordered `[{provider_id,target_model}]` for 5xx/timeout/429 retry |
-| Gateway models | `GET /v1/models` lists org route model ids for the virtual key |
+| Gateway models | `GET /v1/models` lists org route model ids (`supports_streaming` / `supports_tts` / `supports_stt`) |
+| Gateway audio | `POST /v1/audio/speech`, `POST /v1/audio/transcriptions` (openai / openai_compatible) |
 
 ## Ports
 

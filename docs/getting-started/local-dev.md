@@ -29,7 +29,7 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 export GEMINI_API_KEY="..."
 ```
 
-The gateway reads these env vars when calling upstream providers (see snapshot provider `api_key_env`). The chat playground loads models from `GET /v1/models` and streams only when `supports_streaming` is true.
+The gateway reads these env vars when calling upstream providers (see snapshot provider `api_key_env`). Playgrounds load models from `GET /v1/models` (stream / TTS / STT flags). Seed includes chat route plus `tts-1` and `whisper-1` on OpenAI.
 
 ## 3. Run the control plane
 

@@ -4,14 +4,14 @@ Gateway chat dispatch uses a **registry** of in-process adapters. The pipeline l
 
 ## Built-in types
 
-| Type | Chat | Stream | Notes |
-|------|------|--------|-------|
-| `openai` | yes | yes | OpenAI `/v1/chat/completions` |
-| `anthropic` | yes | yes | Messages API → OpenAI-shaped responses/SSE |
-| `gemini` | yes | yes | `generateContent` / `streamGenerateContent` → OpenAI JSON/SSE |
-| `openai_compatible` | yes | yes | Same wire protocol as OpenAI; any compatible base (Ollama, Groq, Azure OpenAI-compatible, etc.) |
+| Type | Chat | Stream | TTS | STT | Notes |
+|------|------|--------|-----|-----|-------|
+| `openai` | yes | yes | yes | yes | Chat + `/audio/speech` + `/audio/transcriptions` |
+| `anthropic` | yes | yes | no | no | Messages API → OpenAI-shaped responses/SSE |
+| `gemini` | yes | yes | no | no | `generateContent` / `streamGenerateContent` → OpenAI JSON/SSE |
+| `openai_compatible` | yes | yes | yes | yes | Same wire protocol as OpenAI (incl. audio if upstream supports it) |
 
-Capabilities (`chat`, `stream`) are stored on the provider in the snapshot (defaults applied per type when empty). Streaming requests against a non-streaming provider return `400`.
+Capabilities (`chat`, `stream`, `tts`, `stt`) are stored on the provider in the snapshot (defaults applied per type when empty). Streaming/TTS/STT requests against unsupported providers return `400`.
 
 ## Adding a provider (in-tree)
 

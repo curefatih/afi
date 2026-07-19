@@ -113,6 +113,25 @@ curl -sN http://localhost:8080/v1/chat/completions \
 
 Failover: set `"fallbacks":[{"provider_id":"prov_anthropic","target_model":"claude-sonnet-4-20250514"}]` on an OpenAI primary route to retry on 5xx/timeout/429.
 
+## TTS / STT (OpenAI)
+
+Seed includes routes `tts-1` and `whisper-1` → `prov_openai`.
+
+```bash
+export OPENAI_API_KEY="sk-..."
+
+curl -s http://localhost:8080/v1/audio/speech \
+  -H "Authorization: Bearer sk-project-local-dev-token-12345" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"tts-1","input":"Hello from AFI","voice":"alloy"}' \
+  --output /tmp/afi-tts.mp3
+
+curl -s http://localhost:8080/v1/audio/transcriptions \
+  -H "Authorization: Bearer sk-project-local-dev-token-12345" \
+  -F model=whisper-1 \
+  -F file=@/tmp/afi-tts.mp3
+```
+
 ## Editable route (UI or API)
 
 Create an alias route that maps `ping-model` → `gpt-4o-mini`, then call it without restarting the gateway.

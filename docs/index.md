@@ -33,9 +33,10 @@ flowchart TB
 * Control plane: migrate, seed, snapshot publish, platform auth, org create + member invite
 * Personal and service-account API keys; quotas on org / project / user / api_key
 * Gateway: virtual API key auth → quotas → routes (with failover) → provider registry
-* OpenAI-compatible `POST /v1/chat/completions` and `GET /v1/models` (with `supports_streaming`)
+* OpenAI-compatible `POST /v1/chat/completions` and `GET /v1/models` (`supports_streaming` / `supports_tts` / `supports_stt`)
 * Native Anthropic `POST /v1/messages` (Anthropic providers / routes)
+* OpenAI-compatible `POST /v1/audio/speech` and `POST /v1/audio/transcriptions` (openai / openai_compatible)
 * Streaming for OpenAI, Anthropic, Gemini, and `openai_compatible` (capability-gated)
 * Usage outbox + worker with optional `cost_usd`
-* Web UI (`:8081`) with capability-aware playground against the gateway (`:8080`)
+* Web UI: Providers, Routing, Keys, Quotas, chat/TTS/STT playground against the gateway
 * Docs via `make doc-serve`
