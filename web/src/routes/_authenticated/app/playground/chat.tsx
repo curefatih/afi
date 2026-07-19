@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
 	ArrowUpIcon,
+	Loader2Icon,
 	MessageCircleDashedIcon,
 	RotateCwIcon,
+	Settings2Icon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { PageBody, PageHeader } from "#/components/page-header";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { PageBody } from "#/components/page-header";
 import { Button } from "#/components/ui/button";
 import {
 	Card,
@@ -27,7 +29,7 @@ import {
 	InputGroup,
 	InputGroupAddon,
 	InputGroupButton,
-	InputGroupInput,
+	InputGroupTextarea,
 } from "#/components/ui/input-group";
 import { Label } from "#/components/ui/label";
 import { MessageAnimated } from "#/components/ui/message-animated";
@@ -45,6 +47,14 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "#/components/ui/select";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetHeader,
+	SheetTitle,
+	SheetTrigger,
+} from "#/components/ui/sheet";
 import {
 	Tooltip,
 	TooltipContent,
@@ -65,7 +75,7 @@ type GatewayModel = { id: string };
 type Message = {
 	id: string;
 	role: "user" | "assistant";
-	content: Array<{
+	parts: Array<{
 		type: "text";
 		text: string;
 	}>;
@@ -105,6 +115,87 @@ async function readSSEContent(
 	}
 }
 
+function SettingsFields({
+	model,
+	models,
+	modelsError,
+	projectId,
+	projects,
+	apiKey,
+	onModelChange,
+	onProjectChange,
+}: {
+	model: string;
+	models: GatewayModel[];
+	modelsError: string | null;
+	projectId: string;
+	projects: Array<{ id: string; name: string }>;
+	apiKey: string;
+	onModelChange: (value: string) => void;
+	onProjectChange: (value: string) => void;
+}) {
+	return (
+		<div className="space-y-4">
+			<div className="space-y-2">
+				<Label htmlFor="chat-model">Model</Label>
+				{modelsError ? (
+					<p className="text-destructive text-xs">{modelsError}</p>
+				) : null}
+				<Select
+					value={model}
+					onValueChange={(value) => onModelChange(value ?? models[0]?.id ?? "")}
+					disabled={models.length === 0}
+				>
+					<SelectTrigger id="chat-model" className="w-full">
+						<SelectValue placeholder="Loading routes…" />
+					</SelectTrigger>
+					<SelectContent>
+						{models.map((m) => (
+							<SelectItem key={m.id} value={m.id}>
+								{m.id}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+				<p className="text-muted-foreground text-xs">
+					From gateway /v1/models (org routes in the current snapshot).
+				</p>
+			</div>
+
+			<div className="space-y-2">
+				<Label htmlFor="chat-project">Project context</Label>
+				<Select
+					value={projectId}
+					onValueChange={(value) => onProjectChange(value ?? "seeded")}
+				>
+					<SelectTrigger id="chat-project" className="w-full">
+						<SelectValue placeholder="Seeded key" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="seeded">Seeded local key</SelectItem>
+						{projects.map((project) => (
+							<SelectItem key={project.id} value={project.id}>
+								{project.name}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+				<p className="text-muted-foreground text-xs">
+					Requests currently use the seeded gateway key. Create project keys
+					under API Keys for production-like auth.
+				</p>
+			</div>
+
+			<div className="space-y-2">
+				<Label>Active key</Label>
+				<code className="block break-all rounded-md border bg-muted/40 px-2 py-1.5 text-xs">
+					{apiKey}
+				</code>
+			</div>
+		</div>
+	);
+}
+
 function RouteComponent() {
 	const activeOrg = useActiveOrg();
 	const { setActiveProjectById } = useOrgActions();
@@ -116,12 +207,19 @@ function RouteComponent() {
 	const [error, setError] = useState<string | null>(null);
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [projectId, setProjectId] = useState<string>("seeded");
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 	const projects = activeOrg?.projects ?? [];
 
 	const apiKey = useMemo(() => {
 		return GATEWAY_API_KEY;
 	}, []);
+
+	const waitingForFirstToken =
+		isBusy &&
+		messages.length > 0 &&
+		messages[messages.length - 1]?.role === "assistant" &&
+		!(messages[messages.length - 1]?.parts[0]?.text ?? "");
 
 	useEffect(() => {
 		let cancelled = false;
@@ -161,7 +259,7 @@ function RouteComponent() {
 		const userMsg: Message = {
 			id: crypto.randomUUID(),
 			role: "user",
-			content: [{ type: "text", text }],
+			parts: [{ type: "text", text }],
 		};
 		const assistantId = crypto.randomUUID();
 		const next = [...messages, userMsg];
@@ -170,7 +268,7 @@ function RouteComponent() {
 			{
 				id: assistantId,
 				role: "assistant",
-				content: [{ type: "text", text: "" }],
+				parts: [{ type: "text", text: "" }],
 			},
 		]);
 		setInput("");
@@ -189,7 +287,7 @@ function RouteComponent() {
 					stream: true,
 					messages: next.map((m) => ({
 						role: m.role,
-						content: m.content.map((c) => c.text).join("\n"),
+						content: m.parts.map((c) => c.text).join("\n"),
 					})),
 				}),
 			});
@@ -204,10 +302,10 @@ function RouteComponent() {
 						m.id === assistantId
 							? {
 									...m,
-									content: [
+									parts: [
 										{
 											type: "text",
-											text: (m.content[0]?.text ?? "") + piece,
+											text: (m.parts[0]?.text ?? "") + piece,
 										},
 									],
 								}
@@ -220,189 +318,213 @@ function RouteComponent() {
 			setMessages((prev) =>
 				prev.filter(
 					(m) =>
-						m.id !== assistantId || (m.content[0]?.text ?? "").length > 0,
+						m.id !== assistantId || (m.parts[0]?.text ?? "").length > 0,
 				),
 			);
 		} finally {
 			setIsBusy(false);
+			textareaRef.current?.focus();
 		}
 	};
 
-	return (
-		<PageBody className="h-full min-h-0">
-			<PageHeader
-				title="Chat playground"
-				description="Streams OpenAI-compatible chat through the local gateway. Models come from GET /v1/models (your org routes)."
-			/>
+	const onProjectChange = (next: string) => {
+		setProjectId(next);
+		setActiveProjectById(next === "seeded" ? undefined : next);
+	};
 
-			<div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
-				<div className="min-h-0 flex-1">
-					<MessageScrollerProvider>
-						<Card className="mx-auto h-full w-full gap-0">
-							<CardHeader className="gap-1 border-b">
-								<CardTitle>Conversation</CardTitle>
-								<CardDescription>
-									{GATEWAY_API_URL} · {model || "—"} · stream
-								</CardDescription>
-								<CardAction>
-									<Tooltip>
-										<TooltipTrigger
-											render={
-												<Button
-													variant="outline"
-													size="icon"
-													aria-label="Reset conversation"
-													onClick={() => {
-														setMessages([]);
-														setError(null);
-													}}
-												>
-													<RotateCwIcon />
-												</Button>
-											}
-										/>
-										<TooltipContent>
-											<p>Reset</p>
-										</TooltipContent>
-									</Tooltip>
-								</CardAction>
-							</CardHeader>
-							<CardContent className="flex-1 overflow-hidden p-0">
-								{messages.length === 0 ? (
-									<Empty className="h-full">
-										<EmptyHeader>
-											<EmptyMedia variant="icon">
-												<MessageCircleDashedIcon />
-											</EmptyMedia>
-											<EmptyTitle>Send a message</EmptyTitle>
-											<EmptyDescription>
-												Traffic hits the gateway with your configured virtual
-												API key.
-											</EmptyDescription>
-										</EmptyHeader>
-									</Empty>
-								) : (
-									<MessageScroller>
-										<MessageScrollerViewport>
-											<MessageScrollerContent
-												aria-busy={isBusy}
-												className="p-(--card-spacing)"
+	const settingsProps = {
+		model,
+		models,
+		modelsError,
+		projectId,
+		projects,
+		apiKey,
+		onModelChange: setModel,
+		onProjectChange,
+	};
+
+	return (
+		<PageBody className="min-h-0 flex-1 gap-3 overflow-hidden">
+			<div className="flex shrink-0 items-start justify-between gap-3">
+				<div className="min-w-0 space-y-1">
+					<h1 className="text-2xl font-semibold tracking-tight">
+						Chat playground
+					</h1>
+					<p className="truncate text-sm text-muted-foreground">
+						{GATEWAY_API_URL}
+						{model ? ` · ${model}` : ""} · stream
+					</p>
+				</div>
+				<Sheet>
+					<SheetTrigger
+						render={
+							<Button
+								variant="outline"
+								size="icon"
+								className="lg:hidden"
+								aria-label="Open settings"
+							>
+								<Settings2Icon />
+							</Button>
+						}
+					/>
+					<SheetContent side="right" className="w-full sm:max-w-sm">
+						<SheetHeader>
+							<SheetTitle>Settings</SheetTitle>
+							<SheetDescription>
+								Model and auth context for this session.
+							</SheetDescription>
+						</SheetHeader>
+						<div className="px-4 pb-4">
+							<SettingsFields {...settingsProps} />
+						</div>
+					</SheetContent>
+				</Sheet>
+			</div>
+
+			<div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
+				<MessageScrollerProvider>
+					<Card className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden">
+						<CardHeader className="shrink-0 gap-1 border-b">
+							<CardTitle>Conversation</CardTitle>
+							<CardDescription className="truncate">
+								OpenAI-compatible chat through the local gateway
+							</CardDescription>
+							<CardAction>
+								<Tooltip>
+									<TooltipTrigger
+										render={
+											<Button
+												variant="outline"
+												size="icon"
+												aria-label="Reset conversation"
+												disabled={messages.length === 0 && !error}
+												onClick={() => {
+													setMessages([]);
+													setError(null);
+												}}
 											>
-												{messages.map((message) => (
+												<RotateCwIcon />
+											</Button>
+										}
+									/>
+									<TooltipContent>
+										<p>Reset</p>
+									</TooltipContent>
+								</Tooltip>
+							</CardAction>
+						</CardHeader>
+
+						<CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+							{messages.length === 0 ? (
+								<Empty className="h-full min-h-0">
+									<EmptyHeader>
+										<EmptyMedia variant="icon">
+											<MessageCircleDashedIcon />
+										</EmptyMedia>
+										<EmptyTitle>Send a message</EmptyTitle>
+										<EmptyDescription>
+											Traffic hits the gateway with your configured virtual API
+											key. The composer stays pinned below.
+										</EmptyDescription>
+									</EmptyHeader>
+								</Empty>
+							) : (
+								<MessageScroller className="min-h-0 flex-1">
+									<MessageScrollerViewport>
+										<MessageScrollerContent
+											aria-busy={isBusy}
+											className="p-(--card-spacing)"
+										>
+											{messages.map((message) => {
+												const isEmptyAssistant =
+													message.role === "assistant" &&
+													!(message.parts[0]?.text ?? "");
+												if (isEmptyAssistant && waitingForFirstToken) {
+													return (
+														<div
+															key={message.id}
+															className="flex items-center gap-2 text-sm text-muted-foreground"
+														>
+															<Loader2Icon className="size-4 animate-spin" />
+															Thinking…
+														</div>
+													);
+												}
+												if (isEmptyAssistant) return null;
+												return (
 													<MessageAnimated
 														key={message.id}
 														message={message}
 														scrollAnchor={message.role === "user"}
 													/>
-												))}
-											</MessageScrollerContent>
-										</MessageScrollerViewport>
-										<MessageScrollerButton />
-									</MessageScroller>
-								)}
-							</CardContent>
-							<CardFooter className="flex-col gap-2">
-								{error ? (
-									<p className="w-full text-xs text-destructive">{error}</p>
-								) : null}
-								<form
-									onSubmit={(e) => {
-										e.preventDefault();
-										void send();
-									}}
-									className="w-full"
-								>
-									<InputGroup>
-										<InputGroupInput
-											value={input}
-											onChange={(e) => setInput(e.target.value)}
-											placeholder="Message the gateway…"
-											disabled={isBusy || !model}
-										/>
-										<InputGroupAddon align="inline-end">
-											<InputGroupButton
-												type="submit"
-												variant="default"
-												size="icon-sm"
-												disabled={isBusy || !input.trim() || !model}
-											>
-												<ArrowUpIcon />
-												<span className="sr-only">Send</span>
-											</InputGroupButton>
-										</InputGroupAddon>
-									</InputGroup>
-								</form>
-							</CardFooter>
-						</Card>
-					</MessageScrollerProvider>
-				</div>
+												);
+											})}
+										</MessageScrollerContent>
+									</MessageScrollerViewport>
+									<MessageScrollerButton />
+								</MessageScroller>
+							)}
+						</CardContent>
 
-				<Card className="w-full shrink-0 lg:w-72">
-					<CardHeader>
+						<CardFooter className="shrink-0 flex-col items-stretch gap-2">
+							{error ? (
+								<p className="text-xs text-destructive">{error}</p>
+							) : null}
+							<form
+								onSubmit={(e) => {
+									e.preventDefault();
+									void send();
+								}}
+								className="w-full"
+							>
+								<InputGroup className="h-auto items-end py-1">
+									<InputGroupTextarea
+										ref={textareaRef}
+										value={input}
+										onChange={(e) => setInput(e.target.value)}
+										placeholder="Message the gateway…"
+										disabled={isBusy || !model}
+										rows={1}
+										className="max-h-40 min-h-10 field-sizing-content"
+										onKeyDown={(e) => {
+											if (e.key === "Enter" && !e.shiftKey) {
+												e.preventDefault();
+												void send();
+											}
+										}}
+									/>
+									<InputGroupAddon align="inline-end" className="pr-1.5 pb-1">
+										<InputGroupButton
+											type="submit"
+											variant="default"
+											size="icon-sm"
+											disabled={isBusy || !input.trim() || !model}
+											aria-label="Send"
+										>
+											{isBusy ? (
+												<Loader2Icon className="animate-spin" />
+											) : (
+												<ArrowUpIcon />
+											)}
+										</InputGroupButton>
+									</InputGroupAddon>
+								</InputGroup>
+								<p className="mt-1.5 text-xs text-muted-foreground">
+									Enter to send · Shift+Enter for a new line
+								</p>
+							</form>
+						</CardFooter>
+					</Card>
+				</MessageScrollerProvider>
+
+				<Card className="hidden w-72 shrink-0 overflow-y-auto lg:flex lg:flex-col">
+					<CardHeader className="shrink-0">
 						<CardTitle className="text-base">Settings</CardTitle>
 						<CardDescription>Model and auth context</CardDescription>
 					</CardHeader>
-					<CardContent className="space-y-4">
-						<div className="space-y-2">
-							<Label>Model</Label>
-							{modelsError ? (
-								<p className="text-destructive text-xs">{modelsError}</p>
-							) : null}
-							<Select
-								value={model}
-								onValueChange={(value) => setModel(value ?? models[0]?.id ?? "")}
-								disabled={models.length === 0}
-							>
-								<SelectTrigger className="w-full">
-									<SelectValue placeholder="Loading routes…" />
-								</SelectTrigger>
-								<SelectContent>
-									{models.map((m) => (
-										<SelectItem key={m.id} value={m.id}>
-											{m.id}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<p className="text-muted-foreground text-xs">
-								From gateway /v1/models (org routes in the current snapshot).
-							</p>
-						</div>
-
-						<div className="space-y-2">
-							<Label>Project context</Label>
-							<Select
-								value={projectId}
-								onValueChange={(value) => {
-									const next = value ?? "seeded";
-									setProjectId(next);
-									setActiveProjectById(next === "seeded" ? undefined : next);
-								}}
-							>
-								<SelectTrigger className="w-full">
-									<SelectValue placeholder="Seeded key" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="seeded">Seeded local key</SelectItem>
-									{projects.map((project) => (
-										<SelectItem key={project.id} value={project.id}>
-											{project.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<p className="text-xs text-muted-foreground">
-								Requests currently use the seeded gateway key. Create project
-								keys under API Keys for production-like auth.
-							</p>
-						</div>
-
-						<div className="space-y-2">
-							<Label>Active key</Label>
-							<code className="block break-all rounded-md border bg-muted/40 px-2 py-1.5 text-xs">
-								{apiKey}
-							</code>
-						</div>
+					<CardContent className="min-h-0">
+						<SettingsFields {...settingsProps} />
 					</CardContent>
 				</Card>
 			</div>
