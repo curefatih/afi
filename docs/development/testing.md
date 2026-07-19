@@ -11,7 +11,7 @@ go test ./...
 Covered areas:
 
 * Snapshot compile + org-scoped `LookupRoute` + hashed `LookupKey` + quota resolve
-* Data-plane auth, quota 429 / under-limit, provider registry, openai_compatible, capability stream reject, Anthropic SSE, `/v1/models`, route failover
+* Data-plane auth, quota 429 / under-limit, Redis minute rate limit, CEL policy 403, provider registry, openai_compatible, capability stream reject, Anthropic SSE, `/v1/models`, route failover
 * Usage outbox worker `ProcessOnce` + cost calculation
 
 * Control-plane JWT/password helpers
@@ -30,7 +30,7 @@ make verify
 
 Script: [`scripts/verify-local.sh`](../../scripts/verify-local.sh).
 
-Checks health, login, bad key → 401, internal publish auth, snapshot hot reload, optional live chat when `OPENAI_API_KEY` is set, optional usage drain when the worker is running, and quota → 429.
+Checks health, login, bad key → 401, internal publish auth, snapshot hot reload, optional live chat when `OPENAI_API_KEY` is set, optional usage drain when the worker is running, quota → 429, CEL deny → 403, and Redis minute rate limit → 429 when Redis is up.
 
 ## Manual smoke
 

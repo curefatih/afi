@@ -18,6 +18,7 @@ make dev-up
 | Service | URL |
 |---------|-----|
 | Postgres | `localhost:5433` (user/password/db: `afi`) |
+| Redis | `localhost:6379` (rate-limit windows) |
 | Adminer | http://localhost:5050 |
 
 ## 2. Export provider credentials
@@ -89,7 +90,7 @@ Open http://localhost:3000 and sign in with `admin@afi.local` / `admin`.
 
 Use **Organizations** to create another org and add an existing user by email (user must already exist — no SMTP invite).
 
-**API Keys:** create a **personal** key for yourself, or (as org owner/admin) a **service account** key scoped to the org or a project. The seeded `sk-project-local-dev-token-12345` is a project service-account key. Admins set per-user or per-key quotas under **Quotas**.
+**API Keys:** create a **personal** key for yourself, or (as org owner/admin) a **service account** key scoped to the org or a project. The seeded `sk-project-local-dev-token-12345` is a project service-account key. Admins set per-user or per-key quotas under **Quotas** (`total` or Redis `minute`/`hour`/`day`) and CEL allow-rules under **Policies**.
 
 The web app calls the control plane at `http://localhost:8081` (override with `VITE_PLATFORM_API_URL`).
 

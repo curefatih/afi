@@ -10,6 +10,7 @@
 |----------|---------|---------|
 | `AFI_CONFIG` | `configs/local.yaml` | controlplane, gateway, cli |
 | `AFI_DATABASE_URL` | from yaml / compose DSN | all DB clients |
+| `AFI_REDIS_URL` | `redis://localhost:6379/0` | gateway timed quotas |
 | `AFI_CONTROLPLANE_ADDR` | `:8081` | controlplane |
 | `AFI_GATEWAY_ADDR` | `:8080` | gateway |
 | `AFI_SNAPSHOT_POLL_INTERVAL` | `2s` | gateway watch |
@@ -65,6 +66,7 @@ Written on first control-plane start (or `make seed`):
 | 8080 | Gateway (inference) |
 | 8081 | Control plane (platform + admin) |
 | 5433 | Postgres |
+| 6379 | Redis (timed quota windows) |
 | 5050 | Adminer |
 | 3000 | Web UI |
 | 8000 | MkDocs (`make doc-serve`) |
@@ -88,6 +90,8 @@ Written on first control-plane start (or `make seed`):
 | GET | `/api/v1/platform/organizations/{orgID}/usage/summary` |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/quotas` |
 | PATCH/DELETE | `/api/v1/platform/quotas/{quotaID}` |
+| GET/POST | `/api/v1/platform/organizations/{orgID}/policies` |
+| PATCH/DELETE | `/api/v1/platform/policies/{policyID}` |
 
 Member invite looks up an existing user by email (no SMTP). Org roles: `owner` / `admin` / `member`. Only the **owner** can `PATCH` a member role (`{ "role": "admin" }`); setting `owner` transfers ownership. Native Anthropic inference: gateway `POST /v1/messages` (Anthropic providers only).
 
@@ -115,7 +119,18 @@ Seed key `sk-project-local-dev-token-12345` is a project **service_account** key
 |-------|--------|
 | `scope_type` | `organization`, `project`, `user`, `api_key` |
 | `metric` | `requests`, `tokens` |
-| `window` | `total` (lifetime counter) |
+| `window` | `total` (Postgres lifetime), `minute` / `hour` / `day` (Redis fixed windows) |
 | `limit_value` | integer ≥ 0 (`0` blocks immediately) |
 
-Most specific scope wins: api_key → user → project → organization. Create/update/delete quotas require org owner/admin.
+Most specific scope wins **per window**: api_key → user → project → organization. Timed windows require Redis (`redis_url` / `AFI_REDIS_URL`). Create/update/delete quotas require org owner/admin.
+
+### CEL policies
+
+| Field | Notes |
+|-------|--------|
+| `name` | Display name |
+| `expression` | Boolean CEL; all enabled org policies must be true |
+| `priority` | Higher first (default 100) |
+| `enabled` | Default true |
+
+CEL variables: `request.model`, `request.path`, `request.stream`, `key.id`, `key.organization_id`, `key.project_id`, `key.kind`, `key.owner_user_id`, `key.name`. Denial → HTTP 403 `policy_violation`. Owner/admin to create/update/delete.

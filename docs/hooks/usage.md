@@ -24,6 +24,5 @@ Provider adapters use the same in-process path via [`sdk/provider`](../../sdk/pr
 
 * gRPC extensions — providers, auth, secrets, notifications
 * WASM extensions — prompt/header mutation, PII masking, enrichment
-* Redis-backed rate limits and CEL request policies (quotas today are Postgres)
 
-Those runtimes / policy engines are **not** shipped yet.
+Redis rate limits and CEL request policies are shipped (see Quotas / Policies in the platform UI).

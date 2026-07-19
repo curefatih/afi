@@ -38,5 +38,5 @@ flowchart TB
 * OpenAI-compatible `POST /v1/audio/speech` and `POST /v1/audio/transcriptions` (openai / openai_compatible)
 * Streaming for OpenAI, Anthropic, Gemini, and `openai_compatible` (capability-gated)
 * Usage outbox + worker with optional `cost_usd`
-* Web UI: Providers, Routing, Keys, Quotas, chat/TTS/STT playground against the gateway
+* Web UI: Providers, Routing, Keys, Quotas, Policies, chat/TTS/STT playground against the gateway
 * Docs via `make doc-serve`
