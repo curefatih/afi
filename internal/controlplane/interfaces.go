@@ -35,8 +35,8 @@ type platformAPI interface {
 	UpdateProvider(ctx context.Context, providerID, name, baseURL, apiKeyEnv string) (*Provider, error)
 	DeleteProvider(ctx context.Context, providerID string) error
 	ListRoutes(ctx context.Context, orgID string) ([]Route, error)
-	CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string) (*Route, error)
-	UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string) (*Route, error)
+	CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []RouteFallback) (*Route, error)
+	UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []RouteFallback) (*Route, error)
 	DeleteRoute(ctx context.Context, routeID string) error
 	ListUsage(ctx context.Context, orgID string, limit int) ([]UsageEvent, error)
 	ListQuotas(ctx context.Context, orgID string) ([]Quota, error)
