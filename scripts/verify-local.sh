@@ -173,11 +173,21 @@ curl -fsS "$CP/api/v1/platform/organizations/org_local/quotas" \
 echo "ok"
 
 echo "==> quota limit 0 → 429 (no OpenAI required)"
-# Clean prior verify quotas for org_local if any by creating a zero request quota on org.
+# Most-specific scope wins: pin the seed virtual key so org/project quotas cannot override.
+KEY_ID=$(curl -fsS "$CP/api/v1/platform/organizations/org_local/keys" \
+  -H "Authorization: Bearer $TOKEN" | python3 -c '
+import sys,json
+keys=json.load(sys.stdin)
+for k in keys:
+  if k.get("key_prefix","").startswith("sk-project-local") or k.get("name")=="local-dev":
+    print(k["id"]); break
+else:
+  print(keys[0]["id"])
+')
 curl -fsS "$CP/api/v1/platform/organizations/org_local/quotas" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"scope_type":"organization","scope_id":"org_local","metric":"requests","limit_value":0,"window":"total"}' >/dev/null
+  -d "{\"scope_type\":\"api_key\",\"scope_id\":\"$KEY_ID\",\"metric\":\"requests\",\"limit_value\":0,\"window\":\"total\"}" >/dev/null
 # wait for snapshot hot reload
 for _ in $(seq 1 20); do
   sleep 0.5
