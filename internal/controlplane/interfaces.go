@@ -1,6 +1,10 @@
 package controlplane
 
-import "context"
+import (
+	"context"
+
+	"github.com/curefatih/afi/internal/snapshot"
+)
 
 // snapshotPublisher is implemented by *Seeder.
 type snapshotPublisher interface {
@@ -31,7 +35,7 @@ type platformAPI interface {
 	ListAPIKeys(ctx context.Context, projectID string) ([]APIKey, error)
 	CreateAPIKey(ctx context.Context, orgID, projectID, name, rawKey string) (*APIKey, error)
 	ListProviders(ctx context.Context, orgID string) ([]Provider, error)
-	CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string) (*Provider, error)
+	CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities) (*Provider, error)
 	UpdateProvider(ctx context.Context, providerID, name, baseURL, apiKeyEnv string) (*Provider, error)
 	DeleteProvider(ctx context.Context, providerID string) error
 	ListRoutes(ctx context.Context, orgID string) ([]Route, error)
