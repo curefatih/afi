@@ -26,6 +26,7 @@ nav:
   - Development:
       - Repository layout: development/repository-layout.md
       - Architecture: development/architecture.md
+      - Providers: development/providers.md
       - Config reference: development/config-reference.md
       - Testing: development/testing.md
   - Concepts:

@@ -62,6 +62,26 @@ curl -sN http://localhost:8080/v1/chat/completions \
   -d '{"model":"claude-sonnet","stream":true,"messages":[{"role":"user","content":"ping"}]}'
 ```
 
+## OpenAI-compatible (Ollama, etc.)
+
+Seed includes `prov_ollama` (`type=openai_compatible`). With Ollama running locally:
+
+```bash
+export OLLAMA_API_KEY=ollama
+
+curl -s http://localhost:8081/api/v1/platform/organizations/org_local/routes \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"llama3","provider_id":"prov_ollama","target_model":"llama3.2"}'
+
+curl -s http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Bearer sk-project-local-dev-token-12345" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"llama3","messages":[{"role":"user","content":"ping"}]}'
+```
+
+See [Providers](../development/providers.md).
+
 ## Gemini route (optional)
 
 ```bash

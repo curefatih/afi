@@ -17,8 +17,8 @@ internal/
 ├── workers/          # Outbox processing helpers
 └── shared/           # Cross-cutting helpers
 
-extensions/           # Runtime extensions (future)
-sdk/                  # Extension SDK (future)
+extensions/           # Runtime extensions (future gRPC/WASM)
+sdk/provider/         # Documented ChatProvider contract (in-process today)
 api/                  # Public API contracts (future)
 web/                  # Platform UI (TanStack / Vite)
 configs/              # Local/dev defaults
@@ -35,7 +35,8 @@ docs/                 # Public MkDocs site
 | `cmd/cli` | `seed`, `snapshot publish`, `db reset`, `version` |
 | `internal/snapshot` | Types, compile, Postgres store + watch |
 | `internal/controlplane` | Schema, repositories, HTTP handlers |
-| `internal/dataplane` | Auth → quota → route → OpenAI/Anthropic/Gemini (+ failover, `/v1/models`) |
+| `internal/dataplane` | Auth → quota → route → provider registry (+ failover, `/v1/models`) |
+| `sdk/provider` | Documented adapter contract for multi-model extensibility |
 | `internal/workers` | Outbox process loop helpers |
 | `internal/kernel` | Logging, request IDs, config loading |
 | `configs/` | `local.yaml` defaults |

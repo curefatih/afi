@@ -31,8 +31,8 @@ flowchart TB
 
 * Postgres + Adminer via `make dev-up`
 * Control plane: migrate, seed, snapshot publish, platform auth APIs
-* Gateway: virtual API key auth → quotas → routes (with failover) → OpenAI / Anthropic / Gemini
-* OpenAI-compatible `POST /v1/chat/completions` (stream + non-stream for OpenAI and Anthropic; Gemini non-stream)
+* Gateway: virtual API key auth → quotas → routes (with failover) → provider registry (`openai`, `anthropic`, `gemini`, `openai_compatible`, …)
+* OpenAI-compatible `POST /v1/chat/completions` (streaming gated by provider capabilities)
 * OpenAI-compatible `GET /v1/models` (lists org routes from the snapshot)
 * Usage outbox + worker with optional `cost_usd`
 * Web UI against the control plane (`:8081`), playground against the gateway (`:8080`)
