@@ -2,10 +2,8 @@ package controlplane
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/curefatih/afi/internal/access"
@@ -15,7 +13,7 @@ import (
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
-	"github.com/jackc/pgx/v5"
+	"github.com/curefatih/afi/internal/usage"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -24,14 +22,6 @@ const (
 	OrgRoleAdmin  = tenancy.OrgRoleAdmin
 	OrgRoleMember = tenancy.OrgRoleMember
 )
-
-type Store struct {
-	pool *pgxpool.Pool
-}
-
-func NewStore(pool *pgxpool.Pool) *Store {
-	return &Store{pool: pool}
-}
 
 type User = identity.User
 type Organization = tenancy.Organization
@@ -50,67 +40,18 @@ type Route = gatewayconfig.Route
 
 // UsageEvent is the control-plane read model (persisted row + joins).
 // Emit/outbox use the canonical usage.Event.
-type UsageEvent struct {
-	ID               int64          `json:"id"`
-	OrganizationID   string         `json:"organization_id"`
-	ProjectID        string         `json:"project_id"`
-	APIKeyID         string         `json:"api_key_id"`
-	Model            string         `json:"model"`
-	Status           string         `json:"status"`
-	LatencyMs        int64          `json:"latency_ms"`
-	PromptTokens     int64          `json:"prompt_tokens"`
-	CompletionTokens int64          `json:"completion_tokens"`
-	Modality         string         `json:"modality"`
-	Metrics          map[string]any `json:"metrics"`
-	CostUSD          *float64       `json:"cost_usd,omitempty"`
-	CreatedAt        time.Time      `json:"created_at"`
-	KeyName          string         `json:"key_name,omitempty"`
-	KeyKind          string         `json:"key_kind,omitempty"`
-	OwnerUserID      string         `json:"owner_user_id,omitempty"`
-	OwnerEmail       string         `json:"owner_email,omitempty"`
-	OwnerName        string         `json:"owner_name,omitempty"`
+type UsageEvent = usage.Record
+type UsageFilter = usage.Filter
+type UsageSummaryBucket = usage.SummaryBucket
+type ModelPrice = usage.ModelPrice
+type ProviderHealth = usage.ProviderHealth
+
+type Store struct {
+	pool *pgxpool.Pool
 }
 
-type UsageFilter struct {
-	Limit     int
-	ProjectID string
-	APIKeyID  string
-	Model     string
-	Modality  string
-	From      *time.Time
-	To        *time.Time
-	GroupBy   string // day | model | key | modality (summary only)
-}
-
-type UsageSummaryBucket struct {
-	Bucket           string             `json:"bucket"`
-	Label            string             `json:"label"`
-	Requests         int64              `json:"requests"`
-	CostUSD          float64            `json:"cost_usd"`
-	PromptTokens     int64              `json:"prompt_tokens"`
-	CompletionTokens int64              `json:"completion_tokens"`
-	MetricsTotals    map[string]float64 `json:"metrics_totals,omitempty"`
-	KeyKind          string             `json:"key_kind,omitempty"`
-	OwnerEmail       string             `json:"owner_email,omitempty"`
-	OwnerName        string             `json:"owner_name,omitempty"`
-}
-
-type ModelPrice struct {
-	ProviderType  string
-	Model         string
-	InputPerMTok  float64
-	OutputPerMTok float64
-}
-
-type ProviderHealth struct {
-	ProviderID   string  `json:"provider_id"`
-	Name         string  `json:"name"`
-	Type         string  `json:"type"`
-	Requests     int64   `json:"requests"`
-	Errors       int64   `json:"errors"`
-	ErrorRate    float64 `json:"error_rate"`
-	AvgLatencyMs float64 `json:"avg_latency_ms"`
-	Status       string  `json:"status"` // healthy | degraded | down | unknown
+func NewStore(pool *pgxpool.Pool) *Store {
+	return &Store{pool: pool}
 }
 
 func (s *Store) users() *postgres.Users {
@@ -261,60 +202,13 @@ func (s *Store) ListProviders(ctx context.Context, orgID string) ([]Provider, er
 	return s.providers().ListByOrg(ctx, orgID)
 }
 
-func classifyProviderHealth(requests, errors int64, errorRate float64) string {
-	if requests == 0 {
-		return "unknown"
-	}
-	if errorRate >= 0.9 || (requests >= 3 && errors == requests) {
-		return "down"
-	}
-	if errorRate >= 0.2 {
-		return "degraded"
-	}
-	return "healthy"
+func (s *Store) usageQueries() *postgres.UsageQueries {
+	return postgres.NewUsageQueries(s.pool)
 }
 
 // ListProviderHealth aggregates usage_events for models routed to each org provider.
 func (s *Store) ListProviderHealth(ctx context.Context, orgID string, from, to time.Time) ([]ProviderHealth, error) {
-	if from.IsZero() {
-		from = time.Now().UTC().Add(-24 * time.Hour)
-	}
-	if to.IsZero() {
-		to = time.Now().UTC().Add(time.Hour)
-	}
-	rows, err := s.pool.Query(ctx, `
-		SELECT p.id, p.name, p.type,
-			COUNT(e.id)::bigint AS requests,
-			COUNT(e.id) FILTER (WHERE e.status IS NOT NULL AND e.status <> 'ok')::bigint AS errors,
-			COALESCE(AVG(e.latency_ms), 0)::double precision AS avg_latency_ms
-		FROM providers p
-		LEFT JOIN routes r
-			ON r.provider_id = p.id AND r.organization_id = p.organization_id
-		LEFT JOIN usage_events e
-			ON e.organization_id = p.organization_id
-			AND e.model = r.model
-			AND e.created_at >= $2 AND e.created_at < $3
-		WHERE p.organization_id = $1
-		GROUP BY p.id, p.name, p.type
-		ORDER BY p.name
-	`, orgID, from, to)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []ProviderHealth
-	for rows.Next() {
-		var h ProviderHealth
-		if err := rows.Scan(&h.ProviderID, &h.Name, &h.Type, &h.Requests, &h.Errors, &h.AvgLatencyMs); err != nil {
-			return nil, err
-		}
-		if h.Requests > 0 {
-			h.ErrorRate = float64(h.Errors) / float64(h.Requests)
-		}
-		h.Status = classifyProviderHealth(h.Requests, h.Errors, h.ErrorRate)
-		out = append(out, h)
-	}
-	return out, rows.Err()
+	return s.usageQueries().ListProviderHealth(ctx, orgID, from, to)
 }
 
 func (s *Store) CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities) (*Provider, error) {
@@ -354,254 +248,19 @@ func (s *Store) GetRouteOrgID(ctx context.Context, routeID string) (string, erro
 }
 
 func (s *Store) InsertUsage(ctx context.Context, e UsageEvent) error {
-	modality := e.Modality
-	if modality == "" {
-		modality = "chat"
-	}
-	metrics := e.Metrics
-	if metrics == nil {
-		metrics = map[string]any{}
-	}
-	metricsJSON, err := json.Marshal(metrics)
-	if err != nil {
-		return err
-	}
-	_, err = s.pool.Exec(ctx, `
-		INSERT INTO usage_events (
-			organization_id, project_id, api_key_id, model, status,
-			latency_ms, prompt_tokens, completion_tokens, cost_usd, modality, metrics
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-	`, e.OrganizationID, e.ProjectID, e.APIKeyID, e.Model, e.Status,
-		e.LatencyMs, e.PromptTokens, e.CompletionTokens, e.CostUSD, modality, metricsJSON)
-	return err
-}
-
-func usageWhere(orgID string, f UsageFilter) (string, []any) {
-	args := []any{orgID}
-	var b strings.Builder
-	b.WriteString("e.organization_id=$1")
-	n := 2
-	if f.ProjectID != "" {
-		b.WriteString(fmt.Sprintf(" AND e.project_id=$%d", n))
-		args = append(args, f.ProjectID)
-		n++
-	}
-	if f.APIKeyID != "" {
-		b.WriteString(fmt.Sprintf(" AND e.api_key_id=$%d", n))
-		args = append(args, f.APIKeyID)
-		n++
-	}
-	if f.Model != "" {
-		b.WriteString(fmt.Sprintf(" AND e.model=$%d", n))
-		args = append(args, f.Model)
-		n++
-	}
-	if f.Modality != "" {
-		b.WriteString(fmt.Sprintf(" AND e.modality=$%d", n))
-		args = append(args, f.Modality)
-		n++
-	}
-	if f.From != nil {
-		b.WriteString(fmt.Sprintf(" AND e.created_at >= $%d", n))
-		args = append(args, *f.From)
-		n++
-	}
-	if f.To != nil {
-		b.WriteString(fmt.Sprintf(" AND e.created_at < $%d", n))
-		args = append(args, *f.To)
-	}
-	return b.String(), args
+	return s.usageQueries().InsertRecord(ctx, e)
 }
 
 func (s *Store) ListUsage(ctx context.Context, orgID string, f UsageFilter) ([]UsageEvent, error) {
-	limit := f.Limit
-	if limit <= 0 || limit > 200 {
-		limit = 50
-	}
-	where, args := usageWhere(orgID, f)
-	args = append(args, limit)
-	limitArg := len(args)
-	rows, err := s.pool.Query(ctx, fmt.Sprintf(`
-		SELECT e.id, e.organization_id, e.project_id, e.api_key_id, e.model, e.status,
-			e.latency_ms, e.prompt_tokens, e.completion_tokens, e.cost_usd, e.created_at,
-			e.modality, e.metrics,
-			COALESCE(k.name, ''), COALESCE(k.kind, ''),
-			COALESCE(k.owner_user_id, ''), COALESCE(u.email, ''), COALESCE(u.name, '')
-		FROM usage_events e
-		LEFT JOIN api_keys k ON k.id = e.api_key_id
-		LEFT JOIN users u ON u.id = k.owner_user_id
-		WHERE %s
-		ORDER BY e.created_at DESC
-		LIMIT $%d
-	`, where, limitArg), args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []UsageEvent
-	for rows.Next() {
-		var e UsageEvent
-		var metricsJSON []byte
-		if err := rows.Scan(
-			&e.ID, &e.OrganizationID, &e.ProjectID, &e.APIKeyID, &e.Model, &e.Status,
-			&e.LatencyMs, &e.PromptTokens, &e.CompletionTokens, &e.CostUSD, &e.CreatedAt,
-			&e.Modality, &metricsJSON,
-			&e.KeyName, &e.KeyKind, &e.OwnerUserID, &e.OwnerEmail, &e.OwnerName,
-		); err != nil {
-			return nil, err
-		}
-		if len(metricsJSON) > 0 {
-			_ = json.Unmarshal(metricsJSON, &e.Metrics)
-		}
-		if e.Metrics == nil {
-			e.Metrics = map[string]any{}
-		}
-		out = append(out, e)
-	}
-	return out, rows.Err()
-}
-
-func metricSumExpr(key string) string {
-	return fmt.Sprintf(`COALESCE(SUM(CASE WHEN jsonb_typeof(e.metrics->'%s') = 'number'
-		THEN (e.metrics->>'%s')::double precision ELSE 0 END), 0)`, key, key)
+	return s.usageQueries().List(ctx, orgID, f)
 }
 
 func (s *Store) SummarizeUsage(ctx context.Context, orgID string, f UsageFilter) ([]UsageSummaryBucket, error) {
-	groupBy := f.GroupBy
-	if groupBy == "" {
-		groupBy = "day"
-	}
-	ff := f
-	if ff.From == nil && ff.To == nil && groupBy == "day" {
-		from := time.Now().UTC().AddDate(0, 0, -30)
-		ff.From = &from
-	}
-	where, args := usageWhere(orgID, ff)
-
-	var selectBucket, groupSQL, orderSQL, joinSQL string
-	switch groupBy {
-	case "day":
-		selectBucket = `to_char(date_trunc('day', e.created_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD')`
-		groupSQL = `1`
-		orderSQL = `1 ASC`
-		joinSQL = ""
-	case "model":
-		selectBucket = `e.model`
-		groupSQL = `1`
-		orderSQL = `requests DESC`
-		joinSQL = ""
-	case "modality":
-		selectBucket = `e.modality`
-		groupSQL = `1`
-		orderSQL = `requests DESC`
-		joinSQL = ""
-	case "key":
-		selectBucket = `e.api_key_id`
-		groupSQL = `1, COALESCE(k.name,''), COALESCE(k.kind,''), COALESCE(u.email,''), COALESCE(u.name,'')`
-		orderSQL = `requests DESC`
-		joinSQL = `
-			LEFT JOIN api_keys k ON k.id = e.api_key_id
-			LEFT JOIN users u ON u.id = k.owner_user_id`
-	default:
-		return nil, fmt.Errorf("%w: group_by must be day, model, key, or modality", kernel.ErrInvalidRequest)
-	}
-
-	q := fmt.Sprintf(`
-		SELECT %s AS bucket,
-			COUNT(*)::bigint AS requests,
-			COALESCE(SUM(e.cost_usd), 0)::double precision AS cost_usd,
-			COALESCE(SUM(e.prompt_tokens), 0)::bigint AS prompt_tokens,
-			COALESCE(SUM(e.completion_tokens), 0)::bigint AS completion_tokens,
-			%s AS characters,
-			%s AS audio_seconds,
-			%s AS images,
-			%s AS tokens
-			%s
-		FROM usage_events e
-		%s
-		WHERE %s
-		GROUP BY %s
-		ORDER BY %s
-	`, selectBucket,
-		metricSumExpr("characters"),
-		metricSumExpr("audio_seconds"),
-		metricSumExpr("images"),
-		metricSumExpr("tokens"),
-		func() string {
-			if groupBy == "key" {
-				return `, COALESCE(k.name,'') AS key_name, COALESCE(k.kind,'') AS key_kind,
-					COALESCE(u.email,'') AS owner_email, COALESCE(u.name,'') AS owner_name`
-			}
-			return ``
-		}(),
-		joinSQL, where, groupSQL, orderSQL)
-
-	rows, err := s.pool.Query(ctx, q, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []UsageSummaryBucket
-	for rows.Next() {
-		var b UsageSummaryBucket
-		var characters, audioSeconds, images, tokens float64
-		if groupBy == "key" {
-			var keyName string
-			if err := rows.Scan(
-				&b.Bucket, &b.Requests, &b.CostUSD, &b.PromptTokens, &b.CompletionTokens,
-				&characters, &audioSeconds, &images, &tokens,
-				&keyName, &b.KeyKind, &b.OwnerEmail, &b.OwnerName,
-			); err != nil {
-				return nil, err
-			}
-			b.Label = keyName
-			if b.Label == "" {
-				b.Label = b.Bucket
-			}
-		} else {
-			if err := rows.Scan(
-				&b.Bucket, &b.Requests, &b.CostUSD, &b.PromptTokens, &b.CompletionTokens,
-				&characters, &audioSeconds, &images, &tokens,
-			); err != nil {
-				return nil, err
-			}
-			b.Label = b.Bucket
-		}
-		totals := map[string]float64{}
-		if characters != 0 {
-			totals["characters"] = characters
-		}
-		if audioSeconds != 0 {
-			totals["audio_seconds"] = audioSeconds
-		}
-		if images != 0 {
-			totals["images"] = images
-		}
-		if tokens != 0 {
-			totals["tokens"] = tokens
-		}
-		if len(totals) > 0 {
-			b.MetricsTotals = totals
-		}
-		out = append(out, b)
-	}
-	return out, rows.Err()
+	return s.usageQueries().Summarize(ctx, orgID, f)
 }
 
 func (s *Store) LookupModelPrice(ctx context.Context, providerType, model string) (ModelPrice, bool, error) {
-	var p ModelPrice
-	err := s.pool.QueryRow(ctx, `
-		SELECT provider_type, model, input_per_mtok, output_per_mtok
-		FROM model_prices WHERE provider_type=$1 AND model=$2
-	`, providerType, model).Scan(&p.ProviderType, &p.Model, &p.InputPerMTok, &p.OutputPerMTok)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return ModelPrice{}, false, nil
-	}
-	if err != nil {
-		return ModelPrice{}, false, err
-	}
-	return p, true, nil
+	return s.usageQueries().LookupModelPrice(ctx, providerType, model)
 }
 
 // Quota is the platform write-model quota (canonical type in gatewayconfig).
@@ -688,110 +347,7 @@ func (s *Store) EnqueueUsage(ctx context.Context, payload []byte) error {
 }
 
 func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error) {
-	var src snapshot.Source
-
-	keyRows, err := s.pool.Query(ctx, `
-		SELECT id, key_hash, key_prefix, project_id, organization_id, name, kind, owner_user_id FROM api_keys
-	`)
-	if err != nil {
-		return src, err
-	}
-	defer keyRows.Close()
-	for keyRows.Next() {
-		var k snapshot.APIKey
-		var projectID, ownerUserID *string
-		if err := keyRows.Scan(&k.ID, &k.KeyHash, &k.KeyPrefix, &projectID, &k.OrganizationID, &k.Name, &k.Kind, &ownerUserID); err != nil {
-			return src, err
-		}
-		if projectID != nil {
-			k.ProjectID = *projectID
-		}
-		if ownerUserID != nil {
-			k.OwnerUserID = *ownerUserID
-		}
-		src.APIKeys = append(src.APIKeys, k)
-	}
-	if err := keyRows.Err(); err != nil {
-		return src, err
-	}
-
-	provRows, err := s.pool.Query(ctx, `
-		SELECT id, type, base_url, api_key_env, name, capabilities FROM providers
-	`)
-	if err != nil {
-		return src, err
-	}
-	defer provRows.Close()
-	for provRows.Next() {
-		var p snapshot.Provider
-		var caps []byte
-		if err := provRows.Scan(&p.ID, &p.Type, &p.BaseURL, &p.APIKeyEnv, &p.Name, &caps); err != nil {
-			return src, err
-		}
-		p.Capabilities = postgres.DecodeCapabilities(p.Type, caps)
-		src.Providers = append(src.Providers, p)
-	}
-	if err := provRows.Err(); err != nil {
-		return src, err
-	}
-
-	routeRows, err := s.pool.Query(ctx, `
-		SELECT organization_id, model, provider_id, target_model, fallbacks FROM routes
-	`)
-	if err != nil {
-		return src, err
-	}
-	defer routeRows.Close()
-	for routeRows.Next() {
-		var r snapshot.Route
-		var fb []byte
-		if err := routeRows.Scan(&r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel, &fb); err != nil {
-			return src, err
-		}
-		for _, f := range postgres.DecodeFallbacks(fb) {
-			r.Fallbacks = append(r.Fallbacks, snapshot.RouteTarget{
-				ProviderID: f.ProviderID, TargetModel: f.TargetModel,
-			})
-		}
-		src.Routes = append(src.Routes, r)
-	}
-	if err := routeRows.Err(); err != nil {
-		return src, err
-	}
-
-	quotaRows, err := s.pool.Query(ctx, `
-		SELECT id, organization_id, scope_type, scope_id, metric, limit_value, time_window FROM quotas
-	`)
-	if err != nil {
-		return src, err
-	}
-	defer quotaRows.Close()
-	for quotaRows.Next() {
-		var q snapshot.Quota
-		if err := quotaRows.Scan(&q.ID, &q.OrganizationID, &q.ScopeType, &q.ScopeID, &q.Metric, &q.LimitValue, &q.Window); err != nil {
-			return src, err
-		}
-		src.Quotas = append(src.Quotas, q)
-	}
-	if err := quotaRows.Err(); err != nil {
-		return src, err
-	}
-
-	polRows, err := s.pool.Query(ctx, `
-		SELECT id, organization_id, name, expression, enabled, priority FROM request_policies
-	`)
-	if err != nil {
-		return src, err
-	}
-	defer polRows.Close()
-	for polRows.Next() {
-		var p snapshot.Policy
-		if err := polRows.Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Expression, &p.Enabled, &p.Priority); err != nil {
-			return src, err
-		}
-		src.Policies = append(src.Policies, p)
-	}
-	return src, polRows.Err()
+	return postgres.NewSnapshotSourceLoader(s.pool).Load(ctx)
 }
 
 // RequestPolicy is the platform write-model CEL policy (canonical in gatewayconfig).
