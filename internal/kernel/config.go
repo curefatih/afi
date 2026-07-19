@@ -22,9 +22,10 @@ type Config struct {
 	} `yaml:"gateway"`
 
 	Auth struct {
-		JWTSecret   string        `yaml:"jwt_secret" env:"AFI_JWT_SECRET"`
-		TokenTTLRaw string        `yaml:"token_ttl" env:"AFI_TOKEN_TTL" env-default:"24h"`
-		TokenTTL    time.Duration `yaml:"-"`
+		JWTSecret     string        `yaml:"jwt_secret" env:"AFI_JWT_SECRET"`
+		TokenTTLRaw   string        `yaml:"token_ttl" env:"AFI_TOKEN_TTL" env-default:"24h"`
+		TokenTTL      time.Duration `yaml:"-"`
+		InternalToken string        `yaml:"internal_token" env:"AFI_INTERNAL_TOKEN"`
 	} `yaml:"auth"`
 
 	Seed struct {
@@ -73,6 +74,9 @@ func LoadConfig() (*Config, error) {
 
 	if cfg.Auth.JWTSecret == "" {
 		cfg.Auth.JWTSecret = "afi-local-dev-jwt-secret-change-me"
+	}
+	if cfg.Auth.InternalToken == "" {
+		cfg.Auth.InternalToken = "afi-local-internal-token"
 	}
 	if cfg.Auth.TokenTTLRaw == "" {
 		cfg.Auth.TokenTTLRaw = "24h"
