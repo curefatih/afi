@@ -25,6 +25,8 @@ type membershipChecker interface {
 	GetQuotaOrgID(ctx context.Context, quotaID string) (string, error)
 	GetPolicyOrgID(ctx context.Context, policyID string) (string, error)
 	GetAPIKeyOrgID(ctx context.Context, keyID string) (string, error)
+	GetCredentialOrgID(ctx context.Context, credentialID string) (string, error)
+	GetCredentialAssignmentOrgID(ctx context.Context, assignmentID string) (string, error)
 }
 
 // platformAPI is the control-plane persistence surface used by HTTP handlers.
@@ -77,4 +79,13 @@ type platformAPI interface {
 	CreatePolicy(ctx context.Context, orgID, name, expression string, enabled bool, priority int) (*RequestPolicy, error)
 	UpdatePolicy(ctx context.Context, policyID string, name, expression *string, enabled *bool, priority *int) (*RequestPolicy, error)
 	DeletePolicy(ctx context.Context, policyID string) error
+
+	ListCredentials(ctx context.Context, orgID string) ([]Credential, error)
+	CreateCredential(ctx context.Context, orgID, name, providerType, storageKind, secretRef, secretValue string) (*Credential, error)
+	UpdateCredential(ctx context.Context, credentialID, name, status string) (*Credential, error)
+	RotateCredential(ctx context.Context, credentialID, secretRef, secretValue string) (*Credential, error)
+	DeleteCredential(ctx context.Context, credentialID string) error
+	ListCredentialAssignments(ctx context.Context, orgID string) ([]CredentialAssignment, error)
+	AssignCredential(ctx context.Context, credentialID, scopeType, scopeID, createdBy string) (*CredentialAssignment, error)
+	DeleteCredentialAssignment(ctx context.Context, assignmentID string) error
 }

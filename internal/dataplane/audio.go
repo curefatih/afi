@@ -138,14 +138,21 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info("audio.speech", "model", reqBody.Model, "target_model", route.TargetModel, "provider", provider.ID)
-	client, err := p.audioBackend(provider.Type)
+	bound, credID, bindErr := p.bindProviderSecret(ctx, snap, provider, key)
+	if bindErr != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]any{
+			"error": map[string]string{"message": bindErr.Error(), "type": "server_error"},
+		})
+		return
+	}
+	client, err := p.audioBackend(bound.Type)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]any{
 			"error": map[string]string{"message": err.Error(), "type": "server_error"},
 		})
 		return
 	}
-	resp, err := client.AudioSpeech(ctx, provider, route.TargetModel, body)
+	resp, err := client.AudioSpeech(ctx, bound, route.TargetModel, body)
 	status := "ok"
 	if err != nil {
 		log.Error("audio speech upstream", "err", err)
@@ -154,8 +161,8 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 		})
 		status = "error"
 		p.recordUsage(UsageEvent{
-			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID,
-			Model: reqBody.Model, ProviderType: provider.Type, TargetModel: route.TargetModel,
+			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID, CredentialID: credID,
+			Model: reqBody.Model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			Modality: ModalityTTS, Metrics: ttsMetrics,
 		})
@@ -170,8 +177,8 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 		status = "error"
 	}
 	p.recordUsage(UsageEvent{
-		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID,
-		Model: reqBody.Model, ProviderType: provider.Type, TargetModel: route.TargetModel,
+		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID, CredentialID: credID,
+		Model: reqBody.Model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		Modality: ModalityTTS, Metrics: ttsMetrics,
 	})
@@ -268,14 +275,21 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 	}
 
 	log.Info("audio.transcriptions", "model", model, "target_model", route.TargetModel, "provider", provider.ID)
-	client, err := p.audioBackend(provider.Type)
+	bound, credID, bindErr := p.bindProviderSecret(ctx, snap, provider, key)
+	if bindErr != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]any{
+			"error": map[string]string{"message": bindErr.Error(), "type": "server_error"},
+		})
+		return
+	}
+	client, err := p.audioBackend(bound.Type)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]any{
 			"error": map[string]string{"message": err.Error(), "type": "server_error"},
 		})
 		return
 	}
-	resp, err := client.AudioTranscriptions(ctx, provider, route.TargetModel, ct, bytes.NewReader(body))
+	resp, err := client.AudioTranscriptions(ctx, bound, route.TargetModel, ct, bytes.NewReader(body))
 	status := "ok"
 	if err != nil {
 		log.Error("audio transcriptions upstream", "err", err)
@@ -284,8 +298,8 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 		})
 		status = "error"
 		p.recordUsage(UsageEvent{
-			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID,
-			Model: model, ProviderType: provider.Type, TargetModel: route.TargetModel,
+			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID, CredentialID: credID,
+			Model: model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			Modality: ModalitySTT,
 		})
@@ -300,8 +314,8 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 		status = "error"
 	}
 	p.recordUsage(UsageEvent{
-		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID,
-		Model: model, ProviderType: provider.Type, TargetModel: route.TargetModel,
+		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID, CredentialID: credID,
+		Model: model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		Modality: ModalitySTT,
 	})

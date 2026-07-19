@@ -6,6 +6,7 @@ type Event struct {
 	OrganizationID   string         `json:"organization_id"`
 	ProjectID        string         `json:"project_id"`
 	APIKeyID         string         `json:"api_key_id"`
+	CredentialID     string         `json:"credential_id,omitempty"`
 	Model            string         `json:"model"`
 	ProviderType     string         `json:"provider_type"`
 	TargetModel      string         `json:"target_model"`

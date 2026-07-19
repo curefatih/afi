@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/curefatih/afi/internal/adapters/secrets"
 	"github.com/curefatih/afi/internal/dataplane/openaichat"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/modelcatalog"
@@ -33,13 +34,14 @@ const (
 type UsageEvent = usage.Event
 
 type Pipeline struct {
-	Holder    *Holder
-	Providers *Registry
-	Hooks     *HookChain
-	Log       *slog.Logger
-	Usage     func(UsageEvent)
-	Counters  CounterStore
-	Policies  *policy.Evaluator
+	Holder      *Holder
+	Providers   *Registry
+	Hooks       *HookChain
+	Log         *slog.Logger
+	Usage       func(UsageEvent)
+	Counters    CounterStore
+	Policies    *policy.Evaluator
+	Credentials secrets.CredentialOpener
 }
 
 // NewPipeline builds a pipeline with an explicit provider registry.
@@ -216,15 +218,26 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		lastErr          error
 		usedProvider     snapshot.Provider
 		usedTarget       string
+		usedCredentialID string
 		promptTokens     int64
 		completionTokens int64
 		status           = "ok"
 	)
 
 	for i, attempt := range attempts {
-		usedProvider = attempt.Provider
+		bound, credID, bindErr := p.bindProviderSecret(ctx, snap, attempt.Provider, key)
+		if bindErr != nil {
+			lastErr = bindErr
+			log.Warn("credential resolve failed", "provider", attempt.Provider.ID, "err", bindErr, "attempt", i)
+			if i+1 < len(attempts) {
+				continue
+			}
+			break
+		}
+		usedProvider = bound
 		usedTarget = attempt.TargetModel
-		resp, lastErr = p.callProvider(ctx, attempt.Provider, attempt.TargetModel, body, reqBody.Stream)
+		usedCredentialID = credID
+		resp, lastErr = p.callProvider(ctx, bound, attempt.TargetModel, body, reqBody.Stream)
 		if lastErr != nil {
 			log.Warn("upstream attempt failed", "provider", attempt.Provider.ID, "err", lastErr, "attempt", i)
 			if errors.Is(lastErr, ErrStreamUnsupported) {
@@ -257,6 +270,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 			OrganizationID: key.OrganizationID,
 			ProjectID:      key.ProjectID,
 			APIKeyID:       key.ID,
+			CredentialID:   usedCredentialID,
 			Model:          reqBody.Model,
 			ProviderType:   usedProvider.Type,
 			TargetModel:    usedTarget,
@@ -336,6 +350,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		OrganizationID:   key.OrganizationID,
 		ProjectID:        key.ProjectID,
 		APIKeyID:         key.ID,
+		CredentialID:     usedCredentialID,
 		Model:            reqBody.Model,
 		ProviderType:     usedProvider.Type,
 		TargetModel:      usedTarget,
@@ -519,6 +534,27 @@ func (p *Pipeline) callProvider(ctx context.Context, provider snapshot.Provider,
 		return nil, fmt.Errorf("chat is not supported for provider type %q", provider.Type)
 	}
 	return adapter.Chat(ctx, provider, targetModel, body, stream)
+}
+
+// bindProviderSecret resolves an assigned credential (project → org) or falls back to provider.api_key_env.
+func (p *Pipeline) bindProviderSecret(ctx context.Context, snap *snapshot.Snapshot, provider snapshot.Provider, key snapshot.APIKey) (snapshot.Provider, string, error) {
+	if snap != nil {
+		if cred, ok := snap.ResolveCredential(provider.Type, key); ok {
+			if p.Credentials == nil {
+				return provider, "", fmt.Errorf("credential resolver not configured")
+			}
+			secret, err := p.Credentials.Open(ctx, cred)
+			if err != nil {
+				return provider, "", err
+			}
+			provider.InlineAPIKey = secret
+			return provider, cred.ID, nil
+		}
+	}
+	if strings.TrimSpace(provider.APIKeyEnv) == "" {
+		return provider, "", fmt.Errorf("no credential assigned for provider type %q and no api_key_env fallback", provider.Type)
+	}
+	return provider, "", nil
 }
 
 func (p *Pipeline) recordUsage(e UsageEvent) {

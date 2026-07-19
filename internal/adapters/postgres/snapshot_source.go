@@ -120,5 +120,48 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 		}
 		src.Policies = append(src.Policies, p)
 	}
-	return src, polRows.Err()
+	if err := polRows.Err(); err != nil {
+		return src, err
+	}
+
+	credRows, err := l.Pool.Query(ctx, `
+		SELECT id, provider_type, storage_kind, secret_ref, encrypted_payload, key_version, status
+		FROM provider_credentials
+	`)
+	if err != nil {
+		return src, err
+	}
+	defer credRows.Close()
+	for credRows.Next() {
+		var c snapshot.Credential
+		var secretRef *string
+		var payload []byte
+		if err := credRows.Scan(&c.ID, &c.ProviderType, &c.StorageKind, &secretRef, &payload, &c.KeyVersion, &c.Status); err != nil {
+			return src, err
+		}
+		if secretRef != nil {
+			c.SecretRef = *secretRef
+		}
+		c.EncryptedPayload = payload
+		src.Credentials = append(src.Credentials, c)
+	}
+	if err := credRows.Err(); err != nil {
+		return src, err
+	}
+
+	asgRows, err := l.Pool.Query(ctx, `
+		SELECT credential_id, provider_type, scope_type, scope_id FROM credential_assignments
+	`)
+	if err != nil {
+		return src, err
+	}
+	defer asgRows.Close()
+	for asgRows.Next() {
+		var a snapshot.CredentialAssignment
+		if err := asgRows.Scan(&a.CredentialID, &a.ProviderType, &a.ScopeType, &a.ScopeID); err != nil {
+			return src, err
+		}
+		src.Assignments = append(src.Assignments, a)
+	}
+	return src, asgRows.Err()
 }

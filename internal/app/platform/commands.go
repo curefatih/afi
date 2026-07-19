@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/curefatih/afi/internal/access"
+	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
@@ -181,5 +182,75 @@ func (s *Service) DeletePolicy(ctx context.Context, policyID string) error {
 		return err
 	}
 	s.emit(ctx, EventPolicyDeleted, policyID, "")
+	return nil
+}
+
+func (s *Service) CreateCredential(ctx context.Context, orgID, name, providerType, storageKind, secretRef, secretValue string) (*credentials.Credential, error) {
+	c, err := s.API.CreateCredential(ctx, orgID, name, providerType, storageKind, secretRef, secretValue)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "created"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventCredentialCreated, c.ID, orgID)
+	return c, nil
+}
+
+func (s *Service) UpdateCredential(ctx context.Context, credentialID, name, status string) (*credentials.Credential, error) {
+	c, err := s.API.UpdateCredential(ctx, credentialID, name, status)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "updated"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventCredentialUpdated, credentialID, c.OrganizationID)
+	return c, nil
+}
+
+func (s *Service) RotateCredential(ctx context.Context, credentialID, secretRef, secretValue string) (*credentials.Credential, error) {
+	c, err := s.API.RotateCredential(ctx, credentialID, secretRef, secretValue)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "updated"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventCredentialRotated, credentialID, c.OrganizationID)
+	return c, nil
+}
+
+func (s *Service) DeleteCredential(ctx context.Context, credentialID string) error {
+	if err := s.API.DeleteCredential(ctx, credentialID); err != nil {
+		return err
+	}
+	if err := s.publish(ctx, "deleted"); err != nil {
+		return err
+	}
+	s.emit(ctx, EventCredentialDeleted, credentialID, "")
+	return nil
+}
+
+func (s *Service) AssignCredential(ctx context.Context, credentialID, scopeType, scopeID, createdBy string) (*credentials.Assignment, error) {
+	a, err := s.API.AssignCredential(ctx, credentialID, scopeType, scopeID, createdBy)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "created"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventCredentialAssigned, a.ID, a.OrganizationID)
+	return a, nil
+}
+
+func (s *Service) DeleteCredentialAssignment(ctx context.Context, assignmentID string) error {
+	if err := s.API.DeleteCredentialAssignment(ctx, assignmentID); err != nil {
+		return err
+	}
+	if err := s.publish(ctx, "deleted"); err != nil {
+		return err
+	}
+	s.emit(ctx, EventCredentialUnassigned, assignmentID, "")
 	return nil
 }

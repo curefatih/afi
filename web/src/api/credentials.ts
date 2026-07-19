@@ -64,13 +64,13 @@ export const createCredentialMutationOptions = () =>
 				`/api/v1/platform/organizations/${input.orgId}/credentials`,
 				{
 					method: "POST",
-					body: JSON.stringify({
+					body: {
 						name: input.name,
 						provider_type: input.provider_type,
 						storage_kind: input.storage_kind,
 						secret_ref: input.secret_ref,
 						secret_value: input.secret_value,
-					}),
+					},
 				},
 			),
 	});
@@ -97,11 +97,11 @@ export const assignCredentialMutationOptions = () =>
 				`/api/v1/platform/organizations/${input.orgId}/credential-assignments`,
 				{
 					method: "PUT",
-					body: JSON.stringify({
+					body: {
 						credential_id: input.credential_id,
 						scope_type: input.scope_type,
 						scope_id: input.scope_id,
-					}),
+					},
 				},
 			),
 	});

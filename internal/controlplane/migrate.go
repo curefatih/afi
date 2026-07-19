@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 9
+const schemaVersion = 10
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS platform_event_outbox CASCADE;
@@ -25,6 +25,8 @@ DROP TABLE IF EXISTS api_key_providers CASCADE;
 DROP TABLE IF EXISTS user_assignments CASCADE;
 DROP TABLE IF EXISTS platform_users CASCADE;
 DROP TABLE IF EXISTS gateway_snapshots CASCADE;
+DROP TABLE IF EXISTS credential_assignments CASCADE;
+DROP TABLE IF EXISTS provider_credentials CASCADE;
 DROP TABLE IF EXISTS routes CASCADE;
 DROP TABLE IF EXISTS api_keys CASCADE;
 DROP TABLE IF EXISTS providers CASCADE;
@@ -128,6 +130,39 @@ CREATE TABLE IF NOT EXISTS providers (
     api_key_env TEXT NOT NULL,
     capabilities JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS provider_credentials (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    provider_type TEXT NOT NULL,
+    storage_kind TEXT NOT NULL,
+    secret_ref TEXT,
+    encrypted_payload BYTEA,
+    key_version INT NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (organization_id, name),
+    CONSTRAINT provider_credentials_storage_check CHECK (
+        (storage_kind = 'env' AND secret_ref IS NOT NULL AND encrypted_payload IS NULL) OR
+        (storage_kind = 'encrypted_db' AND encrypted_payload IS NOT NULL AND secret_ref IS NULL)
+    ),
+    CONSTRAINT provider_credentials_status_check CHECK (status IN ('active', 'disabled'))
+);
+
+CREATE TABLE IF NOT EXISTS credential_assignments (
+    id TEXT PRIMARY KEY,
+    credential_id TEXT NOT NULL REFERENCES provider_credentials(id) ON DELETE CASCADE,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    provider_type TEXT NOT NULL,
+    scope_type TEXT NOT NULL,
+    scope_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_by TEXT,
+    UNIQUE (scope_type, scope_id, provider_type),
+    CONSTRAINT credential_assignments_scope_check CHECK (scope_type IN ('organization', 'project'))
 );
 
 CREATE TABLE IF NOT EXISTS routes (
@@ -461,6 +496,46 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			WHERE status = 'pending';
 	`); err != nil {
 		return fmt.Errorf("cycle15 org invites: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS provider_credentials (
+			id TEXT PRIMARY KEY,
+			organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+			name TEXT NOT NULL,
+			provider_type TEXT NOT NULL,
+			storage_kind TEXT NOT NULL,
+			secret_ref TEXT,
+			encrypted_payload BYTEA,
+			key_version INT NOT NULL DEFAULT 0,
+			status TEXT NOT NULL DEFAULT 'active',
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			UNIQUE (organization_id, name),
+			CONSTRAINT provider_credentials_storage_check CHECK (
+				(storage_kind = 'env' AND secret_ref IS NOT NULL AND encrypted_payload IS NULL) OR
+				(storage_kind = 'encrypted_db' AND encrypted_payload IS NOT NULL AND secret_ref IS NULL)
+			),
+			CONSTRAINT provider_credentials_status_check CHECK (status IN ('active', 'disabled'))
+		);
+		CREATE TABLE IF NOT EXISTS credential_assignments (
+			id TEXT PRIMARY KEY,
+			credential_id TEXT NOT NULL REFERENCES provider_credentials(id) ON DELETE CASCADE,
+			organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+			provider_type TEXT NOT NULL,
+			scope_type TEXT NOT NULL,
+			scope_id TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			created_by TEXT,
+			UNIQUE (scope_type, scope_id, provider_type),
+			CONSTRAINT credential_assignments_scope_check CHECK (scope_type IN ('organization', 'project'))
+		);
+		CREATE INDEX IF NOT EXISTS provider_credentials_org_idx
+			ON provider_credentials (organization_id);
+		CREATE INDEX IF NOT EXISTS credential_assignments_org_idx
+			ON credential_assignments (organization_id);
+	`); err != nil {
+		return fmt.Errorf("cycle16 provider credentials: %w", err)
 	}
 	return nil
 }

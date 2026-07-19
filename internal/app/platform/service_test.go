@@ -7,6 +7,7 @@ import (
 
 	"github.com/curefatih/afi/internal/access"
 	"github.com/curefatih/afi/internal/app/platform"
+	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
@@ -100,6 +101,26 @@ func (m *memAPI) UpdatePolicy(context.Context, string, *string, *string, *bool, 
 	panic("unused")
 }
 func (m *memAPI) DeletePolicy(context.Context, string) error { panic("unused") }
+func (m *memAPI) ListCredentials(context.Context, string) ([]credentials.Credential, error) {
+	return nil, nil
+}
+func (m *memAPI) CreateCredential(context.Context, string, string, string, string, string, string) (*credentials.Credential, error) {
+	panic("unused")
+}
+func (m *memAPI) UpdateCredential(context.Context, string, string, string) (*credentials.Credential, error) {
+	panic("unused")
+}
+func (m *memAPI) RotateCredential(context.Context, string, string, string) (*credentials.Credential, error) {
+	panic("unused")
+}
+func (m *memAPI) DeleteCredential(context.Context, string) error { panic("unused") }
+func (m *memAPI) ListCredentialAssignments(context.Context, string) ([]credentials.Assignment, error) {
+	return nil, nil
+}
+func (m *memAPI) AssignCredential(context.Context, string, string, string, string) (*credentials.Assignment, error) {
+	panic("unused")
+}
+func (m *memAPI) DeleteCredentialAssignment(context.Context, string) error { panic("unused") }
 
 func TestServiceCreateQuotaPublishesAndEmits(t *testing.T) {
 	t.Parallel()

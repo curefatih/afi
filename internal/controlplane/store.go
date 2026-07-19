@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/curefatih/afi/internal/access"
 	"github.com/curefatih/afi/internal/adapters/postgres"
+	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/kernel"
@@ -47,6 +49,10 @@ type Provider = gatewayconfig.Provider
 type RouteFallback = gatewayconfig.RouteFallback
 type Route = gatewayconfig.Route
 
+// Credential / Assignment are org-owned upstream secrets (canonical in credentials).
+type Credential = credentials.Credential
+type CredentialAssignment = credentials.Assignment
+
 // UsageEvent is the control-plane read model (persisted row + joins).
 // Emit/outbox use the canonical usage.Event.
 type UsageEvent = usage.Record
@@ -56,11 +62,27 @@ type ModelPrice = usage.ModelPrice
 type ProviderHealth = usage.ProviderHealth
 
 type Store struct {
-	pool *pgxpool.Pool
+	pool    *pgxpool.Pool
+	credBox *credentials.Box
 }
 
 func NewStore(pool *pgxpool.Pool) *Store {
 	return &Store{pool: pool}
+}
+
+// SetCredentialsMasterKey configures encryption for encrypted_db credentials.
+// Empty raw leaves encrypted_db creates disabled.
+func (s *Store) SetCredentialsMasterKey(raw string) error {
+	if strings.TrimSpace(raw) == "" {
+		s.credBox = nil
+		return nil
+	}
+	box, err := credentials.ParseMasterKey(raw)
+	if err != nil {
+		return err
+	}
+	s.credBox = box
+	return nil
 }
 
 func (s *Store) users() *postgres.Users {
@@ -319,11 +341,73 @@ func (s *Store) ListRoutes(ctx context.Context, orgID string) ([]Route, error) {
 }
 
 func (s *Store) CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []RouteFallback) (*Route, error) {
-	return gatewayconfig.CreateRoute(ctx, s.routes(), newID("route"), orgID, model, providerID, targetModel, fallbacks)
+	return gatewayconfig.CreateRoute(ctx, s.routes(), s.providers(), newID("route"), orgID, model, providerID, targetModel, fallbacks)
 }
 
 func (s *Store) UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []RouteFallback) (*Route, error) {
-	return s.routes().Update(ctx, routeID, model, providerID, targetModel, fallbacks)
+	orgID, err := s.GetRouteOrgID(ctx, routeID)
+	if err != nil {
+		return nil, err
+	}
+	return gatewayconfig.UpdateRoute(ctx, s.routes(), s.providers(), routeID, orgID, model, providerID, targetModel, fallbacks)
+}
+
+func (s *Store) credentialsRepo() *postgres.Credentials {
+	return postgres.NewCredentials(s.pool)
+}
+
+func (s *Store) ListCredentials(ctx context.Context, orgID string) ([]Credential, error) {
+	return s.credentialsRepo().ListByOrg(ctx, orgID)
+}
+
+func (s *Store) GetCredential(ctx context.Context, credentialID string) (*Credential, error) {
+	c, err := s.credentialsRepo().Get(ctx, credentialID)
+	if err != nil {
+		return nil, err
+	}
+	pub := c.Public()
+	return &pub, nil
+}
+
+func (s *Store) CreateCredential(ctx context.Context, orgID, name, providerType, storageKind, secretRef, secretValue string) (*Credential, error) {
+	return credentials.Create(ctx, s.credentialsRepo(), s.credBox, credentials.CreateInput{
+		ID: newID("cred"), OrgID: orgID, Name: name, ProviderType: providerType,
+		StorageKind: storageKind, SecretRef: secretRef, SecretValue: secretValue,
+	})
+}
+
+func (s *Store) UpdateCredential(ctx context.Context, credentialID, name, status string) (*Credential, error) {
+	return s.credentialsRepo().UpdateMeta(ctx, credentialID, name, status)
+}
+
+func (s *Store) RotateCredential(ctx context.Context, credentialID, secretRef, secretValue string) (*Credential, error) {
+	return credentials.RotateSecret(ctx, s.credentialsRepo(), s.credBox, credentialID, secretRef, secretValue)
+}
+
+func (s *Store) DeleteCredential(ctx context.Context, credentialID string) error {
+	return credentials.DeleteCredential(ctx, s.credentialsRepo(), credentialID)
+}
+
+func (s *Store) GetCredentialOrgID(ctx context.Context, credentialID string) (string, error) {
+	return s.credentialsRepo().OrgID(ctx, credentialID)
+}
+
+func (s *Store) ListCredentialAssignments(ctx context.Context, orgID string) ([]CredentialAssignment, error) {
+	return s.credentialsRepo().ListAssignmentsByOrg(ctx, orgID)
+}
+
+func (s *Store) AssignCredential(ctx context.Context, credentialID, scopeType, scopeID, createdBy string) (*CredentialAssignment, error) {
+	return credentials.Assign(ctx, s.credentialsRepo(), s, credentials.AssignInput{
+		ID: newID("casg"), CredentialID: credentialID, ScopeType: scopeType, ScopeID: scopeID, CreatedBy: createdBy,
+	})
+}
+
+func (s *Store) DeleteCredentialAssignment(ctx context.Context, assignmentID string) error {
+	return s.credentialsRepo().DeleteAssignment(ctx, assignmentID)
+}
+
+func (s *Store) GetCredentialAssignmentOrgID(ctx context.Context, assignmentID string) (string, error) {
+	return s.credentialsRepo().AssignmentOrgID(ctx, assignmentID)
 }
 
 func (s *Store) DeleteRoute(ctx context.Context, routeID string) error {

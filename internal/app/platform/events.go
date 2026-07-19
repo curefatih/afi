@@ -29,6 +29,12 @@ const (
 	EventPolicyCreated   EventName = "policy.created"
 	EventPolicyUpdated   EventName = "policy.updated"
 	EventPolicyDeleted   EventName = "policy.deleted"
+	EventCredentialCreated   EventName = "credential.created"
+	EventCredentialUpdated   EventName = "credential.updated"
+	EventCredentialRotated   EventName = "credential.rotated"
+	EventCredentialDeleted   EventName = "credential.deleted"
+	EventCredentialAssigned  EventName = "credential.assigned"
+	EventCredentialUnassigned EventName = "credential.unassigned"
 	EventSnapshotPublish EventName = "snapshot.published"
 )
 

@@ -119,6 +119,20 @@ func (f *fakeMembers) GetPolicyOrgID(_ context.Context, policyID string) (string
 	return "", kernel.ErrNotFound
 }
 
+func (f *fakeMembers) GetCredentialOrgID(_ context.Context, credentialID string) (string, error) {
+	if credentialID == "cred_ok" {
+		return "org_a", nil
+	}
+	return "", kernel.ErrNotFound
+}
+
+func (f *fakeMembers) GetCredentialAssignmentOrgID(_ context.Context, assignmentID string) (string, error) {
+	if assignmentID == "casg_ok" {
+		return "org_a", nil
+	}
+	return "", kernel.ErrNotFound
+}
+
 type fakePublisher struct {
 	err   error
 	calls int
@@ -252,6 +266,26 @@ func (f *fakePlatform) UpdatePolicy(context.Context, string, *string, *string, *
 	return nil, nil
 }
 func (f *fakePlatform) DeletePolicy(context.Context, string) error { return nil }
+func (f *fakePlatform) ListCredentials(context.Context, string) ([]Credential, error) {
+	return nil, nil
+}
+func (f *fakePlatform) CreateCredential(context.Context, string, string, string, string, string, string) (*Credential, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) UpdateCredential(context.Context, string, string, string) (*Credential, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) RotateCredential(context.Context, string, string, string) (*Credential, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) DeleteCredential(context.Context, string) error { return nil }
+func (f *fakePlatform) ListCredentialAssignments(context.Context, string) ([]CredentialAssignment, error) {
+	return nil, nil
+}
+func (f *fakePlatform) AssignCredential(context.Context, string, string, string, string) (*CredentialAssignment, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) DeleteCredentialAssignment(context.Context, string) error { return nil }
 
 func testCfg() *kernel.Config {
 	cfg := &kernel.Config{}

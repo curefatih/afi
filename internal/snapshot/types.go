@@ -19,19 +19,37 @@ const (
 
 	KeyKindPersonal       = "personal"
 	KeyKindServiceAccount = "service_account"
+
+	CredentialStorageEnv         = "env"
+	CredentialStorageEncryptedDB = "encrypted_db"
+	CredentialStatusActive       = "active"
+	CredentialStatusDisabled     = "disabled"
 )
 
 // RequestWindows are checked on every request (rate limits + lifetime).
 var RequestWindows = []string{WindowMinute, WindowHour, WindowDay, WindowTotal}
 
 type Snapshot struct {
-	Version   int64               `json:"version"`
-	CreatedAt time.Time           `json:"created_at"`
-	APIKeys   map[string]APIKey   `json:"api_keys"`  // keyed by key hash
-	Providers map[string]Provider `json:"providers"` // keyed by provider id
-	Routes    map[string]Route    `json:"routes"`    // keyed by orgID + "::" + model
-	Quotas    []Quota             `json:"quotas"`
-	Policies  []Policy            `json:"policies"`
+	Version     int64                   `json:"version"`
+	CreatedAt   time.Time               `json:"created_at"`
+	APIKeys     map[string]APIKey       `json:"api_keys"`     // keyed by key hash
+	Providers   map[string]Provider     `json:"providers"`    // keyed by provider id
+	Routes      map[string]Route        `json:"routes"`       // keyed by orgID + "::" + model
+	Credentials map[string]Credential   `json:"credentials"`  // keyed by credential id
+	Assignments map[string]string       `json:"assignments"`  // providerType::scopeType::scopeID → credential id
+	Quotas      []Quota                 `json:"quotas"`
+	Policies    []Policy                `json:"policies"`
+}
+
+// Credential is a compiled upstream secret reference (never plaintext for encrypted_db).
+type Credential struct {
+	ID               string `json:"id"`
+	ProviderType     string `json:"provider_type"`
+	StorageKind      string `json:"storage_kind"`
+	SecretRef        string `json:"secret_ref,omitempty"`
+	EncryptedPayload []byte `json:"encrypted_payload,omitempty"`
+	KeyVersion       int    `json:"key_version,omitempty"`
+	Status           string `json:"status"`
 }
 
 type Quota struct {
@@ -72,6 +90,9 @@ type Provider struct {
 	APIKeyEnv    string               `json:"api_key_env"`
 	Name         string               `json:"name"`
 	Capabilities ProviderCapabilities `json:"capabilities"`
+	// InlineAPIKey is request-scoped; set by the gateway after credential resolution.
+	// Never persisted in snapshots (json:"-").
+	InlineAPIKey string `json:"-"`
 }
 
 // RouteTarget is a provider + model pair used for primary routing or failover.
@@ -113,6 +134,34 @@ func (s *Snapshot) LookupRoute(orgID, model string) (Route, Provider, bool) {
 		return Route{}, Provider{}, false
 	}
 	return r, p, true
+}
+
+// AssignmentKey builds the snapshot assignment index key.
+func AssignmentKey(providerType, scopeType, scopeID string) string {
+	return providerType + "::" + scopeType + "::" + scopeID
+}
+
+// ResolveCredential picks the most specific active credential for a provider type
+// (project → organization). Returns false when no assignment matches.
+func (s *Snapshot) ResolveCredential(providerType string, key APIKey) (Credential, bool) {
+	if s == nil || s.Credentials == nil || s.Assignments == nil {
+		return Credential{}, false
+	}
+	if key.ProjectID != "" {
+		if id, ok := s.Assignments[AssignmentKey(providerType, ScopeProject, key.ProjectID)]; ok {
+			if c, ok := s.Credentials[id]; ok && c.Status == CredentialStatusActive {
+				return c, true
+			}
+		}
+	}
+	if key.OrganizationID != "" {
+		if id, ok := s.Assignments[AssignmentKey(providerType, ScopeOrganization, key.OrganizationID)]; ok {
+			if c, ok := s.Credentials[id]; ok && c.Status == CredentialStatusActive {
+				return c, true
+			}
+		}
+	}
+	return Credential{}, false
 }
 
 // ValidQuotaWindow reports whether window is supported.

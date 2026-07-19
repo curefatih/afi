@@ -33,6 +33,9 @@ func NewGeminiClient(sec secrets.Resolver) *GeminiClient {
 }
 
 func (c *GeminiClient) apiKey(ctx context.Context, provider snapshot.Provider) (string, error) {
+	if provider.InlineAPIKey != "" {
+		return provider.InlineAPIKey, nil
+	}
 	key, err := c.Secrets.Get(ctx, provider.APIKeyEnv)
 	if err != nil {
 		return "", fmt.Errorf("%w for provider %s", err, provider.ID)

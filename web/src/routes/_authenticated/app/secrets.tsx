@@ -157,140 +157,146 @@ function RouteComponent() {
 				}
 			/>
 			<PageBody>
-				<QueryGate query={credentials}>
-					{(list) =>
-						list.length === 0 ? (
-							<Empty>
-								<EmptyHeader>
-									<EmptyMedia variant="icon">
-										<ShieldIcon />
-									</EmptyMedia>
-									<EmptyTitle>No credentials yet</EmptyTitle>
-									<EmptyDescription>
-										Create an OpenAI (or other) credential and assign it to this
-										organization or a project.
-									</EmptyDescription>
-								</EmptyHeader>
-								{isOrgAdmin ? (
-									<EmptyContent>
-										<Button onClick={() => setCreateOpen(true)}>
-											Add credential
-										</Button>
-									</EmptyContent>
-								) : null}
-							</Empty>
-						) : (
-							<div className="rounded-lg border">
-								<Table>
-									<TableHeader>
-										<TableRow>
-											<TableHead>Name</TableHead>
-											<TableHead>Provider</TableHead>
-											<TableHead>Storage</TableHead>
-											<TableHead>Assignments</TableHead>
-											<TableHead>Status</TableHead>
-											{isOrgAdmin ? <TableHead className="w-[1%]" /> : null}
-										</TableRow>
-									</TableHeader>
-									<TableBody>
-										{list.map((c) => {
-											const asgs = assignmentsByCred.get(c.id) ?? [];
-											return (
-												<TableRow key={c.id}>
-													<TableCell className="font-medium">
-														{c.name}
-														{c.storage_kind === "env" && c.secret_ref ? (
-															<div className="text-muted-foreground text-xs font-normal">
-																{c.secret_ref}
-															</div>
-														) : null}
-													</TableCell>
-													<TableCell>{c.provider_type}</TableCell>
-													<TableCell>
-														<Badge variant="outline" className="font-normal">
-															{c.storage_kind === "encrypted_db"
-																? "encrypted"
-																: "env"}
-														</Badge>
-													</TableCell>
-													<TableCell>
-														<div className="flex flex-col gap-1">
-															{asgs.length === 0 ? (
-																<span className="text-muted-foreground text-sm">
-																	—
-																</span>
-															) : (
-																asgs.map((a) => (
-																	<div
-																		key={a.id}
-																		className="flex items-center gap-2 text-sm"
-																	>
-																		<span>
-																			{a.scope_type === "organization"
-																				? `Org · ${org?.name ?? a.scope_id}`
-																				: `Project · ${projectName(a.scope_id)}`}
-																		</span>
-																		{isOrgAdmin ? (
-																			<Button
-																				variant="ghost"
-																				size="sm"
-																				className="h-6 px-2 text-xs"
-																				disabled={unassign.isPending}
-																				onClick={() => unassign.mutate(a.id)}
-																			>
-																				Remove
-																			</Button>
-																		) : null}
-																	</div>
-																))
-															)}
+				<QueryGate
+					isPending={!!orgId && (credentials.isLoading || assignments.isLoading)}
+					isError={credentials.isError || assignments.isError}
+					error={credentials.error || assignments.error}
+					onRetry={() => {
+						void credentials.refetch();
+						void assignments.refetch();
+					}}
+				>
+					{(credentials.data ?? []).length === 0 ? (
+						<Empty className="border min-h-64">
+							<EmptyHeader>
+								<EmptyMedia variant="icon">
+									<ShieldIcon />
+								</EmptyMedia>
+								<EmptyTitle>No credentials yet</EmptyTitle>
+								<EmptyDescription>
+									Create an OpenAI (or other) credential and assign it to this
+									organization or a project.
+								</EmptyDescription>
+							</EmptyHeader>
+							{isOrgAdmin ? (
+								<EmptyContent>
+									<Button onClick={() => setCreateOpen(true)}>
+										Add credential
+									</Button>
+								</EmptyContent>
+							) : null}
+						</Empty>
+					) : (
+						<div className="rounded-lg border">
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>Name</TableHead>
+										<TableHead>Provider</TableHead>
+										<TableHead>Storage</TableHead>
+										<TableHead>Assignments</TableHead>
+										<TableHead>Status</TableHead>
+										{isOrgAdmin ? <TableHead className="w-[1%]" /> : null}
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{(credentials.data ?? []).map((c) => {
+										const asgs = assignmentsByCred.get(c.id) ?? [];
+										return (
+											<TableRow key={c.id}>
+												<TableCell className="font-medium">
+													{c.name}
+													{c.storage_kind === "env" && c.secret_ref ? (
+														<div className="text-muted-foreground text-xs font-normal">
+															{c.secret_ref}
 														</div>
-													</TableCell>
-													<TableCell>
-														<Badge
-															variant={
-																c.status === "active" ? "secondary" : "outline"
-															}
-															className="font-normal"
-														>
-															{c.status}
-														</Badge>
-													</TableCell>
-													{isOrgAdmin ? (
-														<TableCell className="text-right whitespace-nowrap">
-															<Button
-																variant="outline"
-																size="sm"
-																onClick={() => setAssignFor(c)}
-															>
-																Assign
-															</Button>{" "}
-															<Button
-																variant="ghost"
-																size="sm"
-																disabled={del.isPending}
-																onClick={() => {
-																	if (
-																		confirm(
-																			`Delete credential “${c.name}”? Remove assignments first if delete fails.`,
-																		)
-																	) {
-																		del.mutate(c.id);
-																	}
-																}}
-															>
-																Delete
-															</Button>
-														</TableCell>
 													) : null}
-												</TableRow>
-											);
-										})}
-									</TableBody>
-								</Table>
-							</div>
-						)
-					}
+												</TableCell>
+												<TableCell>{c.provider_type}</TableCell>
+												<TableCell>
+													<Badge variant="outline" className="font-normal">
+														{c.storage_kind === "encrypted_db"
+															? "encrypted"
+															: "env"}
+													</Badge>
+												</TableCell>
+												<TableCell>
+													<div className="flex flex-col gap-1">
+														{asgs.length === 0 ? (
+															<span className="text-muted-foreground text-sm">
+																—
+															</span>
+														) : (
+															asgs.map((a) => (
+																<div
+																	key={a.id}
+																	className="flex items-center gap-2 text-sm"
+																>
+																	<span>
+																		{a.scope_type === "organization"
+																			? `Org · ${org?.name ?? a.scope_id}`
+																			: `Project · ${projectName(a.scope_id)}`}
+																	</span>
+																	{isOrgAdmin ? (
+																		<Button
+																			variant="ghost"
+																			size="sm"
+																			className="h-6 px-2 text-xs"
+																			disabled={unassign.isPending}
+																			onClick={() => unassign.mutate(a.id)}
+																		>
+																			Remove
+																		</Button>
+																	) : null}
+																</div>
+															))
+														)}
+													</div>
+												</TableCell>
+												<TableCell>
+													<Badge
+														variant={
+															c.status === "active" ? "secondary" : "outline"
+														}
+														className="font-normal"
+													>
+														{c.status}
+													</Badge>
+												</TableCell>
+												{isOrgAdmin ? (
+													<TableCell className="text-right whitespace-nowrap">
+														<Button
+															variant="outline"
+															size="sm"
+															onClick={() => setAssignFor(c)}
+														>
+															Assign
+														</Button>{" "}
+														<Button
+															variant="ghost"
+															size="sm"
+															disabled={del.isPending}
+															onClick={() => {
+																if (
+																	confirm(
+																		`Delete credential “${c.name}”? Remove assignments first if delete fails.`,
+																	)
+																) {
+																	del.mutate(c.id);
+																}
+															}}
+														>
+															Delete
+														</Button>
+													</TableCell>
+												) : null}
+											</TableRow>
+										);
+									})}
+								</TableBody>
+							</Table>
+						</div>
+					)}
 				</QueryGate>
 			</PageBody>
 

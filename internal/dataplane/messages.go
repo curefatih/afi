@@ -111,28 +111,39 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 	)
 
 	var (
-		resp         *http.Response
-		lastErr      error
-		usedProvider snapshot.Provider
-		usedTarget   string
-		status       = "ok"
+		resp             *http.Response
+		lastErr          error
+		usedProvider     snapshot.Provider
+		usedTarget       string
+		usedCredentialID string
+		status           = "ok"
 	)
 
 	for i, attempt := range attempts {
-		usedProvider = attempt.Provider
-		usedTarget = attempt.TargetModel
-		client, err := p.messagesBackend(attempt.Provider.Type)
-		if err != nil {
-			lastErr = err
-			log.Warn("upstream messages backend missing", "provider", attempt.Provider.ID, "err", err, "attempt", i)
+		bound, credID, bindErr := p.bindProviderSecret(ctx, snap, attempt.Provider, key)
+		if bindErr != nil {
+			lastErr = bindErr
+			log.Warn("credential resolve failed", "provider", attempt.Provider.ID, "err", bindErr, "attempt", i)
 			if i+1 < len(attempts) {
 				continue
 			}
 			break
 		}
-		resp, lastErr = client.PassThrough(ctx, attempt.Provider, attempt.TargetModel, body, reqBody.Stream)
+		usedProvider = bound
+		usedTarget = attempt.TargetModel
+		usedCredentialID = credID
+		client, err := p.messagesBackend(bound.Type)
+		if err != nil {
+			lastErr = err
+			log.Warn("upstream messages backend missing", "provider", bound.ID, "err", err, "attempt", i)
+			if i+1 < len(attempts) {
+				continue
+			}
+			break
+		}
+		resp, lastErr = client.PassThrough(ctx, bound, attempt.TargetModel, body, reqBody.Stream)
 		if lastErr != nil {
-			log.Warn("upstream messages attempt failed", "provider", attempt.Provider.ID, "err", lastErr, "attempt", i)
+			log.Warn("upstream messages attempt failed", "provider", bound.ID, "err", lastErr, "attempt", i)
 			if i+1 < len(attempts) && shouldFailoverError(lastErr) {
 				continue
 			}
@@ -152,6 +163,7 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 			OrganizationID: key.OrganizationID,
 			ProjectID:      key.ProjectID,
 			APIKeyID:       key.ID,
+			CredentialID:   usedCredentialID,
 			Model:          reqBody.Model,
 			ProviderType:   usedProvider.Type,
 			TargetModel:    usedTarget,
@@ -208,6 +220,7 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 		OrganizationID:   key.OrganizationID,
 		ProjectID:        key.ProjectID,
 		APIKeyID:         key.ID,
+		CredentialID:     usedCredentialID,
 		Model:            reqBody.Model,
 		ProviderType:     usedProvider.Type,
 		TargetModel:      usedTarget,

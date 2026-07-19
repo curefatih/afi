@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/access"
+	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
@@ -54,6 +55,15 @@ type ConfigAPI interface {
 	CreatePolicy(ctx context.Context, orgID, name, expression string, enabled bool, priority int) (*gatewayconfig.RequestPolicy, error)
 	UpdatePolicy(ctx context.Context, policyID string, name, expression *string, enabled *bool, priority *int) (*gatewayconfig.RequestPolicy, error)
 	DeletePolicy(ctx context.Context, policyID string) error
+
+	ListCredentials(ctx context.Context, orgID string) ([]credentials.Credential, error)
+	CreateCredential(ctx context.Context, orgID, name, providerType, storageKind, secretRef, secretValue string) (*credentials.Credential, error)
+	UpdateCredential(ctx context.Context, credentialID, name, status string) (*credentials.Credential, error)
+	RotateCredential(ctx context.Context, credentialID, secretRef, secretValue string) (*credentials.Credential, error)
+	DeleteCredential(ctx context.Context, credentialID string) error
+	ListCredentialAssignments(ctx context.Context, orgID string) ([]credentials.Assignment, error)
+	AssignCredential(ctx context.Context, credentialID, scopeType, scopeID, createdBy string) (*credentials.Assignment, error)
+	DeleteCredentialAssignment(ctx context.Context, assignmentID string) error
 }
 
 // Service orchestrates platform queries and commands (mutate + publish + events).

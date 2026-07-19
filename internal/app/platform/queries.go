@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/access"
+	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
@@ -84,4 +85,12 @@ func (s *Service) ListQuotas(ctx context.Context, orgID string) ([]gatewayconfig
 
 func (s *Service) ListPolicies(ctx context.Context, orgID string) ([]gatewayconfig.RequestPolicy, error) {
 	return s.API.ListPolicies(ctx, orgID)
+}
+
+func (s *Service) ListCredentials(ctx context.Context, orgID string) ([]credentials.Credential, error) {
+	return s.API.ListCredentials(ctx, orgID)
+}
+
+func (s *Service) ListCredentialAssignments(ctx context.Context, orgID string) ([]credentials.Assignment, error) {
+	return s.API.ListCredentialAssignments(ctx, orgID)
 }

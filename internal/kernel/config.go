@@ -29,6 +29,12 @@ type Config struct {
 		InternalToken string        `yaml:"internal_token" env:"AFI_INTERNAL_TOKEN"`
 	} `yaml:"auth"`
 
+	// Credentials configures encryption for storage_kind=encrypted_db provider credentials.
+	// Any non-empty string is accepted (SHA-256 derived); or base64:/raw 32-byte base64.
+	Credentials struct {
+		MasterKey string `yaml:"master_key" env:"AFI_CREDENTIALS_MASTER_KEY"`
+	} `yaml:"credentials"`
+
 	Seed struct {
 		VirtualAPIKey   string `yaml:"virtual_api_key"`
 		AdminEmail      string `yaml:"admin_email"`

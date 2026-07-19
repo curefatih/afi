@@ -13,6 +13,11 @@ auth:
   token_ttl: "24h"
   internal_token: "afi-local-internal-token"
 
+# Required for Secrets → storage_kind=encrypted_db (controlplane + gateway).
+# Any string is SHA-256-derived; or use base64:<32-byte-key>.
+credentials:
+  master_key: "afi-local-dev-credentials-master-key"
+
 seed:
   virtual_api_key: "sk-project-local-dev-token-12345"
   admin_email: "admin@afi.local"
