@@ -403,9 +403,25 @@ func (s *Store) CreateProject(ctx context.Context, orgID, teamID, name string) (
 	return p, nil
 }
 
+func scanAPIKey(scan func(dest ...any) error) (APIKey, error) {
+	var k APIKey
+	var projectID, ownerUserID *string
+	err := scan(&k.ID, &projectID, &k.OrganizationID, &k.Name, &k.Kind, &ownerUserID, &k.KeyPrefix, &k.CreatedAt)
+	if err != nil {
+		return k, err
+	}
+	if projectID != nil {
+		k.ProjectID = *projectID
+	}
+	if ownerUserID != nil {
+		k.OwnerUserID = *ownerUserID
+	}
+	return k, nil
+}
+
 func (s *Store) ListAPIKeys(ctx context.Context, projectID string) ([]APIKey, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, project_id, organization_id, name, key_prefix, created_at
+		SELECT id, project_id, organization_id, name, kind, owner_user_id, key_prefix, created_at
 		FROM api_keys WHERE project_id = $1 ORDER BY created_at
 	`, projectID)
 	if err != nil {
@@ -415,13 +431,69 @@ func (s *Store) ListAPIKeys(ctx context.Context, projectID string) ([]APIKey, er
 
 	var out []APIKey
 	for rows.Next() {
-		var k APIKey
-		if err := rows.Scan(&k.ID, &k.ProjectID, &k.OrganizationID, &k.Name, &k.KeyPrefix, &k.CreatedAt); err != nil {
+		k, err := scanAPIKey(rows.Scan)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, k)
 	}
 	return out, rows.Err()
+}
+
+func (s *Store) ListOrgAPIKeys(ctx context.Context, orgID string) ([]APIKey, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, project_id, organization_id, name, kind, owner_user_id, key_prefix, created_at
+		FROM api_keys WHERE organization_id = $1 ORDER BY created_at
+	`, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []APIKey
+	for rows.Next() {
+		k, err := scanAPIKey(rows.Scan)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, k)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) GetAPIKey(ctx context.Context, keyID string) (*APIKey, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT id, project_id, organization_id, name, kind, owner_user_id, key_prefix, created_at
+		FROM api_keys WHERE id = $1
+	`, keyID)
+	k, err := scanAPIKey(row.Scan)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, kernel.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &k, nil
+}
+
+func (s *Store) GetAPIKeyOrgID(ctx context.Context, keyID string) (string, error) {
+	var orgID string
+	err := s.pool.QueryRow(ctx, `SELECT organization_id FROM api_keys WHERE id = $1`, keyID).Scan(&orgID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", kernel.ErrNotFound
+	}
+	return orgID, err
+}
+
+func (s *Store) DeleteAPIKey(ctx context.Context, keyID string) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM api_keys WHERE id=$1`, keyID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return kernel.ErrNotFound
+	}
+	return nil
 }
 
 func (s *Store) GetProjectOrgID(ctx context.Context, projectID string) (string, error) {
@@ -433,20 +505,61 @@ func (s *Store) GetProjectOrgID(ctx context.Context, projectID string) (string, 
 	return orgID, err
 }
 
-func (s *Store) CreateAPIKey(ctx context.Context, orgID, projectID, name, rawKey string) (*APIKey, error) {
+// CreateAPIKey inserts a key. kind must be personal or service_account.
+// Personal: ownerUserID required, projectID must be empty.
+// Service account: ownerUserID empty, projectID optional (empty = org-wide).
+func (s *Store) CreateAPIKey(ctx context.Context, orgID, kind, ownerUserID, projectID, name, rawKey string) (*APIKey, error) {
+	if kind == "" {
+		kind = snapshot.KeyKindServiceAccount
+	}
+	switch kind {
+	case snapshot.KeyKindPersonal:
+		if ownerUserID == "" {
+			return nil, fmt.Errorf("personal keys require owner")
+		}
+		if projectID != "" {
+			return nil, fmt.Errorf("personal keys cannot have a project")
+		}
+	case snapshot.KeyKindServiceAccount:
+		if ownerUserID != "" {
+			return nil, fmt.Errorf("service account keys cannot have an owner")
+		}
+	default:
+		return nil, fmt.Errorf("invalid key kind %q", kind)
+	}
+	if projectID != "" {
+		projOrg, err := s.GetProjectOrgID(ctx, projectID)
+		if err != nil {
+			return nil, err
+		}
+		if projOrg != orgID {
+			return nil, fmt.Errorf("project not in organization")
+		}
+	}
+
 	k := &APIKey{
 		ID:             newID("key"),
 		ProjectID:      projectID,
 		OrganizationID: orgID,
 		Name:           name,
+		Kind:           kind,
+		OwnerUserID:    ownerUserID,
 		KeyPrefix:      KeyPrefix(rawKey),
 		Key:            rawKey,
 		CreatedAt:      time.Now().UTC(),
 	}
+	var project any
+	if projectID != "" {
+		project = projectID
+	}
+	var owner any
+	if ownerUserID != "" {
+		owner = ownerUserID
+	}
 	_, err := s.pool.Exec(ctx, `
-		INSERT INTO api_keys (id, project_id, organization_id, name, key_hash, key_prefix, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, k.ID, k.ProjectID, k.OrganizationID, k.Name, HashAPIKey(rawKey), k.KeyPrefix, k.CreatedAt)
+		INSERT INTO api_keys (id, project_id, organization_id, name, kind, owner_user_id, key_hash, key_prefix, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	`, k.ID, project, k.OrganizationID, k.Name, k.Kind, owner, HashAPIKey(rawKey), k.KeyPrefix, k.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -729,6 +842,9 @@ func (s *Store) CreateQuota(ctx context.Context, orgID, scopeType, scopeID, metr
 	if window == "" {
 		window = snapshot.WindowTotal
 	}
+	if err := s.validateQuotaScope(ctx, orgID, scopeType, scopeID); err != nil {
+		return nil, err
+	}
 	q := &Quota{
 		ID: newID("quota"), OrganizationID: orgID, ScopeType: scopeType, ScopeID: scopeID,
 		Metric: metric, LimitValue: limitValue, Window: window, CreatedAt: time.Now().UTC(),
@@ -738,6 +854,51 @@ func (s *Store) CreateQuota(ctx context.Context, orgID, scopeType, scopeID, metr
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
 	`, q.ID, q.OrganizationID, q.ScopeType, q.ScopeID, q.Metric, q.LimitValue, q.Window, q.CreatedAt)
 	return q, err
+}
+
+func (s *Store) validateQuotaScope(ctx context.Context, orgID, scopeType, scopeID string) error {
+	switch scopeType {
+	case snapshot.ScopeOrganization:
+		if scopeID != orgID {
+			return fmt.Errorf("%w: organization scope_id must match organization", kernel.ErrInvalidRequest)
+		}
+		return nil
+	case snapshot.ScopeProject:
+		projOrg, err := s.GetProjectOrgID(ctx, scopeID)
+		if errors.Is(err, kernel.ErrNotFound) {
+			return fmt.Errorf("%w: project not found", kernel.ErrInvalidRequest)
+		}
+		if err != nil {
+			return err
+		}
+		if projOrg != orgID {
+			return fmt.Errorf("%w: project not in organization", kernel.ErrInvalidRequest)
+		}
+		return nil
+	case snapshot.ScopeUser:
+		ok, err := s.IsOrgMember(ctx, scopeID, orgID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("%w: user is not an organization member", kernel.ErrInvalidRequest)
+		}
+		return nil
+	case snapshot.ScopeAPIKey:
+		k, err := s.GetAPIKey(ctx, scopeID)
+		if errors.Is(err, kernel.ErrNotFound) {
+			return fmt.Errorf("%w: api key not found", kernel.ErrInvalidRequest)
+		}
+		if err != nil {
+			return err
+		}
+		if k.OrganizationID != orgID {
+			return fmt.Errorf("%w: api key not in organization", kernel.ErrInvalidRequest)
+		}
+		return nil
+	default:
+		return fmt.Errorf("%w: invalid scope_type %q", kernel.ErrInvalidRequest, scopeType)
+	}
 }
 
 func (s *Store) UpdateQuota(ctx context.Context, quotaID string, limitValue int64) (*Quota, error) {
@@ -807,7 +968,7 @@ func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error)
 	var src snapshot.Source
 
 	keyRows, err := s.pool.Query(ctx, `
-		SELECT id, key_hash, key_prefix, project_id, organization_id, name FROM api_keys
+		SELECT id, key_hash, key_prefix, project_id, organization_id, name, kind, owner_user_id FROM api_keys
 	`)
 	if err != nil {
 		return src, err
@@ -815,8 +976,15 @@ func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error)
 	defer keyRows.Close()
 	for keyRows.Next() {
 		var k snapshot.APIKey
-		if err := keyRows.Scan(&k.ID, &k.KeyHash, &k.KeyPrefix, &k.ProjectID, &k.OrganizationID, &k.Name); err != nil {
+		var projectID, ownerUserID *string
+		if err := keyRows.Scan(&k.ID, &k.KeyHash, &k.KeyPrefix, &projectID, &k.OrganizationID, &k.Name, &k.Kind, &ownerUserID); err != nil {
 			return src, err
+		}
+		if projectID != nil {
+			k.ProjectID = *projectID
+		}
+		if ownerUserID != nil {
+			k.OwnerUserID = *ownerUserID
 		}
 		src.APIKeys = append(src.APIKeys, k)
 	}

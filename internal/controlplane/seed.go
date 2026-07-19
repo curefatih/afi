@@ -80,8 +80,8 @@ func (s *Seeder) Seed(ctx context.Context) error {
 	_ = tx.QueryRow(ctx, `SELECT id FROM users WHERE email = $1`, cfg.AdminEmail).Scan(&userID)
 
 	_, err = tx.Exec(ctx, `
-		INSERT INTO organization_members (organization_id, user_id) VALUES ($1, $2)
-		ON CONFLICT DO NOTHING
+		INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'owner')
+		ON CONFLICT (organization_id, user_id) DO UPDATE SET role = EXCLUDED.role
 	`, orgID, userID)
 	if err != nil {
 		return fmt.Errorf("org member: %w", err)
@@ -179,9 +179,14 @@ func (s *Seeder) Seed(ctx context.Context) error {
 	keyHash := HashAPIKey(cfg.VirtualAPIKey)
 	keyPrefix := KeyPrefix(cfg.VirtualAPIKey)
 	_, err = tx.Exec(ctx, `
-		INSERT INTO api_keys (id, project_id, organization_id, name, key_hash, key_prefix, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		ON CONFLICT (key_hash) DO UPDATE SET name = EXCLUDED.name, key_prefix = EXCLUDED.key_prefix
+		INSERT INTO api_keys (id, project_id, organization_id, name, kind, owner_user_id, key_hash, key_prefix, created_at)
+		VALUES ($1, $2, $3, $4, 'service_account', NULL, $5, $6, $7)
+		ON CONFLICT (key_hash) DO UPDATE SET
+			name = EXCLUDED.name,
+			key_prefix = EXCLUDED.key_prefix,
+			kind = EXCLUDED.kind,
+			project_id = EXCLUDED.project_id,
+			owner_user_id = EXCLUDED.owner_user_id
 	`, keyID, projectID, orgID, "Local Dev Key", keyHash, keyPrefix, now)
 	if err != nil {
 		return fmt.Errorf("api key: %w", err)
