@@ -78,20 +78,7 @@ func main() {
 
 	outbox := &postgres.UsageOutbox{Pool: pool}
 	pipeline.Usage = func(e dataplane.UsageEvent) {
-		payload, err := workers.EncodeUsage(workers.UsagePayload{
-			OrganizationID:   e.OrganizationID,
-			ProjectID:        e.ProjectID,
-			APIKeyID:         e.APIKeyID,
-			Model:            e.Model,
-			ProviderType:     e.ProviderType,
-			TargetModel:      e.TargetModel,
-			Status:           e.Status,
-			LatencyMs:        e.LatencyMs,
-			PromptTokens:     e.PromptTokens,
-			CompletionTokens: e.CompletionTokens,
-			Modality:         e.Modality,
-			Metrics:          e.Metrics,
-		})
+		payload, err := workers.EncodeUsage(e)
 		if err != nil {
 			log.Error("encode usage", "err", err)
 			return
