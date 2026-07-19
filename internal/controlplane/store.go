@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/adapters/postgres"
+	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/kernel"
-	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -1184,135 +1184,73 @@ func (s *Store) LookupModelPrice(ctx context.Context, providerType, model string
 	return p, true, nil
 }
 
-type Quota struct {
-	ID             string    `json:"id"`
-	OrganizationID string    `json:"organization_id"`
-	ScopeType      string    `json:"scope_type"`
-	ScopeID        string    `json:"scope_id"`
-	Metric         string    `json:"metric"`
-	LimitValue     int64     `json:"limit_value"`
-	Window         string    `json:"window"`
-	CreatedAt      time.Time `json:"created_at"`
+// Quota is the platform write-model quota (canonical type in gatewayconfig).
+type Quota = gatewayconfig.Quota
+
+func (s *Store) quotas() *postgres.Quotas {
+	return postgres.NewQuotas(s.pool)
 }
 
 func (s *Store) ListQuotas(ctx context.Context, orgID string) ([]Quota, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT id, organization_id, scope_type, scope_id, metric, limit_value, time_window, created_at
-		FROM quotas WHERE organization_id=$1 ORDER BY created_at
-	`, orgID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []Quota
-	for rows.Next() {
-		var q Quota
-		if err := rows.Scan(&q.ID, &q.OrganizationID, &q.ScopeType, &q.ScopeID, &q.Metric, &q.LimitValue, &q.Window, &q.CreatedAt); err != nil {
-			return nil, err
-		}
-		out = append(out, q)
-	}
-	return out, rows.Err()
+	return s.quotas().ListByOrg(ctx, orgID)
 }
 
 func (s *Store) CreateQuota(ctx context.Context, orgID, scopeType, scopeID, metric string, limitValue int64, window string) (*Quota, error) {
-	if window == "" {
-		window = snapshot.WindowTotal
-	}
-	if !snapshot.ValidQuotaWindow(window) {
-		return nil, fmt.Errorf("%w: window must be total, minute, hour, or day", kernel.ErrInvalidRequest)
-	}
-	if err := s.validateQuotaScope(ctx, orgID, scopeType, scopeID); err != nil {
-		return nil, err
-	}
-	q := &Quota{
-		ID: newID("quota"), OrganizationID: orgID, ScopeType: scopeType, ScopeID: scopeID,
-		Metric: metric, LimitValue: limitValue, Window: window, CreatedAt: time.Now().UTC(),
-	}
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO quotas (id, organization_id, scope_type, scope_id, metric, limit_value, time_window, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-	`, q.ID, q.OrganizationID, q.ScopeType, q.ScopeID, q.Metric, q.LimitValue, q.Window, q.CreatedAt)
-	return q, err
+	return gatewayconfig.CreateQuota(ctx, s.quotas(), s, newID("quota"), orgID, scopeType, scopeID, metric, limitValue, window)
 }
 
-func (s *Store) validateQuotaScope(ctx context.Context, orgID, scopeType, scopeID string) error {
-	switch scopeType {
-	case snapshot.ScopeOrganization:
-		if scopeID != orgID {
-			return fmt.Errorf("%w: organization scope_id must match organization", kernel.ErrInvalidRequest)
-		}
-		return nil
-	case snapshot.ScopeProject:
-		projOrg, err := s.GetProjectOrgID(ctx, scopeID)
-		if errors.Is(err, kernel.ErrNotFound) {
-			return fmt.Errorf("%w: project not found", kernel.ErrInvalidRequest)
-		}
-		if err != nil {
-			return err
-		}
-		if projOrg != orgID {
-			return fmt.Errorf("%w: project not in organization", kernel.ErrInvalidRequest)
-		}
-		return nil
-	case snapshot.ScopeUser:
-		ok, err := s.IsOrgMember(ctx, scopeID, orgID)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return fmt.Errorf("%w: user is not an organization member", kernel.ErrInvalidRequest)
-		}
-		return nil
-	case snapshot.ScopeAPIKey:
-		k, err := s.GetAPIKey(ctx, scopeID)
-		if errors.Is(err, kernel.ErrNotFound) {
-			return fmt.Errorf("%w: api key not found", kernel.ErrInvalidRequest)
-		}
-		if err != nil {
-			return err
-		}
-		if k.OrganizationID != orgID {
-			return fmt.Errorf("%w: api key not in organization", kernel.ErrInvalidRequest)
-		}
-		return nil
-	default:
-		return fmt.Errorf("%w: invalid scope_type %q", kernel.ErrInvalidRequest, scopeType)
+func (s *Store) ProjectBelongsToOrg(ctx context.Context, projectID, orgID string) error {
+	projOrg, err := s.GetProjectOrgID(ctx, projectID)
+	if errors.Is(err, kernel.ErrNotFound) {
+		return fmt.Errorf("%w: project not found", kernel.ErrInvalidRequest)
 	}
-}
-
-func (s *Store) UpdateQuota(ctx context.Context, quotaID string, limitValue int64) (*Quota, error) {
-	q := &Quota{}
-	err := s.pool.QueryRow(ctx, `
-		UPDATE quotas SET limit_value=$2 WHERE id=$1
-		RETURNING id, organization_id, scope_type, scope_id, metric, limit_value, time_window, created_at
-	`, quotaID, limitValue).Scan(
-		&q.ID, &q.OrganizationID, &q.ScopeType, &q.ScopeID, &q.Metric, &q.LimitValue, &q.Window, &q.CreatedAt,
-	)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, kernel.ErrNotFound
-	}
-	return q, err
-}
-
-func (s *Store) DeleteQuota(ctx context.Context, quotaID string) error {
-	tag, err := s.pool.Exec(ctx, `DELETE FROM quotas WHERE id=$1`, quotaID)
 	if err != nil {
 		return err
 	}
-	if tag.RowsAffected() == 0 {
-		return kernel.ErrNotFound
+	if projOrg != orgID {
+		return fmt.Errorf("%w: project not in organization", kernel.ErrInvalidRequest)
 	}
 	return nil
 }
 
-func (s *Store) GetQuotaOrgID(ctx context.Context, quotaID string) (string, error) {
-	var orgID string
-	err := s.pool.QueryRow(ctx, `SELECT organization_id FROM quotas WHERE id=$1`, quotaID).Scan(&orgID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", kernel.ErrNotFound
+func (s *Store) UserIsOrgMember(ctx context.Context, userID, orgID string) error {
+	ok, err := s.IsOrgMember(ctx, userID, orgID)
+	if err != nil {
+		return err
 	}
-	return orgID, err
+	if !ok {
+		return fmt.Errorf("%w: user is not an organization member", kernel.ErrInvalidRequest)
+	}
+	return nil
+}
+
+func (s *Store) APIKeyBelongsToOrg(ctx context.Context, keyID, orgID string) error {
+	k, err := s.GetAPIKey(ctx, keyID)
+	if errors.Is(err, kernel.ErrNotFound) {
+		return fmt.Errorf("%w: api key not found", kernel.ErrInvalidRequest)
+	}
+	if err != nil {
+		return err
+	}
+	if k.OrganizationID != orgID {
+		return fmt.Errorf("%w: api key not in organization", kernel.ErrInvalidRequest)
+	}
+	return nil
+}
+
+func (s *Store) UpdateQuota(ctx context.Context, quotaID string, limitValue int64) (*Quota, error) {
+	if err := gatewayconfig.ValidateLimit(limitValue); err != nil {
+		return nil, err
+	}
+	return s.quotas().UpdateLimit(ctx, quotaID, limitValue)
+}
+
+func (s *Store) DeleteQuota(ctx context.Context, quotaID string) error {
+	return s.quotas().Delete(ctx, quotaID)
+}
+
+func (s *Store) GetQuotaOrgID(ctx context.Context, quotaID string) (string, error) {
+	return s.quotas().OrgID(ctx, quotaID)
 }
 
 // GetCounter / IncrCounter / EnqueueUsage remain for transitional callers.
@@ -1436,123 +1374,29 @@ func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error)
 	return src, polRows.Err()
 }
 
-// RequestPolicy is the control-plane view of a CEL allow-policy.
-type RequestPolicy struct {
-	ID             string    `json:"id"`
-	OrganizationID string    `json:"organization_id"`
-	Name           string    `json:"name"`
-	Expression     string    `json:"expression"`
-	Enabled        bool      `json:"enabled"`
-	Priority       int       `json:"priority"`
-	CreatedAt      time.Time `json:"created_at"`
+// RequestPolicy is the platform write-model CEL policy (canonical in gatewayconfig).
+type RequestPolicy = gatewayconfig.RequestPolicy
+
+func (s *Store) policies() *postgres.Policies {
+	return postgres.NewPolicies(s.pool)
 }
 
 func (s *Store) ListPolicies(ctx context.Context, orgID string) ([]RequestPolicy, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT id, organization_id, name, expression, enabled, priority, created_at
-		FROM request_policies WHERE organization_id=$1
-		ORDER BY priority DESC, name ASC
-	`, orgID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []RequestPolicy
-	for rows.Next() {
-		var p RequestPolicy
-		if err := rows.Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Expression, &p.Enabled, &p.Priority, &p.CreatedAt); err != nil {
-			return nil, err
-		}
-		out = append(out, p)
-	}
-	return out, rows.Err()
+	return s.policies().ListByOrg(ctx, orgID)
 }
 
 func (s *Store) CreatePolicy(ctx context.Context, orgID, name, expression string, enabled bool, priority int) (*RequestPolicy, error) {
-	name = strings.TrimSpace(name)
-	expression = strings.TrimSpace(expression)
-	if name == "" || expression == "" {
-		return nil, fmt.Errorf("%w: name and expression required", kernel.ErrInvalidRequest)
-	}
-	if err := policy.Validate(expression); err != nil {
-		return nil, fmt.Errorf("%w: invalid CEL expression: %v", kernel.ErrInvalidRequest, err)
-	}
-	p := &RequestPolicy{
-		ID: newID("pol"), OrganizationID: orgID, Name: name, Expression: expression,
-		Enabled: enabled, Priority: priority, CreatedAt: time.Now().UTC(),
-	}
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO request_policies (id, organization_id, name, expression, enabled, priority, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7)
-	`, p.ID, p.OrganizationID, p.Name, p.Expression, p.Enabled, p.Priority, p.CreatedAt)
-	return p, err
+	return gatewayconfig.CreatePolicy(ctx, s.policies(), celValidator{}, newID("pol"), orgID, name, expression, enabled, priority)
 }
 
 func (s *Store) UpdatePolicy(ctx context.Context, policyID string, name, expression *string, enabled *bool, priority *int) (*RequestPolicy, error) {
-	cur, err := s.getPolicy(ctx, policyID)
-	if err != nil {
-		return nil, err
-	}
-	if name != nil {
-		n := strings.TrimSpace(*name)
-		if n == "" {
-			return nil, fmt.Errorf("%w: name required", kernel.ErrInvalidRequest)
-		}
-		cur.Name = n
-	}
-	if expression != nil {
-		e := strings.TrimSpace(*expression)
-		if e == "" {
-			return nil, fmt.Errorf("%w: expression required", kernel.ErrInvalidRequest)
-		}
-		if err := policy.Validate(e); err != nil {
-			return nil, fmt.Errorf("%w: invalid CEL expression: %v", kernel.ErrInvalidRequest, err)
-		}
-		cur.Expression = e
-	}
-	if enabled != nil {
-		cur.Enabled = *enabled
-	}
-	if priority != nil {
-		cur.Priority = *priority
-	}
-	err = s.pool.QueryRow(ctx, `
-		UPDATE request_policies SET name=$2, expression=$3, enabled=$4, priority=$5 WHERE id=$1
-		RETURNING id, organization_id, name, expression, enabled, priority, created_at
-	`, cur.ID, cur.Name, cur.Expression, cur.Enabled, cur.Priority).Scan(
-		&cur.ID, &cur.OrganizationID, &cur.Name, &cur.Expression, &cur.Enabled, &cur.Priority, &cur.CreatedAt,
-	)
-	return cur, err
-}
-
-func (s *Store) getPolicy(ctx context.Context, policyID string) (*RequestPolicy, error) {
-	p := &RequestPolicy{}
-	err := s.pool.QueryRow(ctx, `
-		SELECT id, organization_id, name, expression, enabled, priority, created_at
-		FROM request_policies WHERE id=$1
-	`, policyID).Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Expression, &p.Enabled, &p.Priority, &p.CreatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, kernel.ErrNotFound
-	}
-	return p, err
+	return gatewayconfig.UpdatePolicy(ctx, s.policies(), celValidator{}, policyID, name, expression, enabled, priority)
 }
 
 func (s *Store) DeletePolicy(ctx context.Context, policyID string) error {
-	tag, err := s.pool.Exec(ctx, `DELETE FROM request_policies WHERE id=$1`, policyID)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return kernel.ErrNotFound
-	}
-	return nil
+	return s.policies().Delete(ctx, policyID)
 }
 
 func (s *Store) GetPolicyOrgID(ctx context.Context, policyID string) (string, error) {
-	var orgID string
-	err := s.pool.QueryRow(ctx, `SELECT organization_id FROM request_policies WHERE id=$1`, policyID).Scan(&orgID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", kernel.ErrNotFound
-	}
-	return orgID, err
+	return s.policies().OrgID(ctx, policyID)
 }
