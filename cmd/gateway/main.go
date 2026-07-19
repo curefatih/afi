@@ -128,6 +128,8 @@ func main() {
 	<-ctx.Done()
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
-	_ = httpServer.Shutdown(shutdownCtx)
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		log.Error("http server shutdown failed", "err", err)
+	}
 	log.Info("stopped")
 }
