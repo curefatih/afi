@@ -10,7 +10,7 @@ import (
 
 	"github.com/curefatih/afi/extensions/demohook"
 	"github.com/curefatih/afi/extensions/echo"
-	"github.com/curefatih/afi/internal/controlplane"
+	"github.com/curefatih/afi/internal/adapters/postgres"
 	"github.com/curefatih/afi/internal/dataplane"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/policy"
@@ -39,8 +39,7 @@ func main() {
 	}
 	defer pool.Close()
 
-	store := controlplane.NewStore(pool)
-	snapStore := snapshot.NewStore(pool)
+	snapStore := postgres.NewSnapshotStore(pool)
 	holder := dataplane.NewHolder()
 	reg := dataplane.DefaultRegistry().RegisterSDK(echo.New())
 	hooks := dataplane.NewHookChain().RegisterHook(demohook.NewWithLog(log))
@@ -64,7 +63,7 @@ func main() {
 		timed = &dataplane.RedisCounters{Client: rdb}
 	}
 	pipeline.Counters = dataplane.CompositeCounters{
-		Total: controlplane.CounterAdapter{Store: store},
+		Total: &postgres.Counters{Pool: pool},
 		Timed: timed,
 	}
 
@@ -75,6 +74,8 @@ func main() {
 	}
 	pipeline.Policies = polEval
 	log.Info("extensions registered", "provider_types", reg.Types(), "hooks", hooks.Infos())
+
+	outbox := &postgres.UsageOutbox{Pool: pool}
 	pipeline.Usage = func(e dataplane.UsageEvent) {
 		payload, err := workers.EncodeUsage(workers.UsagePayload{
 			OrganizationID:   e.OrganizationID,
@@ -94,7 +95,7 @@ func main() {
 			log.Error("encode usage", "err", err)
 			return
 		}
-		if err := store.EnqueueUsage(context.Background(), payload); err != nil {
+		if err := outbox.Enqueue(context.Background(), payload); err != nil {
 			log.Error("enqueue usage", "err", err)
 		}
 	}

@@ -24,11 +24,11 @@ type Server struct {
 	members   membershipChecker
 	publisher snapshotPublisher
 	seeder    *Seeder
-	snapStore *snapshot.Store
+	snapStore snapshot.Store
 	log       *slog.Logger
 }
 
-func NewServer(cfg *kernel.Config, store *Store, seeder *Seeder, snapStore *snapshot.Store, log *slog.Logger) *Server {
+func NewServer(cfg *kernel.Config, store *Store, seeder *Seeder, snapStore snapshot.Store, log *slog.Logger) *Server {
 	return &Server{
 		cfg:       cfg,
 		api:       store,

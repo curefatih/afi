@@ -13,11 +13,11 @@ import (
 type Seeder struct {
 	pool      *pgxpool.Pool
 	store     *Store
-	snapStore *snapshot.Store
+	snapStore snapshot.Store
 	cfg       *kernel.Config
 }
 
-func NewSeeder(pool *pgxpool.Pool, store *Store, snapStore *snapshot.Store, cfg *kernel.Config) *Seeder {
+func NewSeeder(pool *pgxpool.Pool, store *Store, snapStore snapshot.Store, cfg *kernel.Config) *Seeder {
 	return &Seeder{pool: pool, store: store, snapStore: snapStore, cfg: cfg}
 }
 

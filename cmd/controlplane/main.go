@@ -8,9 +8,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/curefatih/afi/internal/adapters/postgres"
 	"github.com/curefatih/afi/internal/controlplane"
 	"github.com/curefatih/afi/internal/kernel"
-	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -39,7 +39,7 @@ func main() {
 	}
 
 	store := controlplane.NewStore(pool)
-	snapStore := snapshot.NewStore(pool)
+	snapStore := postgres.NewSnapshotStore(pool)
 	seeder := controlplane.NewSeeder(pool, store, snapStore, cfg)
 
 	if err := seeder.SeedIfEmpty(ctx); err != nil {

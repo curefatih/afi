@@ -27,6 +27,11 @@ type UsagePayload struct {
 	Metrics          map[string]any `json:"metrics,omitempty"`
 }
 
+// UsageEnqueuer is the gateway write-side port for usage_outbox.
+type UsageEnqueuer interface {
+	Enqueue(ctx context.Context, payload []byte) error
+}
+
 type OutboxSource interface {
 	ClaimBatch(ctx context.Context, limit int) ([]OutboxRow, error)
 	MarkProcessed(ctx context.Context, id int64) error

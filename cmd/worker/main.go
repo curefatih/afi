@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/curefatih/afi/internal/adapters/postgres"
 	"github.com/curefatih/afi/internal/controlplane"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/workers"
@@ -37,10 +38,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	store := controlplane.NewStore(pool)
-	src := &workers.PGOutbox{Pool: pool}
-	sink := &workers.PGUsageSink{Store: store}
-	prices := &workers.PGPriceLookup{Store: store}
+	src := &postgres.UsageOutbox{Pool: pool}
+	sink := &postgres.UsageSink{Pool: pool}
+	prices := &postgres.PriceLookup{Pool: pool}
 
 	log.Info("worker started", "poll", "2s")
 	ticker := time.NewTicker(2 * time.Second)

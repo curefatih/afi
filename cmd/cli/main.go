@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/curefatih/afi/internal/adapters/postgres"
 	"github.com/curefatih/afi/internal/controlplane"
 	"github.com/curefatih/afi/internal/kernel"
-	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -94,7 +94,7 @@ func runSeed() error {
 		return err
 	}
 	store := controlplane.NewStore(pool)
-	snapStore := snapshot.NewStore(pool)
+	snapStore := postgres.NewSnapshotStore(pool)
 	seeder := controlplane.NewSeeder(pool, store, snapStore, cfg)
 	return seeder.Seed(ctx)
 }
@@ -111,7 +111,7 @@ func runPublish() error {
 		return err
 	}
 	store := controlplane.NewStore(pool)
-	snapStore := snapshot.NewStore(pool)
+	snapStore := postgres.NewSnapshotStore(pool)
 	seeder := controlplane.NewSeeder(pool, store, snapStore, cfg)
 	return seeder.PublishSnapshot(ctx)
 }

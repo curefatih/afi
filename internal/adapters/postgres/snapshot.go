@@ -1,4 +1,4 @@
-package snapshot
+package postgres
 
 import (
 	"context"
@@ -8,27 +8,29 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const channelName = "afi_snapshot"
+const snapshotChannel = "afi_snapshot"
 
-type Store struct {
-	pool *pgxpool.Pool
+// SnapshotStore persists compiled gateway snapshots in Postgres.
+type SnapshotStore struct {
+	Pool *pgxpool.Pool
 }
 
-func NewStore(pool *pgxpool.Pool) *Store {
-	return &Store{pool: pool}
+func NewSnapshotStore(pool *pgxpool.Pool) *SnapshotStore {
+	return &SnapshotStore{Pool: pool}
 }
 
-func (s *Store) Put(ctx context.Context, snap *Snapshot) (int64, error) {
+func (s *SnapshotStore) Put(ctx context.Context, snap *snapshot.Snapshot) (int64, error) {
 	payload, err := json.Marshal(snap)
 	if err != nil {
 		return 0, fmt.Errorf("marshal snapshot: %w", err)
 	}
 
-	tx, err := s.pool.Begin(ctx)
+	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -44,7 +46,7 @@ func (s *Store) Put(ctx context.Context, snap *Snapshot) (int64, error) {
 		return 0, fmt.Errorf("insert snapshot: %w", err)
 	}
 
-	if _, err := tx.Exec(ctx, `SELECT pg_notify($1, $2)`, channelName, fmt.Sprintf("%d", version)); err != nil {
+	if _, err := tx.Exec(ctx, `SELECT pg_notify($1, $2)`, snapshotChannel, fmt.Sprintf("%d", version)); err != nil {
 		return 0, fmt.Errorf("notify: %w", err)
 	}
 
@@ -56,11 +58,11 @@ func (s *Store) Put(ctx context.Context, snap *Snapshot) (int64, error) {
 	return version, nil
 }
 
-func (s *Store) Latest(ctx context.Context) (*Snapshot, error) {
+func (s *SnapshotStore) Latest(ctx context.Context) (*snapshot.Snapshot, error) {
 	var version int64
 	var payload []byte
 	var createdAt time.Time
-	err := s.pool.QueryRow(ctx, `
+	err := s.Pool.QueryRow(ctx, `
 		SELECT version, payload, created_at
 		FROM gateway_snapshots
 		ORDER BY version DESC
@@ -73,7 +75,7 @@ func (s *Store) Latest(ctx context.Context) (*Snapshot, error) {
 		return nil, err
 	}
 
-	var snap Snapshot
+	var snap snapshot.Snapshot
 	if err := json.Unmarshal(payload, &snap); err != nil {
 		return nil, fmt.Errorf("unmarshal snapshot: %w", err)
 	}
@@ -84,7 +86,7 @@ func (s *Store) Latest(ctx context.Context) (*Snapshot, error) {
 
 // Watch calls onUpdate whenever a newer snapshot appears.
 // Polls at pollInterval and also wakes on Postgres LISTEN/NOTIFY.
-func (s *Store) Watch(ctx context.Context, pollInterval time.Duration, onUpdate func(*Snapshot)) error {
+func (s *SnapshotStore) Watch(ctx context.Context, pollInterval time.Duration, onUpdate func(*snapshot.Snapshot)) error {
 	if pollInterval <= 0 {
 		pollInterval = 2 * time.Second
 	}
@@ -136,16 +138,16 @@ func (s *Store) Watch(ctx context.Context, pollInterval time.Duration, onUpdate 
 	}
 }
 
-func (s *Store) listenLoop(ctx context.Context, notifyCh chan<- struct{}) {
+func (s *SnapshotStore) listenLoop(ctx context.Context, notifyCh chan<- struct{}) {
 	for {
 		if ctx.Err() != nil {
 			return
 		}
-		conn, err := s.pool.Acquire(ctx)
+		conn, err := s.Pool.Acquire(ctx)
 		if err != nil {
 			return
 		}
-		if _, err := conn.Exec(ctx, "LISTEN "+channelName); err != nil {
+		if _, err := conn.Exec(ctx, "LISTEN "+snapshotChannel); err != nil {
 			conn.Release()
 			select {
 			case <-ctx.Done():
