@@ -98,31 +98,31 @@ Written on first control-plane start (or `make seed`):
 |--------|------|
 | GET/POST | `/api/v1/platform/organizations` |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/members` (POST = invite; org admin) |
-| PATCH | `/api/v1/platform/organizations/{orgID}/members/{userID}` |
-| GET/DELETE | `/api/v1/platform/organizations/{orgID}/invites[/{inviteID}]` |
-| POST | `/api/v1/platform/organizations/{orgID}/invites/{inviteID}/resend` |
-| GET/PATCH | `/api/v1/platform/organizations/{orgID}/mail` |
-| POST | `/api/v1/platform/organizations/{orgID}/mail/test` |
+| PATCH | `/api/v1/platform/organizations/{orgID}/members/{userID}` (owner only) |
+| GET/DELETE | `/api/v1/platform/organizations/{orgID}/invites[/{inviteID}]` (org admin) |
+| POST | `/api/v1/platform/organizations/{orgID}/invites/{inviteID}/resend` (org admin) |
+| GET/PATCH | `/api/v1/platform/organizations/{orgID}/mail` (org admin) |
+| POST | `/api/v1/platform/organizations/{orgID}/mail/test` (org admin) |
 | GET/POST | `/api/v1/platform/auth/invites/{token}` / `…/accept` (public) |
-| GET/POST | `/api/v1/platform/organizations/{orgID}/keys` |
-| DELETE | `/api/v1/platform/keys/{keyID}` |
-| GET/POST | `/api/v1/platform/projects/{projectID}/keys` |
-| GET/POST | `/api/v1/platform/organizations/{orgID}/providers` |
+| GET/POST | `/api/v1/platform/organizations/{orgID}/keys` (personal = member; service_account = org admin) |
+| DELETE | `/api/v1/platform/keys/{keyID}` (admin or personal key owner) |
+| GET/POST | `/api/v1/platform/projects/{projectID}/keys` (POST = org admin) |
+| GET/POST | `/api/v1/platform/organizations/{orgID}/providers` (POST = org admin) |
 | GET | `/api/v1/platform/organizations/{orgID}/providers/health` |
-| PATCH/DELETE | `/api/v1/platform/providers/{providerID}` |
-| GET/POST | `/api/v1/platform/organizations/{orgID}/routes` |
-| PATCH/DELETE | `/api/v1/platform/routes/{routeID}` |
+| PATCH/DELETE | `/api/v1/platform/providers/{providerID}` (org admin) |
+| GET/POST | `/api/v1/platform/organizations/{orgID}/routes` (POST = org admin) |
+| PATCH/DELETE | `/api/v1/platform/routes/{routeID}` (org admin) |
 | GET | `/api/v1/platform/organizations/{orgID}/usage` |
 | GET | `/api/v1/platform/organizations/{orgID}/usage/summary` |
-| GET/POST | `/api/v1/platform/organizations/{orgID}/quotas` |
-| PATCH/DELETE | `/api/v1/platform/quotas/{quotaID}` |
-| GET/POST | `/api/v1/platform/organizations/{orgID}/policies` |
-| PATCH/DELETE | `/api/v1/platform/policies/{policyID}` |
+| GET/POST | `/api/v1/platform/organizations/{orgID}/quotas` (POST = org admin) |
+| PATCH/DELETE | `/api/v1/platform/quotas/{quotaID}` (org admin) |
+| GET/POST | `/api/v1/platform/organizations/{orgID}/policies` (POST = org admin) |
+| PATCH/DELETE | `/api/v1/platform/policies/{policyID}` (org admin) |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/credentials` (POST = org admin) |
-| PATCH/DELETE | `/api/v1/platform/credentials/{credentialID}` |
-| POST | `/api/v1/platform/credentials/{credentialID}/rotate` |
-| GET/PUT | `/api/v1/platform/organizations/{orgID}/credential-assignments` |
-| DELETE | `/api/v1/platform/credential-assignments/{assignmentID}` |
+| PATCH/DELETE | `/api/v1/platform/credentials/{credentialID}` (org admin) |
+| POST | `/api/v1/platform/credentials/{credentialID}/rotate` (org admin) |
+| GET/PUT | `/api/v1/platform/organizations/{orgID}/credential-assignments` (PUT = org admin) |
+| DELETE | `/api/v1/platform/credential-assignments/{assignmentID}` (org admin) |
 
 Member invite (org admin): existing users are added and emailed; unknown emails get a pending invite + accept link (`/auth/invite/{token}`). Mail transports: `log` (default local), `smtp`, `resend` — org admins pick among enabled providers in Settings. Org roles: `owner` / `admin` / `member`. Only the **owner** can `PATCH` a member role (`{ "role": "admin" }`); setting `owner` transfers ownership. Native Anthropic inference: gateway `POST /v1/messages` (Anthropic providers only).
 
@@ -153,7 +153,7 @@ Seed key `sk-project-local-dev-token-12345` is a project **service_account** key
 | `window` | `total` (Postgres lifetime), `minute` / `hour` / `day` (Redis fixed windows) |
 | `limit_value` | integer ≥ 0 (`0` blocks immediately) |
 
-Most specific scope wins **per window**: api_key → user → project → organization. Timed windows require Redis (`redis_url` / `AFI_REDIS_URL`). Create/update/delete quotas require org owner/admin.
+Most specific scope wins **per window**: api_key → user → project → organization. Timed windows require Redis (`redis_url` / `AFI_REDIS_URL`). Create/update/delete quotas, providers, and routes require org owner/admin.
 
 ### CEL policies
 

@@ -76,7 +76,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/platform/organizations", s.requireAuth(s.handleCreateOrg))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/members", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListOrgMembers)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/members", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleInviteOrgMember)))
-	mux.HandleFunc("PATCH /api/v1/platform/organizations/{orgID}/members/{userID}", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleUpdateOrgMemberRole)))
+	mux.HandleFunc("PATCH /api/v1/platform/organizations/{orgID}/members/{userID}", s.requireAuth(s.requireOrgOwnerFromPath("orgID", s.handleUpdateOrgMemberRole)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/invites", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleListOrgInvites)))
 	mux.HandleFunc("DELETE /api/v1/platform/organizations/{orgID}/invites/{inviteID}", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleRevokeOrgInvite)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/invites/{inviteID}/resend", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleResendOrgInvite)))
@@ -90,14 +90,14 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/providers", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListProviders)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/providers/health", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleProviderHealth)))
-	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/providers", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleCreateProvider)))
-	mux.HandleFunc("PATCH /api/v1/platform/providers/{providerID}", s.requireAuth(s.requireOrgMemberViaProvider(s.handleUpdateProvider)))
-	mux.HandleFunc("DELETE /api/v1/platform/providers/{providerID}", s.requireAuth(s.requireOrgMemberViaProvider(s.handleDeleteProvider)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/providers", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateProvider)))
+	mux.HandleFunc("PATCH /api/v1/platform/providers/{providerID}", s.requireAuth(s.requireOrgAdminViaProvider(s.handleUpdateProvider)))
+	mux.HandleFunc("DELETE /api/v1/platform/providers/{providerID}", s.requireAuth(s.requireOrgAdminViaProvider(s.handleDeleteProvider)))
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/routes", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListRoutes)))
-	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/routes", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleCreateRoute)))
-	mux.HandleFunc("PATCH /api/v1/platform/routes/{routeID}", s.requireAuth(s.requireOrgMemberViaRoute(s.handleUpdateRoute)))
-	mux.HandleFunc("DELETE /api/v1/platform/routes/{routeID}", s.requireAuth(s.requireOrgMemberViaRoute(s.handleDeleteRoute)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/routes", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateRoute)))
+	mux.HandleFunc("PATCH /api/v1/platform/routes/{routeID}", s.requireAuth(s.requireOrgAdminViaRoute(s.handleUpdateRoute)))
+	mux.HandleFunc("DELETE /api/v1/platform/routes/{routeID}", s.requireAuth(s.requireOrgAdminViaRoute(s.handleDeleteRoute)))
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/usage", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListUsage)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/usage/summary", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleUsageSummary)))
@@ -1489,6 +1489,23 @@ func (s *Server) requireOrgAdminFromPath(pathKey string, next http.HandlerFunc) 
 	})
 }
 
+func (s *Server) requireOrgOwnerFromPath(pathKey string, next http.HandlerFunc) http.HandlerFunc {
+	return s.requireOrgMemberFromPath(pathKey, func(w http.ResponseWriter, r *http.Request) {
+		claims := claimsFrom(r.Context())
+		orgID := r.PathValue(pathKey)
+		ok, err := s.members.IsOrgOwner(r.Context(), claims.UserID, orgID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !ok {
+			writeErr(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next(w, r)
+	})
+}
+
 func (s *Server) requireOrgAdminViaProject(next http.HandlerFunc) http.HandlerFunc {
 	return s.requireOrgMemberViaProject(func(w http.ResponseWriter, r *http.Request) {
 		orgID, err := s.members.GetProjectOrgID(r.Context(), r.PathValue("projectID"))
@@ -1717,6 +1734,27 @@ func (s *Server) requireOrgMemberViaProvider(next http.HandlerFunc) http.Handler
 	}
 }
 
+func (s *Server) requireOrgAdminViaProvider(next http.HandlerFunc) http.HandlerFunc {
+	return s.requireOrgMemberViaProvider(func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := s.members.GetProviderOrgID(r.Context(), r.PathValue("providerID"))
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		claims := claimsFrom(r.Context())
+		ok, err := s.members.IsOrgAdmin(r.Context(), claims.UserID, orgID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !ok {
+			writeErr(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next(w, r)
+	})
+}
+
 func (s *Server) requireOrgMemberViaRoute(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		orgID, err := s.members.GetRouteOrgID(r.Context(), r.PathValue("routeID"))
@@ -1740,6 +1778,27 @@ func (s *Server) requireOrgMemberViaRoute(next http.HandlerFunc) http.HandlerFun
 		}
 		next(w, r)
 	}
+}
+
+func (s *Server) requireOrgAdminViaRoute(next http.HandlerFunc) http.HandlerFunc {
+	return s.requireOrgMemberViaRoute(func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := s.members.GetRouteOrgID(r.Context(), r.PathValue("routeID"))
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		claims := claimsFrom(r.Context())
+		ok, err := s.members.IsOrgAdmin(r.Context(), claims.UserID, orgID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !ok {
+			writeErr(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next(w, r)
+	})
 }
 
 func (s *Server) requireOrgMemberViaQuota(next http.HandlerFunc) http.HandlerFunc {

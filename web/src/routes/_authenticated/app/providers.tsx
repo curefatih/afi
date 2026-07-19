@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PlugIcon, PlusIcon } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { orgMembersQueryOptions } from "#/api/organization";
 import {
 	createProviderMutationOptions,
 	deleteProviderMutationOptions,
@@ -52,6 +53,7 @@ import {
 	TableRow,
 } from "#/components/ui/table";
 import { pageTitle } from "#/lib/page-meta";
+import { useAuthUser } from "#/state/auth-state";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/providers")({
@@ -112,12 +114,19 @@ function HealthChip({ h }: { h?: ProviderHealth }) {
 function RouteComponent() {
 	const org = useActiveOrg();
 	const orgId = org?.id ?? "";
+	const user = useAuthUser();
 	const qc = useQueryClient();
 	const providers = useQuery(providersQueryOptions(orgId));
 	const health = useQuery(providerHealthQueryOptions(orgId));
+	const members = useQuery(orgMembersQueryOptions(orgId));
 	const healthById = new Map(
 		(health.data ?? []).map((h) => [h.provider_id, h] as const),
 	);
+
+	const isOrgAdmin = useMemo(() => {
+		const me = (members.data ?? []).find((m) => m.user_id === user?.id);
+		return me?.role === "owner" || me?.role === "admin";
+	}, [members.data, user?.id]);
 
 	const [createOpen, setCreateOpen] = useState(false);
 	const [edit, setEdit] = useState<Provider | null>(null);
@@ -189,14 +198,18 @@ function RouteComponent() {
 				title="Providers"
 				description="Upstream LLM providers. Health is derived from usage over the last 24h (routed models). Credentials are environment variable references on the gateway."
 				actions={
-					<Button onClick={() => setCreateOpen(true)} disabled={!orgId}>
-						<PlusIcon />
-						Add provider
-					</Button>
+					isOrgAdmin ? (
+						<Button onClick={() => setCreateOpen(true)} disabled={!orgId}>
+							<PlusIcon />
+							Add provider
+						</Button>
+					) : null
 				}
 			/>
 			<QueryGate
-				isPending={!!orgId && providers.isLoading}
+				isPending={
+					!!orgId && (providers.isLoading || members.isPending)
+				}
 				isError={providers.isError}
 				error={providers.error}
 				onRetry={() => {
@@ -214,68 +227,83 @@ function RouteComponent() {
 							<EmptyDescription>
 								Add OpenAI, Anthropic, Gemini, or an OpenAI-compatible base URL.
 								Then create routes under Routing.
+								{!isOrgAdmin
+									? " Only organization owners and admins can create providers."
+									: ""}
 							</EmptyDescription>
 						</EmptyHeader>
-						<EmptyContent>
-							<Button onClick={() => setCreateOpen(true)}>
-								<PlusIcon />
-								Add provider
-							</Button>
-						</EmptyContent>
+						{isOrgAdmin ? (
+							<EmptyContent>
+								<Button onClick={() => setCreateOpen(true)}>
+									<PlusIcon />
+									Add provider
+								</Button>
+							</EmptyContent>
+						) : null}
 					</Empty>
 				) : (
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Name</TableHead>
-								<TableHead>Type</TableHead>
-								<TableHead>Health</TableHead>
-								<TableHead>Base URL</TableHead>
-								<TableHead>Env</TableHead>
-								<TableHead>Capabilities</TableHead>
-								<TableHead className="w-40" />
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{(providers.data ?? []).map((p) => (
-								<TableRow key={p.id}>
-									<TableCell className="font-medium">{p.name}</TableCell>
-									<TableCell>
-										<Badge variant="secondary">{p.type}</Badge>
-									</TableCell>
-									<TableCell>
-										<HealthChip h={healthById.get(p.id)} />
-									</TableCell>
-									<TableCell className="text-muted-foreground max-w-[14rem] truncate text-xs">
-										{p.base_url}
-									</TableCell>
-									<TableCell className="font-mono text-xs">
-										{p.api_key_env}
-									</TableCell>
-									<TableCell>
-										<CapChips p={p} />
-									</TableCell>
-									<TableCell className="space-x-2">
-										<Button
-											variant="outline"
-											size="sm"
-											onClick={() => openEdit(p)}
-										>
-											Edit
-										</Button>
-										<Button
-											variant="outline"
-											size="sm"
-											disabled={del.isPending}
-											onClick={() => del.mutate(p.id)}
-										>
-											Delete
-										</Button>
-									</TableCell>
+					<>
+						{!isOrgAdmin ? (
+							<p className="text-muted-foreground text-sm">
+								Only organization owners and admins can create or edit
+								providers.
+							</p>
+						) : null}
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>Name</TableHead>
+									<TableHead>Type</TableHead>
+									<TableHead>Health</TableHead>
+									<TableHead>Base URL</TableHead>
+									<TableHead>Env</TableHead>
+									<TableHead>Capabilities</TableHead>
+									{isOrgAdmin ? <TableHead className="w-40" /> : null}
 								</TableRow>
-							))}
-						</TableBody>
-					</Table>
+							</TableHeader>
+							<TableBody>
+								{(providers.data ?? []).map((p) => (
+									<TableRow key={p.id}>
+										<TableCell className="font-medium">{p.name}</TableCell>
+										<TableCell>
+											<Badge variant="secondary">{p.type}</Badge>
+										</TableCell>
+										<TableCell>
+											<HealthChip h={healthById.get(p.id)} />
+										</TableCell>
+										<TableCell className="text-muted-foreground max-w-[14rem] truncate text-xs">
+											{p.base_url}
+										</TableCell>
+										<TableCell className="font-mono text-xs">
+											{p.api_key_env}
+										</TableCell>
+										<TableCell>
+											<CapChips p={p} />
+										</TableCell>
+										{isOrgAdmin ? (
+											<TableCell className="space-x-2">
+												<Button
+													variant="outline"
+													size="sm"
+													onClick={() => openEdit(p)}
+												>
+													Edit
+												</Button>
+												<Button
+													variant="outline"
+													size="sm"
+													disabled={del.isPending}
+													onClick={() => del.mutate(p.id)}
+												>
+													Delete
+												</Button>
+											</TableCell>
+										) : null}
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</>
 				)}
 			</QueryGate>
 

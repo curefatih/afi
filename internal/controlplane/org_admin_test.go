@@ -345,7 +345,10 @@ func TestUpdateOrgMemberRoleSuccess(t *testing.T) {
 	}
 	s := &Server{
 		cfg: testCfg(), api: api,
-		members:   &fakeMembers{allowed: map[string]bool{"user_admin|org_x": true}},
+		members: &fakeMembers{
+			allowed: map[string]bool{"user_admin|org_x": true},
+			owners:  map[string]bool{"user_admin|org_x": true},
+		},
 		publisher: &fakePublisher{}, log: slog.Default(),
 	}
 	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_admin", "admin@afi.local", "admin")
@@ -409,7 +412,10 @@ func TestUpdateOrgMemberRoleRejectsSoleOwnerDemotion(t *testing.T) {
 	}
 	s := &Server{
 		cfg: testCfg(), api: api,
-		members:   &fakeMembers{allowed: map[string]bool{"user_admin|org_x": true}},
+		members: &fakeMembers{
+			allowed: map[string]bool{"user_admin|org_x": true},
+			owners:  map[string]bool{"user_admin|org_x": true},
+		},
 		publisher: &fakePublisher{}, log: slog.Default(),
 	}
 	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_admin", "admin@afi.local", "admin")

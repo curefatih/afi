@@ -108,6 +108,18 @@ func IsOrgAdmin(ctx context.Context, repo OrganizationRepository, userID, orgID 
 	return IsOrgAdminRole(role), nil
 }
 
+// IsOrgOwner reports whether the user is the org owner.
+func IsOrgOwner(ctx context.Context, repo OrganizationRepository, userID, orgID string) (bool, error) {
+	role, err := repo.GetMemberRole(ctx, userID, orgID)
+	if errors.Is(err, kernel.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return OrgRole(role).CanChangeRoles(), nil
+}
+
 // ListVisibleTeams returns all org teams for admins, otherwise only teams the user belongs to.
 func ListVisibleTeams(ctx context.Context, teams TeamRepository, orgs OrganizationRepository, orgID, userID string) ([]Team, error) {
 	admin, err := IsOrgAdmin(ctx, orgs, userID, orgID)

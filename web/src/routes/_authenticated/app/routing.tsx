@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PlusIcon, RouteIcon } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { orgMembersQueryOptions } from "#/api/organization";
 import { providersQueryOptions } from "#/api/provider";
 import {
 	createRouteMutationOptions,
@@ -48,6 +49,7 @@ import {
 	TableRow,
 } from "#/components/ui/table";
 import { pageTitle } from "#/lib/page-meta";
+import { useAuthUser } from "#/state/auth-state";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/routing")({
@@ -58,10 +60,17 @@ export const Route = createFileRoute("/_authenticated/app/routing")({
 function RouteComponent() {
 	const org = useActiveOrg();
 	const orgId = org?.id ?? "";
+	const user = useAuthUser();
 	const qc = useQueryClient();
 	const routes = useQuery(routesQueryOptions(orgId));
 	const providers = useQuery(providersQueryOptions(orgId));
+	const members = useQuery(orgMembersQueryOptions(orgId));
 	const [createOpen, setCreateOpen] = useState(false);
+
+	const isOrgAdmin = useMemo(() => {
+		const me = (members.data ?? []).find((m) => m.user_id === user?.id);
+		return me?.role === "owner" || me?.role === "admin";
+	}, [members.data, user?.id]);
 
 	const create = useMutation({
 		...createRouteMutationOptions(),
@@ -97,7 +106,7 @@ function RouteComponent() {
 	const providerName = (id: string) =>
 		providerList.find((p) => p.id === id)?.name ?? id;
 
-	const canAddRoute = !!orgId && providerList.length > 0;
+	const canAddRoute = isOrgAdmin && !!orgId && providerList.length > 0;
 
 	return (
 		<PageBody>
@@ -105,14 +114,19 @@ function RouteComponent() {
 				title="Routing"
 				description="Map requested model names to providers. Optional fallbacks run on 5xx/timeout/429 before the response body is committed."
 				actions={
-					<Button onClick={() => setCreateOpen(true)} disabled={!canAddRoute}>
-						<PlusIcon />
-						Add route
-					</Button>
+					isOrgAdmin ? (
+						<Button onClick={() => setCreateOpen(true)} disabled={!canAddRoute}>
+							<PlusIcon />
+							Add route
+						</Button>
+					) : null
 				}
 			/>
 			<QueryGate
-				isPending={!!orgId && (routes.isLoading || providers.isLoading)}
+				isPending={
+					!!orgId &&
+					(routes.isLoading || providers.isLoading || members.isPending)
+				}
 				isError={routes.isError || providers.isError}
 				error={routes.error || providers.error}
 				onRetry={() => {
@@ -130,6 +144,9 @@ function RouteComponent() {
 							<EmptyDescription>
 								Routes need an upstream provider. Create one, then come back
 								here.
+								{!isOrgAdmin
+									? " Only organization owners and admins can manage routing."
+									: ""}
 							</EmptyDescription>
 						</EmptyHeader>
 						<EmptyContent>
@@ -150,71 +167,89 @@ function RouteComponent() {
 							<EmptyTitle>No routes</EmptyTitle>
 							<EmptyDescription>
 								Create a virtual model name clients will request.
+								{!isOrgAdmin
+									? " Only organization owners and admins can create routes."
+									: ""}
 							</EmptyDescription>
 						</EmptyHeader>
-						<EmptyContent>
-							<Button onClick={() => setCreateOpen(true)}>
-								<PlusIcon />
-								Add route
-							</Button>
-						</EmptyContent>
+						{isOrgAdmin ? (
+							<EmptyContent>
+								<Button onClick={() => setCreateOpen(true)}>
+									<PlusIcon />
+									Add route
+								</Button>
+							</EmptyContent>
+						) : null}
 					</Empty>
 				) : (
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Model</TableHead>
-								<TableHead>Target</TableHead>
-								<TableHead>Provider</TableHead>
-								<TableHead>Fallbacks</TableHead>
-								<TableHead className="w-24" />
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{routeList.map((r) => (
-								<TableRow key={r.id}>
-									<TableCell className="font-medium">{r.model}</TableCell>
-									<TableCell className="font-mono text-xs">
-										{r.target_model}
-									</TableCell>
-									<TableCell>
-										<div className="text-sm">{providerName(r.provider_id)}</div>
-										<div className="text-muted-foreground font-mono text-xs">
-											{r.provider_id}
-										</div>
-									</TableCell>
-									<TableCell>
-										{(r.fallbacks ?? []).length === 0 ? (
-											<span className="text-muted-foreground text-xs">—</span>
-										) : (
-											<div className="flex flex-wrap gap-1">
-												{(r.fallbacks ?? []).map((f) => (
-													<Badge
-														key={`${f.provider_id}:${f.target_model}`}
-														variant="outline"
-														className="text-xs font-normal"
-													>
-														{providerName(f.provider_id)} →{" "}
-														{f.target_model || r.target_model}
-													</Badge>
-												))}
-											</div>
-										)}
-									</TableCell>
-									<TableCell>
-										<Button
-											variant="outline"
-											size="sm"
-											disabled={del.isPending}
-											onClick={() => del.mutate(r.id)}
-										>
-											Delete
-										</Button>
-									</TableCell>
+					<>
+						{!isOrgAdmin ? (
+							<p className="text-muted-foreground text-sm">
+								Only organization owners and admins can create or delete routes.
+							</p>
+						) : null}
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>Model</TableHead>
+									<TableHead>Target</TableHead>
+									<TableHead>Provider</TableHead>
+									<TableHead>Fallbacks</TableHead>
+									{isOrgAdmin ? <TableHead className="w-24" /> : null}
 								</TableRow>
-							))}
-						</TableBody>
-					</Table>
+							</TableHeader>
+							<TableBody>
+								{routeList.map((r) => (
+									<TableRow key={r.id}>
+										<TableCell className="font-medium">{r.model}</TableCell>
+										<TableCell className="font-mono text-xs">
+											{r.target_model}
+										</TableCell>
+										<TableCell>
+											<div className="text-sm">
+												{providerName(r.provider_id)}
+											</div>
+											<div className="text-muted-foreground font-mono text-xs">
+												{r.provider_id}
+											</div>
+										</TableCell>
+										<TableCell>
+											{(r.fallbacks ?? []).length === 0 ? (
+												<span className="text-muted-foreground text-xs">
+													—
+												</span>
+											) : (
+												<div className="flex flex-wrap gap-1">
+													{(r.fallbacks ?? []).map((f) => (
+														<Badge
+															key={`${f.provider_id}:${f.target_model}`}
+															variant="outline"
+															className="text-xs font-normal"
+														>
+															{providerName(f.provider_id)} →{" "}
+															{f.target_model || r.target_model}
+														</Badge>
+													))}
+												</div>
+											)}
+										</TableCell>
+										{isOrgAdmin ? (
+											<TableCell>
+												<Button
+													variant="outline"
+													size="sm"
+													disabled={del.isPending}
+													onClick={() => del.mutate(r.id)}
+												>
+													Delete
+												</Button>
+											</TableCell>
+										) : null}
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</>
 				)}
 			</QueryGate>
 

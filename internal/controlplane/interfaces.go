@@ -16,6 +16,7 @@ type snapshotPublisher interface {
 type membershipChecker interface {
 	IsOrgMember(ctx context.Context, userID, orgID string) (bool, error)
 	IsOrgAdmin(ctx context.Context, userID, orgID string) (bool, error)
+	IsOrgOwner(ctx context.Context, userID, orgID string) (bool, error)
 	GetTeamOrgID(ctx context.Context, teamID string) (string, error)
 	CanAccessTeam(ctx context.Context, teamID, userID string) (bool, error)
 	CanManageTeam(ctx context.Context, teamID, userID string) (bool, error)

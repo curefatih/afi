@@ -17,6 +17,7 @@ import (
 type fakeMembers struct {
 	allowed    map[string]bool
 	admins     map[string]bool
+	owners     map[string]bool
 	keyOrg     map[string]string
 	teamOrg    map[string]string
 	teamAccess map[string]bool // userID|teamID
@@ -32,6 +33,13 @@ func (f *fakeMembers) IsOrgAdmin(_ context.Context, userID, orgID string) (bool,
 		return f.admins[userID+"|"+orgID], nil
 	}
 	return f.allowed[userID+"|"+orgID], nil
+}
+
+func (f *fakeMembers) IsOrgOwner(_ context.Context, userID, orgID string) (bool, error) {
+	if f.owners != nil {
+		return f.owners[userID+"|"+orgID], nil
+	}
+	return false, nil
 }
 
 func (f *fakeMembers) GetAPIKeyOrgID(_ context.Context, keyID string) (string, error) {
@@ -435,5 +443,103 @@ func TestCreateProjectSurfacesPublishError(t *testing.T) {
 	}
 	if pub.calls != 1 {
 		t.Fatalf("expected publish call")
+	}
+}
+
+func TestCreateProviderRequiresAdmin(t *testing.T) {
+	t.Parallel()
+	api := &fakePlatform{fakeMembers: fakeMembers{
+		allowed: map[string]bool{"user_1|org_a": true},
+		admins:  map[string]bool{},
+	}}
+	s := &Server{
+		cfg: testCfg(), api: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
+	}
+	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_1", "a@b.c", "member")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/platform/organizations/org_a/providers",
+		bytes.NewBufferString(`{"name":"OpenAI","type":"openai","base_url":"https://api.openai.com/v1","api_key_env":"OPENAI_API_KEY"}`))
+	req.SetPathValue("orgID", "org_a")
+	req.Header.Set("Authorization", "Bearer "+tok)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status=%d want 403 body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestCreateRouteRequiresAdmin(t *testing.T) {
+	t.Parallel()
+	api := &fakePlatform{fakeMembers: fakeMembers{
+		allowed: map[string]bool{"user_1|org_a": true},
+		admins:  map[string]bool{},
+	}}
+	s := &Server{
+		cfg: testCfg(), api: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
+	}
+	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_1", "a@b.c", "member")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/platform/organizations/org_a/routes",
+		bytes.NewBufferString(`{"model":"gpt-4o","provider_id":"prov_ok","target_model":"gpt-4o"}`))
+	req.SetPathValue("orgID", "org_a")
+	req.Header.Set("Authorization", "Bearer "+tok)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status=%d want 403 body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestUpdateProviderRequiresAdmin(t *testing.T) {
+	t.Parallel()
+	api := &fakePlatform{fakeMembers: fakeMembers{
+		allowed: map[string]bool{"user_1|org_a": true},
+		admins:  map[string]bool{},
+	}}
+	s := &Server{
+		cfg: testCfg(), api: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
+	}
+	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_1", "a@b.c", "member")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/platform/providers/prov_ok",
+		bytes.NewBufferString(`{"name":"Renamed"}`))
+	req.SetPathValue("providerID", "prov_ok")
+	req.Header.Set("Authorization", "Bearer "+tok)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status=%d want 403 body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestUpdateOrgMemberRoleRequiresOwner(t *testing.T) {
+	t.Parallel()
+	api := &fakePlatform{fakeMembers: fakeMembers{
+		allowed: map[string]bool{"user_admin|org_a": true},
+		admins:  map[string]bool{"user_admin|org_a": true},
+		owners:  map[string]bool{},
+	}}
+	s := &Server{
+		cfg: testCfg(), api: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
+	}
+	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_admin", "admin@afi.local", "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/platform/organizations/org_a/members/user_2",
+		bytes.NewBufferString(`{"role":"admin"}`))
+	req.SetPathValue("orgID", "org_a")
+	req.SetPathValue("userID", "user_2")
+	req.Header.Set("Authorization", "Bearer "+tok)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status=%d want 403 body=%s", rr.Code, rr.Body.String())
 	}
 }

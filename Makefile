@@ -1,6 +1,6 @@
 .PHONY: doc-serve doc-build doc-deploy \
 	dev-up dev-down dev-build dev-restart \
-	build test fmt tidy verify \
+	build test test-web test-all fmt tidy verify \
 	run-controlplane run-gateway run-worker run-all \
 	seed snapshot-publish \
 	deploy-init deploy-up deploy-down deploy-logs deploy-health \
@@ -57,6 +57,12 @@ build-images:
 
 test:
 	$(GO) test ./...
+
+test-web:
+	cd web && pnpm test
+
+# Go unit/integration tests plus web vitest suite.
+test-all: test test-web
 
 verify:
 	bash scripts/verify-local.sh

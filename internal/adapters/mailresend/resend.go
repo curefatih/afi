@@ -13,10 +13,13 @@ import (
 	"github.com/curefatih/afi/internal/mail"
 )
 
+const defaultAPIURL = "https://api.resend.com/emails"
+
 // Config holds Resend API settings.
 type Config struct {
-	APIKey string
-	From   string
+	APIKey  string
+	From    string
+	BaseURL string // optional; defaults to Resend production API (tests may override)
 }
 
 // Sender delivers mail via the Resend HTTP API.
@@ -44,7 +47,11 @@ func (s Sender) Send(ctx context.Context, msg mail.Message) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.resend.com/emails", bytes.NewReader(raw))
+	apiURL := strings.TrimSpace(s.Cfg.BaseURL)
+	if apiURL == "" {
+		apiURL = defaultAPIURL
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(raw))
 	if err != nil {
 		return err
 	}

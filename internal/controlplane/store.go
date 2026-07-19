@@ -214,6 +214,10 @@ func (s *Store) IsOrgAdmin(ctx context.Context, userID, orgID string) (bool, err
 	return tenancy.IsOrgAdmin(ctx, s.organizations(), userID, orgID)
 }
 
+func (s *Store) IsOrgOwner(ctx context.Context, userID, orgID string) (bool, error) {
+	return tenancy.IsOrgOwner(ctx, s.organizations(), userID, orgID)
+}
+
 // UpdateOrgMemberRole changes a member's role. Only the org owner may call this.
 // Promoting to owner transfers ownership (actor becomes admin). Cannot demote the sole owner.
 func (s *Store) UpdateOrgMemberRole(ctx context.Context, orgID, actorUserID, targetUserID, role string) (*OrgMember, error) {
