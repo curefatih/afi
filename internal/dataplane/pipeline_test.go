@@ -14,16 +14,19 @@ import (
 )
 
 func TestAuthenticateKey(t *testing.T) {
+	raw := "sk-good"
 	snap := snapshot.Compile(snapshot.Source{
-		APIKeys: []snapshot.APIKey{{Key: "sk-good", ProjectID: "p1"}},
+		APIKeys: []snapshot.APIKey{{
+			KeyHash: snapshot.HashKey(raw), ProjectID: "p1", OrganizationID: "o1",
+		}},
 	})
-	if _, err := AuthenticateKey(snap, "sk-good"); err != nil {
+	if _, err := AuthenticateKey(snap, raw); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := AuthenticateKey(snap, "sk-bad"); err != kernel.ErrUnauthorized {
 		t.Fatalf("want unauthorized, got %v", err)
 	}
-	if _, err := AuthenticateKey(nil, "sk-good"); err != kernel.ErrNotFound {
+	if _, err := AuthenticateKey(nil, raw); err != kernel.ErrNotFound {
 		t.Fatalf("want not found, got %v", err)
 	}
 }
@@ -31,11 +34,15 @@ func TestAuthenticateKey(t *testing.T) {
 func TestChatCompletionsUnauthorized(t *testing.T) {
 	holder := NewHolder()
 	holder.Set(snapshot.Compile(snapshot.Source{
-		APIKeys: []snapshot.APIKey{{Key: "sk-good", ProjectID: "p1"}},
+		APIKeys: []snapshot.APIKey{{
+			KeyHash: snapshot.HashKey("sk-good"), ProjectID: "p1", OrganizationID: "o1",
+		}},
 		Providers: []snapshot.Provider{{
 			ID: "prov", Type: "openai", BaseURL: "http://example.invalid", APIKeyEnv: "OPENAI_API_KEY",
 		}},
-		Routes: []snapshot.Route{{Model: "gpt-4o-mini", ProviderID: "prov", TargetModel: "gpt-4o-mini"}},
+		Routes: []snapshot.Route{{
+			OrganizationID: "o1", Model: "gpt-4o-mini", ProviderID: "prov", TargetModel: "gpt-4o-mini",
+		}},
 	}))
 
 	p := NewPipeline(holder, NewOpenAIClient(), slog.Default())
@@ -60,6 +67,7 @@ func TestChatCompletionsNonStreamMockUpstream(t *testing.T) {
 			"choices": []map[string]any{
 				{"message": map[string]string{"role": "assistant", "content": "pong"}},
 			},
+			"usage": map[string]int{"prompt_tokens": 3, "completion_tokens": 1},
 		})
 	}))
 	defer upstream.Close()
@@ -68,16 +76,22 @@ func TestChatCompletionsNonStreamMockUpstream(t *testing.T) {
 
 	holder := NewHolder()
 	holder.Set(snapshot.Compile(snapshot.Source{
-		APIKeys: []snapshot.APIKey{{Key: "sk-good", ProjectID: "p1"}},
+		APIKeys: []snapshot.APIKey{{
+			ID: "key1", KeyHash: snapshot.HashKey("sk-good"), ProjectID: "p1", OrganizationID: "o1",
+		}},
 		Providers: []snapshot.Provider{{
 			ID: "prov", Type: "openai", BaseURL: upstream.URL, APIKeyEnv: "OPENAI_API_KEY",
 		}},
-		Routes: []snapshot.Route{{Model: "gpt-4o-mini", ProviderID: "prov", TargetModel: "gpt-4o-mini"}},
+		Routes: []snapshot.Route{{
+			OrganizationID: "o1", Model: "gpt-4o-mini", ProviderID: "prov", TargetModel: "gpt-4o-mini",
+		}},
 	}))
 
 	client := NewOpenAIClient()
 	client.HTTP = upstream.Client()
 	p := NewPipeline(holder, client, slog.Default())
+	var got UsageEvent
+	p.Usage = func(e UsageEvent) { got = e }
 
 	body := `{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hi"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(body))
@@ -90,5 +104,8 @@ func TestChatCompletionsNonStreamMockUpstream(t *testing.T) {
 	b, _ := io.ReadAll(rr.Body)
 	if !bytes.Contains(b, []byte("pong")) {
 		t.Fatalf("unexpected body: %s", b)
+	}
+	if got.PromptTokens != 3 || got.CompletionTokens != 1 || got.Status != "ok" {
+		t.Fatalf("usage event: %+v", got)
 	}
 }

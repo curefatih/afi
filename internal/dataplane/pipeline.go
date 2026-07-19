@@ -7,15 +7,28 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
 )
 
+type UsageEvent struct {
+	OrganizationID   string
+	ProjectID        string
+	APIKeyID         string
+	Model            string
+	Status           string
+	LatencyMs        int64
+	PromptTokens     int64
+	CompletionTokens int64
+}
+
 type Pipeline struct {
 	Holder *Holder
 	OpenAI *OpenAIClient
 	Log    *slog.Logger
+	Usage  func(UsageEvent)
 }
 
 func NewPipeline(holder *Holder, openai *OpenAIClient, log *slog.Logger) *Pipeline {
@@ -57,6 +70,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 	reqID := kernel.NewRequestID()
 	ctx := kernel.WithRequestID(r.Context(), reqID)
 	log := p.Log.With("request_id", reqID)
+	start := time.Now()
 
 	rawKey, err := bearerToken(r.Header.Get("Authorization"))
 	if err != nil {
@@ -101,7 +115,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	route, provider, ok := snap.LookupRoute(reqBody.Model)
+	route, provider, ok := snap.LookupRoute(key.OrganizationID, reqBody.Model)
 	if !ok {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": map[string]string{"message": "no route for model", "type": "invalid_request_error"},
@@ -128,6 +142,14 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 	resp, err := p.OpenAI.ChatCompletions(ctx, provider, route.TargetModel, body, reqBody.Stream)
 	if err != nil {
 		log.Error("upstream error", "err", err)
+		p.recordUsage(UsageEvent{
+			OrganizationID: key.OrganizationID,
+			ProjectID:      key.ProjectID,
+			APIKeyID:       key.ID,
+			Model:          reqBody.Model,
+			Status:         "error",
+			LatencyMs:      time.Since(start).Milliseconds(),
+		})
 		writeJSON(w, http.StatusBadGateway, map[string]any{
 			"error": map[string]string{"message": err.Error(), "type": "server_error"},
 		})
@@ -135,9 +157,77 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 	}
 	defer resp.Body.Close()
 
-	if err := CopyResponse(w, resp); err != nil {
-		log.Error("copy response", "err", err)
+	var promptTokens, completionTokens int64
+	status := "ok"
+	if resp.StatusCode >= 400 {
+		status = "upstream_error"
 	}
+
+	if !reqBody.Stream && resp.StatusCode < 400 {
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]any{
+				"error": map[string]string{"message": "failed to read upstream", "type": "server_error"},
+			})
+			return
+		}
+		promptTokens, completionTokens = parseUsageTokens(respBody)
+		for k, vals := range resp.Header {
+			if strings.EqualFold(k, "Transfer-Encoding") || strings.EqualFold(k, "Connection") {
+				continue
+			}
+			for _, v := range vals {
+				w.Header().Add(k, v)
+			}
+		}
+		w.WriteHeader(resp.StatusCode)
+		_, _ = w.Write(respBody)
+	} else {
+		if err := CopyResponse(w, resp); err != nil {
+			log.Error("copy response", "err", err)
+			status = "error"
+		}
+	}
+
+	p.recordUsage(UsageEvent{
+		OrganizationID:   key.OrganizationID,
+		ProjectID:        key.ProjectID,
+		APIKeyID:         key.ID,
+		Model:            reqBody.Model,
+		Status:           status,
+		LatencyMs:        time.Since(start).Milliseconds(),
+		PromptTokens:     promptTokens,
+		CompletionTokens: completionTokens,
+	})
+}
+
+func (p *Pipeline) recordUsage(e UsageEvent) {
+	if p.Usage != nil {
+		p.Usage(e)
+	}
+	p.Log.Info("usage",
+		"organization_id", e.OrganizationID,
+		"project_id", e.ProjectID,
+		"api_key_id", e.APIKeyID,
+		"model", e.Model,
+		"status", e.Status,
+		"latency_ms", e.LatencyMs,
+		"prompt_tokens", e.PromptTokens,
+		"completion_tokens", e.CompletionTokens,
+	)
+}
+
+func parseUsageTokens(body []byte) (prompt, completion int64) {
+	var parsed struct {
+		Usage struct {
+			PromptTokens     int64 `json:"prompt_tokens"`
+			CompletionTokens int64 `json:"completion_tokens"`
+		} `json:"usage"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return 0, 0
+	}
+	return parsed.Usage.PromptTokens, parsed.Usage.CompletionTokens
 }
 
 func bearerToken(h string) (string, error) {
