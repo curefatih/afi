@@ -1,0 +1,1764 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://afi.fatihcure.com/deployment/customization/">
+      
+      
+        <link rel="prev" href="../">
+      
+      
+        <link rel="next" href="../docker/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/brand/favicon-32.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Customization - AFI Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#customization-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AFI Documentation" class="md-header__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
+      
+  <img src="../../assets/brand/logo-mark.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AFI Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Customization
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AFI Documentation" class="md-nav__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
+      
+  <img src="../../assets/brand/logo-mark.svg" alt="logo">
+
+    </a>
+    AFI Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/local-dev/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/verify/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verify
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/repository-layout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository layout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/providers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Providers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/platform-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/config-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugins (hooks)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Customization
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Customization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-configuration-is-loaded" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How configuration is loaded
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-services-afi_-and-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core services (AFI_* and YAML)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core services (AFI_* and YAML)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#auth-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auth behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#seed-block-yaml-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seed block (YAML only)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#platform-domain-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Platform domain events
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upstream-provider-secrets-gateway-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upstream provider secrets (gateway process)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#web-ui-vite-build-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web UI (Vite build-time)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compose-infra-customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compose / infra customization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verify-ops-script-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify / ops script overrides
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#platform-runtime-customization-api-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Platform runtime customization (API / UI)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model catalog
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hardcoded-runtime-knobs-not-configurable-today" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardcoded runtime knobs (not configurable today)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-production-yaml-sketch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example production YAML sketch
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../binary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Binaries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-configuration-is-loaded" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How configuration is loaded
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-services-afi_-and-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core services (AFI_* and YAML)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core services (AFI_* and YAML)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#auth-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auth behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#seed-block-yaml-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seed block (YAML only)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#platform-domain-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Platform domain events
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upstream-provider-secrets-gateway-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upstream provider secrets (gateway process)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#web-ui-vite-build-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web UI (Vite build-time)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compose-infra-customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compose / infra customization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verify-ops-script-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify / ops script overrides
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#platform-runtime-customization-api-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Platform runtime customization (API / UI)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model catalog
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hardcoded-runtime-knobs-not-configurable-today" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardcoded runtime knobs (not configurable today)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-production-yaml-sketch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example production YAML sketch
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="customization-reference">Customization reference</h1>
+<p>This page lists <strong>every operator-facing customization</strong> for a self-hosted AFI deployment. For local defaults see <a href="../../configs/local.yaml"><code>configs/local.yaml</code></a>. For deploy templates see <a href="../../deploy/afi.example.yaml"><code>deploy/afi.example.yaml</code></a> and <a href="../../deploy/env.example"><code>deploy/env.example</code></a>.</p>
+<h2 id="how-configuration-is-loaded">How configuration is loaded</h2>
+<ol>
+<li>Path from <code>AFI_CONFIG</code> (default <code>configs/local.yaml</code>).</li>
+<li>If the file exists, YAML is loaded; <strong>environment variables override YAML</strong> for keys that have <code>env:</code> tags.</li>
+<li>If the file is missing, config is read from the environment only, then code defaults apply.</li>
+<li><strong>Seed</strong> fields are YAML-only — they are <strong>not</strong> overridden by <code>AFI_*</code> env vars.</li>
+</ol>
+<p>Loader: <code>internal/kernel/config.go</code> (cleanenv).</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">AFI_CONFIG</span><span class="o">=</span>/etc/afi/afi.yaml
+<span class="nb">export</span><span class="w"> </span><span class="nv">AFI_JWT_SECRET</span><span class="o">=</span><span class="s2">&quot;...&quot;</span><span class="w">   </span><span class="c1"># overrides auth.jwt_secret in the file</span>
+</code></pre></div>
+<hr />
+<h2 id="core-services-afi_-and-yaml">Core services (<code>AFI_*</code> and YAML)</h2>
+<table>
+<thead>
+<tr>
+<th>Env var</th>
+<th>YAML key</th>
+<th>Default</th>
+<th>Used by</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AFI_CONFIG</code></td>
+<td>—</td>
+<td><code>configs/local.yaml</code></td>
+<td>All</td>
+<td>Config file path</td>
+</tr>
+<tr>
+<td><code>AFI_DATABASE_URL</code></td>
+<td><code>database_url</code></td>
+<td><code>postgres://afi:afi@localhost:5433/afi?sslmode=disable</code></td>
+<td>CP, GW, worker, CLI</td>
+<td><strong>Required</strong> in production</td>
+</tr>
+<tr>
+<td><code>AFI_REDIS_URL</code></td>
+<td><code>redis_url</code></td>
+<td><code>redis://localhost:6379/0</code></td>
+<td>Gateway</td>
+<td>Required for <code>minute</code>/<code>hour</code>/<code>day</code> quotas</td>
+</tr>
+<tr>
+<td><code>AFI_CONTROLPLANE_ADDR</code></td>
+<td><code>controlplane.addr</code></td>
+<td><code>:8081</code></td>
+<td>Control plane</td>
+<td>Listen address</td>
+</tr>
+<tr>
+<td><code>AFI_GATEWAY_ADDR</code></td>
+<td><code>gateway.addr</code></td>
+<td><code>:8080</code></td>
+<td>Gateway</td>
+<td>Listen address</td>
+</tr>
+<tr>
+<td><code>AFI_SNAPSHOT_POLL_INTERVAL</code></td>
+<td><code>gateway.snapshot_poll_interval</code></td>
+<td><code>2s</code></td>
+<td>Gateway</td>
+<td>Poll period (also uses Postgres <code>LISTEN</code>)</td>
+</tr>
+<tr>
+<td><code>AFI_JWT_SECRET</code></td>
+<td><code>auth.jwt_secret</code></td>
+<td><code>afi-local-dev-jwt-secret-change-me</code></td>
+<td>Control plane</td>
+<td><strong>Change in prod</strong> — HS256 signing</td>
+</tr>
+<tr>
+<td><code>AFI_TOKEN_TTL</code></td>
+<td><code>auth.token_ttl</code></td>
+<td><code>24h</code></td>
+<td>Control plane</td>
+<td>Platform session JWT lifetime</td>
+</tr>
+<tr>
+<td><code>AFI_INTERNAL_TOKEN</code></td>
+<td><code>auth.internal_token</code></td>
+<td><code>afi-local-internal-token</code></td>
+<td>Control plane</td>
+<td>Header <code>X-AFI-Internal-Token</code> for <code>/internal/v1/*</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="auth-behavior">Auth behavior</h3>
+<ul>
+<li>Platform login: <code>POST /api/v1/platform/auth/login</code> → JWT signed with <code>jwt_secret</code>.</li>
+<li>Empty <code>internal_token</code> fails closed for HTTP internal admin routes.</li>
+<li>CLI <code>afi seed</code> / <code>afi snapshot publish</code> run in-process and do not need the header.</li>
+</ul>
+<hr />
+<h2 id="seed-block-yaml-only">Seed block (YAML only)</h2>
+<p>Applied when the database is empty (first control-plane start, or <code>afi seed</code> / <code>make seed</code>).</p>
+<table>
+<thead>
+<tr>
+<th>YAML key</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>seed.virtual_api_key</code></td>
+<td><code>sk-project-local-dev-token-12345</code></td>
+<td>Seeded project service-account key (stored hashed)</td>
+</tr>
+<tr>
+<td><code>seed.admin_email</code></td>
+<td><code>admin@afi.local</code></td>
+<td>First platform user</td>
+</tr>
+<tr>
+<td><code>seed.admin_password</code></td>
+<td><code>admin</code></td>
+<td>Password (bcrypt in DB)</td>
+</tr>
+<tr>
+<td><code>seed.admin_name</code></td>
+<td><code>Admin</code></td>
+<td>Display name</td>
+</tr>
+<tr>
+<td><code>seed.openai_base_url</code></td>
+<td><code>https://api.openai.com/v1</code></td>
+<td>Seeded OpenAI provider base URL</td>
+</tr>
+<tr>
+<td><code>seed.openai_api_key_env</code></td>
+<td><code>OPENAI_API_KEY</code></td>
+<td><strong>Name</strong> of the env var the gateway should read (not the secret itself)</td>
+</tr>
+<tr>
+<td><code>seed.default_model</code></td>
+<td><code>gpt-4o-mini</code></td>
+<td>Default chat route model id</td>
+</tr>
+</tbody>
+</table>
+<p>Also seeded in code (not YAML-configurable): Anthropic, Gemini, Ollama (<code>openai_compatible</code> → <code>http://127.0.0.1:11434/v1</code>), TTS/STT routes, echo provider/route. Customize further via the platform UI/API after first boot.</p>
+<hr />
+<h2 id="platform-domain-events">Platform domain events</h2>
+<table>
+<thead>
+<tr>
+<th>Env var</th>
+<th>YAML key</th>
+<th>Default</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AFI_EVENTS_OUTBOX_ENABLED</code></td>
+<td><code>events.outbox_enabled</code></td>
+<td><code>false</code></td>
+<td>Enable on <strong>control plane</strong> (enqueue) and <strong>worker</strong> (drain)</td>
+</tr>
+<tr>
+<td><code>AFI_EVENTS_PUBLISHER</code></td>
+<td><code>events.publisher</code></td>
+<td><code>log</code></td>
+<td><code>log</code> | <code>nats</code> | <code>kafka</code> | <code>noop</code></td>
+</tr>
+<tr>
+<td><code>AFI_EVENTS_NATS_URL</code></td>
+<td><code>events.nats.url</code></td>
+<td><code>nats://127.0.0.1:4222</code></td>
+<td>When <code>publisher=nats</code></td>
+</tr>
+<tr>
+<td><code>AFI_EVENTS_NATS_STREAM</code></td>
+<td><code>events.nats.stream</code></td>
+<td><code>AFI_PLATFORM</code></td>
+<td>JetStream stream</td>
+</tr>
+<tr>
+<td><code>AFI_EVENTS_NATS_SUBJECT_PREFIX</code></td>
+<td><code>events.nats.subject_prefix</code></td>
+<td><code>afi.platform</code></td>
+<td>Subjects: <code>{prefix}.{event.name}</code></td>
+</tr>
+<tr>
+<td><code>AFI_EVENTS_KAFKA_BROKERS</code></td>
+<td><code>events.kafka.brokers</code></td>
+<td><code>127.0.0.1:9092</code></td>
+<td>CSV broker list</td>
+</tr>
+<tr>
+<td><code>AFI_EVENTS_KAFKA_TOPIC</code></td>
+<td><code>events.kafka.topic</code></td>
+<td><code>afi.platform.events</code></td>
+<td>Topic name</td>
+</tr>
+</tbody>
+</table>
+<p>Details: <a href="../../development/platform-events/">Platform domain events</a>.</p>
+<hr />
+<h2 id="upstream-provider-secrets-gateway-process">Upstream provider secrets (gateway process)</h2>
+<p>Provider rows store an <strong>environment variable name</strong> (<code>api_key_env</code>), not the secret. The gateway resolves secrets at runtime via <code>os.Getenv</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Typical env var</th>
+<th>Default for provider type</th>
+<th>When needed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OPENAI_API_KEY</code></td>
+<td><code>openai</code></td>
+<td>OpenAI / compatible routes</td>
+</tr>
+<tr>
+<td><code>ANTHROPIC_API_KEY</code></td>
+<td><code>anthropic</code></td>
+<td>Anthropic routes</td>
+</tr>
+<tr>
+<td><code>GEMINI_API_KEY</code></td>
+<td><code>gemini</code></td>
+<td>Gemini routes</td>
+</tr>
+<tr>
+<td><code>OLLAMA_API_KEY</code></td>
+<td><code>openai_compatible</code></td>
+<td>Any non-empty value if the backend ignores auth</td>
+</tr>
+<tr>
+<td><code>ECHO_UNUSED</code></td>
+<td><code>echo</code></td>
+<td>Echo extension (unused)</td>
+</tr>
+<tr>
+<td><em>custom</em></td>
+<td>whatever you set on the provider</td>
+<td>Must exist in the <strong>gateway</strong> environment</td>
+</tr>
+</tbody>
+</table>
+<p>You can rename <code>api_key_env</code> per provider in the UI/API; inject that exact name into the gateway container/process.</p>
+<hr />
+<h2 id="web-ui-vite-build-time">Web UI (Vite build-time)</h2>
+<p>These are compiled into the static bundle. Changing them requires a <strong>rebuild</strong> of the web image/assets.</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>VITE_PLATFORM_API_URL</code></td>
+<td><code>http://localhost:8081</code></td>
+<td>Control plane base URL (browser-reachable)</td>
+</tr>
+<tr>
+<td><code>VITE_GATEWAY_API_URL</code></td>
+<td><code>http://localhost:8080</code></td>
+<td>Gateway base URL for playground</td>
+</tr>
+<tr>
+<td><code>VITE_GATEWAY_API_KEY</code></td>
+<td>seed virtual key</td>
+<td>Default playground key</td>
+</tr>
+</tbody>
+</table>
+<p>Example: <a href="../../web/.env.example"><code>web/.env.example</code></a>. In Compose, set these in <code>deploy/.env</code> before <code>make deploy-up</code> / <code>build-images</code>.</p>
+<p>Use public hostnames or published host ports — <strong>not</strong> Docker service names like <code>http://controlplane:8081</code> (browsers cannot resolve those).</p>
+<hr />
+<h2 id="compose-infra-customization">Compose / infra customization</h2>
+<p>From <a href="../../deploy/env.example"><code>deploy/env.example</code></a>:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>COMPOSE_PROJECT_NAME</code></td>
+<td><code>afi</code></td>
+<td>Docker Compose project name</td>
+</tr>
+<tr>
+<td><code>POSTGRES_USER</code> / <code>PASSWORD</code> / <code>DB</code></td>
+<td><code>afi</code> / <em>(required)</em> / <code>afi</code></td>
+<td>Database bootstrap</td>
+</tr>
+<tr>
+<td><code>POSTGRES_HOST_PORT</code></td>
+<td><code>5432</code></td>
+<td>Host → container <code>5432</code></td>
+</tr>
+<tr>
+<td><code>REDIS_HOST_PORT</code></td>
+<td><code>6379</code></td>
+<td>Host Redis port</td>
+</tr>
+<tr>
+<td><code>CONTROLPLANE_HOST_PORT</code></td>
+<td><code>8081</code></td>
+<td>Published control plane port</td>
+</tr>
+<tr>
+<td><code>GATEWAY_HOST_PORT</code></td>
+<td><code>8080</code></td>
+<td>Published gateway port</td>
+</tr>
+<tr>
+<td><code>WEB_HOST_PORT</code></td>
+<td><code>3000</code></td>
+<td>Published web UI port</td>
+</tr>
+</tbody>
+</table>
+<p>Root <a href="../../docker-compose.yml"><code>docker-compose.yml</code></a> (dev infra only) uses Postgres host port <strong>5433</strong> and includes Adminer on <strong>5050</strong>.</p>
+<hr />
+<h2 id="verify-ops-script-overrides">Verify / ops script overrides</h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AFI_CONTROLPLANE_URL</code></td>
+<td><code>http://localhost:8081</code></td>
+<td><code>scripts/verify-local.sh</code>, <code>scripts/deploy-health.sh</code></td>
+</tr>
+<tr>
+<td><code>AFI_GATEWAY_URL</code></td>
+<td><code>http://localhost:8080</code></td>
+<td>same</td>
+</tr>
+<tr>
+<td><code>AFI_WEB_URL</code></td>
+<td><em>(empty)</em></td>
+<td>Optional web check in <code>deploy-health.sh</code></td>
+</tr>
+<tr>
+<td><code>AFI_INTERNAL_TOKEN</code></td>
+<td><code>afi-local-internal-token</code></td>
+<td>verify script internal calls</td>
+</tr>
+<tr>
+<td><code>AFI_VIRTUAL_API_KEY</code></td>
+<td>seed key</td>
+<td>verify script gateway auth</td>
+</tr>
+</tbody>
+</table>
+<p>Release builds:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GOOS</code> / <code>GOARCH</code></td>
+<td><code>linux</code> / <code>amd64</code></td>
+<td><code>scripts/build-release.sh</code> target</td>
+</tr>
+<tr>
+<td><code>VERSION</code></td>
+<td>git describe</td>
+<td>Label printed by the script</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="platform-runtime-customization-api-ui">Platform runtime customization (API / UI)</h2>
+<p>These are <strong>not</strong> env vars — configure them after deploy via the control plane:</p>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Customizable fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Organizations / members</strong></td>
+<td>Orgs; roles <code>owner</code> / <code>admin</code> / <code>member</code> (invite by existing email — no SMTP)</td>
+</tr>
+<tr>
+<td><strong>API keys</strong></td>
+<td><code>personal</code> or <code>service_account</code>; project scope optional</td>
+</tr>
+<tr>
+<td><strong>Providers</strong></td>
+<td>type, base URL, <code>api_key_env</code>, health</td>
+</tr>
+<tr>
+<td><strong>Routes</strong></td>
+<td>model id, provider, target model, modality, ordered <code>fallbacks</code></td>
+</tr>
+<tr>
+<td><strong>Quotas</strong></td>
+<td>scope (<code>organization</code>/<code>project</code>/<code>user</code>/<code>api_key</code>), metric (<code>requests</code>/<code>tokens</code>), window (<code>total</code>/<code>minute</code>/<code>hour</code>/<code>day</code>), <code>limit_value</code></td>
+</tr>
+<tr>
+<td><strong>CEL policies</strong></td>
+<td><code>expression</code>, <code>priority</code>, <code>enabled</code></td>
+</tr>
+<tr>
+<td><strong>Model prices</strong></td>
+<td>DB overrides for usage <code>cost_usd</code> (else embedded catalog)</td>
+</tr>
+</tbody>
+</table>
+<p>API surface summary: <a href="../../development/config-reference/">Config reference</a>.</p>
+<hr />
+<h2 id="model-catalog">Model catalog</h2>
+<ul>
+<li>Embedded at build time: <code>internal/modelcatalog/catalog.json</code>.</li>
+<li>No runtime file/env override — change catalog → rebuild binaries.</li>
+<li>Usage cost: <code>model_prices</code> in Postgres overrides catalog entries.</li>
+</ul>
+<hr />
+<h2 id="hardcoded-runtime-knobs-not-configurable-today">Hardcoded runtime knobs (not configurable today)</h2>
+<table>
+<thead>
+<tr>
+<th>Knob</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Worker poll interval</td>
+<td><code>2s</code></td>
+</tr>
+<tr>
+<td>Outbox claim batch size</td>
+<td><code>50</code></td>
+</tr>
+<tr>
+<td>HTTP <code>ReadHeaderTimeout</code></td>
+<td><code>10s</code></td>
+</tr>
+<tr>
+<td>Graceful shutdown timeout</td>
+<td><code>10s</code></td>
+</tr>
+<tr>
+<td>Snapshot NOTIFY channel</td>
+<td><code>afi_snapshot</code></td>
+</tr>
+<tr>
+<td>CORS</td>
+<td><code>Access-Control-Allow-Origin: *</code></td>
+</tr>
+</tbody>
+</table>
+<p>If you need different values, open an issue or fork and change the corresponding <code>cmd/</code> / <code>internal/</code> constants.</p>
+<hr />
+<h2 id="example-production-yaml-sketch">Example production YAML sketch</h2>
+<div class="highlight"><pre><span></span><code><span class="nt">database_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;postgres://afi:STRONG@db.internal:5432/afi?sslmode=require&quot;</span>
+<span class="nt">redis_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;redis://:STRONG@redis.internal:6379/0&quot;</span>
+
+<span class="nt">controlplane</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">addr</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;:8081&quot;</span>
+
+<span class="nt">gateway</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">addr</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;:8080&quot;</span>
+<span class="w">  </span><span class="nt">snapshot_poll_interval</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2s&quot;</span>
+
+<span class="nt">auth</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">jwt_secret</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;long-random-string&quot;</span>
+<span class="w">  </span><span class="nt">token_ttl</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;12h&quot;</span>
+<span class="w">  </span><span class="nt">internal_token</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;another-long-random-string&quot;</span>
+
+<span class="nt">seed</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">virtual_api_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;sk-live-initial-only&quot;</span>
+<span class="w">  </span><span class="nt">admin_email</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ops@example.com&quot;</span>
+<span class="w">  </span><span class="nt">admin_password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;strong-password&quot;</span>
+<span class="w">  </span><span class="nt">admin_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Ops&quot;</span>
+<span class="w">  </span><span class="nt">openai_base_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://api.openai.com/v1&quot;</span>
+<span class="w">  </span><span class="nt">openai_api_key_env</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;OPENAI_API_KEY&quot;</span>
+<span class="w">  </span><span class="nt">default_model</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gpt-4o-mini&quot;</span>
+
+<span class="nt">events</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">outbox_enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">publisher</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nats</span>
+<span class="w">  </span><span class="nt">nats</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;nats://nats.internal:4222&quot;</span>
+<span class="w">    </span><span class="nt">stream</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AFI_PLATFORM</span>
+<span class="w">    </span><span class="nt">subject_prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">afi.platform</span>
+</code></pre></div>
+<p>Prefer putting secrets in the process environment (<code>AFI_JWT_SECRET</code>, <code>AFI_DATABASE_URL</code>, <code>OPENAI_API_KEY</code>, …) rather than committing them to the YAML file.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

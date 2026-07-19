@@ -1,0 +1,1696 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://afi.fatihcure.com/development/config-reference/">
+      
+      
+        <link rel="prev" href="../platform-events/">
+      
+      
+        <link rel="next" href="../testing/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/brand/favicon-32.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Config reference - AFI Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#config-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AFI Documentation" class="md-header__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
+      
+  <img src="../../assets/brand/logo-mark.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AFI Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Config reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AFI Documentation" class="md-nav__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
+      
+  <img src="../../assets/brand/logo-mark.svg" alt="logo">
+
+    </a>
+    AFI Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/local-dev/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/verify/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verify
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../repository-layout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository layout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../providers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Providers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config reference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#internal-admin-http" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Internal admin HTTP
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#destructive-reset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Destructive reset
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#seed-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seed values
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#platform-config-apis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Platform config APIs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Platform config APIs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quotas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quotas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cel-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CEL policies
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugins (hooks)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/customization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Customization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/binary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Binaries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#internal-admin-http" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Internal admin HTTP
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#destructive-reset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Destructive reset
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#seed-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seed values
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#platform-config-apis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Platform config APIs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Platform config APIs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quotas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quotas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cel-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CEL policies
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="config-reference">Config reference</h1>
+<p>Development-oriented summary of ports, seed values, and platform APIs. For a complete operator customization list (every env var, YAML key, and deploy knob), see <strong><a href="../../deployment/customization/">Customization reference</a></strong>. For self-hosting, see <strong><a href="../../deployment/">Deployment</a></strong>.</p>
+<h2 id="file">File</h2>
+<p><a href="../../configs/local.yaml"><code>configs/local.yaml</code></a> — defaults for local development.</p>
+<h2 id="environment-variables">Environment variables</h2>
+<p>Full operator table (defaults, required vs optional, which process): <a href="../../deployment/customization/">Customization reference</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AFI_CONFIG</code></td>
+<td><code>configs/local.yaml</code></td>
+<td>controlplane, gateway, cli</td>
+</tr>
+<tr>
+<td><code>AFI_DATABASE_URL</code></td>
+<td>from yaml / compose DSN</td>
+<td>all DB clients</td>
+</tr>
+<tr>
+<td><code>AFI_REDIS_URL</code></td>
+<td><code>redis://localhost:6379/0</code></td>
+<td>gateway timed quotas</td>
+</tr>
+<tr>
+<td><code>AFI_CONTROLPLANE_ADDR</code></td>
+<td><code>:8081</code></td>
+<td>controlplane</td>
+</tr>
+<tr>
+<td><code>AFI_GATEWAY_ADDR</code></td>
+<td><code>:8080</code></td>
+<td>gateway</td>
+</tr>
+<tr>
+<td><code>AFI_SNAPSHOT_POLL_INTERVAL</code></td>
+<td><code>2s</code></td>
+<td>gateway watch</td>
+</tr>
+<tr>
+<td><code>AFI_JWT_SECRET</code></td>
+<td>from yaml</td>
+<td>controlplane auth</td>
+</tr>
+<tr>
+<td><code>AFI_INTERNAL_TOKEN</code></td>
+<td>from yaml (<code>afi-local-internal-token</code>)</td>
+<td>HTTP <code>/internal/v1/*</code></td>
+</tr>
+<tr>
+<td><code>AFI_TOKEN_TTL</code></td>
+<td><code>24h</code></td>
+<td>JWT lifetime</td>
+</tr>
+<tr>
+<td><code>AFI_CREDENTIALS_MASTER_KEY</code></td>
+<td>from yaml (<code>credentials.master_key</code>)</td>
+<td>controlplane + gateway (encrypted_db credentials)</td>
+</tr>
+<tr>
+<td><code>OPENAI_API_KEY</code></td>
+<td><em>(required for OpenAI live calls)</em></td>
+<td>gateway → OpenAI</td>
+</tr>
+<tr>
+<td><code>ANTHROPIC_API_KEY</code></td>
+<td><em>(required for Anthropic routes)</em></td>
+<td>gateway → Anthropic</td>
+</tr>
+<tr>
+<td><code>GEMINI_API_KEY</code></td>
+<td><em>(required for Gemini routes)</em></td>
+<td>gateway → Gemini</td>
+</tr>
+<tr>
+<td><code>VITE_PLATFORM_API_URL</code></td>
+<td><code>http://localhost:8081</code></td>
+<td>web UI (platform APIs)</td>
+</tr>
+<tr>
+<td><code>VITE_GATEWAY_API_URL</code></td>
+<td><code>http://localhost:8080</code></td>
+<td>web playground</td>
+</tr>
+<tr>
+<td><code>VITE_GATEWAY_API_KEY</code></td>
+<td>seed virtual key</td>
+<td>web playground</td>
+</tr>
+<tr>
+<td><code>AFI_EVENTS_OUTBOX_ENABLED</code></td>
+<td><code>false</code></td>
+<td>enqueue platform events to Postgres</td>
+</tr>
+<tr>
+<td><code>AFI_EVENTS_PUBLISHER</code></td>
+<td><code>log</code></td>
+<td>worker: <code>log</code> | <code>nats</code> | <code>kafka</code> | <code>noop</code></td>
+</tr>
+<tr>
+<td><code>AFI_EVENTS_NATS_URL</code></td>
+<td><code>nats://127.0.0.1:4222</code></td>
+<td>NATS JetStream</td>
+</tr>
+<tr>
+<td><code>AFI_EVENTS_NATS_STREAM</code></td>
+<td><code>AFI_PLATFORM</code></td>
+<td>JetStream stream name</td>
+</tr>
+<tr>
+<td><code>AFI_EVENTS_NATS_SUBJECT_PREFIX</code></td>
+<td><code>afi.platform</code></td>
+<td>subject prefix</td>
+</tr>
+<tr>
+<td><code>AFI_EVENTS_KAFKA_BROKERS</code></td>
+<td><code>127.0.0.1:9092</code></td>
+<td>Kafka brokers (CSV)</td>
+</tr>
+<tr>
+<td><code>AFI_EVENTS_KAFKA_TOPIC</code></td>
+<td><code>afi.platform.events</code></td>
+<td>Kafka topic</td>
+</tr>
+<tr>
+<td><code>AFI_MAIL_PUBLIC_APP_URL</code></td>
+<td><code>http://localhost:3000</code></td>
+<td>Invite accept links (web origin)</td>
+</tr>
+<tr>
+<td><code>AFI_MAIL_FROM</code></td>
+<td><code>AFI &lt;noreply@afi.local&gt;</code></td>
+<td>From header</td>
+</tr>
+<tr>
+<td><code>AFI_MAIL_DEFAULT_PROVIDER</code></td>
+<td><code>log</code></td>
+<td><code>log</code> | <code>smtp</code> | <code>resend</code></td>
+</tr>
+<tr>
+<td><code>AFI_MAIL_SMTP_ENABLED</code></td>
+<td><code>false</code></td>
+<td>Enable SMTP transport</td>
+</tr>
+<tr>
+<td><code>AFI_MAIL_SMTP_HOST</code> / <code>PORT</code></td>
+<td><code>localhost</code> / <code>1025</code></td>
+<td>SMTP (Mailpit/Mailhog)</td>
+</tr>
+<tr>
+<td><code>AFI_MAIL_RESEND_ENABLED</code></td>
+<td><code>false</code></td>
+<td>Enable Resend API</td>
+</tr>
+<tr>
+<td><code>AFI_MAIL_RESEND_API_KEY</code></td>
+<td><em>(empty)</em></td>
+<td>Resend API key</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="../platform-events/">Platform domain events</a> for the outbox flow.</p>
+<h2 id="internal-admin-http">Internal admin HTTP</h2>
+<p><code>POST /internal/v1/seed</code> and <code>POST /internal/v1/snapshots/publish</code> require header:</p>
+<div class="highlight"><pre><span></span><code><span class="err">X-AFI-Internal-Token: &lt;auth.internal_token&gt;</span>
+</code></pre></div>
+<p>The CLI (<code>afi seed</code>, <code>afi snapshot publish</code>) and control-plane startup call seed/publish <strong>in-process</strong> and do not need this header.</p>
+<h2 id="destructive-reset">Destructive reset</h2>
+<div class="highlight"><pre><span></span><code>afi<span class="w"> </span>db<span class="w"> </span>reset
+</code></pre></div>
+<p>Drops all AFI tables after typing <code>reset</code>. Use only for local recovery. Schema version bumps do <strong>not</strong> wipe data; only legacy UUID installs or incomplete schemas are auto-wiped once.</p>
+<h2 id="seed-values">Seed values</h2>
+<p>Written on first control-plane start (or <code>make seed</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Virtual API key</td>
+<td><code>sk-project-local-dev-token-12345</code> (stored hashed in DB/snapshot)</td>
+</tr>
+<tr>
+<td>Platform email</td>
+<td><code>admin@afi.local</code></td>
+</tr>
+<tr>
+<td>Platform password</td>
+<td><code>admin</code></td>
+</tr>
+<tr>
+<td>Default model route</td>
+<td><code>gpt-4o-mini</code> → OpenAI <code>gpt-4o-mini</code></td>
+</tr>
+<tr>
+<td>Seeded audio routes</td>
+<td><code>tts-1</code>, <code>whisper-1</code> → <code>prov_openai</code></td>
+</tr>
+<tr>
+<td>Seeded providers</td>
+<td><code>prov_openai</code>, <code>prov_anthropic</code>, <code>prov_gemini</code>, <code>prov_ollama</code> (<code>openai_compatible</code> → <code>http://127.0.0.1:11434/v1</code>, no default route)</td>
+</tr>
+<tr>
+<td><code>OLLAMA_API_KEY</code></td>
+<td><em>(any value if Ollama ignores auth)</em></td>
+</tr>
+<tr>
+<td>Route <code>fallbacks</code></td>
+<td>optional ordered <code>[{provider_id,target_model}]</code> for 5xx/timeout/429 retry</td>
+</tr>
+<tr>
+<td>Gateway models</td>
+<td><code>GET /v1/models</code> lists org route model ids (<code>supports_streaming</code> / <code>supports_tts</code> / <code>supports_stt</code>)</td>
+</tr>
+<tr>
+<td>Gateway audio</td>
+<td><code>POST /v1/audio/speech</code>, <code>POST /v1/audio/transcriptions</code> (openai / openai_compatible)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ports">Ports</h2>
+<table>
+<thead>
+<tr>
+<th>Port</th>
+<th>Service</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>8080</td>
+<td>Gateway (inference)</td>
+</tr>
+<tr>
+<td>8081</td>
+<td>Control plane (platform + admin)</td>
+</tr>
+<tr>
+<td>5433</td>
+<td>Postgres</td>
+</tr>
+<tr>
+<td>6379</td>
+<td>Redis (timed quota windows)</td>
+</tr>
+<tr>
+<td>5050</td>
+<td>Adminer</td>
+</tr>
+<tr>
+<td>3000</td>
+<td>Web UI</td>
+</tr>
+<tr>
+<td>8000</td>
+<td>MkDocs (<code>make doc-serve</code>)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="platform-config-apis">Platform config APIs</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET/POST</td>
+<td><code>/api/v1/platform/organizations</code></td>
+</tr>
+<tr>
+<td>GET/POST</td>
+<td><code>/api/v1/platform/organizations/{orgID}/members</code> (POST = invite; org admin)</td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td><code>/api/v1/platform/organizations/{orgID}/members/{userID}</code> (owner only)</td>
+</tr>
+<tr>
+<td>GET/DELETE</td>
+<td><code>/api/v1/platform/organizations/{orgID}/invites[/{inviteID}]</code> (org admin)</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/platform/organizations/{orgID}/invites/{inviteID}/resend</code> (org admin)</td>
+</tr>
+<tr>
+<td>GET/PATCH</td>
+<td><code>/api/v1/platform/organizations/{orgID}/mail</code> (org admin)</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/platform/organizations/{orgID}/mail/test</code> (org admin)</td>
+</tr>
+<tr>
+<td>GET/POST</td>
+<td><code>/api/v1/platform/auth/invites/{token}</code> / <code>…/accept</code> (public)</td>
+</tr>
+<tr>
+<td>GET/POST</td>
+<td><code>/api/v1/platform/organizations/{orgID}/keys</code> (personal = member; service_account = org admin)</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/v1/platform/keys/{keyID}</code> (admin or personal key owner)</td>
+</tr>
+<tr>
+<td>GET/POST</td>
+<td><code>/api/v1/platform/projects/{projectID}/keys</code> (POST = org admin)</td>
+</tr>
+<tr>
+<td>GET/POST</td>
+<td><code>/api/v1/platform/organizations/{orgID}/providers</code> (POST = org admin)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/platform/organizations/{orgID}/providers/health</code></td>
+</tr>
+<tr>
+<td>PATCH/DELETE</td>
+<td><code>/api/v1/platform/providers/{providerID}</code> (org admin)</td>
+</tr>
+<tr>
+<td>GET/POST</td>
+<td><code>/api/v1/platform/organizations/{orgID}/routes</code> (POST = org admin)</td>
+</tr>
+<tr>
+<td>PATCH/DELETE</td>
+<td><code>/api/v1/platform/routes/{routeID}</code> (org admin)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/platform/organizations/{orgID}/usage</code></td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/platform/organizations/{orgID}/usage/summary</code></td>
+</tr>
+<tr>
+<td>GET/POST</td>
+<td><code>/api/v1/platform/organizations/{orgID}/quotas</code> (POST = org admin)</td>
+</tr>
+<tr>
+<td>PATCH/DELETE</td>
+<td><code>/api/v1/platform/quotas/{quotaID}</code> (org admin)</td>
+</tr>
+<tr>
+<td>GET/POST</td>
+<td><code>/api/v1/platform/organizations/{orgID}/policies</code> (POST = org admin)</td>
+</tr>
+<tr>
+<td>PATCH/DELETE</td>
+<td><code>/api/v1/platform/policies/{policyID}</code> (org admin)</td>
+</tr>
+<tr>
+<td>GET/POST</td>
+<td><code>/api/v1/platform/organizations/{orgID}/credentials</code> (POST = org admin)</td>
+</tr>
+<tr>
+<td>PATCH/DELETE</td>
+<td><code>/api/v1/platform/credentials/{credentialID}</code> (org admin)</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/platform/credentials/{credentialID}/rotate</code> (org admin)</td>
+</tr>
+<tr>
+<td>GET/PUT</td>
+<td><code>/api/v1/platform/organizations/{orgID}/credential-assignments</code> (PUT = org admin)</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/v1/platform/credential-assignments/{assignmentID}</code> (org admin)</td>
+</tr>
+</tbody>
+</table>
+<p>Member invite (org admin): existing users are added and emailed; unknown emails get a pending invite + accept link (<code>/auth/invite/{token}</code>). Mail transports: <code>log</code> (default local), <code>smtp</code>, <code>resend</code> — org admins pick among enabled providers in Settings. Org roles: <code>owner</code> / <code>admin</code> / <code>member</code>. Only the <strong>owner</strong> can <code>PATCH</code> a member role (<code>{ "role": "admin" }</code>); setting <code>owner</code> transfers ownership. Native Anthropic inference: gateway <code>POST /v1/messages</code> (Anthropic providers only).</p>
+<h3 id="usage">Usage</h3>
+<table>
+<thead>
+<tr>
+<th>Query</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>limit</code>, <code>project_id</code>, <code>api_key_id</code>, <code>model</code>, <code>modality</code>, <code>from</code>, <code>to</code></td>
+<td>List + summary filters (<code>from</code>/<code>to</code> as RFC3339 or <code>YYYY-MM-DD</code>)</td>
+</tr>
+<tr>
+<td><code>group_by</code></td>
+<td>Summary only: <code>day</code> (default), <code>model</code>, <code>key</code>, <code>modality</code></td>
+</tr>
+</tbody>
+</table>
+<p>Each event has <code>modality</code> (<code>chat</code>, <code>messages</code>, <code>tts</code>, <code>stt</code>, …), extensible <code>metrics</code> JSON (e.g. TTS <code>characters</code>), optional token fields for chat, and key owner fields (<code>key_name</code>, <code>key_kind</code>, <code>owner_email</code>, …). Personal keys attribute to the owner user; service-account keys have no human owner.</p>
+<h3 id="api-keys">API keys</h3>
+<table>
+<thead>
+<tr>
+<th><code>kind</code></th>
+<th>Scope</th>
+<th>Who can create</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>personal</code></td>
+<td>org + <code>owner_user_id</code> (no project)</td>
+<td>any org member (self only)</td>
+</tr>
+<tr>
+<td><code>service_account</code></td>
+<td>org-wide or project (<code>project_id</code> optional)</td>
+<td>org owner/admin</td>
+</tr>
+</tbody>
+</table>
+<p>Seed key <code>sk-project-local-dev-token-12345</code> is a project <strong>service_account</strong> key.</p>
+<h3 id="quotas">Quotas</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scope_type</code></td>
+<td><code>organization</code>, <code>project</code>, <code>user</code>, <code>api_key</code></td>
+</tr>
+<tr>
+<td><code>metric</code></td>
+<td><code>requests</code>, <code>tokens</code></td>
+</tr>
+<tr>
+<td><code>window</code></td>
+<td><code>total</code> (Postgres lifetime), <code>minute</code> / <code>hour</code> / <code>day</code> (Redis fixed windows)</td>
+</tr>
+<tr>
+<td><code>limit_value</code></td>
+<td>integer ≥ 0 (<code>0</code> blocks immediately)</td>
+</tr>
+</tbody>
+</table>
+<p>Most specific scope wins <strong>per window</strong>: api_key → user → project → organization. Timed windows require Redis (<code>redis_url</code> / <code>AFI_REDIS_URL</code>). Create/update/delete quotas, providers, and routes require org owner/admin.</p>
+<h3 id="cel-policies">CEL policies</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>Display name</td>
+</tr>
+<tr>
+<td><code>expression</code></td>
+<td>Boolean CEL; all enabled org policies must be true</td>
+</tr>
+<tr>
+<td><code>priority</code></td>
+<td>Higher first (default 100)</td>
+</tr>
+<tr>
+<td><code>enabled</code></td>
+<td>Default true</td>
+</tr>
+</tbody>
+</table>
+<p>CEL variables: <code>request.model</code>, <code>request.path</code>, <code>request.stream</code>, <code>key.id</code>, <code>key.organization_id</code>, <code>key.project_id</code>, <code>key.kind</code>, <code>key.owner_user_id</code>, <code>key.name</code>. Denial → HTTP 403 <code>policy_violation</code>. Owner/admin to create/update/delete.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

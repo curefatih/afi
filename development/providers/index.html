@@ -8,31 +8,31 @@
       
       
       
-        <link rel="canonical" href="https://afi.fatihcure.com/deployment/">
+        <link rel="canonical" href="https://afi.fatihcure.com/development/providers/">
       
       
-        <link rel="prev" href="../hooks/usage/">
+        <link rel="prev" href="../architecture/">
       
       
-        <link rel="next" href="customization/">
+        <link rel="next" href="../platform-events/">
       
       
         
       
       
-      <link rel="icon" href="../assets/brand/favicon-32.png">
+      <link rel="icon" href="../../assets/brand/favicon-32.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
-        <title>Overview - AFI Documentation</title>
+        <title>Providers - AFI Documentation</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -51,7 +51,7 @@
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#deployment" class="md-skip">
+        <a href="#provider-adapters" class="md-skip">
           Skip to content
         </a>
       
@@ -90,9 +90,9 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="AFI Documentation" class="md-header__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
+    <a href="../.." title="AFI Documentation" class="md-header__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
       
-  <img src="../assets/brand/logo-mark.svg" alt="logo">
+  <img src="../../assets/brand/logo-mark.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              Providers
             
           </span>
         </div>
@@ -187,9 +187,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="AFI Documentation" class="md-nav__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
+    <a href="../.." title="AFI Documentation" class="md-nav__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
       
-  <img src="../assets/brand/logo-mark.svg" alt="logo">
+  <img src="../../assets/brand/logo-mark.svg" alt="logo">
 
     </a>
     AFI Documentation
@@ -204,7 +204,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -278,7 +278,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting-started/local-dev/" class="md-nav__link">
+      <a href="../../getting-started/local-dev/" class="md-nav__link">
         
   
   
@@ -306,7 +306,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting-started/verify/" class="md-nav__link">
+      <a href="../../getting-started/verify/" class="md-nav__link">
         
   
   
@@ -338,18 +338,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -370,7 +372,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -388,7 +390,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/repository-layout/" class="md-nav__link">
+      <a href="../repository-layout/" class="md-nav__link">
         
   
   
@@ -416,7 +418,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/architecture/" class="md-nav__link">
+      <a href="../architecture/" class="md-nav__link">
         
   
   
@@ -441,10 +443,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../development/providers/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Providers
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -460,6 +489,92 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#built-in-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in types
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modality-ports-chat-messages-audio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modality ports (chat / messages / audio)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-a-provider-in-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a provider (in-tree)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-an-extension-sdk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding an extension (SDK)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hooks-in-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hooks (in-process)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-local-ollama" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: local Ollama
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -472,7 +587,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/platform-events/" class="md-nav__link">
+      <a href="../platform-events/" class="md-nav__link">
         
   
   
@@ -500,7 +615,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/config-reference/" class="md-nav__link">
+      <a href="../config-reference/" class="md-nav__link">
         
   
   
@@ -528,7 +643,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/testing/" class="md-nav__link">
+      <a href="../testing/" class="md-nav__link">
         
   
   
@@ -610,7 +725,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../hooks/usage/" class="md-nav__link">
+      <a href="../../hooks/usage/" class="md-nav__link">
         
   
   
@@ -642,20 +757,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
@@ -676,7 +789,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -691,37 +804,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../deployment/" class="md-nav__link">
         
   
   
@@ -737,92 +823,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#architecture" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Architecture
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#choose-a-path" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Choose a path
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#customization" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Customization
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#security-checklist" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Security checklist
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#health-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Health checks
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -835,7 +835,7 @@
   
   
     <li class="md-nav__item">
-      <a href="customization/" class="md-nav__link">
+      <a href="../../deployment/customization/" class="md-nav__link">
         
   
   
@@ -863,7 +863,7 @@
   
   
     <li class="md-nav__item">
-      <a href="docker/" class="md-nav__link">
+      <a href="../../deployment/docker/" class="md-nav__link">
         
   
   
@@ -891,7 +891,7 @@
   
   
     <li class="md-nav__item">
-      <a href="binary/" class="md-nav__link">
+      <a href="../../deployment/binary/" class="md-nav__link">
         
   
   
@@ -946,10 +946,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#architecture" class="md-nav__link">
+  <a href="#built-in-types" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Architecture
+        Built-in types
       
     </span>
   </a>
@@ -957,10 +957,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#choose-a-path" class="md-nav__link">
+  <a href="#modality-ports-chat-messages-audio" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Choose a path
+        Modality ports (chat / messages / audio)
       
     </span>
   </a>
@@ -968,10 +968,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#customization" class="md-nav__link">
+  <a href="#adding-a-provider-in-tree" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Customization
+        Adding a provider (in-tree)
       
     </span>
   </a>
@@ -979,10 +979,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#security-checklist" class="md-nav__link">
+  <a href="#adding-an-extension-sdk" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Security checklist
+        Adding an extension (SDK)
       
     </span>
   </a>
@@ -990,10 +990,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#health-checks" class="md-nav__link">
+  <a href="#hooks-in-process" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Health checks
+        Hooks (in-process)
       
     </span>
   </a>
@@ -1001,10 +1001,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#related" class="md-nav__link">
+  <a href="#example-local-ollama" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Related
+        Example: local Ollama
       
     </span>
   </a>
@@ -1028,153 +1028,125 @@
 
 
 
-<h1 id="deployment">Deployment</h1>
-<p>AFI ships as <strong>Go binaries</strong> (control plane, gateway, worker, CLI) plus an optional <strong>static web UI</strong>. Local development remains the fastest path for contributors; this section covers self-hosted deployments.</p>
-<h2 id="architecture">Architecture</h2>
-<pre class="mermaid"><code>flowchart TB
-  UI[Platform UI]
-  CP[Control plane]
-  GW[Gateway]
-  W[Worker]
-  PG[(Postgres)]
-  RD[(Redis)]
-  Prov[Upstream LLM APIs]
-
-  UI --&gt; CP
-  UI --&gt; GW
-  Clients[API clients] --&gt; GW
-  CP --&gt; PG
-  GW --&gt;|snapshot watch| PG
-  GW --&gt;|usage outbox| PG
-  GW --&gt; RD
-  GW --&gt; Prov
-  W --&gt;|drain outboxes| PG</code></pre>
+<h1 id="provider-adapters">Provider adapters</h1>
+<p>Gateway chat dispatch uses a <strong>registry</strong> of in-process adapters. The pipeline looks up <code>provider.type</code> and calls <code>Chat</code> — it does not hard-code vendor branches.</p>
+<h2 id="built-in-types">Built-in types</h2>
 <table>
 <thead>
 <tr>
-<th>Component</th>
-<th>Role</th>
-<th>Required?</th>
+<th>Type</th>
+<th>Chat</th>
+<th>Stream</th>
+<th>TTS</th>
+<th>STT</th>
+<th>Notes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Postgres 16+</strong></td>
-<td>Metadata, snapshots, outboxes, total quotas</td>
-<td>Yes</td>
+<td><code>openai</code></td>
+<td>yes</td>
+<td>yes</td>
+<td>yes</td>
+<td>yes</td>
+<td>Chat + <code>/audio/speech</code> + <code>/audio/transcriptions</code></td>
 </tr>
 <tr>
-<td><strong>Control plane</strong></td>
-<td>Migrate, seed, platform APIs, snapshot publish</td>
-<td>Yes</td>
+<td><code>anthropic</code></td>
+<td>yes</td>
+<td>yes</td>
+<td>no</td>
+<td>no</td>
+<td>Messages API → OpenAI-shaped responses/SSE</td>
 </tr>
 <tr>
-<td><strong>Gateway</strong></td>
-<td>Inference pipeline (auth → quotas → policies → providers)</td>
-<td>Yes</td>
+<td><code>gemini</code></td>
+<td>yes</td>
+<td>yes</td>
+<td>no</td>
+<td>no</td>
+<td><code>generateContent</code> / <code>streamGenerateContent</code> → OpenAI JSON/SSE</td>
 </tr>
 <tr>
-<td><strong>Worker</strong></td>
-<td>Drain usage (and optional platform events) outboxes</td>
-<td>Recommended</td>
+<td><code>openai_compatible</code></td>
+<td>yes</td>
+<td>yes</td>
+<td>yes</td>
+<td>yes</td>
+<td>Same wire protocol as OpenAI (incl. audio if upstream supports it)</td>
 </tr>
 <tr>
-<td><strong>Redis 7+</strong></td>
-<td>Timed quota windows (<code>minute</code> / <code>hour</code> / <code>day</code>)</td>
-<td>If you use timed quotas</td>
-</tr>
-<tr>
-<td><strong>Web UI</strong></td>
-<td>Platform console + playground</td>
-<td>Optional</td>
-</tr>
-<tr>
-<td><strong>NATS / Kafka</strong></td>
-<td>Platform domain event brokers</td>
-<td>Optional</td>
+<td><code>echo</code></td>
+<td>yes</td>
+<td>no</td>
+<td>no</td>
+<td>no</td>
+<td><strong>SDK extension</strong> (<code>extensions/echo</code>) — no network; echoes last user message</td>
 </tr>
 </tbody>
 </table>
-<h2 id="choose-a-path">Choose a path</h2>
+<p>Capabilities (<code>chat</code>, <code>stream</code>, <code>tts</code>, <code>stt</code>) are stored on the provider in the snapshot (defaults applied per type when empty). Streaming/TTS/STT requests against unsupported providers return <code>400</code>.</p>
+<h2 id="modality-ports-chat-messages-audio">Modality ports (chat / messages / audio)</h2>
 <table>
 <thead>
 <tr>
-<th>Path</th>
-<th>When to use</th>
-<th>Guide</th>
+<th>Surface</th>
+<th>Registry port</th>
+<th>Resolved by</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Docker Compose</strong></td>
-<td>Single host / VM, quick self-host</td>
-<td><a href="docker/">Docker Compose</a></td>
+<td><code>POST /v1/chat/completions</code></td>
+<td><code>ChatProvider.Chat</code></td>
+<td><code>provider.type</code></td>
 </tr>
 <tr>
-<td><strong>Binaries</strong></td>
-<td>Custom OS images, systemd, bare metal</td>
-<td><a href="binary/">Binary deployment</a></td>
+<td><code>POST /v1/messages</code></td>
+<td><code>MessagesBackend</code> (via <code>AnthropicTransportProvider</code>)</td>
+<td>routed <code>provider.type</code></td>
 </tr>
 <tr>
-<td><strong>Local dev</strong></td>
-<td>Day-to-day development</td>
-<td><a href="../getting-started/local-dev/">Local development</a></td>
+<td><code>POST /v1/audio/speech</code> / <code>transcriptions</code></td>
+<td><code>AudioBackend</code> (via <code>OpenAITransportProvider</code>)</td>
+<td>routed <code>provider.type</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="customization">Customization</h2>
-<p>Every config knob operators can change — YAML, environment variables, seed values, provider secrets, web build args, and runtime limits — is documented in:</p>
-<p><strong><a href="customization/">Customization reference</a></strong></p>
-<p>Also see the shorter <a href="../development/config-reference/">Config reference</a> for day-to-day development.</p>
-<h2 id="security-checklist">Security checklist</h2>
-<p>Before exposing AFI beyond localhost:</p>
+<p>Chat stays on <code>ChatProvider</code>. TTS/STT and native Anthropic messages use <strong>optional</strong> transport interfaces implemented by the same adapters — they are <strong>not</strong> methods on <code>ChatProvider</code>, so SDK chat extensions need no audio stubs.</p>
+<p>Adapters that do not implement the transport provider interface simply cannot serve that modality (handlers return <code>400</code> / <code>502</code> as today).</p>
+<h2 id="adding-a-provider-in-tree">Adding a provider (in-tree)</h2>
 <ol>
-<li>Replace all <code>CHANGE_ME</code> values in <code>deploy/.env</code> and <code>deploy/afi.yaml</code> (or your own config).</li>
-<li>Set strong <code>AFI_JWT_SECRET</code> and <code>AFI_INTERNAL_TOKEN</code> (never use the local-dev defaults).</li>
-<li>Use a strong Postgres password and restrict network access to the database.</li>
-<li>Inject upstream provider API keys only into the <strong>gateway</strong> process environment.</li>
-<li>Change seed admin password and virtual API key (or delete the seed key after creating your own).</li>
-<li>Put TLS termination (reverse proxy / load balancer) in front of control plane, gateway, and web.</li>
-<li>Prefer private networking between services; only publish the ports clients need.</li>
+<li>Implement <code>dataplane.ChatProvider</code> (<code>Type</code>, <code>Capabilities</code>, <code>Chat</code>).</li>
+<li>Register it in <code>dataplane.DefaultRegistry()</code> / <code>RegistryFromClients</code> (or your gateway bootstrap).
+   Outbound HTTP clients live in <code>internal/adapters/llm</code> and resolve keys via <code>adapters/secrets</code>.</li>
+<li>Prefer reusing <a href="../../internal/dataplane/openaichat"><code>internal/dataplane/openaichat</code></a> helpers for OpenAI-shaped JSON/SSE.</li>
+<li>Document the type, default <code>api_key_env</code>, and capabilities in this page.</li>
+<li>Optionally seed an inactive provider (no route) like <code>prov_ollama</code>.</li>
 </ol>
-<h2 id="health-checks">Health checks</h2>
-<table>
-<thead>
-<tr>
-<th>Service</th>
-<th>Endpoint</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Control plane</td>
-<td><code>GET /healthz</code> → <code>{"status":"ok"}</code></td>
-</tr>
-<tr>
-<td>Gateway</td>
-<td><code>GET /healthz</code> → status + <code>snapshot_version</code> + extensions</td>
-</tr>
-<tr>
-<td>Web (Compose image)</td>
-<td><code>GET /healthz</code></td>
-</tr>
-<tr>
-<td>Worker</td>
-<td>No HTTP probe — monitor process / logs</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>make<span class="w"> </span>deploy-health
-<span class="c1"># or</span>
-<span class="nv">AFI_CONTROLPLANE_URL</span><span class="o">=</span>https://cp.example<span class="w"> </span><span class="nv">AFI_GATEWAY_URL</span><span class="o">=</span>https://gw.example<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>bash<span class="w"> </span>scripts/deploy-health.sh
+<p>You should <strong>not</strong> need to edit <code>callProvider</code> or add a new <code>switch</code> case in the pipeline.</p>
+<h2 id="adding-an-extension-sdk">Adding an extension (SDK)</h2>
+<ol>
+<li>Implement <a href="../../sdk/provider"><code>sdk/provider.ChatProvider</code></a> in a package under <a href="../../extensions/"><code>extensions/</code></a> (or an external module).</li>
+<li>In <a href="../../cmd/gateway"><code>cmd/gateway</code></a>, call <code>reg.RegisterSDK(your.New())</code> after <code>DefaultRegistry()</code>.</li>
+<li>Create a control-plane provider with matching <code>type</code> and a route (seed does this for <code>echo</code> → model <code>echo-demo</code>).</li>
+<li>Restart the gateway so the adapter is registered.</li>
+</ol>
+<p>Working example: <a href="../../extensions/echo"><code>extensions/echo</code></a> — verify with:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8080/v1/chat/completions<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer sk-project-local-dev-token-12345&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;model&quot;:&quot;echo-demo&quot;,&quot;messages&quot;:[{&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;ping&quot;}]}&#39;</span>
 </code></pre></div>
-<h2 id="related">Related</h2>
-<ul>
-<li><a href="../development/platform-events/">Platform domain events</a></li>
-<li><a href="../development/providers/">Providers</a></li>
-<li><a href="../development/architecture/">Architecture</a></li>
-</ul>
+<p>Expect assistant content containing <code>echo:</code> (and <code>[hook:demo]</code> if the demo BeforeChat hook is registered).</p>
+<h2 id="hooks-in-process">Hooks (in-process)</h2>
+<p><code>ChatHook.BeforeChat</code> / <code>AfterChatHook.AfterChat</code> run around provider dispatch. Register via <code>dataplane.NewHookChain().RegisterHook(...)</code> (see <code>extensions/demohook</code>). Gateway <code>/healthz</code> lists hook objects with <code>before_chat</code> / <code>after_chat</code>. Full gRPC/WASM plugin runtimes remain future work.</p>
+<h2 id="example-local-ollama">Example: local Ollama</h2>
+<ol>
+<li>Create provider type <code>openai_compatible</code>, base URL <code>http://127.0.0.1:11434/v1</code>, env <code>OLLAMA_API_KEY</code> (any non-empty value if Ollama ignores auth).</li>
+<li>Add a route, e.g. requested model <code>llama3</code> → target <code>llama3.2</code>.</li>
+<li>Call the gateway with <code>"model":"llama3"</code>.</li>
+</ol>
 
 
 
@@ -1224,10 +1196,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

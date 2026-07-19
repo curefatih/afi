@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://afi.fatihcure.com/hooks/usage/">
+        <link rel="canonical" href="https://afi.fatihcure.com/getting-started/local-dev/">
       
       
-        <link rel="prev" href="../../development/testing/">
+        <link rel="prev" href="../..">
       
       
-        <link rel="next" href="../../deployment/">
+        <link rel="next" href="../verify/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Plugins (hooks) - AFI Documentation</title>
+        <title>Local development - AFI Documentation</title>
       
     
     
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#plugins-hooks" class="md-skip">
+        <a href="#local-development" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Plugins (hooks)
+              Local development
             
           </span>
         </div>
@@ -228,18 +228,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -260,7 +262,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -275,10 +277,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../getting-started/local-dev/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local development
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -294,6 +323,147 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-start-infrastructure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Start infrastructure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-export-provider-credentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Export provider credentials
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-run-the-control-plane" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Run the control plane
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-run-the-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Run the gateway
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-run-the-usage-worker-optional-but-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Run the usage worker (optional but recommended)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-verify-inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Verify inference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-optional-platform-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Optional: platform UI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-optional-docs-site" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Optional: docs site
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI helpers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -306,7 +476,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/verify/" class="md-nav__link">
+      <a href="../verify/" class="md-nav__link">
         
   
   
@@ -560,20 +730,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
@@ -594,7 +762,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -609,37 +777,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Plugins (hooks)
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../hooks/usage/" class="md-nav__link">
         
   
   
@@ -655,48 +796,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#today-in-process" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Today (in-process)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#future" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Future
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -902,10 +1001,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#today-in-process" class="md-nav__link">
+  <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Today (in-process)
+        Prerequisites
       
     </span>
   </a>
@@ -913,10 +1012,109 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#future" class="md-nav__link">
+  <a href="#1-start-infrastructure" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Future
+        1. Start infrastructure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-export-provider-credentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Export provider credentials
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-run-the-control-plane" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Run the control plane
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-run-the-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Run the gateway
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-run-the-usage-worker-optional-but-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Run the usage worker (optional but recommended)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-verify-inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Verify inference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-optional-platform-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Optional: platform UI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-optional-docs-site" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Optional: docs site
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI helpers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config
       
     </span>
   </a>
@@ -940,26 +1138,112 @@
 
 
 
-<h1 id="plugins-hooks">Plugins / hooks</h1>
-<h2 id="today-in-process">Today (in-process)</h2>
-<p>The gateway runs an in-process hook chain on the chat path:</p>
-<ol>
-<li><strong>BeforeChat</strong> — after auth/quota, before provider dispatch (<code>ChatHook</code>)</li>
-<li><strong>AfterChat</strong> — after the attempt finishes, success or error (<code>AfterChatHook</code>)</li>
-</ol>
-<p>Register in <code>cmd/gateway</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nx">hooks</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">dataplane</span><span class="p">.</span><span class="nx">NewHookChain</span><span class="p">().</span><span class="nx">RegisterHook</span><span class="p">(</span><span class="nx">demohook</span><span class="p">.</span><span class="nx">NewWithLog</span><span class="p">(</span><span class="nx">log</span><span class="p">))</span>
-<span class="nx">pipeline</span><span class="p">.</span><span class="nx">Hooks</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">hooks</span>
-</code></pre></div>
-<p>Inspect active hooks on <code>GET /healthz</code> (<code>hooks</code> array of <code>{name, before_chat, after_chat}</code>) or the platform <strong>Hooks</strong> page.</p>
-<p>Seeded demo: <a href="../../extensions/demohook"><code>extensions/demohook</code></a> prefixes the last user message with <code>[hook:demo]</code> and logs AfterChat to the gateway logger.</p>
-<p>Provider adapters use the same in-process path via <a href="../../sdk/provider"><code>sdk/provider</code></a> + <code>Registry.RegisterSDK</code> (see <a href="../../extensions/echo"><code>extensions/echo</code></a>).</p>
-<h2 id="future">Future</h2>
+<h1 id="local-development">Local development</h1>
+<p>This is the golden path for running AFI on a developer machine.</p>
+<h2 id="prerequisites">Prerequisites</h2>
 <ul>
-<li>gRPC extensions — providers, auth, secrets, notifications</li>
-<li>WASM extensions — prompt/header mutation, PII masking, enrichment</li>
+<li>Go (version in <code>go.mod</code>)</li>
+<li>Docker (Compose)</li>
+<li>An OpenAI API key for live chat completions</li>
+<li>Optional: pnpm (web UI), <code>uv</code>/<code>uvx</code> (MkDocs)</li>
 </ul>
-<p>Redis rate limits and CEL request policies are shipped (see Quotas / Policies in the platform UI).</p>
+<h2 id="1-start-infrastructure">1. Start infrastructure</h2>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>dev-up
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Postgres</td>
+<td><code>localhost:5433</code> (user/password/db: <code>afi</code>)</td>
+</tr>
+<tr>
+<td>Redis</td>
+<td><code>localhost:6379</code> (rate-limit windows)</td>
+</tr>
+<tr>
+<td>Adminer</td>
+<td>http://localhost:5050</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2-export-provider-credentials">2. Export provider credentials</h2>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-...&quot;</span>
+<span class="c1"># optional — Anthropic / Gemini routes (seeded as prov_anthropic / prov_gemini)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-ant-...&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">GEMINI_API_KEY</span><span class="o">=</span><span class="s2">&quot;...&quot;</span>
+</code></pre></div>
+<p>The gateway reads these env vars when calling upstream providers (see snapshot provider <code>api_key_env</code>). Playgrounds load models from <code>GET /v1/models</code> (stream / TTS / STT flags). Seed includes chat route plus <code>tts-1</code> and <code>whisper-1</code> on OpenAI.</p>
+<h2 id="3-run-the-control-plane">3. Run the control plane</h2>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>run-controlplane
+</code></pre></div>
+<p>On startup the control plane:</p>
+<ol>
+<li>Applies migrations (resets incompatible legacy schemas automatically)</li>
+<li>Seeds a local org, project, user, virtual API key, OpenAI provider, and route (if empty)</li>
+<li>Publishes snapshot version 1+</li>
+<li>Listens on <strong><code>:8081</code></strong></li>
+</ol>
+<p>Default seed credentials:</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Virtual API key</td>
+<td><code>sk-project-local-dev-token-12345</code></td>
+</tr>
+<tr>
+<td>Platform user</td>
+<td><code>admin@afi.local</code> / <code>admin</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-run-the-gateway">4. Run the gateway</h2>
+<p>In a second terminal:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-...&quot;</span>
+make<span class="w"> </span>run-gateway
+</code></pre></div>
+<p>The gateway loads the latest snapshot from Postgres, watches for new versions, and listens on <strong><code>:8080</code></strong>.</p>
+<h2 id="5-run-the-usage-worker-optional-but-recommended">5. Run the usage worker (optional but recommended)</h2>
+<p>In a third terminal:</p>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>run-worker
+</code></pre></div>
+<p>The worker drains <code>usage_outbox</code> into <code>usage_events</code> (Usage page: filters, owner, modality charts). Chat/TTS/STT still work if the worker is stopped; usage just lags.</p>
+<p>Alternatively: <code>make run-all</code> (control plane + worker in background, gateway in foreground). Stop with Ctrl+C then <code>make stop-all</code> if needed.</p>
+<h2 id="6-verify-inference">6. Verify inference</h2>
+<p>See <a href="../verify/">Verify</a> (<code>make verify</code> includes quota → 429).</p>
+<h2 id="7-optional-platform-ui">7. Optional: platform UI</h2>
+<div class="highlight"><pre><span></span><code>pnpm<span class="w"> </span>--dir<span class="w"> </span>web<span class="w"> </span>install
+pnpm<span class="w"> </span>--dir<span class="w"> </span>web<span class="w"> </span>dev
+</code></pre></div>
+<p>Open http://localhost:3000 and sign in with <code>admin@afi.local</code> / <code>admin</code>.</p>
+<p>Use <strong>Users</strong> to invite members by email. Existing users are added immediately; new emails receive an invite link (<code>/auth/invite/…</code>). Local default mail provider is <code>log</code> (messages in the controlplane log). To deliver real mail locally, enable SMTP in <code>configs/local.yaml</code> and point it at Mailpit/Mailhog (<code>localhost:1025</code>).</p>
+<p><strong>API Keys:</strong> create a <strong>personal</strong> key for yourself, or (as org owner/admin) a <strong>service account</strong> key scoped to the org or a project. The seeded <code>sk-project-local-dev-token-12345</code> is a project service-account key. Admins set per-user or per-key quotas under <strong>Quotas</strong> (<code>total</code> or Redis <code>minute</code>/<code>hour</code>/<code>day</code>) and CEL allow-rules under <strong>Policies</strong>.</p>
+<p>The web app calls the control plane at <code>http://localhost:8081</code> (override with <code>VITE_PLATFORM_API_URL</code>).</p>
+<h2 id="8-optional-docs-site">8. Optional: docs site</h2>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>doc-serve
+</code></pre></div>
+<h2 id="cli-helpers">CLI helpers</h2>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>seed<span class="w">                 </span><span class="c1"># re-seed + publish</span>
+make<span class="w"> </span>snapshot-publish<span class="w">     </span><span class="c1"># compile config → new snapshot</span>
+make<span class="w"> </span>verify<span class="w">               </span><span class="c1"># automated checks (stack must be running)</span>
+go<span class="w"> </span>run<span class="w"> </span>./cmd/cli<span class="w"> </span>version
+afi<span class="w"> </span>db<span class="w"> </span>reset<span class="w">              </span><span class="c1"># destructive local wipe (type `reset` to confirm)</span>
+</code></pre></div>
+<p>Internal HTTP admin (<code>/internal/v1/*</code>) requires <code>X-AFI-Internal-Token</code> (see config reference). CLI seed/publish do not.</p>
+<h2 id="config">Config</h2>
+<p>Defaults live in <a href="../../configs/local.yaml"><code>configs/local.yaml</code></a>. Override with env vars (see <a href="../../development/config-reference/">Config reference</a>).</p>
+<p>For self-hosted / production-style deployments (Docker Compose or binaries), see <a href="../../deployment/">Deployment</a> and the full <a href="../../deployment/customization/">Customization reference</a>.</p>
 
 
 
