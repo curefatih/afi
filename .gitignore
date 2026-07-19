@@ -178,6 +178,7 @@ dmypy.json
 
 
 internal-docs
+configs/dev.yaml
 
 # pnpm
 pnpm-lock.yaml

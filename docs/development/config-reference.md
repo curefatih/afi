@@ -34,6 +34,13 @@ Full operator table (defaults, required vs optional, which process): [Customizat
 | `AFI_EVENTS_NATS_SUBJECT_PREFIX` | `afi.platform` | subject prefix |
 | `AFI_EVENTS_KAFKA_BROKERS` | `127.0.0.1:9092` | Kafka brokers (CSV) |
 | `AFI_EVENTS_KAFKA_TOPIC` | `afi.platform.events` | Kafka topic |
+| `AFI_MAIL_PUBLIC_APP_URL` | `http://localhost:3000` | Invite accept links (web origin) |
+| `AFI_MAIL_FROM` | `AFI <noreply@afi.local>` | From header |
+| `AFI_MAIL_DEFAULT_PROVIDER` | `log` | `log` \| `smtp` \| `resend` |
+| `AFI_MAIL_SMTP_ENABLED` | `false` | Enable SMTP transport |
+| `AFI_MAIL_SMTP_HOST` / `PORT` | `localhost` / `1025` | SMTP (Mailpit/Mailhog) |
+| `AFI_MAIL_RESEND_ENABLED` | `false` | Enable Resend API |
+| `AFI_MAIL_RESEND_API_KEY` | _(empty)_ | Resend API key |
 
 See [Platform domain events](platform-events.md) for the outbox flow.
 
@@ -89,8 +96,13 @@ Written on first control-plane start (or `make seed`):
 | Method | Path |
 |--------|------|
 | GET/POST | `/api/v1/platform/organizations` |
-| GET/POST | `/api/v1/platform/organizations/{orgID}/members` |
+| GET/POST | `/api/v1/platform/organizations/{orgID}/members` (POST = invite; org admin) |
 | PATCH | `/api/v1/platform/organizations/{orgID}/members/{userID}` |
+| GET/DELETE | `/api/v1/platform/organizations/{orgID}/invites[/{inviteID}]` |
+| POST | `/api/v1/platform/organizations/{orgID}/invites/{inviteID}/resend` |
+| GET/PATCH | `/api/v1/platform/organizations/{orgID}/mail` |
+| POST | `/api/v1/platform/organizations/{orgID}/mail/test` |
+| GET/POST | `/api/v1/platform/auth/invites/{token}` / `…/accept` (public) |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/keys` |
 | DELETE | `/api/v1/platform/keys/{keyID}` |
 | GET/POST | `/api/v1/platform/projects/{projectID}/keys` |
@@ -106,7 +118,7 @@ Written on first control-plane start (or `make seed`):
 | GET/POST | `/api/v1/platform/organizations/{orgID}/policies` |
 | PATCH/DELETE | `/api/v1/platform/policies/{policyID}` |
 
-Member invite looks up an existing user by email (no SMTP). Org roles: `owner` / `admin` / `member`. Only the **owner** can `PATCH` a member role (`{ "role": "admin" }`); setting `owner` transfers ownership. Native Anthropic inference: gateway `POST /v1/messages` (Anthropic providers only).
+Member invite (org admin): existing users are added and emailed; unknown emails get a pending invite + accept link (`/auth/invite/{token}`). Mail transports: `log` (default local), `smtp`, `resend` — org admins pick among enabled providers in Settings. Org roles: `owner` / `admin` / `member`. Only the **owner** can `PATCH` a member role (`{ "role": "admin" }`); setting `owner` transfers ownership. Native Anthropic inference: gateway `POST /v1/messages` (Anthropic providers only).
 
 ### Usage
 
