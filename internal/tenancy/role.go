@@ -22,3 +22,21 @@ func (r OrgRole) IsAdmin() bool {
 func (r OrgRole) CanChangeRoles() bool {
 	return r == OrgRole(OrgRoleOwner)
 }
+
+// TeamRole is a typed team membership role.
+type TeamRole string
+
+// ParseTeamRole validates a team role string.
+func ParseTeamRole(role string) (TeamRole, error) {
+	if err := ValidateTeamRole(role); err != nil {
+		return "", err
+	}
+	return TeamRole(role), nil
+}
+
+func (r TeamRole) String() string { return string(r) }
+
+// IsManager reports whether the role may manage team members.
+func (r TeamRole) IsManager() bool {
+	return r == TeamRole(TeamRoleOwner) || r == TeamRole(TeamRoleAdmin)
+}

@@ -7,6 +7,7 @@ import (
 	"github.com/curefatih/afi/internal/access"
 	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/gatewayconfig"
+	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
 	"github.com/curefatih/afi/internal/usage"

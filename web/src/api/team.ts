@@ -2,11 +2,13 @@ import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "#/lib/api-client";
 import type { Team } from "#/state/organization-state";
 
+export type TeamRole = "owner" | "admin" | "member";
+
 export type TeamMember = {
 	user_id: string;
 	name: string;
 	email: string;
-	role: string;
+	role: TeamRole | string;
 };
 
 export const teamsQueryOptions = (orgId: string) =>
@@ -71,4 +73,19 @@ export const removeTeamMemberMutationOptions = () =>
 			apiFetch<void>(`/api/v1/platform/teams/${teamId}/members/${userId}`, {
 				method: "DELETE",
 			}),
+	});
+
+export type UpdateTeamMemberRoleInput = {
+	teamId: string;
+	userId: string;
+	role: TeamRole;
+};
+
+export const updateTeamMemberRoleMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ teamId, userId, role }: UpdateTeamMemberRoleInput) =>
+			apiFetch<TeamMember>(
+				`/api/v1/platform/teams/${teamId}/members/${userId}`,
+				{ method: "PATCH", body: { role } },
+			),
 	});

@@ -78,6 +78,13 @@ func (m *memTeams) RemoveMember(_ context.Context, teamID, userID string) error 
 	delete(m.members[teamID], userID)
 	return nil
 }
+func (m *memTeams) SetMemberRole(_ context.Context, teamID, userID, role string) error {
+	if _, ok := m.members[teamID][userID]; !ok {
+		return kernel.ErrNotFound
+	}
+	m.members[teamID][userID] = role
+	return nil
+}
 func (m *memTeams) CountOwners(_ context.Context, teamID string) (int, error) {
 	n := 0
 	for _, role := range m.members[teamID] {
@@ -155,9 +162,12 @@ func TestRemoveSoleTeamOwner(t *testing.T) {
 func TestCanManageTeam(t *testing.T) {
 	t.Parallel()
 	teams := newMemTeams()
+	teams.members["team_a"]["user_tadmin"] = TeamRoleAdmin
+	teams.users["user_tadmin"] = struct{ name, email string }{name: "TAdmin", email: "tadmin@afi.local"}
 	orgs := &memOrgs{roles: map[string]string{
 		"user_owner|org_x":  OrgRoleMember,
 		"user_admin|org_x":  OrgRoleAdmin,
+		"user_tadmin|org_x": OrgRoleMember,
 		"user_member|org_x": OrgRoleMember,
 	}}
 	ok, err := CanManageTeam(context.Background(), teams, orgs, "team_a", "user_owner")
@@ -166,11 +176,47 @@ func TestCanManageTeam(t *testing.T) {
 	}
 	ok, err = CanManageTeam(context.Background(), teams, orgs, "team_a", "user_admin")
 	if err != nil || !ok {
-		t.Fatalf("admin manage: ok=%v err=%v", ok, err)
+		t.Fatalf("org admin manage: ok=%v err=%v", ok, err)
+	}
+	ok, err = CanManageTeam(context.Background(), teams, orgs, "team_a", "user_tadmin")
+	if err != nil || !ok {
+		t.Fatalf("team admin manage: ok=%v err=%v", ok, err)
 	}
 	ok, err = CanManageTeam(context.Background(), teams, orgs, "team_a", "user_member")
 	if err != nil || ok {
 		t.Fatalf("member manage: ok=%v err=%v", ok, err)
+	}
+}
+
+func TestUpdateTeamMemberRoleToAdmin(t *testing.T) {
+	t.Parallel()
+	teams := newMemTeams()
+	_ = teams.AddMember(context.Background(), "team_a", "user_member", TeamRoleMember)
+	m, err := UpdateTeamMemberRole(context.Background(), teams, "team_a", "user_member", TeamRoleAdmin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Role != TeamRoleAdmin {
+		t.Fatalf("role=%s", m.Role)
+	}
+}
+
+func TestUpdateTeamMemberRoleRejectsSoleOwnerDemote(t *testing.T) {
+	t.Parallel()
+	teams := newMemTeams()
+	_, err := UpdateTeamMemberRole(context.Background(), teams, "team_a", "user_owner", TeamRoleAdmin)
+	if !errors.Is(err, kernel.ErrInvalidRequest) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestUpdateTeamMemberRoleRejectsInvalidRole(t *testing.T) {
+	t.Parallel()
+	teams := newMemTeams()
+	_ = teams.AddMember(context.Background(), "team_a", "user_member", TeamRoleMember)
+	_, err := UpdateTeamMemberRole(context.Background(), teams, "team_a", "user_member", "superuser")
+	if !errors.Is(err, kernel.ErrInvalidRequest) {
+		t.Fatalf("err=%v", err)
 	}
 }
 

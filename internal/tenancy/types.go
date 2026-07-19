@@ -14,6 +14,7 @@ const (
 	OrgRoleMember = "member"
 
 	TeamRoleOwner  = "owner"
+	TeamRoleAdmin  = "admin"
 	TeamRoleMember = "member"
 )
 
@@ -96,6 +97,29 @@ func ValidateOrgRole(role string) error {
 	default:
 		return fmt.Errorf("%w: role must be owner, admin, or member", kernel.ErrInvalidRequest)
 	}
+}
+
+// ValidateTeamRole checks role is owner/admin/member.
+func ValidateTeamRole(role string) error {
+	switch role {
+	case TeamRoleOwner, TeamRoleAdmin, TeamRoleMember:
+		return nil
+	default:
+		return fmt.Errorf("%w: role must be owner, admin, or member", kernel.ErrInvalidRequest)
+	}
+}
+
+// IsTeamManagerRole reports whether the team role may manage team members.
+func IsTeamManagerRole(role string) bool {
+	return TeamRole(role).IsManager()
+}
+
+// AssertSoleTeamOwnerSafe blocks demoting the last team owner.
+func AssertSoleTeamOwnerSafe(targetRole, newRole string, ownerCount int) error {
+	if targetRole == TeamRoleOwner && newRole != TeamRoleOwner && ownerCount <= 1 {
+		return fmt.Errorf("%w: cannot demote the sole team owner", kernel.ErrInvalidRequest)
+	}
+	return nil
 }
 
 // IsOrgAdminRole reports whether the role grants admin privileges.

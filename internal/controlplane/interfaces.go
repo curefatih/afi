@@ -54,6 +54,7 @@ type platformAPI interface {
 	ListTeamMembers(ctx context.Context, teamID string) ([]TeamMember, error)
 	AddTeamMember(ctx context.Context, teamID, userID string) (*TeamMember, error)
 	RemoveTeamMember(ctx context.Context, teamID, userID string) error
+	UpdateTeamMemberRole(ctx context.Context, teamID, userID, role string) (*TeamMember, error)
 	ListProjects(ctx context.Context, orgID, userID string) ([]Project, error)
 	CreateProject(ctx context.Context, orgID, teamID, name string) (*Project, error)
 	ListAPIKeys(ctx context.Context, projectID string) ([]APIKey, error)

@@ -123,6 +123,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/platform/teams/{teamID}", s.requireAuth(s.requireTeamAccess(s.handleGetTeam)))
 	mux.HandleFunc("GET /api/v1/platform/teams/{teamID}/members", s.requireAuth(s.requireTeamAccess(s.handleListTeamMembers)))
 	mux.HandleFunc("POST /api/v1/platform/teams/{teamID}/members", s.requireAuth(s.requireTeamManager(s.handleAddTeamMember)))
+	mux.HandleFunc("PATCH /api/v1/platform/teams/{teamID}/members/{userID}", s.requireAuth(s.requireTeamManager(s.handleUpdateTeamMemberRole)))
 	mux.HandleFunc("DELETE /api/v1/platform/teams/{teamID}/members/{userID}", s.requireAuth(s.requireTeamManager(s.handleRemoveTeamMember)))
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/keys", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListOrgKeys)))
@@ -643,6 +644,35 @@ func (s *Server) handleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, member)
+}
+
+func (s *Server) handleUpdateTeamMemberRole(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Role string `json:"role"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.Role) == "" {
+		writeErr(w, http.StatusBadRequest, "role required")
+		return
+	}
+	member, err := s.api.UpdateTeamMemberRole(
+		r.Context(),
+		r.PathValue("teamID"),
+		r.PathValue("userID"),
+		strings.TrimSpace(body.Role),
+	)
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "member not found")
+		return
+	}
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, member)
 }
 
 func (s *Server) handleRemoveTeamMember(w http.ResponseWriter, r *http.Request) {

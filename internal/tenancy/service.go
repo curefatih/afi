@@ -167,7 +167,8 @@ func CanAccessTeam(ctx context.Context, teams TeamRepository, orgs OrganizationR
 	return true, nil
 }
 
-// CanManageTeam reports whether the user may add/remove team members (org admin or team owner).
+// CanManageTeam reports whether the user may manage team members
+// (org admin, or team owner/admin).
 func CanManageTeam(ctx context.Context, teams TeamRepository, orgs OrganizationRepository, teamID, userID string) (bool, error) {
 	orgID, err := teams.OrgID(ctx, teamID)
 	if err != nil {
@@ -187,7 +188,7 @@ func CanManageTeam(ctx context.Context, teams TeamRepository, orgs OrganizationR
 	if err != nil {
 		return false, err
 	}
-	return role == TeamRoleOwner, nil
+	return IsTeamManagerRole(role), nil
 }
 
 // AddTeamMember adds an existing org member to the team as a member.
@@ -235,4 +236,34 @@ func RemoveTeamMember(ctx context.Context, teams TeamRepository, teamID, targetU
 		}
 	}
 	return teams.RemoveMember(ctx, teamID, targetUserID)
+}
+
+// UpdateTeamMemberRole sets a team member's role. Cannot demote the sole team owner.
+func UpdateTeamMemberRole(ctx context.Context, teams TeamRepository, teamID, targetUserID, role string) (*TeamMember, error) {
+	parsed, err := ParseTeamRole(role)
+	if err != nil {
+		return nil, err
+	}
+	role = parsed.String()
+	if targetUserID == "" {
+		return nil, kernel.ErrInvalidRequest
+	}
+	targetRole, err := teams.GetMemberRole(ctx, teamID, targetUserID)
+	if err != nil {
+		return nil, err
+	}
+	if targetRole == role {
+		return teams.GetMember(ctx, teamID, targetUserID)
+	}
+	owners, err := teams.CountOwners(ctx, teamID)
+	if err != nil {
+		return nil, err
+	}
+	if err := AssertSoleTeamOwnerSafe(targetRole, role, owners); err != nil {
+		return nil, err
+	}
+	if err := teams.SetMemberRole(ctx, teamID, targetUserID, role); err != nil {
+		return nil, err
+	}
+	return teams.GetMember(ctx, teamID, targetUserID)
 }

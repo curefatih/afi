@@ -26,6 +26,7 @@ const (
 	OrgRoleMember = tenancy.OrgRoleMember
 
 	TeamRoleOwner  = tenancy.TeamRoleOwner
+	TeamRoleAdmin  = tenancy.TeamRoleAdmin
 	TeamRoleMember = tenancy.TeamRoleMember
 
 	InviteStatusPending = tenancy.InviteStatusPending
@@ -250,6 +251,10 @@ func (s *Store) AddTeamMember(ctx context.Context, teamID, userID string) (*Team
 
 func (s *Store) RemoveTeamMember(ctx context.Context, teamID, userID string) error {
 	return tenancy.RemoveTeamMember(ctx, s.teamsRepo(), teamID, userID)
+}
+
+func (s *Store) UpdateTeamMemberRole(ctx context.Context, teamID, userID, role string) (*TeamMember, error) {
+	return tenancy.UpdateTeamMemberRole(ctx, s.teamsRepo(), teamID, userID, role)
 }
 
 func (s *Store) CanAccessTeam(ctx context.Context, teamID, userID string) (bool, error) {

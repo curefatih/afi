@@ -213,6 +213,9 @@ func (f *fakePlatform) AddTeamMember(context.Context, string, string) (*TeamMemb
 func (f *fakePlatform) RemoveTeamMember(context.Context, string, string) error {
 	return errors.New("unused")
 }
+func (f *fakePlatform) UpdateTeamMemberRole(context.Context, string, string, string) (*TeamMember, error) {
+	return nil, errors.New("unused")
+}
 func (f *fakePlatform) ListProjects(context.Context, string, string) ([]Project, error) {
 	return nil, nil
 }

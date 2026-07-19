@@ -43,6 +43,7 @@ type TeamRepository interface {
 	GetMemberRole(ctx context.Context, teamID, userID string) (string, error)
 	AddMember(ctx context.Context, teamID, userID, role string) error
 	RemoveMember(ctx context.Context, teamID, userID string) error
+	SetMemberRole(ctx context.Context, teamID, userID, role string) error
 	CountOwners(ctx context.Context, teamID string) (int, error)
 	CreateWithOwner(ctx context.Context, team Team, ownerUserID string) error
 }

@@ -367,6 +367,19 @@ func (t *Teams) RemoveMember(ctx context.Context, teamID, userID string) error {
 	return nil
 }
 
+func (t *Teams) SetMemberRole(ctx context.Context, teamID, userID, role string) error {
+	tag, err := t.Pool.Exec(ctx, `
+		UPDATE team_members SET role = $1 WHERE team_id = $2 AND user_id = $3
+	`, role, teamID, userID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return kernel.ErrNotFound
+	}
+	return nil
+}
+
 func (t *Teams) CountOwners(ctx context.Context, teamID string) (int, error) {
 	var n int
 	err := t.Pool.QueryRow(ctx, `

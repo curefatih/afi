@@ -12,8 +12,11 @@ import { orgMembersQueryOptions } from "#/api/organization";
 import {
 	addTeamMemberMutationOptions,
 	removeTeamMemberMutationOptions,
+	type TeamMember,
+	type TeamRole,
 	teamMembersQueryOptions,
 	teamQueryOptions,
+	updateTeamMemberRoleMutationOptions,
 } from "#/api/team";
 import { CopyableId } from "#/components/copyable-id";
 import { PageBody, PageHeader } from "#/components/page-header";
@@ -94,12 +97,12 @@ function RouteComponent() {
 		return me?.role === "owner" || me?.role === "admin";
 	}, [orgMembers.data, user?.id]);
 
-	const isTeamOwner = useMemo(() => {
+	const isTeamManager = useMemo(() => {
 		const me = (membersQuery.data ?? []).find((m) => m.user_id === user?.id);
-		return me?.role === "owner";
+		return me?.role === "owner" || me?.role === "admin";
 	}, [membersQuery.data, user?.id]);
 
-	const canManage = isOrgAdmin || isTeamOwner;
+	const canManage = isOrgAdmin || isTeamManager;
 
 	const ownerCount = useMemo(
 		() => (membersQuery.data ?? []).filter((m) => m.role === "owner").length,
@@ -135,6 +138,26 @@ function RouteComponent() {
 		},
 		onSettled: () => setBusyUserId(null),
 	});
+
+	const updateRole = useMutation(updateTeamMemberRoleMutationOptions());
+
+	async function applyRole(member: TeamMember, role: TeamRole) {
+		if (role === member.role) return;
+		setBusyUserId(member.user_id);
+		try {
+			await updateRole.mutateAsync({
+				teamId,
+				userId: member.user_id,
+				role,
+			});
+			await qc.invalidateQueries({ queryKey: ["teams", teamId, "members"] });
+			toast.success(`Role set to ${role}`);
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : "Failed to update role");
+		} finally {
+			setBusyUserId(null);
+		}
+	}
 
 	const projects =
 		activeOrg?.projects.filter((p) => p.team_id === teamId) ?? [];
@@ -297,7 +320,39 @@ function RouteComponent() {
 													</TableCell>
 													<TableCell>{member.email}</TableCell>
 													<TableCell>
-														<Badge variant="secondary">{member.role}</Badge>
+														{canManage ? (
+															<Select
+																value={member.role}
+																disabled={
+																	busyUserId === member.user_id ||
+																	(isSoleOwner && member.role === "owner")
+																}
+																onValueChange={(v) => {
+																	const role = (v ?? member.role) as TeamRole;
+																	void applyRole(member, role);
+																}}
+															>
+																<SelectTrigger className="w-36">
+																	<SelectValue />
+																</SelectTrigger>
+																<SelectContent>
+																	<SelectItem value="member">
+																		member
+																	</SelectItem>
+																	<SelectItem value="admin">admin</SelectItem>
+																	<SelectItem
+																		value="owner"
+																		disabled={isSoleOwner}
+																	>
+																		owner
+																	</SelectItem>
+																</SelectContent>
+															</Select>
+														) : (
+															<Badge variant="secondary">
+																{member.role}
+															</Badge>
+														)}
 													</TableCell>
 													{canManage ? (
 														<TableCell>
