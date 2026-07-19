@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/brand/logo.png" alt="AFI — AI Gateway" width="280" />
+</p>
+
 # AFI
 
 AFI is a self-hostable, cloud-native **LLM gateway**.

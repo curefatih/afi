@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Generate README + web favicon/PWA assets from assets/brand SVGs.
+# Generate README + web favicon/PWA + MkDocs assets from assets/brand SVGs.
 # Requires: rsvg-convert (librsvg), magick (ImageMagick)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BRAND="$ROOT/assets/brand"
 WEB_PUBLIC="$ROOT/web/public"
+DOCS_BRAND="$ROOT/docs/assets/brand"
 MARK="$BRAND/logo-mark.svg"
 LOGO="$BRAND/logo.svg"
 
@@ -19,7 +20,7 @@ need() {
 need rsvg-convert "brew install librsvg"
 need magick "brew install imagemagick"
 
-mkdir -p "$BRAND" "$WEB_PUBLIC"
+mkdir -p "$BRAND" "$WEB_PUBLIC" "$DOCS_BRAND"
 
 # README / docs wordmark
 rsvg-convert -w 460 -h 120 "$LOGO" -o "$BRAND/logo.png"
@@ -45,4 +46,11 @@ cp "$BRAND/logo192.png" "$WEB_PUBLIC/logo192.png"
 cp "$BRAND/logo512.png" "$WEB_PUBLIC/logo512.png"
 cp "$BRAND/logo-mark.svg" "$WEB_PUBLIC/logo.svg"
 
-echo "Brand assets generated in $BRAND and copied to $WEB_PUBLIC"
+# Copy into MkDocs docs (paths referenced from mkdocs.yml)
+cp "$BRAND/logo-mark.svg" "$DOCS_BRAND/logo-mark.svg"
+cp "$BRAND/logo.svg" "$DOCS_BRAND/logo.svg"
+cp "$BRAND/logo.png" "$DOCS_BRAND/logo.png"
+cp "$BRAND/favicon.ico" "$DOCS_BRAND/favicon.ico"
+cp "$BRAND/favicon-32.png" "$DOCS_BRAND/favicon-32.png"
+
+echo "Brand assets generated in $BRAND and copied to $WEB_PUBLIC and $DOCS_BRAND"
