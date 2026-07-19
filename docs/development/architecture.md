@@ -60,6 +60,7 @@ Snapshots contain:
 
 * Virtual API keys (hashes) → org binding, optional project, kind, owner user id
 * Providers (type, base URL, API key env ref, capabilities)
+* Provider credentials (env ref or ciphertext) + assignments (provider type × org/project scope)
 * Static model routes (optional fallbacks)
 * Quotas (scope, metric, limit, window) — resolve order per window: api_key → user → project → organization
 * CEL request policies (boolean allow-expressions)
@@ -83,9 +84,10 @@ In-process registration is live:
 * **Hooks** — `BeforeChat` / `AfterChat` (example: `extensions/demohook`)
 * **Provider health** — control-plane rollup from `usage_events` for Providers UI
 
-gRPC / WASM plugin runtimes, billing invoices, vault/secrets UI, and multi-region snapshot distribution remain future work.
+gRPC / WASM plugin runtimes, billing invoices, external HashiCorp Vault, and multi-region snapshot distribution remain future work.
 
 **Shipped governance:**
 
 * **Quotas** — `total` windows on Postgres; `minute` / `hour` / `day` rate limits on Redis (`AFI_REDIS_URL`)
 * **CEL policies** — org allow-expressions in the snapshot; deny → HTTP 403 `policy_violation`
+* **Provider credentials** — org-owned secrets (`env` or AES-GCM `encrypted_db`) assignable to organization/project scopes; gateway resolves project → org → provider `api_key_env` fallback

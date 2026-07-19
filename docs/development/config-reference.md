@@ -21,6 +21,7 @@ Full operator table (defaults, required vs optional, which process): [Customizat
 | `AFI_JWT_SECRET` | from yaml | controlplane auth |
 | `AFI_INTERNAL_TOKEN` | from yaml (`afi-local-internal-token`) | HTTP `/internal/v1/*` |
 | `AFI_TOKEN_TTL` | `24h` | JWT lifetime |
+| `AFI_CREDENTIALS_MASTER_KEY` | from yaml (`credentials.master_key`) | controlplane + gateway (encrypted_db credentials) |
 | `OPENAI_API_KEY` | _(required for OpenAI live calls)_ | gateway → OpenAI |
 | `ANTHROPIC_API_KEY` | _(required for Anthropic routes)_ | gateway → Anthropic |
 | `GEMINI_API_KEY` | _(required for Gemini routes)_ | gateway → Gemini |
@@ -117,6 +118,11 @@ Written on first control-plane start (or `make seed`):
 | PATCH/DELETE | `/api/v1/platform/quotas/{quotaID}` |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/policies` |
 | PATCH/DELETE | `/api/v1/platform/policies/{policyID}` |
+| GET/POST | `/api/v1/platform/organizations/{orgID}/credentials` (POST = org admin) |
+| PATCH/DELETE | `/api/v1/platform/credentials/{credentialID}` |
+| POST | `/api/v1/platform/credentials/{credentialID}/rotate` |
+| GET/PUT | `/api/v1/platform/organizations/{orgID}/credential-assignments` |
+| DELETE | `/api/v1/platform/credential-assignments/{assignmentID}` |
 
 Member invite (org admin): existing users are added and emailed; unknown emails get a pending invite + accept link (`/auth/invite/{token}`). Mail transports: `log` (default local), `smtp`, `resend` — org admins pick among enabled providers in Settings. Org roles: `owner` / `admin` / `member`. Only the **owner** can `PATCH` a member role (`{ "role": "admin" }`); setting `owner` transfers ownership. Native Anthropic inference: gateway `POST /v1/messages` (Anthropic providers only).
 
