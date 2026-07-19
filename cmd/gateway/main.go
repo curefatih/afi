@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/curefatih/afi/internal/controlplane"
 	"github.com/curefatih/afi/internal/dataplane"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
@@ -33,9 +34,22 @@ func main() {
 	}
 	defer pool.Close()
 
+	store := controlplane.NewStore(pool)
 	snapStore := snapshot.NewStore(pool)
 	holder := dataplane.NewHolder()
 	pipeline := dataplane.NewPipeline(holder, dataplane.NewOpenAIClient(), log)
+	pipeline.Usage = func(e dataplane.UsageEvent) {
+		_ = store.InsertUsage(context.Background(), controlplane.UsageEvent{
+			OrganizationID:   e.OrganizationID,
+			ProjectID:        e.ProjectID,
+			APIKeyID:         e.APIKeyID,
+			Model:            e.Model,
+			Status:           e.Status,
+			LatencyMs:        e.LatencyMs,
+			PromptTokens:     e.PromptTokens,
+			CompletionTokens: e.CompletionTokens,
+		})
+	}
 
 	go func() {
 		err := snapStore.Watch(ctx, cfg.Gateway.SnapshotPollInterval, func(s *snapshot.Snapshot) {

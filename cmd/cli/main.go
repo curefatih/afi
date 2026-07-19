@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/curefatih/afi/internal/controlplane"
@@ -12,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const version = "0.1.0-dev"
+const version = "0.2.0-dev"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -39,6 +41,16 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("snapshot published")
+	case "db":
+		if len(os.Args) < 3 || os.Args[2] != "reset" {
+			fmt.Fprintln(os.Stderr, "usage: afi db reset")
+			os.Exit(2)
+		}
+		if err := runDBReset(); err != nil {
+			fmt.Fprintf(os.Stderr, "db reset: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("database reset and migrated")
 	default:
 		usage()
 		os.Exit(2)
@@ -52,6 +64,7 @@ Usage:
   afi version
   afi seed
   afi snapshot publish
+  afi db reset          # destructive; local only
 `, version)
 }
 
@@ -60,7 +73,7 @@ func open() (*kernel.Config, *pgxpool.Pool, context.Context, context.CancelFunc,
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		cancel()
@@ -101,4 +114,19 @@ func runPublish() error {
 	snapStore := snapshot.NewStore(pool)
 	seeder := controlplane.NewSeeder(pool, store, snapStore, cfg)
 	return seeder.PublishSnapshot(ctx)
+}
+
+func runDBReset() error {
+	fmt.Fprint(os.Stderr, "This DROPS all AFI tables. Type 'reset' to continue: ")
+	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+	if strings.TrimSpace(line) != "reset" {
+		return fmt.Errorf("aborted")
+	}
+	_, pool, ctx, cancel, err := open()
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	defer pool.Close()
+	return controlplane.ResetDatabase(ctx, pool)
 }
