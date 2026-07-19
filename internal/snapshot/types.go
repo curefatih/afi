@@ -6,12 +6,16 @@ import "time"
 const (
 	ScopeOrganization = "organization"
 	ScopeProject      = "project"
+	ScopeUser         = "user"
 	ScopeAPIKey       = "api_key"
 
 	MetricRequests = "requests"
 	MetricTokens   = "tokens"
 
 	WindowTotal = "total"
+
+	KeyKindPersonal       = "personal"
+	KeyKindServiceAccount = "service_account"
 )
 
 type Snapshot struct {
@@ -36,10 +40,12 @@ type Quota struct {
 type APIKey struct {
 	KeyHash        string `json:"key_hash"`
 	KeyPrefix      string `json:"key_prefix"`
-	ProjectID      string `json:"project_id"`
+	ProjectID      string `json:"project_id,omitempty"`
 	OrganizationID string `json:"organization_id"`
 	Name           string `json:"name"`
 	ID             string `json:"id,omitempty"`
+	Kind           string `json:"kind,omitempty"`
+	OwnerUserID    string `json:"owner_user_id,omitempty"`
 }
 
 type Provider struct {
@@ -92,7 +98,8 @@ func (s *Snapshot) LookupRoute(orgID, model string) (Route, Provider, bool) {
 	return r, p, true
 }
 
-// ResolveQuota picks the most specific matching quota for the metric (api_key > project > organization).
+// ResolveQuota picks the most specific matching quota for the metric
+// (api_key > user > project > organization).
 func (s *Snapshot) ResolveQuota(key APIKey, metric string) (Quota, bool) {
 	if s == nil {
 		return Quota{}, false
@@ -107,10 +114,14 @@ func (s *Snapshot) ResolveQuota(key APIKey, metric string) (Quota, bool) {
 		switch q.ScopeType {
 		case ScopeAPIKey:
 			if q.ScopeID == key.ID {
+				rank = 4
+			}
+		case ScopeUser:
+			if key.OwnerUserID != "" && q.ScopeID == key.OwnerUserID {
 				rank = 3
 			}
 		case ScopeProject:
-			if q.ScopeID == key.ProjectID {
+			if key.ProjectID != "" && q.ScopeID == key.ProjectID {
 				rank = 2
 			}
 		case ScopeOrganization:
