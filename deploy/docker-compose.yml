@@ -1,0 +1,157 @@
+# Full AFI stack for self-hosted deployments.
+# Usage:
+#   cp deploy/env.example deploy/.env
+#   cp deploy/afi.example.yaml deploy/afi.yaml
+#   # edit secrets in both files
+#   make deploy-up
+#
+# Infra-only local development remains: docker-compose.yml + make dev-up
+
+name: afi
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-afi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: ${POSTGRES_DB:-afi}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - afi_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-afi} -d ${POSTGRES_DB:-afi}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - afi_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  controlplane:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        AFI_SERVICE: controlplane
+    image: afi-controlplane:local
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AFI_CONFIG: /config/afi.yaml
+      AFI_DATABASE_URL: ${AFI_DATABASE_URL}
+      AFI_REDIS_URL: ${AFI_REDIS_URL:-redis://redis:6379/0}
+      AFI_JWT_SECRET: ${AFI_JWT_SECRET:?set AFI_JWT_SECRET in deploy/.env}
+      AFI_INTERNAL_TOKEN: ${AFI_INTERNAL_TOKEN:?set AFI_INTERNAL_TOKEN in deploy/.env}
+      AFI_TOKEN_TTL: ${AFI_TOKEN_TTL:-24h}
+      AFI_CONTROLPLANE_ADDR: ${AFI_CONTROLPLANE_ADDR:-:8081}
+      AFI_EVENTS_OUTBOX_ENABLED: ${AFI_EVENTS_OUTBOX_ENABLED:-false}
+      AFI_EVENTS_PUBLISHER: ${AFI_EVENTS_PUBLISHER:-log}
+      AFI_EVENTS_NATS_URL: ${AFI_EVENTS_NATS_URL:-}
+      AFI_EVENTS_NATS_STREAM: ${AFI_EVENTS_NATS_STREAM:-}
+      AFI_EVENTS_NATS_SUBJECT_PREFIX: ${AFI_EVENTS_NATS_SUBJECT_PREFIX:-}
+      AFI_EVENTS_KAFKA_BROKERS: ${AFI_EVENTS_KAFKA_BROKERS:-}
+      AFI_EVENTS_KAFKA_TOPIC: ${AFI_EVENTS_KAFKA_TOPIC:-}
+    volumes:
+      - ./afi.yaml:/config/afi.yaml:ro
+    ports:
+      - "${CONTROLPLANE_HOST_PORT:-8081}:8081"
+
+  gateway:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        AFI_SERVICE: gateway
+    image: afi-gateway:local
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      controlplane:
+        condition: service_started
+    environment:
+      AFI_CONFIG: /config/afi.yaml
+      AFI_DATABASE_URL: ${AFI_DATABASE_URL}
+      AFI_REDIS_URL: ${AFI_REDIS_URL:-redis://redis:6379/0}
+      AFI_GATEWAY_ADDR: ${AFI_GATEWAY_ADDR:-:8080}
+      AFI_SNAPSHOT_POLL_INTERVAL: ${AFI_SNAPSHOT_POLL_INTERVAL:-2s}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+    volumes:
+      - ./afi.yaml:/config/afi.yaml:ro
+    ports:
+      - "${GATEWAY_HOST_PORT:-8080}:8080"
+
+  worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        AFI_SERVICE: worker
+    image: afi-worker:local
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      controlplane:
+        condition: service_started
+    environment:
+      AFI_CONFIG: /config/afi.yaml
+      AFI_DATABASE_URL: ${AFI_DATABASE_URL}
+      AFI_EVENTS_OUTBOX_ENABLED: ${AFI_EVENTS_OUTBOX_ENABLED:-false}
+      AFI_EVENTS_PUBLISHER: ${AFI_EVENTS_PUBLISHER:-log}
+      AFI_EVENTS_NATS_URL: ${AFI_EVENTS_NATS_URL:-}
+      AFI_EVENTS_NATS_STREAM: ${AFI_EVENTS_NATS_STREAM:-}
+      AFI_EVENTS_NATS_SUBJECT_PREFIX: ${AFI_EVENTS_NATS_SUBJECT_PREFIX:-}
+      AFI_EVENTS_KAFKA_BROKERS: ${AFI_EVENTS_KAFKA_BROKERS:-}
+      AFI_EVENTS_KAFKA_TOPIC: ${AFI_EVENTS_KAFKA_TOPIC:-}
+    volumes:
+      - ./afi.yaml:/config/afi.yaml:ro
+
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile.web
+      args:
+        VITE_PLATFORM_API_URL: ${VITE_PLATFORM_API_URL:-http://localhost:8081}
+        VITE_GATEWAY_API_URL: ${VITE_GATEWAY_API_URL:-http://localhost:8080}
+        VITE_GATEWAY_API_KEY: ${VITE_GATEWAY_API_KEY:-}
+    image: afi-web:local
+    restart: unless-stopped
+    depends_on:
+      - controlplane
+      - gateway
+    ports:
+      - "${WEB_HOST_PORT:-3000}:80"
+
+  # Optional brokers — uncomment and set AFI_EVENTS_* when enabling platform events.
+  # nats:
+  #   image: nats:2.10-alpine
+  #   restart: unless-stopped
+  #   command: ["-js", "-m", "8222"]
+  #   ports:
+  #     - "4222:4222"
+  #     - "8222:8222"
+
+volumes:
+  afi_postgres_data:
+  afi_redis_data:
