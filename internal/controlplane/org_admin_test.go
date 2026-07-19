@@ -72,6 +72,47 @@ func (f *orgAdminFake) AddOrgMemberByEmail(_ context.Context, orgID, email strin
 	return &m, nil
 }
 
+func (f *orgAdminFake) InviteOrgMember(_ context.Context, orgID, email, _ string) (*InviteOutcome, string, error) {
+	u, err := f.GetUserByEmail(context.Background(), email)
+	if err != nil {
+		inv := &OrgInvite{
+			ID: "inv_1", OrganizationID: orgID, Email: email, Role: OrgRoleMember,
+			Status: InviteStatusPending, ExpiresAt: time.Now().UTC().Add(24 * time.Hour),
+		}
+		return &InviteOutcome{Status: "invited", Invite: inv}, "raw-token", nil
+	}
+	m := OrgMember{UserID: u.ID, Email: u.Email, Name: u.Name, Role: OrgRoleMember}
+	f.members[orgID] = append(f.members[orgID], m)
+	return &InviteOutcome{Status: "added", Member: &m}, "", nil
+}
+
+func (f *orgAdminFake) GetOrganization(_ context.Context, orgID string) (*Organization, error) {
+	if o, ok := f.orgs[orgID]; ok {
+		return o, nil
+	}
+	return &Organization{ID: orgID, Name: "X"}, nil
+}
+
+func (f *orgAdminFake) ListOrgInvites(context.Context, string) ([]OrgInvite, error) { return nil, nil }
+func (f *orgAdminFake) RevokeOrgInvite(context.Context, string, string) error       { return nil }
+func (f *orgAdminFake) ResendOrgInvite(context.Context, string, string) (*OrgInvite, string, error) {
+	return nil, "", kernel.ErrNotFound
+}
+func (f *orgAdminFake) PreviewOrgInvite(context.Context, string) (*InvitePreview, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *orgAdminFake) AcceptOrgInvite(context.Context, string, string, string) (*OrgMember, *User, error) {
+	return nil, nil, kernel.ErrNotFound
+}
+func (f *orgAdminFake) SetOrgMailProvider(_ context.Context, orgID, provider string) (*Organization, error) {
+	o, err := f.GetOrganization(context.Background(), orgID)
+	if err != nil {
+		return nil, err
+	}
+	o.MailProvider = provider
+	return o, nil
+}
+
 func (f *orgAdminFake) memberRole(orgID, userID string) (string, bool) {
 	for _, m := range f.members[orgID] {
 		if m.UserID == userID {
@@ -207,14 +248,17 @@ func TestCreateTeamSuccess(t *testing.T) {
 	}
 }
 
-func TestAddOrgMemberSuccess(t *testing.T) {
+func TestInviteOrgMemberExistingUser(t *testing.T) {
 	t.Parallel()
 	api := newOrgAdminFake()
 	api.orgs["org_x"] = &Organization{ID: "org_x", Name: "X"}
-	api.members["org_x"] = []OrgMember{{UserID: "user_admin", Email: "admin@afi.local"}}
+	api.members["org_x"] = []OrgMember{{UserID: "user_admin", Email: "admin@afi.local", Role: OrgRoleOwner}}
 	s := &Server{
 		cfg: testCfg(), api: api,
-		members:   &fakeMembers{allowed: map[string]bool{"user_admin|org_x": true}},
+		members: &fakeMembers{
+			allowed: map[string]bool{"user_admin|org_x": true},
+			admins:  map[string]bool{"user_admin|org_x": true},
+		},
 		publisher: &fakePublisher{}, log: slog.Default(),
 	}
 	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_admin", "admin@afi.local", "admin")
@@ -232,14 +276,17 @@ func TestAddOrgMemberSuccess(t *testing.T) {
 	}
 }
 
-func TestAddOrgMemberUnknownEmail(t *testing.T) {
+func TestInviteOrgMemberUnknownEmailCreatesInvite(t *testing.T) {
 	t.Parallel()
 	api := newOrgAdminFake()
 	api.orgs["org_x"] = &Organization{ID: "org_x", Name: "X"}
-	api.members["org_x"] = []OrgMember{{UserID: "user_admin", Email: "admin@afi.local"}}
+	api.members["org_x"] = []OrgMember{{UserID: "user_admin", Email: "admin@afi.local", Role: OrgRoleOwner}}
 	s := &Server{
 		cfg: testCfg(), api: api,
-		members:   &fakeMembers{allowed: map[string]bool{"user_admin|org_x": true}},
+		members: &fakeMembers{
+			allowed: map[string]bool{"user_admin|org_x": true},
+			admins:  map[string]bool{"user_admin|org_x": true},
+		},
 		publisher: &fakePublisher{}, log: slog.Default(),
 	}
 	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_admin", "admin@afi.local", "admin")
@@ -252,8 +299,15 @@ func TestAddOrgMemberUnknownEmail(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer "+tok)
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, req)
-	if rr.Code != http.StatusNotFound {
+	if rr.Code != http.StatusCreated {
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var out InviteOutcome
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Status != "invited" || out.Invite == nil {
+		t.Fatalf("%+v", out)
 	}
 }
 

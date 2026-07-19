@@ -147,6 +147,28 @@ func (f *fakePlatform) ListOrgMembers(context.Context, string) ([]OrgMember, err
 func (f *fakePlatform) AddOrgMemberByEmail(context.Context, string, string) (*OrgMember, error) {
 	return nil, errors.New("unused")
 }
+func (f *fakePlatform) InviteOrgMember(context.Context, string, string, string) (*InviteOutcome, string, error) {
+	return nil, "", errors.New("unused")
+}
+func (f *fakePlatform) ListOrgInvites(context.Context, string) ([]OrgInvite, error) { return nil, nil }
+func (f *fakePlatform) RevokeOrgInvite(context.Context, string, string) error {
+	return errors.New("unused")
+}
+func (f *fakePlatform) ResendOrgInvite(context.Context, string, string) (*OrgInvite, string, error) {
+	return nil, "", errors.New("unused")
+}
+func (f *fakePlatform) PreviewOrgInvite(context.Context, string) (*InvitePreview, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *fakePlatform) AcceptOrgInvite(context.Context, string, string, string) (*OrgMember, *User, error) {
+	return nil, nil, errors.New("unused")
+}
+func (f *fakePlatform) GetOrganization(context.Context, string) (*Organization, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *fakePlatform) SetOrgMailProvider(context.Context, string, string) (*Organization, error) {
+	return nil, errors.New("unused")
+}
 func (f *fakePlatform) UpdateOrgMemberRole(context.Context, string, string, string, string) (*OrgMember, error) {
 	return nil, errors.New("unused")
 }
@@ -236,6 +258,11 @@ func testCfg() *kernel.Config {
 	cfg.Auth.JWTSecret = "test-secret"
 	cfg.Auth.TokenTTL = time.Hour
 	cfg.Auth.InternalToken = "internal-secret"
+	cfg.Mail.PublicAppURL = "http://localhost:3000"
+	cfg.Mail.From = "AFI <noreply@afi.local>"
+	cfg.Mail.DefaultProvider = "log"
+	cfg.Mail.SMTP.Enabled = false
+	cfg.Mail.Resend.Enabled = false
 	return cfg
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/mail"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
 	"github.com/curefatih/afi/internal/usage"
@@ -24,6 +25,8 @@ const (
 
 	TeamRoleOwner  = tenancy.TeamRoleOwner
 	TeamRoleMember = tenancy.TeamRoleMember
+
+	InviteStatusPending = tenancy.InviteStatusPending
 )
 
 type User = identity.User
@@ -32,6 +35,9 @@ type Team = tenancy.Team
 type TeamMember = tenancy.TeamMember
 type Project = tenancy.Project
 type OrgMember = tenancy.OrgMember
+type OrgInvite = tenancy.OrgInvite
+type InviteOutcome = tenancy.InviteOutcome
+type InvitePreview = tenancy.InvitePreview
 
 // APIKey is the platform write-model key (canonical in access).
 type APIKey = access.APIKey
@@ -118,6 +124,64 @@ func (s *Store) FindByEmail(ctx context.Context, email string) (userID, name, us
 
 func (s *Store) AddOrgMemberByEmail(ctx context.Context, orgID, email string) (*OrgMember, error) {
 	return tenancy.AddOrgMemberByEmail(ctx, s.organizations(), s, orgID, email)
+}
+
+func (s *Store) invitesRepo() *postgres.Invites {
+	return postgres.NewInvites(s.pool)
+}
+
+func (s *Store) GetOrganization(ctx context.Context, orgID string) (*Organization, error) {
+	return s.organizations().Get(ctx, orgID)
+}
+
+func (s *Store) SetOrgMailProvider(ctx context.Context, orgID, provider string) (*Organization, error) {
+	if err := mail.ValidateProvider(provider); err != nil {
+		return nil, kernel.ErrInvalidRequest
+	}
+	if err := s.organizations().SetMailProvider(ctx, orgID, provider); err != nil {
+		return nil, err
+	}
+	return s.organizations().Get(ctx, orgID)
+}
+
+func (s *Store) InviteOrgMember(ctx context.Context, orgID, email, invitedByUserID string) (*InviteOutcome, string, error) {
+	return tenancy.InviteOrgMember(ctx, s.organizations(), s.invitesRepo(), s, newID("inv"), orgID, email, invitedByUserID)
+}
+
+func (s *Store) ListOrgInvites(ctx context.Context, orgID string) ([]OrgInvite, error) {
+	return s.invitesRepo().ListByOrg(ctx, orgID)
+}
+
+func (s *Store) RevokeOrgInvite(ctx context.Context, orgID, inviteID string) error {
+	return tenancy.RevokeInvite(ctx, s.invitesRepo(), orgID, inviteID)
+}
+
+func (s *Store) ResendOrgInvite(ctx context.Context, orgID, inviteID string) (*OrgInvite, string, error) {
+	return tenancy.ResendInvite(ctx, s.invitesRepo(), orgID, inviteID)
+}
+
+func (s *Store) PreviewOrgInvite(ctx context.Context, rawToken string) (*InvitePreview, error) {
+	return tenancy.PreviewInvite(ctx, s.invitesRepo(), s, rawToken)
+}
+
+func (s *Store) CreateUser(ctx context.Context, id, email, name, passwordHash string) (*User, error) {
+	u := &User{
+		ID: id, Email: email, Name: name, Role: "member",
+		PasswordHash: passwordHash, CreatedAt: time.Now().UTC(),
+	}
+	if err := s.users().Create(ctx, *u); err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+
+func (s *Store) AcceptOrgInvite(ctx context.Context, rawToken, name, passwordHash string) (*OrgMember, *User, error) {
+	return tenancy.AcceptInvite(
+		ctx, s.organizations(), s.invitesRepo(), s, s,
+		rawToken,
+		tenancy.AcceptInviteInput{Name: name, PasswordHash: passwordHash},
+		newID("user"),
+	)
 }
 
 func (s *Store) GetOrgMemberRole(ctx context.Context, userID, orgID string) (string, error) {

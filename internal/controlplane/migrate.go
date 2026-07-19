@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 8
+const schemaVersion = 9
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS platform_event_outbox CASCADE;
@@ -31,6 +31,7 @@ DROP TABLE IF EXISTS providers CASCADE;
 DROP TABLE IF EXISTS projects CASCADE;
 DROP TABLE IF EXISTS team_members CASCADE;
 DROP TABLE IF EXISTS teams CASCADE;
+DROP TABLE IF EXISTS organization_invites CASCADE;
 DROP TABLE IF EXISTS organization_members CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS organizations CASCADE;
@@ -45,6 +46,7 @@ CREATE TABLE IF NOT EXISTS afi_schema_meta (
 CREATE TABLE IF NOT EXISTS organizations (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    mail_provider TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -62,6 +64,19 @@ CREATE TABLE IF NOT EXISTS organization_members (
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     role TEXT NOT NULL DEFAULT 'member',
     PRIMARY KEY (organization_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS organization_invites (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'member',
+    token_hash TEXT NOT NULL UNIQUE,
+    invited_by_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'pending',
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    accepted_at TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS teams (
@@ -425,6 +440,27 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			ON platform_event_outbox (id) WHERE processed_at IS NULL;
 	`); err != nil {
 		return fmt.Errorf("cycle14 platform event outbox: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE organizations ADD COLUMN IF NOT EXISTS mail_provider TEXT NOT NULL DEFAULT '';
+		CREATE TABLE IF NOT EXISTS organization_invites (
+			id TEXT PRIMARY KEY,
+			organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+			email TEXT NOT NULL,
+			role TEXT NOT NULL DEFAULT 'member',
+			token_hash TEXT NOT NULL UNIQUE,
+			invited_by_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			status TEXT NOT NULL DEFAULT 'pending',
+			expires_at TIMESTAMPTZ NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			accepted_at TIMESTAMPTZ
+		);
+		CREATE UNIQUE INDEX IF NOT EXISTS organization_invites_pending_org_email_uidx
+			ON organization_invites (organization_id, email)
+			WHERE status = 'pending';
+	`); err != nil {
+		return fmt.Errorf("cycle15 org invites: %w", err)
 	}
 	return nil
 }

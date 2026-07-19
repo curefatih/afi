@@ -16,6 +16,7 @@ import (
 
 	"github.com/curefatih/afi/internal/app/platform"
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/mail"
 	"github.com/curefatih/afi/internal/snapshot"
 )
 
@@ -68,12 +69,20 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("POST /api/v1/platform/auth/login", s.handleLogin)
 	mux.HandleFunc("GET /api/v1/platform/auth/me", s.requireAuth(s.handleMe))
+	mux.HandleFunc("GET /api/v1/platform/auth/invites/{token}", s.handlePreviewInvite)
+	mux.HandleFunc("POST /api/v1/platform/auth/invites/{token}/accept", s.handleAcceptInvite)
 
 	mux.HandleFunc("GET /api/v1/platform/organizations", s.requireAuth(s.handleListOrgs))
 	mux.HandleFunc("POST /api/v1/platform/organizations", s.requireAuth(s.handleCreateOrg))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/members", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListOrgMembers)))
-	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/members", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleAddOrgMember)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/members", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleInviteOrgMember)))
 	mux.HandleFunc("PATCH /api/v1/platform/organizations/{orgID}/members/{userID}", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleUpdateOrgMemberRole)))
+	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/invites", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleListOrgInvites)))
+	mux.HandleFunc("DELETE /api/v1/platform/organizations/{orgID}/invites/{inviteID}", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleRevokeOrgInvite)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/invites/{inviteID}/resend", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleResendOrgInvite)))
+	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/mail", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleGetOrgMail)))
+	mux.HandleFunc("PATCH /api/v1/platform/organizations/{orgID}/mail", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleUpdateOrgMail)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/mail/test", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleTestOrgMail)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/teams", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListTeams)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/teams", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateTeam)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/projects", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListProjects)))
@@ -228,7 +237,8 @@ func (s *Server) handleListOrgMembers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, list)
 }
 
-func (s *Server) handleAddOrgMember(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleInviteOrgMember(w http.ResponseWriter, r *http.Request) {
+	claims := claimsFrom(r.Context())
 	var body struct {
 		Email string `json:"email"`
 	}
@@ -236,16 +246,276 @@ func (s *Server) handleAddOrgMember(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "email required")
 		return
 	}
-	member, err := s.api.AddOrgMemberByEmail(r.Context(), r.PathValue("orgID"), strings.TrimSpace(body.Email))
-	if errors.Is(err, kernel.ErrNotFound) {
-		writeErr(w, http.StatusNotFound, "user not found")
+	orgID := r.PathValue("orgID")
+	outcome, rawToken, err := s.api.InviteOrgMember(r.Context(), orgID, strings.TrimSpace(body.Email), claims.UserID)
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusCreated, member)
+	if err := s.sendInviteMail(r.Context(), orgID, outcome, rawToken); err != nil {
+		s.log.Error("invite mail", "err", err, "org", orgID)
+		writeErr(w, http.StatusBadGateway, "member updated but email failed: "+err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, outcome)
+}
+
+func (s *Server) handleListOrgInvites(w http.ResponseWriter, r *http.Request) {
+	list, err := s.api.ListOrgInvites(r.Context(), r.PathValue("orgID"))
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if list == nil {
+		list = []OrgInvite{}
+	}
+	writeJSON(w, http.StatusOK, list)
+}
+
+func (s *Server) handleRevokeOrgInvite(w http.ResponseWriter, r *http.Request) {
+	err := s.api.RevokeOrgInvite(r.Context(), r.PathValue("orgID"), r.PathValue("inviteID"))
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, "invalid invite")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleResendOrgInvite(w http.ResponseWriter, r *http.Request) {
+	orgID := r.PathValue("orgID")
+	inv, rawToken, err := s.api.ResendOrgInvite(r.Context(), orgID, r.PathValue("inviteID"))
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, "invalid invite")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	outcome := &InviteOutcome{Status: "invited", Invite: inv}
+	if err := s.sendInviteMail(r.Context(), orgID, outcome, rawToken); err != nil {
+		writeErr(w, http.StatusBadGateway, "email failed: "+err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, inv)
+}
+
+func (s *Server) handlePreviewInvite(w http.ResponseWriter, r *http.Request) {
+	preview, err := s.api.PreviewOrgInvite(r.Context(), r.PathValue("token"))
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "invite not found")
+		return
+	}
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, "invite expired")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, preview)
+}
+
+func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Name     string `json:"name"`
+		Password string `json:"password"`
+	}
+	_ = json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body)
+
+	preview, err := s.api.PreviewOrgInvite(r.Context(), r.PathValue("token"))
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "invite not found")
+		return
+	}
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, "invite expired")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	passwordHash := ""
+	if !preview.UserExists {
+		if strings.TrimSpace(body.Name) == "" || strings.TrimSpace(body.Password) == "" {
+			writeErr(w, http.StatusBadRequest, "name and password required")
+			return
+		}
+		if len(body.Password) < 8 {
+			writeErr(w, http.StatusBadRequest, "password must be at least 8 characters")
+			return
+		}
+		h, err := HashPassword(body.Password)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		passwordHash = h
+	}
+
+	member, user, err := s.api.AcceptOrgInvite(r.Context(), r.PathValue("token"), strings.TrimSpace(body.Name), passwordHash)
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "invite not found")
+		return
+	}
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	tok, err := IssueToken(s.cfg.Auth.JWTSecret, s.cfg.Auth.TokenTTL, user.ID, user.Email, user.Role)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"member": member,
+		"user":   map[string]any{"id": user.ID, "email": user.Email, "name": user.Name, "role": user.Role},
+		"token":  tok,
+	})
+}
+
+func (s *Server) handleGetOrgMail(w http.ResponseWriter, r *http.Request) {
+	org, err := s.api.GetOrganization(r.Context(), r.PathValue("orgID"))
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"selected":          org.MailProvider,
+		"default_provider":  s.cfg.Mail.DefaultProvider,
+		"enabled_providers": enabledMailProviders(s.cfg),
+		"from":              s.cfg.Mail.From,
+		"public_app_url":    s.cfg.Mail.PublicAppURL,
+	})
+}
+
+func (s *Server) handleUpdateOrgMail(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Provider *string `json:"provider"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Provider == nil {
+		writeErr(w, http.StatusBadRequest, "provider required")
+		return
+	}
+	provider := mail.ProviderName(*body.Provider)
+	if provider != "" {
+		enabled := false
+		for _, p := range enabledMailProviders(s.cfg) {
+			if p == provider {
+				enabled = true
+				break
+			}
+		}
+		if !enabled {
+			writeErr(w, http.StatusBadRequest, "provider is not enabled on this deployment")
+			return
+		}
+	}
+	org, err := s.api.SetOrgMailProvider(r.Context(), r.PathValue("orgID"), provider)
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, "invalid provider")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"selected":          org.MailProvider,
+		"default_provider":  s.cfg.Mail.DefaultProvider,
+		"enabled_providers": enabledMailProviders(s.cfg),
+	})
+}
+
+func (s *Server) handleTestOrgMail(w http.ResponseWriter, r *http.Request) {
+	claims := claimsFrom(r.Context())
+	user, err := s.api.GetUserByID(r.Context(), claims.UserID)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	org, err := s.api.GetOrganization(r.Context(), r.PathValue("orgID"))
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	sender, _, err := resolveMailSender(s.cfg, org.MailProvider, s.log)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	msg := mail.TestMessage()
+	msg.To = user.Email
+	if err := sender.Send(r.Context(), msg); err != nil {
+		writeErr(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "sent", "to": user.Email})
+}
+
+func (s *Server) sendInviteMail(ctx context.Context, orgID string, outcome *InviteOutcome, rawToken string) error {
+	if outcome == nil {
+		return nil
+	}
+	org, err := s.api.GetOrganization(ctx, orgID)
+	if err != nil {
+		return err
+	}
+	sender, _, err := resolveMailSender(s.cfg, org.MailProvider, s.log)
+	if err != nil {
+		return err
+	}
+	base := strings.TrimRight(s.cfg.Mail.PublicAppURL, "/")
+	var msg mail.Message
+	switch outcome.Status {
+	case "added":
+		if outcome.Member == nil {
+			return nil
+		}
+		msg = mail.InviteExistingUser(org.Name, base+"/auth/login")
+		msg.To = outcome.Member.Email
+	case "invited":
+		if outcome.Invite == nil || rawToken == "" {
+			return nil
+		}
+		msg = mail.InviteNewUser(org.Name, base+"/auth/invite/"+rawToken)
+		msg.To = outcome.Invite.Email
+	default:
+		return nil
+	}
+	return sender.Send(ctx, msg)
 }
 
 func (s *Server) handleUpdateOrgMemberRole(w http.ResponseWriter, r *http.Request) {
