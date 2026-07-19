@@ -31,6 +31,7 @@ flowchart TB
 
 * Postgres + Adminer via `make dev-up`
 * Control plane: migrate, seed, snapshot publish, platform auth, org create + member invite
+* Personal and service-account API keys; quotas on org / project / user / api_key
 * Gateway: virtual API key auth → quotas → routes (with failover) → provider registry
 * OpenAI-compatible `POST /v1/chat/completions` and `GET /v1/models` (with `supports_streaming`)
 * Native Anthropic `POST /v1/messages` (Anthropic providers / routes)

@@ -73,6 +73,9 @@ Written on first control-plane start (or `make seed`):
 |--------|------|
 | GET/POST | `/api/v1/platform/organizations` |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/members` |
+| GET/POST | `/api/v1/platform/organizations/{orgID}/keys` |
+| DELETE | `/api/v1/platform/keys/{keyID}` |
+| GET/POST | `/api/v1/platform/projects/{projectID}/keys` |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/providers` |
 | PATCH/DELETE | `/api/v1/platform/providers/{providerID}` |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/routes` |
@@ -81,15 +84,24 @@ Written on first control-plane start (or `make seed`):
 | GET/POST | `/api/v1/platform/organizations/{orgID}/quotas` |
 | PATCH/DELETE | `/api/v1/platform/quotas/{quotaID}` |
 
-Member invite looks up an existing user by email (no SMTP). Native Anthropic inference: gateway `POST /v1/messages` (Anthropic providers only).
+Member invite looks up an existing user by email (no SMTP). Org roles: `owner` / `admin` / `member`. Native Anthropic inference: gateway `POST /v1/messages` (Anthropic providers only).
+
+### API keys
+
+| `kind` | Scope | Who can create |
+|--------|--------|----------------|
+| `personal` | org + `owner_user_id` (no project) | any org member (self only) |
+| `service_account` | org-wide or project (`project_id` optional) | org owner/admin |
+
+Seed key `sk-project-local-dev-token-12345` is a project **service_account** key.
 
 ### Quotas
 
 | Field | Values |
 |-------|--------|
-| `scope_type` | `organization`, `project`, `api_key` |
+| `scope_type` | `organization`, `project`, `user`, `api_key` |
 | `metric` | `requests`, `tokens` |
 | `window` | `total` (lifetime counter) |
 | `limit_value` | integer ≥ 0 (`0` blocks immediately) |
 
-Most specific scope wins: api_key → project → organization.
+Most specific scope wins: api_key → user → project → organization. Create/update/delete quotas require org owner/admin.

@@ -18,7 +18,8 @@ Uses pragmatic domain packages (full DDD bounded contexts grow over time).
 Responsibilities today:
 
 * Persist orgs, projects, users, virtual API keys, providers, routes, quotas
-* Create organizations and invite existing users by email
+* Create organizations and invite existing users by email (org membership roles: owner / admin / member)
+* API keys: **personal** (user-scoped) and **service_account** (org- or project-scoped)
 * Compile configuration into versioned snapshots (including provider capabilities)
 * Platform HTTP APIs (`/api/v1/platform/*`)
 * Internal admin (`/internal/v1/*`, `/healthz`)
@@ -56,10 +57,10 @@ Pipeline stages stay stateless aside from the in-memory snapshot pointer. Quota 
 
 Snapshots contain:
 
-* Virtual API keys (hashes) → project binding
+* Virtual API keys (hashes) → org binding, optional project, kind, owner user id
 * Providers (type, base URL, API key env ref, capabilities)
 * Static model routes (optional fallbacks)
-* Quotas (scope, metric, limit)
+* Quotas (scope, metric, limit) — resolve order: api_key → user → project → organization
 
 Stored in Postgres (`gateway_snapshots`). The gateway watches for new versions (poll + `LISTEN/NOTIFY`) and hot-reloads.
 
