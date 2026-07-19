@@ -128,7 +128,20 @@ if [ -n "${OPENAI_API_KEY:-}" ]; then
       fi
     done
     if [ "$found" = "1" ]; then
-      echo "ok (usage_events populated — worker is running)"
+      curl -fsS "$CP/api/v1/platform/organizations/org_local/usage?limit=1" \
+        -H "Authorization: Bearer $TOKEN" | python3 -c '
+import sys,json
+e=json.load(sys.stdin)[0]
+assert "modality" in e and "metrics" in e, e
+assert "key_kind" in e or e.get("api_key_id"), e
+'
+      curl -fsS "$CP/api/v1/platform/organizations/org_local/usage/summary?group_by=modality" \
+        -H "Authorization: Bearer $TOKEN" | python3 -c '
+import sys,json
+d=json.load(sys.stdin)
+assert isinstance(d, list), d
+'
+      echo "ok (usage_events + summary — worker is running)"
     else
       echo "SKIPPED (no usage_events yet — start make run-worker to drain outbox)"
     fi
