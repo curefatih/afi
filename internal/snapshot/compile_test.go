@@ -3,13 +3,18 @@ package snapshot
 import "testing"
 
 func TestCompile(t *testing.T) {
+	raw := "sk-test"
 	src := Source{
-		APIKeys: []APIKey{{Key: "sk-test", ProjectID: "p1", OrganizationID: "o1", Name: "dev"}},
+		APIKeys: []APIKey{{
+			KeyHash: HashKey(raw), KeyPrefix: "sk-test", ProjectID: "p1", OrganizationID: "o1", Name: "dev",
+		}},
 		Providers: []Provider{{
 			ID: "prov_openai", Type: "openai", BaseURL: "https://api.openai.com/v1",
 			APIKeyEnv: "OPENAI_API_KEY", Name: "OpenAI",
 		}},
-		Routes: []Route{{Model: "gpt-4o-mini", ProviderID: "prov_openai", TargetModel: "gpt-4o-mini"}},
+		Routes: []Route{{
+			OrganizationID: "o1", Model: "gpt-4o-mini", ProviderID: "prov_openai", TargetModel: "gpt-4o-mini",
+		}},
 	}
 
 	snap := Compile(src)
@@ -17,17 +22,17 @@ func TestCompile(t *testing.T) {
 		t.Fatalf("unexpected sizes: %+v", snap)
 	}
 
-	k, ok := snap.LookupKey("sk-test")
+	k, ok := snap.LookupKey(raw)
 	if !ok || k.ProjectID != "p1" {
 		t.Fatalf("lookup key failed: %+v", k)
 	}
 
-	r, p, ok := snap.LookupRoute("gpt-4o-mini")
+	r, p, ok := snap.LookupRoute("o1", "gpt-4o-mini")
 	if !ok || r.TargetModel != "gpt-4o-mini" || p.Type != "openai" {
 		t.Fatalf("lookup route failed: %+v %+v", r, p)
 	}
 
-	if _, _, ok := snap.LookupRoute("missing"); ok {
+	if _, _, ok := snap.LookupRoute("o1", "missing"); ok {
 		t.Fatal("expected missing route")
 	}
 }

@@ -18,13 +18,16 @@ func Compile(src Source) *Snapshot {
 		Routes:    make(map[string]Route, len(src.Routes)),
 	}
 	for _, k := range src.APIKeys {
-		s.APIKeys[k.Key] = k
+		if k.KeyHash == "" {
+			continue
+		}
+		s.APIKeys[k.KeyHash] = k
 	}
 	for _, p := range src.Providers {
 		s.Providers[p.ID] = p
 	}
 	for _, r := range src.Routes {
-		s.Routes[r.Model] = r
+		s.Routes[routeKey(r.OrganizationID, r.Model)] = r
 	}
 	return s
 }
