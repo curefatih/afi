@@ -80,6 +80,9 @@ func (m *memAPI) ListTeamMembers(context.Context, string) ([]tenancy.TeamMember,
 func (m *memAPI) AddTeamMember(context.Context, string, string) (*tenancy.TeamMember, error) {
 	return &tenancy.TeamMember{UserID: "u2", Role: "member"}, nil
 }
+func (m *memAPI) UpdateTeamMemberRole(context.Context, string, string, string) (*tenancy.TeamMember, error) {
+	return &tenancy.TeamMember{UserID: "u2", Role: "admin"}, nil
+}
 func (m *memAPI) RemoveTeamMember(context.Context, string, string) error { return nil }
 func (m *memAPI) ListProjects(context.Context, string, string) ([]tenancy.Project, error) {
 	return nil, nil
@@ -301,6 +304,21 @@ func TestPublishSnapshotEmitsEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 	if snap.n != 1 || len(ev.names) != 1 || ev.names[0] != platform.EventSnapshotPublish {
+		t.Fatalf("snap=%d events=%v", snap.n, ev.names)
+	}
+}
+
+func TestUpdateTeamMemberRoleEmitsWithoutPublish(t *testing.T) {
+	t.Parallel()
+	snap := &memSnap{}
+	ev := &memEvents{}
+	svc := platform.New(&memAPI{}, snap)
+	svc.Events = ev
+	m, err := svc.UpdateTeamMemberRole(context.Background(), "team_1", "u2", "admin")
+	if err != nil || m == nil || m.Role != "admin" {
+		t.Fatalf("m=%+v err=%v", m, err)
+	}
+	if snap.n != 0 || len(ev.names) != 1 || ev.names[0] != platform.EventTeamMemberRoleUpdated {
 		t.Fatalf("snap=%d events=%v", snap.n, ev.names)
 	}
 }

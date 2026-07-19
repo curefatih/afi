@@ -75,6 +75,6 @@ Kafka headers: `afi-event-id`, `afi-event-name`, `afi-organization-id`.
 
 Gateway config: `project.created`, `api_key.*`, `provider.*`, `route.*`, `quota.*`, `policy.*`, `credential.*`, `snapshot.published`.
 
-Tenancy / invites: `org.created`, `member.added`, `member.role_updated`, `invite.created`, `invite.revoked`, `invite.resent`, `invite.accepted`, `team.created`, `team.member_added`, `team.member_removed`.
+Tenancy / invites: `org.created`, `member.added`, `member.role_updated`, `invite.created`, `invite.revoked`, `invite.resent`, `invite.accepted`, `team.created`, `team.member_added`, `team.member_role_updated`, `team.member_removed`.
 
 `InviteOrgMember` emits `member.added` when the email already belongs to a user (immediate membership), otherwise `invite.created`.

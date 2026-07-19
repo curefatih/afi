@@ -654,7 +654,7 @@ func (s *Server) handleUpdateTeamMemberRole(w http.ResponseWriter, r *http.Reque
 		writeErr(w, http.StatusBadRequest, "role required")
 		return
 	}
-	member, err := s.api.UpdateTeamMemberRole(
+	member, err := s.app.UpdateTeamMemberRole(
 		r.Context(),
 		r.PathValue("teamID"),
 		r.PathValue("userID"),
