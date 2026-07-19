@@ -13,9 +13,9 @@ function RouteComponent() {
 	return (
 		<ComingSoonPage
 			title="Secrets"
-			description="Manage secret references and secret provider integrations."
+			description="Vault-backed secret storage and rotation."
 			icon={ShieldIcon}
-			context="Secret store management is not available in this build. Provider credentials currently use environment references."
+			context="No secret vault in this build. Provider credentials are env var names (api_key_env) set on the gateway process — configure them under Providers."
 		/>
 	);
 }

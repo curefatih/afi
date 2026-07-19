@@ -13,9 +13,9 @@ function RouteComponent() {
 	return (
 		<ComingSoonPage
 			title="Billing"
-			description="Cost calculation, budgets, alerts, and invoice generation."
+			description="Invoices, budgets, and payment integrations."
 			icon={CreditCardIcon}
-			context="Billing is not available in this build."
+			context="No billing or invoice APIs in this build. Usage and cost_usd appear on the Usage page when the worker drains the outbox; quotas cover hard limits."
 		/>
 	);
 }

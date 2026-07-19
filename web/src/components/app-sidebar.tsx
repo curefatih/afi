@@ -74,13 +74,11 @@ const governanceNav = [
 		title: "Providers",
 		url: "/app/providers",
 		icon: <PlugIcon />,
-		badge: "Soon",
 	},
 	{
 		title: "Routing",
 		url: "/app/routing",
 		icon: <RouteIcon />,
-		badge: "Soon",
 	},
 	{
 		title: "Quotas",

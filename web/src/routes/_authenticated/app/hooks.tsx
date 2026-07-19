@@ -13,9 +13,9 @@ function RouteComponent() {
 	return (
 		<ComingSoonPage
 			title="Hooks"
-			description="Lifecycle plugins and runtime extensions for request mutation and enrichment."
+			description="Lifecycle plugins (gRPC / WASM) for request mutation and enrichment."
 			icon={PuzzleIcon}
-			context="Extension management UI is not available in this build. Extensions register through the gateway runtime."
+			context="No hooks/plugin runtime UI in this build. Extensibility today is in-process ChatProvider registration — see docs/development/providers.md."
 		/>
 	);
 }
