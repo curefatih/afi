@@ -14,6 +14,7 @@ type membershipChecker interface {
 	GetProjectOrgID(ctx context.Context, projectID string) (string, error)
 	GetProviderOrgID(ctx context.Context, providerID string) (string, error)
 	GetRouteOrgID(ctx context.Context, routeID string) (string, error)
+	GetQuotaOrgID(ctx context.Context, quotaID string) (string, error)
 }
 
 // platformAPI is the control-plane persistence surface used by HTTP handlers.
@@ -38,4 +39,8 @@ type platformAPI interface {
 	UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string) (*Route, error)
 	DeleteRoute(ctx context.Context, routeID string) error
 	ListUsage(ctx context.Context, orgID string, limit int) ([]UsageEvent, error)
+	ListQuotas(ctx context.Context, orgID string) ([]Quota, error)
+	CreateQuota(ctx context.Context, orgID, scopeType, scopeID, metric string, limitValue int64, window string) (*Quota, error)
+	UpdateQuota(ctx context.Context, quotaID string, limitValue int64) (*Quota, error)
+	DeleteQuota(ctx context.Context, quotaID string) error
 }
