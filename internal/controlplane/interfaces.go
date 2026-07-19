@@ -21,6 +21,7 @@ type membershipChecker interface {
 	GetProviderOrgID(ctx context.Context, providerID string) (string, error)
 	GetRouteOrgID(ctx context.Context, routeID string) (string, error)
 	GetQuotaOrgID(ctx context.Context, quotaID string) (string, error)
+	GetPolicyOrgID(ctx context.Context, policyID string) (string, error)
 	GetAPIKeyOrgID(ctx context.Context, keyID string) (string, error)
 }
 
@@ -59,4 +60,8 @@ type platformAPI interface {
 	CreateQuota(ctx context.Context, orgID, scopeType, scopeID, metric string, limitValue int64, window string) (*Quota, error)
 	UpdateQuota(ctx context.Context, quotaID string, limitValue int64) (*Quota, error)
 	DeleteQuota(ctx context.Context, quotaID string) error
+	ListPolicies(ctx context.Context, orgID string) ([]RequestPolicy, error)
+	CreatePolicy(ctx context.Context, orgID, name, expression string, enabled bool, priority int) (*RequestPolicy, error)
+	UpdatePolicy(ctx context.Context, policyID string, name, expression *string, enabled *bool, priority *int) (*RequestPolicy, error)
+	DeletePolicy(ctx context.Context, policyID string) error
 }

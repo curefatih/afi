@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -1217,6 +1218,9 @@ func (s *Store) CreateQuota(ctx context.Context, orgID, scopeType, scopeID, metr
 	if window == "" {
 		window = snapshot.WindowTotal
 	}
+	if !snapshot.ValidQuotaWindow(window) {
+		return nil, fmt.Errorf("%w: window must be total, minute, hour, or day", kernel.ErrInvalidRequest)
+	}
 	if err := s.validateQuotaScope(ctx, orgID, scopeType, scopeID); err != nil {
 		return nil, err
 	}
@@ -1425,5 +1429,144 @@ func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error)
 		}
 		src.Quotas = append(src.Quotas, q)
 	}
-	return src, quotaRows.Err()
+	if err := quotaRows.Err(); err != nil {
+		return src, err
+	}
+
+	polRows, err := s.pool.Query(ctx, `
+		SELECT id, organization_id, name, expression, enabled, priority FROM request_policies
+	`)
+	if err != nil {
+		return src, err
+	}
+	defer polRows.Close()
+	for polRows.Next() {
+		var p snapshot.Policy
+		if err := polRows.Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Expression, &p.Enabled, &p.Priority); err != nil {
+			return src, err
+		}
+		src.Policies = append(src.Policies, p)
+	}
+	return src, polRows.Err()
+}
+
+// RequestPolicy is the control-plane view of a CEL allow-policy.
+type RequestPolicy struct {
+	ID             string    `json:"id"`
+	OrganizationID string    `json:"organization_id"`
+	Name           string    `json:"name"`
+	Expression     string    `json:"expression"`
+	Enabled        bool      `json:"enabled"`
+	Priority       int       `json:"priority"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func (s *Store) ListPolicies(ctx context.Context, orgID string) ([]RequestPolicy, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, organization_id, name, expression, enabled, priority, created_at
+		FROM request_policies WHERE organization_id=$1
+		ORDER BY priority DESC, name ASC
+	`, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []RequestPolicy
+	for rows.Next() {
+		var p RequestPolicy
+		if err := rows.Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Expression, &p.Enabled, &p.Priority, &p.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) CreatePolicy(ctx context.Context, orgID, name, expression string, enabled bool, priority int) (*RequestPolicy, error) {
+	name = strings.TrimSpace(name)
+	expression = strings.TrimSpace(expression)
+	if name == "" || expression == "" {
+		return nil, fmt.Errorf("%w: name and expression required", kernel.ErrInvalidRequest)
+	}
+	if err := policy.Validate(expression); err != nil {
+		return nil, fmt.Errorf("%w: invalid CEL expression: %v", kernel.ErrInvalidRequest, err)
+	}
+	p := &RequestPolicy{
+		ID: newID("pol"), OrganizationID: orgID, Name: name, Expression: expression,
+		Enabled: enabled, Priority: priority, CreatedAt: time.Now().UTC(),
+	}
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO request_policies (id, organization_id, name, expression, enabled, priority, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7)
+	`, p.ID, p.OrganizationID, p.Name, p.Expression, p.Enabled, p.Priority, p.CreatedAt)
+	return p, err
+}
+
+func (s *Store) UpdatePolicy(ctx context.Context, policyID string, name, expression *string, enabled *bool, priority *int) (*RequestPolicy, error) {
+	cur, err := s.getPolicy(ctx, policyID)
+	if err != nil {
+		return nil, err
+	}
+	if name != nil {
+		n := strings.TrimSpace(*name)
+		if n == "" {
+			return nil, fmt.Errorf("%w: name required", kernel.ErrInvalidRequest)
+		}
+		cur.Name = n
+	}
+	if expression != nil {
+		e := strings.TrimSpace(*expression)
+		if e == "" {
+			return nil, fmt.Errorf("%w: expression required", kernel.ErrInvalidRequest)
+		}
+		if err := policy.Validate(e); err != nil {
+			return nil, fmt.Errorf("%w: invalid CEL expression: %v", kernel.ErrInvalidRequest, err)
+		}
+		cur.Expression = e
+	}
+	if enabled != nil {
+		cur.Enabled = *enabled
+	}
+	if priority != nil {
+		cur.Priority = *priority
+	}
+	err = s.pool.QueryRow(ctx, `
+		UPDATE request_policies SET name=$2, expression=$3, enabled=$4, priority=$5 WHERE id=$1
+		RETURNING id, organization_id, name, expression, enabled, priority, created_at
+	`, cur.ID, cur.Name, cur.Expression, cur.Enabled, cur.Priority).Scan(
+		&cur.ID, &cur.OrganizationID, &cur.Name, &cur.Expression, &cur.Enabled, &cur.Priority, &cur.CreatedAt,
+	)
+	return cur, err
+}
+
+func (s *Store) getPolicy(ctx context.Context, policyID string) (*RequestPolicy, error) {
+	p := &RequestPolicy{}
+	err := s.pool.QueryRow(ctx, `
+		SELECT id, organization_id, name, expression, enabled, priority, created_at
+		FROM request_policies WHERE id=$1
+	`, policyID).Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Expression, &p.Enabled, &p.Priority, &p.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, kernel.ErrNotFound
+	}
+	return p, err
+}
+
+func (s *Store) DeletePolicy(ctx context.Context, policyID string) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM request_policies WHERE id=$1`, policyID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return kernel.ErrNotFound
+	}
+	return nil
+}
+
+func (s *Store) GetPolicyOrgID(ctx context.Context, policyID string) (string, error) {
+	var orgID string
+	err := s.pool.QueryRow(ctx, `SELECT organization_id FROM request_policies WHERE id=$1`, policyID).Scan(&orgID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", kernel.ErrNotFound
+	}
+	return orgID, err
 }

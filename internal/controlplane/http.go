@@ -77,6 +77,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/quotas", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateQuota)))
 	mux.HandleFunc("PATCH /api/v1/platform/quotas/{quotaID}", s.requireAuth(s.requireOrgAdminViaQuota(s.handleUpdateQuota)))
 	mux.HandleFunc("DELETE /api/v1/platform/quotas/{quotaID}", s.requireAuth(s.requireOrgAdminViaQuota(s.handleDeleteQuota)))
+	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/policies", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListPolicies)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/policies", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreatePolicy)))
+	mux.HandleFunc("PATCH /api/v1/platform/policies/{policyID}", s.requireAuth(s.requireOrgAdminViaPolicy(s.handleUpdatePolicy)))
+	mux.HandleFunc("DELETE /api/v1/platform/policies/{policyID}", s.requireAuth(s.requireOrgAdminViaPolicy(s.handleDeletePolicy)))
 
 	mux.HandleFunc("GET /api/v1/platform/teams/{teamID}", s.requireAuth(s.requireOrgMemberViaTeam(s.handleGetTeam)))
 	mux.HandleFunc("GET /api/v1/platform/teams/{teamID}/members", s.requireAuth(s.requireOrgMemberViaTeam(s.handleListTeamMembers)))
@@ -859,6 +863,103 @@ func (s *Server) handleDeleteQuota(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
+	list, err := s.api.ListPolicies(r.Context(), r.PathValue("orgID"))
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if list == nil {
+		list = []RequestPolicy{}
+	}
+	writeJSON(w, http.StatusOK, list)
+}
+
+func (s *Server) handleCreatePolicy(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Name       string `json:"name"`
+		Expression string `json:"expression"`
+		Enabled    *bool  `json:"enabled"`
+		Priority   *int   `json:"priority"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" || body.Expression == "" {
+		writeErr(w, http.StatusBadRequest, "name and expression required")
+		return
+	}
+	enabled := true
+	if body.Enabled != nil {
+		enabled = *body.Enabled
+	}
+	priority := 100
+	if body.Priority != nil {
+		priority = *body.Priority
+	}
+	p, err := s.api.CreatePolicy(r.Context(), r.PathValue("orgID"), body.Name, body.Expression, enabled, priority)
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
+		writeErr(w, http.StatusInternalServerError, "created but snapshot publish failed: "+err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, p)
+}
+
+func (s *Server) handleUpdatePolicy(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Name       *string `json:"name"`
+		Expression *string `json:"expression"`
+		Enabled    *bool   `json:"enabled"`
+		Priority   *int    `json:"priority"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if body.Name == nil && body.Expression == nil && body.Enabled == nil && body.Priority == nil {
+		writeErr(w, http.StatusBadRequest, "at least one field required")
+		return
+	}
+	p, err := s.api.UpdatePolicy(r.Context(), r.PathValue("policyID"), body.Name, body.Expression, body.Enabled, body.Priority)
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
+		writeErr(w, http.StatusInternalServerError, "updated but snapshot publish failed: "+err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, p)
+}
+
+func (s *Server) handleDeletePolicy(w http.ResponseWriter, r *http.Request) {
+	if err := s.api.DeletePolicy(r.Context(), r.PathValue("policyID")); errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	} else if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
+		writeErr(w, http.StatusInternalServerError, "deleted but snapshot publish failed: "+err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 type ctxClaimsKey int
 
 const claimsKey ctxClaimsKey = 1
@@ -958,6 +1059,40 @@ func (s *Server) requireOrgAdminViaQuota(next http.HandlerFunc) http.HandlerFunc
 		}
 		claims := claimsFrom(r.Context())
 		ok, err := s.members.IsOrgAdmin(r.Context(), claims.UserID, orgID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !ok {
+			writeErr(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next(w, r)
+	})
+}
+
+func (s *Server) requireOrgAdminViaPolicy(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := s.members.GetPolicyOrgID(r.Context(), r.PathValue("policyID"))
+		if errors.Is(err, kernel.ErrNotFound) {
+			writeErr(w, http.StatusNotFound, "not found")
+			return
+		}
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		claims := claimsFrom(r.Context())
+		ok, err := s.members.IsOrgMember(r.Context(), claims.UserID, orgID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !ok {
+			writeErr(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		ok, err = s.members.IsOrgAdmin(r.Context(), claims.UserID, orgID)
 		if err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return

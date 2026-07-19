@@ -10,12 +10,13 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 6
+const schemaVersion = 7
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS usage_outbox CASCADE;
 DROP TABLE IF EXISTS quota_counters CASCADE;
 DROP TABLE IF EXISTS quotas CASCADE;
+DROP TABLE IF EXISTS request_policies CASCADE;
 DROP TABLE IF EXISTS model_prices CASCADE;
 DROP TABLE IF EXISTS usage_events CASCADE;
 DROP TABLE IF EXISTS api_key_provider_scopes CASCADE;
@@ -178,6 +179,16 @@ CREATE TABLE IF NOT EXISTS usage_outbox (
     payload JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     processed_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS request_policies (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    expression TEXT NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    priority INT NOT NULL DEFAULT 100,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 `
 
@@ -377,6 +388,22 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			ON usage_events (organization_id, modality, created_at DESC);
 	`); err != nil {
 		return fmt.Errorf("cycle10 usage modality: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS request_policies (
+			id TEXT PRIMARY KEY,
+			organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+			name TEXT NOT NULL,
+			expression TEXT NOT NULL,
+			enabled BOOLEAN NOT NULL DEFAULT TRUE,
+			priority INT NOT NULL DEFAULT 100,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);
+		CREATE INDEX IF NOT EXISTS request_policies_org_idx
+			ON request_policies (organization_id, priority DESC);
+	`); err != nil {
+		return fmt.Errorf("cycle13 request policies: %w", err)
 	}
 	return nil
 }

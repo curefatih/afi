@@ -13,9 +13,11 @@ import (
 	"github.com/curefatih/afi/internal/controlplane"
 	"github.com/curefatih/afi/internal/dataplane"
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/workers"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -44,7 +46,34 @@ func main() {
 	hooks := dataplane.NewHookChain().RegisterHook(demohook.NewWithLog(log))
 	pipeline := dataplane.NewPipelineWithRegistry(holder, reg, log)
 	pipeline.Hooks = hooks
-	pipeline.Counters = controlplane.CounterAdapter{Store: store}
+
+	var timed dataplane.CounterStore
+	if cfg.RedisURL != "" {
+		opt, err := redis.ParseURL(cfg.RedisURL)
+		if err != nil {
+			log.Error("redis url", "err", err)
+			os.Exit(1)
+		}
+		rdb := redis.NewClient(opt)
+		defer rdb.Close()
+		if err := rdb.Ping(ctx).Err(); err != nil {
+			log.Warn("redis unavailable; timed quota windows will fail until Redis is up", "err", err)
+		} else {
+			log.Info("redis connected", "addr", opt.Addr)
+		}
+		timed = &dataplane.RedisCounters{Client: rdb}
+	}
+	pipeline.Counters = dataplane.CompositeCounters{
+		Total: controlplane.CounterAdapter{Store: store},
+		Timed: timed,
+	}
+
+	polEval, err := policy.NewEvaluator()
+	if err != nil {
+		log.Error("policy evaluator", "err", err)
+		os.Exit(1)
+	}
+	pipeline.Policies = polEval
 	log.Info("extensions registered", "provider_types", reg.Types(), "hooks", hooks.Infos())
 	pipeline.Usage = func(e dataplane.UsageEvent) {
 		payload, err := workers.EncodeUsage(workers.UsagePayload{
@@ -73,7 +102,7 @@ func main() {
 	go func() {
 		err := snapStore.Watch(ctx, cfg.Gateway.SnapshotPollInterval, func(s *snapshot.Snapshot) {
 			holder.Set(s)
-			log.Info("snapshot loaded", "version", s.Version, "keys", len(s.APIKeys), "routes", len(s.Routes), "quotas", len(s.Quotas))
+			log.Info("snapshot loaded", "version", s.Version, "keys", len(s.APIKeys), "routes", len(s.Routes), "quotas", len(s.Quotas), "policies", len(s.Policies))
 		})
 		if err != nil && ctx.Err() == nil {
 			log.Error("snapshot watch", "err", err)

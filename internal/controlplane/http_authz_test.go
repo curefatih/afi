@@ -75,6 +75,13 @@ func (f *fakeMembers) GetQuotaOrgID(_ context.Context, quotaID string) (string, 
 	return "", kernel.ErrNotFound
 }
 
+func (f *fakeMembers) GetPolicyOrgID(_ context.Context, policyID string) (string, error) {
+	if policyID == "pol_ok" {
+		return "org_a", nil
+	}
+	return "", kernel.ErrNotFound
+}
+
 type fakePublisher struct {
 	err   error
 	calls int
@@ -165,6 +172,16 @@ func (f *fakePlatform) UpdateQuota(context.Context, string, int64) (*Quota, erro
 	return nil, errors.New("unused")
 }
 func (f *fakePlatform) DeleteQuota(context.Context, string) error { return nil }
+func (f *fakePlatform) ListPolicies(context.Context, string) ([]RequestPolicy, error) {
+	return nil, nil
+}
+func (f *fakePlatform) CreatePolicy(context.Context, string, string, string, bool, int) (*RequestPolicy, error) {
+	return nil, nil
+}
+func (f *fakePlatform) UpdatePolicy(context.Context, string, *string, *string, *bool, *int) (*RequestPolicy, error) {
+	return nil, nil
+}
+func (f *fakePlatform) DeletePolicy(context.Context, string) error { return nil }
 
 func testCfg() *kernel.Config {
 	cfg := &kernel.Config{}
