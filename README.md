@@ -1,11 +1,8 @@
 <p align="center">
-  <img src="assets/brand/logo.png" alt="AFI — AI Gateway" width="320" />
+  <img src="assets/brand/logo.svg" alt="AFI — AI Gateway" width="280" />
 </p>
 
 # AFI - AI Gateway
-
-> [!WARNING]
-> Under development. The control/data plane vertical slice is the supported local path.
 
 AFI is a self-hostable LLM gateway with a **control plane** (configuration, identity, snapshots) and a **data plane** (high-performance inference). The data plane serves requests from immutable configuration snapshots — it never queries the config database on the hot path.
 
@@ -71,10 +68,16 @@ make doc-serve          # http://127.0.0.1:8000
 ## Architecture (short)
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"primaryColor":"#ffffff","primaryTextColor":"#111111","primaryBorderColor":"#111111","lineColor":"#111111","secondaryColor":"#f5f5f5","tertiaryColor":"#ffffff","fontFamily":"ui-sans-serif,system-ui,sans-serif"}}}%%
 flowchart LR
   UI[Platform UI / CLI] --> CP[Control Plane] --> SS[(Snapshot Store)]
   Clients --> GW[Gateway] --> PA[Provider adapters]
   SS -.->|watch / hot reload| GW
+
+  classDef node fill:#ffffff,stroke:#111111,color:#111111,stroke-width:2px
+  classDef store fill:#f5f5f5,stroke:#111111,color:#111111,stroke-width:2px
+  class UI,CP,Clients,GW,PA node
+  class SS store
 ```
 
 See [docs/development/architecture.md](docs/development/architecture.md).

@@ -1,10 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 240" role="img" aria-label="AFI — AI Gateway">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 240" role="img" aria-label="AFI — AI Gateway">
   <defs>
     <linearGradient id="bg" x1="24" y1="16" x2="200" y2="224" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#1c222b"/>
       <stop offset="100%" stop-color="#0b0f14"/>
     </linearGradient>
   </defs>
+  <!-- Light panel + dark border so wordmark stays readable on GitHub light/dark -->
+  <rect x="2" y="2" width="496" height="236" rx="28" fill="#ffffff" stroke="#111111" stroke-width="4"/>
   <g transform="translate(8 16) scale(0.40625)">
     <rect width="512" height="512" rx="112" fill="url(#bg)"/>
     <path
