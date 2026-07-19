@@ -304,9 +304,12 @@ func (s *Server) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 		body.Type = "openai"
 	}
 	if body.APIKeyEnv == "" {
-		if body.Type == "anthropic" {
+		switch body.Type {
+		case "anthropic":
 			body.APIKeyEnv = "ANTHROPIC_API_KEY"
-		} else {
+		case "gemini":
+			body.APIKeyEnv = "GEMINI_API_KEY"
+		default:
 			body.APIKeyEnv = "OPENAI_API_KEY"
 		}
 	}

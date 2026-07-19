@@ -138,6 +138,19 @@ func (s *Seeder) Seed(ctx context.Context) error {
 		return fmt.Errorf("anthropic provider: %w", err)
 	}
 
+	// Optional Gemini provider (no default route — wire via Routing UI).
+	_, err = tx.Exec(ctx, `
+		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, created_at)
+		VALUES ($1, $2, $3, 'gemini', $4, $5, $6)
+		ON CONFLICT (id) DO UPDATE SET
+			base_url = EXCLUDED.base_url,
+			api_key_env = EXCLUDED.api_key_env,
+			name = EXCLUDED.name
+	`, "prov_gemini", orgID, "Gemini", "https://generativelanguage.googleapis.com/v1beta", "GEMINI_API_KEY", now)
+	if err != nil {
+		return fmt.Errorf("gemini provider: %w", err)
+	}
+
 	_, err = tx.Exec(ctx, `
 		INSERT INTO routes (id, organization_id, model, provider_id, target_model, created_at)
 		VALUES ($1, $2, $3, $4, $3, $5)

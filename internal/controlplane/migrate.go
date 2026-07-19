@@ -310,7 +310,10 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			('openai', 'gpt-4o', 2.50, 10.00),
 			('anthropic', 'claude-sonnet-4-20250514', 3.00, 15.00),
 			('anthropic', 'claude-3-5-sonnet-20241022', 3.00, 15.00),
-			('anthropic', 'claude-3-5-haiku-20241022', 0.80, 4.00)
+			('anthropic', 'claude-3-5-haiku-20241022', 0.80, 4.00),
+			('gemini', 'gemini-2.0-flash', 0.10, 0.40),
+			('gemini', 'gemini-1.5-flash', 0.075, 0.30),
+			('gemini', 'gemini-1.5-pro', 1.25, 5.00)
 		ON CONFLICT (provider_type, model) DO NOTHING;
 	`); err != nil {
 		return fmt.Errorf("cycle4 migrations: %w", err)
