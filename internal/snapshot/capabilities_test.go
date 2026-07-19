@@ -5,7 +5,7 @@ import "testing"
 func TestDefaultCapabilities(t *testing.T) {
 	t.Parallel()
 	g := DefaultCapabilities("gemini")
-	if !g.Chat || g.Stream {
+	if !g.Chat || !g.Stream {
 		t.Fatalf("gemini=%+v", g)
 	}
 	o := DefaultCapabilities("openai_compatible")
@@ -17,8 +17,8 @@ func TestDefaultCapabilities(t *testing.T) {
 func TestNormalizeCapabilitiesEmpty(t *testing.T) {
 	t.Parallel()
 	got := NormalizeCapabilities("gemini", ProviderCapabilities{})
-	if got.Stream {
-		t.Fatal("expected no stream")
+	if !got.Stream {
+		t.Fatal("expected stream by default")
 	}
 }
 

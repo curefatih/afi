@@ -8,13 +8,8 @@ type ProviderCapabilities struct {
 
 // DefaultCapabilities returns catalog defaults for a provider type.
 func DefaultCapabilities(typ string) ProviderCapabilities {
-	switch typ {
-	case "gemini":
-		return ProviderCapabilities{Chat: true, Stream: false}
-	default:
-		// openai, anthropic, openai_compatible, unknown → assume chat+stream
-		return ProviderCapabilities{Chat: true, Stream: true}
-	}
+	// Built-ins all support chat+stream (Gemini via streamGenerateContent).
+	return ProviderCapabilities{Chat: true, Stream: true}
 }
 
 // NormalizeCapabilities fills empty capabilities from the type catalog.
