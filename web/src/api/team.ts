@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "#/lib/api-client";
 import type { Team } from "#/state/organization-state";
 
@@ -15,6 +15,20 @@ export const teamsQueryOptions = (orgId: string) =>
 		queryFn: () =>
 			apiFetch<Team[]>(`/api/v1/platform/organizations/${orgId}/teams`),
 		enabled: !!orgId,
+	});
+
+export type CreateTeamInput = {
+	orgId: string;
+	name: string;
+};
+
+export const createTeamMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ orgId, name }: CreateTeamInput) =>
+			apiFetch<Team>(`/api/v1/platform/organizations/${orgId}/teams`, {
+				method: "POST",
+				body: { name },
+			}),
 	});
 
 export const teamQueryOptions = (teamId: string) =>

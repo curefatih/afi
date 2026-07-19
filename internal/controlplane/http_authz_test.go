@@ -117,6 +117,9 @@ func (f *fakePlatform) ListOrganizationsForUser(context.Context, string) ([]Orga
 	return nil, nil
 }
 func (f *fakePlatform) ListTeams(context.Context, string) ([]Team, error) { return nil, nil }
+func (f *fakePlatform) CreateTeam(context.Context, string, string, string) (*Team, error) {
+	return nil, errors.New("unused")
+}
 func (f *fakePlatform) GetTeam(context.Context, string) (*Team, error) {
 	return nil, kernel.ErrNotFound
 }

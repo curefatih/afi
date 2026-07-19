@@ -75,6 +75,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/members", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleAddOrgMember)))
 	mux.HandleFunc("PATCH /api/v1/platform/organizations/{orgID}/members/{userID}", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleUpdateOrgMemberRole)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/teams", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListTeams)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/teams", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateTeam)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/projects", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListProjects)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/projects", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleCreateProject)))
 
@@ -294,6 +295,23 @@ func (s *Server) handleListTeams(w http.ResponseWriter, r *http.Request) {
 		teams = []Team{}
 	}
 	writeJSON(w, http.StatusOK, teams)
+}
+
+func (s *Server) handleCreateTeam(w http.ResponseWriter, r *http.Request) {
+	claims := claimsFrom(r.Context())
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.Name) == "" {
+		writeErr(w, http.StatusBadRequest, "name required")
+		return
+	}
+	team, err := s.api.CreateTeam(r.Context(), r.PathValue("orgID"), strings.TrimSpace(body.Name), claims.UserID)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, team)
 }
 
 func (s *Server) handleGetTeam(w http.ResponseWriter, r *http.Request) {

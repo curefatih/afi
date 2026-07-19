@@ -265,6 +265,26 @@ func (t *Teams) ListMembers(ctx context.Context, teamID string) ([]tenancy.TeamM
 	return out, rows.Err()
 }
 
+func (t *Teams) CreateWithOwner(ctx context.Context, team tenancy.Team, ownerUserID string) error {
+	tx, err := t.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO teams (id, organization_id, name, created_at, updated_at)
+		VALUES ($1,$2,$3,$4,$5)
+	`, team.ID, team.OrganizationID, team.Name, team.CreatedAt, team.UpdatedAt); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO team_members (team_id, user_id, role) VALUES ($1,$2,$3)
+	`, team.ID, ownerUserID, tenancy.TeamRoleOwner); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 // Projects implements tenancy.ProjectRepository.
 type Projects struct {
 	Pool *pgxpool.Pool

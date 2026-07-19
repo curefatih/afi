@@ -46,6 +46,18 @@ func (f *orgAdminFake) CreateOrganization(_ context.Context, name, creatorUserID
 	return o, nil
 }
 
+func (f *orgAdminFake) CreateTeam(_ context.Context, orgID, name, creatorUserID string) (*Team, error) {
+	if creatorUserID == "" {
+		return nil, kernel.ErrInvalidRequest
+	}
+	now := time.Now().UTC()
+	t := &Team{
+		ID: "team_new", TeamID: "team_new", OrganizationID: orgID, Name: name,
+		CreatedAt: now, UpdatedAt: now,
+	}
+	return t, nil
+}
+
 func (f *orgAdminFake) ListOrgMembers(_ context.Context, orgID string) ([]OrgMember, error) {
 	return f.members[orgID], nil
 }
@@ -133,6 +145,65 @@ func TestCreateOrganization(t *testing.T) {
 	}
 	if org.Name != "Acme" || org.ID == "" {
 		t.Fatalf("%+v", org)
+	}
+}
+
+func TestCreateTeamRequiresAdmin(t *testing.T) {
+	t.Parallel()
+	api := newOrgAdminFake()
+	s := &Server{
+		cfg: testCfg(), api: api,
+		members: &fakeMembers{
+			allowed: map[string]bool{"user_admin|org_x": true},
+			admins:  map[string]bool{},
+		},
+		publisher: &fakePublisher{}, log: slog.Default(),
+	}
+	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_admin", "admin@afi.local", "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/platform/organizations/org_x/teams",
+		bytes.NewBufferString(`{"name":"Platform"}`))
+	req.SetPathValue("orgID", "org_x")
+	req.Header.Set("Authorization", "Bearer "+tok)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestCreateTeamSuccess(t *testing.T) {
+	t.Parallel()
+	api := newOrgAdminFake()
+	s := &Server{
+		cfg: testCfg(), api: api,
+		members: &fakeMembers{
+			allowed: map[string]bool{"user_admin|org_x": true},
+			admins:  map[string]bool{"user_admin|org_x": true},
+		},
+		publisher: &fakePublisher{}, log: slog.Default(),
+	}
+	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_admin", "admin@afi.local", "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/platform/organizations/org_x/teams",
+		bytes.NewBufferString(`{"name":"Platform"}`))
+	req.SetPathValue("orgID", "org_x")
+	req.Header.Set("Authorization", "Bearer "+tok)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var team Team
+	if err := json.Unmarshal(rr.Body.Bytes(), &team); err != nil {
+		t.Fatal(err)
+	}
+	if team.Name != "Platform" || team.ID == "" || team.OrganizationID != "org_x" {
+		t.Fatalf("%+v", team)
 	}
 }
 

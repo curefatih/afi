@@ -39,6 +39,7 @@ type OrganizationState = {
 		setActiveProjectById: (projectId: string | undefined) => void;
 		setOrgTeams: (orgId: string, teams: Team[]) => void;
 		setOrgProjects: (orgId: string, projects: Project[]) => void;
+		upsertTeam: (orgId: string, team: Team) => void;
 		upsertProject: (orgId: string, project: Project) => void;
 	};
 };
@@ -106,6 +107,24 @@ export const useOrgStore = create<OrganizationState>()(
 							org.id === orgId ? { ...org, projects } : org,
 						),
 					});
+				},
+				upsertTeam(orgId, team) {
+					set({
+						orgs: get().orgs.map((org) => {
+							if (org.id !== orgId) return org;
+							const exists = org.teams.some((t) => t.id === team.id);
+							return {
+								...org,
+								teams: exists
+									? org.teams.map((t) => (t.id === team.id ? team : t))
+									: [...org.teams, team],
+							};
+						}),
+					});
+					const { activeTeamId, activeOrgId } = get();
+					if (!activeTeamId && activeOrgId === orgId) {
+						set({ activeTeamId: team.id });
+					}
 				},
 				upsertProject(orgId, project) {
 					set({

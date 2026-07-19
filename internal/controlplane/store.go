@@ -135,6 +135,10 @@ func (s *Store) ListTeams(ctx context.Context, orgID string) ([]Team, error) {
 	return s.teamsRepo().ListByOrg(ctx, orgID)
 }
 
+func (s *Store) CreateTeam(ctx context.Context, orgID, name, creatorUserID string) (*Team, error) {
+	return tenancy.CreateTeam(ctx, s.teamsRepo(), newID("team"), orgID, name, creatorUserID)
+}
+
 func (s *Store) GetTeam(ctx context.Context, teamID string) (*Team, error) {
 	return s.teamsRepo().Get(ctx, teamID)
 }

@@ -36,6 +36,7 @@ type platformAPI interface {
 	AddOrgMemberByEmail(ctx context.Context, orgID, email string) (*OrgMember, error)
 	UpdateOrgMemberRole(ctx context.Context, orgID, actorUserID, targetUserID, role string) (*OrgMember, error)
 	ListTeams(ctx context.Context, orgID string) ([]Team, error)
+	CreateTeam(ctx context.Context, orgID, name, creatorUserID string) (*Team, error)
 	GetTeam(ctx context.Context, teamID string) (*Team, error)
 	ListTeamMembers(ctx context.Context, teamID string) ([]TeamMember, error)
 	ListProjects(ctx context.Context, orgID string) ([]Project, error)

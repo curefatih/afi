@@ -25,6 +25,21 @@ func CreateOrganization(ctx context.Context, repo OrganizationRepository, id, na
 	return o, nil
 }
 
+// CreateTeam creates a team and assigns the creator as team owner.
+func CreateTeam(ctx context.Context, repo TeamRepository, id, orgID, name, creatorUserID string) (*Team, error) {
+	if creatorUserID == "" {
+		return nil, kernel.ErrInvalidRequest
+	}
+	t, err := NewTeam(id, orgID, name, timeNowUTC())
+	if err != nil {
+		return nil, err
+	}
+	if err := repo.CreateWithOwner(ctx, *t, creatorUserID); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
 // CreateProject validates and persists a project.
 func CreateProject(ctx context.Context, repo ProjectRepository, id, orgID, teamID, name string) (*Project, error) {
 	p, err := NewProject(id, orgID, teamID, name, timeNowUTC())

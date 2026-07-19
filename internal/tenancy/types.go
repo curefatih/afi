@@ -12,6 +12,8 @@ const (
 	OrgRoleOwner  = "owner"
 	OrgRoleAdmin  = "admin"
 	OrgRoleMember = "member"
+
+	TeamRoleOwner = "owner"
 )
 
 // Organization is a tenant root.
@@ -109,6 +111,25 @@ func NewOrganization(id, name string, now time.Time) (*Organization, error) {
 		now = time.Now().UTC()
 	}
 	return &Organization{ID: id, Name: name, CreatedAt: now.UTC()}, nil
+}
+
+// NewTeam builds a validated team entity.
+func NewTeam(id, orgID, name string, now time.Time) (*Team, error) {
+	name = strings.TrimSpace(name)
+	if id == "" || orgID == "" {
+		return nil, fmt.Errorf("%w: id and organization_id required", kernel.ErrInvalidRequest)
+	}
+	if name == "" {
+		return nil, fmt.Errorf("%w: name required", kernel.ErrInvalidRequest)
+	}
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	now = now.UTC()
+	return &Team{
+		ID: id, TeamID: id, OrganizationID: orgID, Name: name,
+		CreatedAt: now, UpdatedAt: now,
+	}, nil
 }
 
 // NewProject builds a validated project entity.

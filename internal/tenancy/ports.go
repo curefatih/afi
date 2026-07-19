@@ -21,6 +21,7 @@ type TeamRepository interface {
 	Get(ctx context.Context, teamID string) (*Team, error)
 	OrgID(ctx context.Context, teamID string) (string, error)
 	ListMembers(ctx context.Context, teamID string) ([]TeamMember, error)
+	CreateWithOwner(ctx context.Context, team Team, ownerUserID string) error
 }
 
 // ProjectRepository persists projects.
