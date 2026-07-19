@@ -17,6 +17,7 @@ import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-passw
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthenticatedAppRouteRouteImport } from './routes/_authenticated/app/route'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app/index'
+import { Route as AuthInviteTokenRouteImport } from './routes/auth/invite.$token'
 import { Route as AuthenticatedAppUsersRouteImport } from './routes/_authenticated/app/users'
 import { Route as AuthenticatedAppUsageRouteImport } from './routes/_authenticated/app/usage'
 import { Route as AuthenticatedAppSecretsRouteImport } from './routes/_authenticated/app/secrets'
@@ -80,6 +81,11 @@ const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedAppRouteRoute,
+} as any)
+const AuthInviteTokenRoute = AuthInviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => AuthRouteRoute,
 } as any)
 const AuthenticatedAppUsersRoute = AuthenticatedAppUsersRouteImport.update({
   id: '/users',
@@ -232,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/app/secrets': typeof AuthenticatedAppSecretsRoute
   '/app/usage': typeof AuthenticatedAppUsageRoute
   '/app/users': typeof AuthenticatedAppUsersRoute
+  '/auth/invite/$token': typeof AuthInviteTokenRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/app/playground/chat': typeof AuthenticatedAppPlaygroundChatRoute
   '/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
@@ -264,6 +271,7 @@ export interface FileRoutesByTo {
   '/app/secrets': typeof AuthenticatedAppSecretsRoute
   '/app/usage': typeof AuthenticatedAppUsageRoute
   '/app/users': typeof AuthenticatedAppUsersRoute
+  '/auth/invite/$token': typeof AuthInviteTokenRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/app/playground/chat': typeof AuthenticatedAppPlaygroundChatRoute
   '/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
@@ -298,6 +306,7 @@ export interface FileRoutesById {
   '/_authenticated/app/secrets': typeof AuthenticatedAppSecretsRoute
   '/_authenticated/app/usage': typeof AuthenticatedAppUsageRoute
   '/_authenticated/app/users': typeof AuthenticatedAppUsersRoute
+  '/auth/invite/$token': typeof AuthInviteTokenRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/playground/chat': typeof AuthenticatedAppPlaygroundChatRoute
   '/_authenticated/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
@@ -333,6 +342,7 @@ export interface FileRouteTypes {
     | '/app/secrets'
     | '/app/usage'
     | '/app/users'
+    | '/auth/invite/$token'
     | '/app/'
     | '/app/playground/chat'
     | '/app/playground/stt'
@@ -365,6 +375,7 @@ export interface FileRouteTypes {
     | '/app/secrets'
     | '/app/usage'
     | '/app/users'
+    | '/auth/invite/$token'
     | '/app'
     | '/app/playground/chat'
     | '/app/playground/stt'
@@ -398,6 +409,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/secrets'
     | '/_authenticated/app/usage'
     | '/_authenticated/app/users'
+    | '/auth/invite/$token'
     | '/_authenticated/app/'
     | '/_authenticated/app/playground/chat'
     | '/_authenticated/app/playground/stt'
@@ -475,6 +487,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/'
       preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/auth/invite/$token': {
+      id: '/auth/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/auth/invite/$token'
+      preLoaderRoute: typeof AuthInviteTokenRouteImport
+      parentRoute: typeof AuthRouteRoute
     }
     '/_authenticated/app/users': {
       id: '/_authenticated/app/users'
@@ -644,12 +663,14 @@ interface AuthRouteRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   AuthSignupRoute: typeof AuthSignupRoute
+  AuthInviteTokenRoute: typeof AuthInviteTokenRoute
 }
 
 const AuthRouteRouteChildren: AuthRouteRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   AuthSignupRoute: AuthSignupRoute,
+  AuthInviteTokenRoute: AuthInviteTokenRoute,
 }
 
 const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(

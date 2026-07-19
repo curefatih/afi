@@ -38,12 +38,144 @@ export const createOrganizationMutationOptions = () =>
 			}),
 	});
 
-export const addOrgMemberMutationOptions = () =>
+export type OrgInvite = {
+	id: string;
+	organization_id: string;
+	email: string;
+	role: string;
+	invited_by_user_id: string;
+	status: string;
+	expires_at: string;
+	created_at: string;
+	accepted_at?: string | null;
+};
+
+export type InviteOutcome = {
+	status: "added" | "invited";
+	member?: OrgMember;
+	invite?: OrgInvite;
+};
+
+export const inviteOrgMemberMutationOptions = () =>
 	mutationOptions({
 		mutationFn: ({ orgId, email }: { orgId: string; email: string }) =>
-			apiFetch<OrgMember>(`/api/v1/platform/organizations/${orgId}/members`, {
+			apiFetch<InviteOutcome>(
+				`/api/v1/platform/organizations/${orgId}/members`,
+				{
+					method: "POST",
+					body: { email },
+				},
+			),
+	});
+
+/** @deprecated use inviteOrgMemberMutationOptions */
+export const addOrgMemberMutationOptions = inviteOrgMemberMutationOptions;
+
+export const orgInvitesQueryOptions = (orgId: string) =>
+	queryOptions({
+		queryKey: ["organizations", orgId, "invites"],
+		queryFn: () =>
+			apiFetch<OrgInvite[]>(`/api/v1/platform/organizations/${orgId}/invites`),
+		enabled: !!orgId,
+	});
+
+export const revokeOrgInviteMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ orgId, inviteId }: { orgId: string; inviteId: string }) =>
+			apiFetch<void>(
+				`/api/v1/platform/organizations/${orgId}/invites/${inviteId}`,
+				{ method: "DELETE" },
+			),
+	});
+
+export const resendOrgInviteMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ orgId, inviteId }: { orgId: string; inviteId: string }) =>
+			apiFetch<OrgInvite>(
+				`/api/v1/platform/organizations/${orgId}/invites/${inviteId}/resend`,
+				{ method: "POST" },
+			),
+	});
+
+export type OrgMailSettings = {
+	selected: string;
+	default_provider: string;
+	enabled_providers: string[];
+	from?: string;
+	public_app_url?: string;
+};
+
+export const orgMailQueryOptions = (orgId: string) =>
+	queryOptions({
+		queryKey: ["organizations", orgId, "mail"],
+		queryFn: () =>
+			apiFetch<OrgMailSettings>(
+				`/api/v1/platform/organizations/${orgId}/mail`,
+			),
+		enabled: !!orgId,
+	});
+
+export const updateOrgMailMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({
+			orgId,
+			provider,
+		}: {
+			orgId: string;
+			provider: string;
+		}) =>
+			apiFetch<OrgMailSettings>(
+				`/api/v1/platform/organizations/${orgId}/mail`,
+				{ method: "PATCH", body: { provider } },
+			),
+	});
+
+export const testOrgMailMutationOptions = () =>
+	mutationOptions({
+		mutationFn: (orgId: string) =>
+			apiFetch<{ status: string; to: string }>(
+				`/api/v1/platform/organizations/${orgId}/mail/test`,
+				{ method: "POST" },
+			),
+	});
+
+export type InvitePreview = {
+	email: string;
+	organization_id: string;
+	organization_name: string;
+	expires_at: string;
+	user_exists: boolean;
+};
+
+export const invitePreviewQueryOptions = (token: string) =>
+	queryOptions({
+		queryKey: ["auth", "invites", token],
+		queryFn: () =>
+			apiFetch<InvitePreview>(`/api/v1/platform/auth/invites/${token}`, {
+				auth: false,
+			}),
+		enabled: !!token,
+	});
+
+export const acceptInviteMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({
+			token,
+			name,
+			password,
+		}: {
+			token: string;
+			name?: string;
+			password?: string;
+		}) =>
+			apiFetch<{
+				member: OrgMember;
+				user: { id: string; email: string; name: string; role: string };
+				token: string;
+			}>(`/api/v1/platform/auth/invites/${token}/accept`, {
 				method: "POST",
-				body: { email },
+				auth: false,
+				body: { name, password },
 			}),
 	});
 

@@ -4,10 +4,13 @@ import { PlusIcon, UsersIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-	addOrgMemberMutationOptions,
 	type OrgMember,
 	type OrgRole,
+	inviteOrgMemberMutationOptions,
+	orgInvitesQueryOptions,
 	orgMembersQueryOptions,
+	resendOrgInviteMutationOptions,
+	revokeOrgInviteMutationOptions,
 	updateOrgMemberRoleMutationOptions,
 } from "#/api/organization";
 import { PageBody, PageHeader } from "#/components/page-header";
@@ -63,7 +66,13 @@ function RouteComponent() {
 	const user = useAuthUser();
 	const qc = useQueryClient();
 	const members = useQuery(orgMembersQueryOptions(orgId));
+	const invites = useQuery({
+		...orgInvitesQueryOptions(orgId),
+		enabled: !!orgId,
+	});
 	const updateRole = useMutation(updateOrgMemberRoleMutationOptions());
+	const revokeInvite = useMutation(revokeOrgInviteMutationOptions());
+	const resendInvite = useMutation(resendOrgInviteMutationOptions());
 	const [busyUserId, setBusyUserId] = useState<string | null>(null);
 	const [inviteOpen, setInviteOpen] = useState(false);
 	const [email, setEmail] = useState("");
@@ -76,15 +85,27 @@ function RouteComponent() {
 	const isOwner = me?.role === "owner";
 	const isOrgAdmin = isOwner || me?.role === "admin";
 
+	const pendingInvites = useMemo(
+		() => (invites.data ?? []).filter((i) => i.status === "pending"),
+		[invites.data],
+	);
+
 	const invite = useMutation({
-		...addOrgMemberMutationOptions(),
-		onSuccess: () => {
+		...inviteOrgMemberMutationOptions(),
+		onSuccess: (outcome) => {
 			void qc.invalidateQueries({
 				queryKey: ["organizations", orgId, "members"],
 			});
+			void qc.invalidateQueries({
+				queryKey: ["organizations", orgId, "invites"],
+			});
 			setEmail("");
 			setInviteOpen(false);
-			toast.success("Member added");
+			toast.success(
+				outcome.status === "invited"
+					? "Invite sent"
+					: "Member added and notified",
+			);
 		},
 	});
 
@@ -118,8 +139,8 @@ function RouteComponent() {
 				title="Users"
 				description={
 					org
-						? `People in ${org.name}. Invite members and change roles here.`
-						: "Organization members. Invite members and change roles here."
+						? `People in ${org.name}. Invite by email — new users get an accept link.`
+						: "Organization members. Invite by email — new users get an accept link."
 				}
 				actions={
 					<div className="flex flex-wrap gap-2">
@@ -155,8 +176,8 @@ function RouteComponent() {
 							</EmptyMedia>
 							<EmptyTitle>No members</EmptyTitle>
 							<EmptyDescription>
-								Invite an existing platform user by email. No email is sent —
-								the user must already have an account.
+								Invite people by email. Existing users are added immediately;
+								new users receive an invite link to create their account.
 							</EmptyDescription>
 						</EmptyHeader>
 						{isOrgAdmin ? (
@@ -227,13 +248,83 @@ function RouteComponent() {
 				)}
 			</QueryGate>
 
+			{isOrgAdmin && pendingInvites.length > 0 ? (
+				<section className="mt-8 space-y-3">
+					<h2 className="text-sm font-medium">Pending invites</h2>
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Email</TableHead>
+								<TableHead>Expires</TableHead>
+								<TableHead className="w-48" />
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{pendingInvites.map((inv) => (
+								<TableRow key={inv.id}>
+									<TableCell>{inv.email}</TableCell>
+									<TableCell className="text-muted-foreground text-sm">
+										{new Date(inv.expires_at).toLocaleString()}
+									</TableCell>
+									<TableCell className="flex gap-2">
+										<Button
+											variant="outline"
+											size="sm"
+											disabled={resendInvite.isPending}
+											onClick={() =>
+												resendInvite.mutate(
+													{ orgId, inviteId: inv.id },
+													{
+														onSuccess: () => toast.success("Invite resent"),
+														onError: (err) =>
+															toast.error(
+																err.message || "Failed to resend invite",
+															),
+													},
+												)
+											}
+										>
+											Resend
+										</Button>
+										<Button
+											variant="ghost"
+											size="sm"
+											disabled={revokeInvite.isPending}
+											onClick={() =>
+												revokeInvite.mutate(
+													{ orgId, inviteId: inv.id },
+													{
+														onSuccess: () => {
+															void qc.invalidateQueries({
+																queryKey: ["organizations", orgId, "invites"],
+															});
+															toast.success("Invite revoked");
+														},
+														onError: (err) =>
+															toast.error(
+																err.message || "Failed to revoke invite",
+															),
+													},
+												)
+											}
+										>
+											Revoke
+										</Button>
+									</TableCell>
+								</TableRow>
+							))}
+						</TableBody>
+					</Table>
+				</section>
+			) : null}
+
 			<Sheet open={inviteOpen} onOpenChange={setInviteOpen}>
 				<SheetContent>
 					<SheetHeader>
 						<SheetTitle>Invite member</SheetTitle>
 						<SheetDescription>
-							Add an existing platform user by email. No email is sent — the
-							user must already have an account.
+							Enter an email address. Existing users are added and emailed; new
+							users receive an invite link to set a password and join.
 						</SheetDescription>
 					</SheetHeader>
 					<form
@@ -278,7 +369,7 @@ function RouteComponent() {
 								type="submit"
 								disabled={invite.isPending || !email.trim() || !orgId}
 							>
-								{invite.isPending ? "Adding…" : "Add member"}
+								{invite.isPending ? "Sending…" : "Send invite"}
 							</Button>
 						</SheetFooter>
 					</form>
