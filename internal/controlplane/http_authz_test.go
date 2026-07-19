@@ -16,10 +16,28 @@ import (
 
 type fakeMembers struct {
 	allowed map[string]bool
+	admins  map[string]bool
+	keyOrg  map[string]string
 }
 
 func (f *fakeMembers) IsOrgMember(_ context.Context, userID, orgID string) (bool, error) {
 	return f.allowed[userID+"|"+orgID], nil
+}
+
+func (f *fakeMembers) IsOrgAdmin(_ context.Context, userID, orgID string) (bool, error) {
+	if f.admins != nil {
+		return f.admins[userID+"|"+orgID], nil
+	}
+	return f.allowed[userID+"|"+orgID], nil
+}
+
+func (f *fakeMembers) GetAPIKeyOrgID(_ context.Context, keyID string) (string, error) {
+	if f.keyOrg != nil {
+		if org, ok := f.keyOrg[keyID]; ok {
+			return org, nil
+		}
+	}
+	return "", kernel.ErrNotFound
 }
 
 func (f *fakeMembers) GetTeamOrgID(_ context.Context, teamID string) (string, error) {
@@ -101,9 +119,16 @@ func (f *fakePlatform) CreateProject(_ context.Context, orgID, teamID, name stri
 	return f.created, nil
 }
 func (f *fakePlatform) ListAPIKeys(context.Context, string) ([]APIKey, error) { return nil, nil }
-func (f *fakePlatform) CreateAPIKey(context.Context, string, string, string, string) (*APIKey, error) {
+func (f *fakePlatform) ListOrgAPIKeys(context.Context, string) ([]APIKey, error) {
+	return nil, nil
+}
+func (f *fakePlatform) GetAPIKey(context.Context, string) (*APIKey, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *fakePlatform) CreateAPIKey(context.Context, string, string, string, string, string, string) (*APIKey, error) {
 	return nil, errors.New("unused")
 }
+func (f *fakePlatform) DeleteAPIKey(context.Context, string) error { return kernel.ErrNotFound }
 func (f *fakePlatform) ListProviders(context.Context, string) ([]Provider, error) { return nil, nil }
 func (f *fakePlatform) CreateProvider(context.Context, string, string, string, string, string, snapshot.ProviderCapabilities) (*Provider, error) {
 	return nil, errors.New("unused")

@@ -69,15 +69,19 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/usage", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListUsage)))
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/quotas", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListQuotas)))
-	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/quotas", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleCreateQuota)))
-	mux.HandleFunc("PATCH /api/v1/platform/quotas/{quotaID}", s.requireAuth(s.requireOrgMemberViaQuota(s.handleUpdateQuota)))
-	mux.HandleFunc("DELETE /api/v1/platform/quotas/{quotaID}", s.requireAuth(s.requireOrgMemberViaQuota(s.handleDeleteQuota)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/quotas", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateQuota)))
+	mux.HandleFunc("PATCH /api/v1/platform/quotas/{quotaID}", s.requireAuth(s.requireOrgAdminViaQuota(s.handleUpdateQuota)))
+	mux.HandleFunc("DELETE /api/v1/platform/quotas/{quotaID}", s.requireAuth(s.requireOrgAdminViaQuota(s.handleDeleteQuota)))
 
 	mux.HandleFunc("GET /api/v1/platform/teams/{teamID}", s.requireAuth(s.requireOrgMemberViaTeam(s.handleGetTeam)))
 	mux.HandleFunc("GET /api/v1/platform/teams/{teamID}/members", s.requireAuth(s.requireOrgMemberViaTeam(s.handleListTeamMembers)))
 
+	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/keys", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListOrgKeys)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/keys", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleCreateOrgKey)))
+	mux.HandleFunc("DELETE /api/v1/platform/keys/{keyID}", s.requireAuth(s.handleDeleteKey))
+
 	mux.HandleFunc("GET /api/v1/platform/projects/{projectID}/keys", s.requireAuth(s.requireOrgMemberViaProject(s.handleListKeys)))
-	mux.HandleFunc("POST /api/v1/platform/projects/{projectID}/keys", s.requireAuth(s.requireOrgMemberViaProject(s.handleCreateKey)))
+	mux.HandleFunc("POST /api/v1/platform/projects/{projectID}/keys", s.requireAuth(s.requireOrgAdminViaProject(s.handleCreateKey)))
 
 	return withCORS(mux)
 }
@@ -295,6 +299,136 @@ func (s *Server) handleListKeys(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, keys)
 }
 
+func (s *Server) handleListOrgKeys(w http.ResponseWriter, r *http.Request) {
+	orgID := r.PathValue("orgID")
+	claims := claimsFrom(r.Context())
+	keys, err := s.api.ListOrgAPIKeys(r.Context(), orgID)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	admin, err := s.members.IsOrgAdmin(r.Context(), claims.UserID, orgID)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !admin {
+		filtered := make([]APIKey, 0, len(keys))
+		for _, k := range keys {
+			if k.Kind == snapshot.KeyKindServiceAccount || k.OwnerUserID == claims.UserID {
+				filtered = append(filtered, k)
+			}
+		}
+		keys = filtered
+	}
+	if keys == nil {
+		keys = []APIKey{}
+	}
+	writeJSON(w, http.StatusOK, keys)
+}
+
+func (s *Server) handleCreateOrgKey(w http.ResponseWriter, r *http.Request) {
+	orgID := r.PathValue("orgID")
+	claims := claimsFrom(r.Context())
+	var body struct {
+		Name      string `json:"name"`
+		Key       string `json:"key"`
+		Kind      string `json:"kind"`
+		ProjectID string `json:"project_id"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if body.Name == "" {
+		body.Name = "API Key"
+	}
+	if body.Key == "" {
+		body.Key = "sk-" + randomHex(24)
+	}
+	if body.Kind == "" {
+		body.Kind = snapshot.KeyKindPersonal
+	}
+
+	ownerUserID := ""
+	switch body.Kind {
+	case snapshot.KeyKindPersonal:
+		if body.ProjectID != "" {
+			writeErr(w, http.StatusBadRequest, "personal keys cannot have a project")
+			return
+		}
+		ownerUserID = claims.UserID
+	case snapshot.KeyKindServiceAccount:
+		admin, err := s.members.IsOrgAdmin(r.Context(), claims.UserID, orgID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !admin {
+			writeErr(w, http.StatusForbidden, "only org admins can create service account keys")
+			return
+		}
+	default:
+		writeErr(w, http.StatusBadRequest, "kind must be personal or service_account")
+		return
+	}
+
+	k, err := s.api.CreateAPIKey(r.Context(), orgID, body.Kind, ownerUserID, body.ProjectID, body.Name, body.Key)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
+		writeErr(w, http.StatusInternalServerError, "created but snapshot publish failed: "+err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, k)
+}
+
+func (s *Server) handleDeleteKey(w http.ResponseWriter, r *http.Request) {
+	claims := claimsFrom(r.Context())
+	keyID := r.PathValue("keyID")
+	k, err := s.api.GetAPIKey(r.Context(), keyID)
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ok, err := s.members.IsOrgMember(r.Context(), claims.UserID, k.OrganizationID)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !ok {
+		writeErr(w, http.StatusForbidden, "forbidden")
+		return
+	}
+	admin, err := s.members.IsOrgAdmin(r.Context(), claims.UserID, k.OrganizationID)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !admin && !(k.Kind == snapshot.KeyKindPersonal && k.OwnerUserID == claims.UserID) {
+		writeErr(w, http.StatusForbidden, "forbidden")
+		return
+	}
+	if err := s.api.DeleteAPIKey(r.Context(), keyID); errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	} else if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
+		writeErr(w, http.StatusInternalServerError, "deleted but snapshot publish failed: "+err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Name string `json:"name"`
@@ -317,9 +451,9 @@ func (s *Server) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	k, err := s.api.CreateAPIKey(r.Context(), orgID, r.PathValue("projectID"), body.Name, body.Key)
+	k, err := s.api.CreateAPIKey(r.Context(), orgID, snapshot.KeyKindServiceAccount, "", r.PathValue("projectID"), body.Name, body.Key)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
@@ -540,6 +674,10 @@ func (s *Server) handleCreateQuota(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q, err := s.api.CreateQuota(r.Context(), r.PathValue("orgID"), body.ScopeType, body.ScopeID, body.Metric, body.LimitValue, body.Window)
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -640,6 +778,65 @@ func (s *Server) requireOrgMemberFromPath(pathKey string, next http.HandlerFunc)
 		}
 		next(w, r)
 	}
+}
+
+func (s *Server) requireOrgAdminFromPath(pathKey string, next http.HandlerFunc) http.HandlerFunc {
+	return s.requireOrgMemberFromPath(pathKey, func(w http.ResponseWriter, r *http.Request) {
+		claims := claimsFrom(r.Context())
+		orgID := r.PathValue(pathKey)
+		ok, err := s.members.IsOrgAdmin(r.Context(), claims.UserID, orgID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !ok {
+			writeErr(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next(w, r)
+	})
+}
+
+func (s *Server) requireOrgAdminViaProject(next http.HandlerFunc) http.HandlerFunc {
+	return s.requireOrgMemberViaProject(func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := s.members.GetProjectOrgID(r.Context(), r.PathValue("projectID"))
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		claims := claimsFrom(r.Context())
+		ok, err := s.members.IsOrgAdmin(r.Context(), claims.UserID, orgID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !ok {
+			writeErr(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next(w, r)
+	})
+}
+
+func (s *Server) requireOrgAdminViaQuota(next http.HandlerFunc) http.HandlerFunc {
+	return s.requireOrgMemberViaQuota(func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := s.members.GetQuotaOrgID(r.Context(), r.PathValue("quotaID"))
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		claims := claimsFrom(r.Context())
+		ok, err := s.members.IsOrgAdmin(r.Context(), claims.UserID, orgID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !ok {
+			writeErr(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next(w, r)
+	})
 }
 
 func (s *Server) requireOrgMemberViaTeam(next http.HandlerFunc) http.HandlerFunc {
