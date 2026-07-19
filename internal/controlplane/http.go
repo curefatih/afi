@@ -31,10 +31,12 @@ type Server struct {
 }
 
 func NewServer(cfg *kernel.Config, store *Store, seeder *Seeder, snapStore snapshot.Store, log *slog.Logger) *Server {
+	app := platform.New(store, seeder)
+	app.Events = slogEventRecorder{log: log}
 	return &Server{
 		cfg:       cfg,
 		api:       store,
-		app:       platform.New(store, seeder),
+		app:       app,
 		members:   store,
 		publisher: seeder,
 		seeder:    seeder,
@@ -51,6 +53,9 @@ func (s *Server) ensureApp() {
 		return
 	}
 	s.app = platform.New(configAPIAdapter{s.api}, s.publisher)
+	if s.log != nil {
+		s.app.Events = slogEventRecorder{log: s.log}
+	}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -180,7 +185,7 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleListOrgs(w http.ResponseWriter, r *http.Request) {
 	claims := claimsFrom(r.Context())
-	orgs, err := s.api.ListOrganizationsForUser(r.Context(), claims.UserID)
+	orgs, err := s.app.ListOrganizationsForUser(r.Context(), claims.UserID)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -209,7 +214,7 @@ func (s *Server) handleCreateOrg(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListOrgMembers(w http.ResponseWriter, r *http.Request) {
-	list, err := s.api.ListOrgMembers(r.Context(), r.PathValue("orgID"))
+	list, err := s.app.ListOrgMembers(r.Context(), r.PathValue("orgID"))
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -280,7 +285,7 @@ func (s *Server) handleUpdateOrgMemberRole(w http.ResponseWriter, r *http.Reques
 }
 
 func (s *Server) handleListTeams(w http.ResponseWriter, r *http.Request) {
-	teams, err := s.api.ListTeams(r.Context(), r.PathValue("orgID"))
+	teams, err := s.app.ListTeams(r.Context(), r.PathValue("orgID"))
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -292,7 +297,7 @@ func (s *Server) handleListTeams(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetTeam(w http.ResponseWriter, r *http.Request) {
-	team, err := s.api.GetTeam(r.Context(), r.PathValue("teamID"))
+	team, err := s.app.GetTeam(r.Context(), r.PathValue("teamID"))
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
@@ -305,7 +310,7 @@ func (s *Server) handleGetTeam(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListTeamMembers(w http.ResponseWriter, r *http.Request) {
-	members, err := s.api.ListTeamMembers(r.Context(), r.PathValue("teamID"))
+	members, err := s.app.ListTeamMembers(r.Context(), r.PathValue("teamID"))
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -317,7 +322,7 @@ func (s *Server) handleListTeamMembers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
-	projects, err := s.api.ListProjects(r.Context(), r.PathValue("orgID"))
+	projects, err := s.app.ListProjects(r.Context(), r.PathValue("orgID"))
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -346,7 +351,7 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListKeys(w http.ResponseWriter, r *http.Request) {
-	keys, err := s.api.ListAPIKeys(r.Context(), r.PathValue("projectID"))
+	keys, err := s.app.ListAPIKeys(r.Context(), r.PathValue("projectID"))
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -360,24 +365,15 @@ func (s *Server) handleListKeys(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListOrgKeys(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgID")
 	claims := claimsFrom(r.Context())
-	keys, err := s.api.ListOrgAPIKeys(r.Context(), orgID)
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
-	}
 	admin, err := s.members.IsOrgAdmin(r.Context(), claims.UserID, orgID)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if !admin {
-		filtered := make([]APIKey, 0, len(keys))
-		for _, k := range keys {
-			if k.Kind == snapshot.KeyKindServiceAccount || k.OwnerUserID == claims.UserID {
-				filtered = append(filtered, k)
-			}
-		}
-		keys = filtered
+	keys, err := s.app.ListVisibleOrgAPIKeys(r.Context(), orgID, claims.UserID, admin)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 	if keys == nil {
 		keys = []APIKey{}
@@ -510,7 +506,7 @@ func (s *Server) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListProviders(w http.ResponseWriter, r *http.Request) {
-	list, err := s.api.ListProviders(r.Context(), r.PathValue("orgID"))
+	list, err := s.app.ListProviders(r.Context(), r.PathValue("orgID"))
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -535,7 +531,7 @@ func (s *Server) handleProviderHealth(w http.ResponseWriter, r *http.Request) {
 	if f.To != nil {
 		to = *f.To
 	}
-	list, err := s.api.ListProviderHealth(r.Context(), r.PathValue("orgID"), from, to)
+	list, err := s.app.ListProviderHealth(r.Context(), r.PathValue("orgID"), from, to)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -609,7 +605,7 @@ func (s *Server) handleDeleteProvider(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListRoutes(w http.ResponseWriter, r *http.Request) {
-	list, err := s.api.ListRoutes(r.Context(), r.PathValue("orgID"))
+	list, err := s.app.ListRoutes(r.Context(), r.PathValue("orgID"))
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -719,7 +715,7 @@ func (s *Server) handleListUsage(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	list, err := s.api.ListUsage(r.Context(), r.PathValue("orgID"), f)
+	list, err := s.app.ListUsage(r.Context(), r.PathValue("orgID"), f)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -739,7 +735,7 @@ func (s *Server) handleUsageSummary(w http.ResponseWriter, r *http.Request) {
 	if f.GroupBy == "" {
 		f.GroupBy = "day"
 	}
-	list, err := s.api.SummarizeUsage(r.Context(), r.PathValue("orgID"), f)
+	list, err := s.app.SummarizeUsage(r.Context(), r.PathValue("orgID"), f)
 	if errors.Is(err, kernel.ErrInvalidRequest) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
@@ -755,7 +751,7 @@ func (s *Server) handleUsageSummary(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListQuotas(w http.ResponseWriter, r *http.Request) {
-	list, err := s.api.ListQuotas(r.Context(), r.PathValue("orgID"))
+	list, err := s.app.ListQuotas(r.Context(), r.PathValue("orgID"))
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -826,7 +822,7 @@ func (s *Server) handleDeleteQuota(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
-	list, err := s.api.ListPolicies(r.Context(), r.PathValue("orgID"))
+	list, err := s.app.ListPolicies(r.Context(), r.PathValue("orgID"))
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
