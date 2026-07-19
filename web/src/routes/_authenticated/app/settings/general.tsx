@@ -9,6 +9,7 @@ import {
 	testOrgMailMutationOptions,
 	updateOrgMailMutationOptions,
 } from "#/api/organization";
+import { CopyableId } from "#/components/copyable-id";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { Button } from "#/components/ui/button";
 import {
@@ -103,7 +104,9 @@ function RouteComponent() {
 					</div>
 					<div>
 						<dt className="text-muted-foreground text-xs">ID</dt>
-						<dd className="font-mono text-xs">{activeOrg.id}</dd>
+						<dd>
+							<CopyableId value={activeOrg.id} />
+						</dd>
 					</div>
 				</dl>
 			</section>

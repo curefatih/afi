@@ -15,6 +15,7 @@ import {
 	teamMembersQueryOptions,
 	teamQueryOptions,
 } from "#/api/team";
+import { CopyableId } from "#/components/copyable-id";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
 import { Badge } from "#/components/ui/badge";
@@ -162,8 +163,10 @@ function RouteComponent() {
 				<Card>
 					<CardHeader>
 						<CardDescription>Team ID</CardDescription>
-						<CardTitle className="font-mono text-sm break-all">
-							{teamQuery.data?.id}
+						<CardTitle className="text-sm">
+							{teamQuery.data?.id ? (
+								<CopyableId value={teamQuery.data.id} className="text-sm" />
+							) : null}
 						</CardTitle>
 					</CardHeader>
 				</Card>

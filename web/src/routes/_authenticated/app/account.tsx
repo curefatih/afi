@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { InfoIcon, LogOutIcon } from "lucide-react";
 import { meQueryOptions } from "#/api/auth";
+import { CopyableId } from "#/components/copyable-id";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert";
@@ -100,11 +101,7 @@ function RouteComponent() {
 							</Field>
 							<Field>
 								<FieldLabel>User ID</FieldLabel>
-								<Input
-									readOnly
-									value={meQuery.data?.id ?? ""}
-									className="font-mono text-xs"
-								/>
+								<CopyableId value={meQuery.data?.id ?? ""} />
 							</Field>
 						</FieldGroup>
 					</CardContent>

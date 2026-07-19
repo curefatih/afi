@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { KeyRoundIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { projectKeysQueryOptions } from "#/api/keys";
+import { CopyableId } from "#/components/copyable-id";
 import { CreateKeySheet } from "#/components/create-key-sheet";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { PageSkeleton, QueryError, QueryGate } from "#/components/query-state";
@@ -93,8 +94,8 @@ function RouteComponent() {
 				<Card>
 					<CardHeader>
 						<CardDescription>Project ID</CardDescription>
-						<CardTitle className="font-mono text-sm break-all">
-							{project.id}
+						<CardTitle className="text-sm">
+							<CopyableId value={project.id} className="text-sm" />
 						</CardTitle>
 					</CardHeader>
 				</Card>
