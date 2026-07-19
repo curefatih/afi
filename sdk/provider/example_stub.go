@@ -7,7 +7,7 @@ import (
 )
 
 // ExampleAdapter is a documentation stub showing the shape of a custom adapter.
-// It is not registered by the gateway.
+// Prefer the working extensions/echo package for a real registration example.
 type ExampleAdapter struct{}
 
 func (ExampleAdapter) Type() string { return "example" }
@@ -24,7 +24,7 @@ func (ExampleAdapter) Chat(ctx context.Context, cfg ProviderConfig, targetModel 
 	if stream {
 		return nil, fmt.Errorf("streaming is not supported for provider type %q", "example")
 	}
-	return nil, fmt.Errorf("example adapter is a documentation stub only")
+	return nil, fmt.Errorf("example adapter is a documentation stub only; use extensions/echo")
 }
 
 // Ensure ExampleAdapter satisfies ChatProvider at compile time.
