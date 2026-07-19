@@ -14,6 +14,8 @@ import (
 type ProviderCaps struct {
 	Chat   bool
 	Stream bool
+	TTS    bool
+	STT    bool
 }
 
 // ChatProvider is the in-process adapter contract for gateway chat.
@@ -68,8 +70,8 @@ func RegistryFromClients(c *llm.Clients) *Registry {
 		c = llm.NewClients(nil)
 	}
 	return NewRegistry().
-		Register(newOpenAIChatProvider("openai", c.OpenAI, ProviderCaps{Chat: true, Stream: true})).
-		Register(newOpenAIChatProvider("openai_compatible", c.OpenAICompatible, ProviderCaps{Chat: true, Stream: true})).
+		Register(newOpenAIChatProvider("openai", c.OpenAI, ProviderCaps{Chat: true, Stream: true, TTS: true, STT: true})).
+		Register(newOpenAIChatProvider("openai_compatible", c.OpenAICompatible, ProviderCaps{Chat: true, Stream: true, TTS: true, STT: true})).
 		Register(newAnthropicChatProvider(c.Anthropic)).
 		Register(newGeminiChatProvider(c.Gemini))
 }
@@ -101,7 +103,12 @@ func (p *openaiChatProvider) Chat(ctx context.Context, provider snapshot.Provide
 	return p.client.ChatCompletions(ctx, provider, targetModel, body, stream)
 }
 
-func (p *openaiChatProvider) OpenAITransport() OpenAITransport { return p.client }
+func (p *openaiChatProvider) OpenAITransport() OpenAITransport {
+	if p.client == nil {
+		return nil
+	}
+	return p.client
+}
 
 type anthropicChatProvider struct {
 	client *llm.AnthropicClient
@@ -120,7 +127,12 @@ func (p *anthropicChatProvider) Chat(ctx context.Context, provider snapshot.Prov
 	return p.client.Messages(ctx, provider, targetModel, body, stream)
 }
 
-func (p *anthropicChatProvider) AnthropicTransport() AnthropicTransport { return p.client }
+func (p *anthropicChatProvider) AnthropicTransport() AnthropicTransport {
+	if p.client == nil {
+		return nil
+	}
+	return p.client
+}
 
 type geminiChatProvider struct {
 	client *llm.GeminiClient

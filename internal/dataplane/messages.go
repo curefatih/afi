@@ -102,13 +102,6 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := p.anthropicClient()
-	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]any{
-			"error": map[string]string{"message": err.Error(), "type": "server_error"},
-		})
-		return
-	}
 	log.Info("messages",
 		"project_id", key.ProjectID,
 		"model", reqBody.Model,
@@ -128,6 +121,15 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 	for i, attempt := range attempts {
 		usedProvider = attempt.Provider
 		usedTarget = attempt.TargetModel
+		client, err := p.messagesBackend(attempt.Provider.Type)
+		if err != nil {
+			lastErr = err
+			log.Warn("upstream messages backend missing", "provider", attempt.Provider.ID, "err", err, "attempt", i)
+			if i+1 < len(attempts) {
+				continue
+			}
+			break
+		}
 		resp, lastErr = client.PassThrough(ctx, attempt.Provider, attempt.TargetModel, body, reqBody.Stream)
 		if lastErr != nil {
 			log.Warn("upstream messages attempt failed", "provider", attempt.Provider.ID, "err", lastErr, "attempt", i)

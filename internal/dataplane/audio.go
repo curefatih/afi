@@ -138,7 +138,7 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info("audio.speech", "model", reqBody.Model, "target_model", route.TargetModel, "provider", provider.ID)
-	client, err := p.openaiAudioClient()
+	client, err := p.audioBackend(provider.Type)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]any{
 			"error": map[string]string{"message": err.Error(), "type": "server_error"},
@@ -268,7 +268,7 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 	}
 
 	log.Info("audio.transcriptions", "model", model, "target_model", route.TargetModel, "provider", provider.ID)
-	client, err := p.openaiAudioClient()
+	client, err := p.audioBackend(provider.Type)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]any{
 			"error": map[string]string{"message": err.Error(), "type": "server_error"},

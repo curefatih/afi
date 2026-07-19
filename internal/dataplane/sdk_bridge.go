@@ -21,7 +21,7 @@ func (b *sdkChatBridge) Type() string { return b.inner.Type() }
 
 func (b *sdkChatBridge) Capabilities() ProviderCaps {
 	c := b.inner.Capabilities()
-	return ProviderCaps{Chat: c.Chat, Stream: c.Stream}
+	return ProviderCaps{Chat: c.Chat, Stream: c.Stream, TTS: c.TTS, STT: c.STT}
 }
 
 func (b *sdkChatBridge) Chat(ctx context.Context, p snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {

@@ -63,6 +63,56 @@ func TestAudioSpeechPassThrough(t *testing.T) {
 	}
 }
 
+func TestAudioSpeechViaOpenAICompatibleType(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/audio/speech" {
+			t.Fatalf("path=%s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "audio/mpeg")
+		_, _ = w.Write([]byte("compat-audio"))
+	}))
+	t.Cleanup(upstream.Close)
+
+	t.Setenv("OLLAMA_API_KEY", "x")
+	c := llm.NewClients(nil)
+	c.OpenAICompatible = llm.NewOpenAIClient(nil)
+	c.OpenAICompatible.HTTP = upstream.Client()
+	// Leave OpenAI unset so resolution must use openai_compatible by route type.
+	c.OpenAI = nil
+
+	raw := "sk-compat-audio"
+	holder := NewHolder()
+	holder.Set(snapshot.Compile(snapshot.Source{
+		APIKeys: []snapshot.APIKey{{
+			ID: "k1", KeyHash: snapshot.HashKey(raw), KeyPrefix: "sk-compat",
+			OrganizationID: "o1", ProjectID: "p1", Name: "t", Kind: snapshot.KeyKindServiceAccount,
+		}},
+		Providers: []snapshot.Provider{{
+			ID: "prov_compat", Type: "openai_compatible", BaseURL: upstream.URL + "/v1",
+			APIKeyEnv: "OLLAMA_API_KEY", Name: "Compat",
+			Capabilities: snapshot.DefaultCapabilities("openai_compatible"),
+		}},
+		Routes: []snapshot.Route{{
+			OrganizationID: "o1", Model: "tts-1", ProviderID: "prov_compat", TargetModel: "tts-1",
+		}},
+	}))
+
+	reg := RegistryFromClients(c)
+	p := NewPipelineWithRegistry(holder, reg, slog.Default())
+	req := httptest.NewRequest(http.MethodPost, "/v1/audio/speech", bytes.NewBufferString(
+		`{"model":"tts-1","input":"hi","voice":"alloy"}`,
+	))
+	req.Header.Set("Authorization", "Bearer "+raw)
+	rr := httptest.NewRecorder()
+	p.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if rr.Body.String() != "compat-audio" {
+		t.Fatalf("body=%q", rr.Body.String())
+	}
+}
+
 func TestAudioTranscriptionsRejectsTTSModel(t *testing.T) {
 	raw := "sk-stt-wrong"
 	holder := NewHolder()
