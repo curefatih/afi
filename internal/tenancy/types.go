@@ -19,9 +19,37 @@ const (
 
 // Organization is a tenant root.
 type Organization struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	MailProvider string    `json:"mail_provider,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+const (
+	InviteStatusPending  = "pending"
+	InviteStatusAccepted = "accepted"
+	InviteStatusRevoked  = "revoked"
+	InviteStatusExpired  = "expired"
+)
+
+// OrgInvite is a pending (or historical) organization membership invite.
+type OrgInvite struct {
+	ID              string    `json:"id"`
+	OrganizationID  string    `json:"organization_id"`
+	Email           string    `json:"email"`
+	Role            string    `json:"role"`
+	InvitedByUserID string    `json:"invited_by_user_id"`
+	Status          string    `json:"status"`
+	ExpiresAt       time.Time `json:"expires_at"`
+	CreatedAt       time.Time `json:"created_at"`
+	AcceptedAt      *time.Time `json:"accepted_at,omitempty"`
+}
+
+// InviteOutcome is returned by InviteOrgMember.
+type InviteOutcome struct {
+	Status string     `json:"status"` // "added" | "invited"
+	Member *OrgMember `json:"member,omitempty"`
+	Invite *OrgInvite `json:"invite,omitempty"`
 }
 
 // OrgMember is a user membership within an organization.

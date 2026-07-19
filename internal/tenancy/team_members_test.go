@@ -93,18 +93,22 @@ type memOrgs struct {
 	roles map[string]string // userID|orgID -> role
 }
 
-func (o *memOrgs) Count(context.Context) (int64, error)                         { return 0, nil }
-func (o *memOrgs) ListForUser(context.Context, string) ([]Organization, error)  { return nil, nil }
-func (o *memOrgs) CreateWithOwner(context.Context, Organization, string) error  { return nil }
-func (o *memOrgs) ListMembers(context.Context, string) ([]OrgMember, error)     { return nil, nil }
-func (o *memOrgs) AddMember(context.Context, string, string, string) error      { return nil }
-func (o *memOrgs) CountOwners(context.Context, string) (int, error)             { return 0, nil }
+func (o *memOrgs) Count(context.Context) (int64, error)                        { return 0, nil }
+func (o *memOrgs) Get(_ context.Context, orgID string) (*Organization, error) {
+	return &Organization{ID: orgID, Name: "Org"}, nil
+}
+func (o *memOrgs) ListForUser(context.Context, string) ([]Organization, error) { return nil, nil }
+func (o *memOrgs) CreateWithOwner(context.Context, Organization, string) error { return nil }
+func (o *memOrgs) ListMembers(context.Context, string) ([]OrgMember, error)    { return nil, nil }
+func (o *memOrgs) AddMember(context.Context, string, string, string) error     { return nil }
+func (o *memOrgs) CountOwners(context.Context, string) (int, error)            { return 0, nil }
 func (o *memOrgs) ApplyRoleChange(context.Context, string, string, string, string, bool) error {
 	return nil
 }
 func (o *memOrgs) GetMember(context.Context, string, string) (*OrgMember, error) {
 	return nil, kernel.ErrNotFound
 }
+func (o *memOrgs) SetMailProvider(context.Context, string, string) error { return nil }
 func (o *memOrgs) GetMemberRole(_ context.Context, userID, orgID string) (string, error) {
 	role, ok := o.roles[userID+"|"+orgID]
 	if !ok {

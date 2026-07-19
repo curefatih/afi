@@ -1,10 +1,14 @@
 package tenancy
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // OrganizationRepository persists organizations and membership.
 type OrganizationRepository interface {
 	Count(ctx context.Context) (int64, error)
+	Get(ctx context.Context, orgID string) (*Organization, error)
 	ListForUser(ctx context.Context, userID string) ([]Organization, error)
 	CreateWithOwner(ctx context.Context, org Organization, ownerUserID string) error
 	ListMembers(ctx context.Context, orgID string) ([]OrgMember, error)
@@ -13,6 +17,19 @@ type OrganizationRepository interface {
 	CountOwners(ctx context.Context, orgID string) (int, error)
 	ApplyRoleChange(ctx context.Context, orgID, actorUserID, targetUserID, newRole string, demoteActor bool) error
 	GetMember(ctx context.Context, orgID, userID string) (*OrgMember, error)
+	SetMailProvider(ctx context.Context, orgID, provider string) error
+}
+
+// InviteRepository persists organization invites.
+type InviteRepository interface {
+	Get(ctx context.Context, inviteID string) (*OrgInvite, error)
+	GetPendingByOrgEmail(ctx context.Context, orgID, email string) (*OrgInvite, error)
+	GetByTokenHash(ctx context.Context, tokenHash string) (*OrgInvite, string, error) // invite, raw org name
+	ListByOrg(ctx context.Context, orgID string) ([]OrgInvite, error)
+	Insert(ctx context.Context, inv OrgInvite, tokenHash string) error
+	UpdateToken(ctx context.Context, inviteID, tokenHash string, expiresAt time.Time) error
+	MarkAccepted(ctx context.Context, inviteID string, at time.Time) error
+	MarkRevoked(ctx context.Context, inviteID string) error
 }
 
 // TeamRepository persists teams.
