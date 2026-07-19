@@ -79,6 +79,7 @@ The request path never waits on `usage_events` consumers. Run `make run-worker` 
 In-process registration is live:
 
 * **Providers** — `sdk/provider.ChatProvider` via `Registry.RegisterSDK` (example: `extensions/echo`)
-* **Hooks** — `dataplane.ChatHook.BeforeChat` (example: `extensions/demohook`)
+* **Hooks** — `BeforeChat` / `AfterChat` (example: `extensions/demohook`)
+* **Provider health** — control-plane rollup from `usage_events` for Providers UI
 
-gRPC / WASM plugin runtimes, CEL policies, billing invoices, and multi-region snapshot distribution remain future work.
+gRPC / WASM plugin runtimes, **CEL policies**, **Redis rate limits**, billing invoices, and multi-region snapshot distribution remain future work. Quotas stay Postgres-backed.

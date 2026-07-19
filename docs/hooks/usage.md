@@ -2,21 +2,28 @@
 
 ## Today (in-process)
 
-The gateway runs a small **BeforeChat** hook chain after auth/quota and before the provider adapter:
+The gateway runs an in-process hook chain on the chat path:
 
-1. Implement `dataplane.ChatHook` (`Name`, `BeforeChat`).
-2. Register it on the pipeline: `pipeline.Hooks = dataplane.NewHookChain().Register(myHook)`.
-3. Inspect active hooks on `GET /healthz` (`hooks` array) or the platform **Hooks** page.
+1. **BeforeChat** — after auth/quota, before provider dispatch (`ChatHook`)
+2. **AfterChat** — after the attempt finishes, success or error (`AfterChatHook`)
 
-Seeded demo: [`extensions/demohook`](../../extensions/demohook) prefixes the last user message with `[hook:demo]`.
+Register in `cmd/gateway`:
+
+```go
+hooks := dataplane.NewHookChain().RegisterHook(demohook.NewWithLog(log))
+pipeline.Hooks = hooks
+```
+
+Inspect active hooks on `GET /healthz` (`hooks` array of `{name, before_chat, after_chat}`) or the platform **Hooks** page.
+
+Seeded demo: [`extensions/demohook`](../../extensions/demohook) prefixes the last user message with `[hook:demo]` and logs AfterChat to the gateway logger.
 
 Provider adapters use the same in-process path via [`sdk/provider`](../../sdk/provider) + `Registry.RegisterSDK` (see [`extensions/echo`](../../extensions/echo)).
 
 ## Future
 
-Target architecture still includes:
-
 * gRPC extensions — providers, auth, secrets, notifications
 * WASM extensions — prompt/header mutation, PII masking, enrichment
+* Redis-backed rate limits and CEL request policies (quotas today are Postgres)
 
-Those runtimes are **not** shipped yet.
+Those runtimes / policy engines are **not** shipped yet.

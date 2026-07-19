@@ -44,7 +44,7 @@ Expect assistant content containing `echo:` (and `[hook:demo]` if the demo Befor
 
 ## Hooks (in-process)
 
-`ChatHook.BeforeChat` runs after quota checks and before provider dispatch. Register via `dataplane.NewHookChain().Register(...)` on the pipeline (see `extensions/demohook`). Gateway `/healthz` lists `hooks` and `provider_types`. Full gRPC/WASM plugin runtimes remain future work.
+`ChatHook.BeforeChat` / `AfterChatHook.AfterChat` run around provider dispatch. Register via `dataplane.NewHookChain().RegisterHook(...)` (see `extensions/demohook`). Gateway `/healthz` lists hook objects with `before_chat` / `after_chat`. Full gRPC/WASM plugin runtimes remain future work.
 
 ## Example: local Ollama
 

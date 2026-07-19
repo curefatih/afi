@@ -80,6 +80,7 @@ Written on first control-plane start (or `make seed`):
 | DELETE | `/api/v1/platform/keys/{keyID}` |
 | GET/POST | `/api/v1/platform/projects/{projectID}/keys` |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/providers` |
+| GET | `/api/v1/platform/organizations/{orgID}/providers/health` |
 | PATCH/DELETE | `/api/v1/platform/providers/{providerID}` |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/routes` |
 | PATCH/DELETE | `/api/v1/platform/routes/{routeID}` |
