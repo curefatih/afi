@@ -25,10 +25,11 @@ type UsageEvent struct {
 }
 
 type Pipeline struct {
-	Holder *Holder
-	OpenAI *OpenAIClient
-	Log    *slog.Logger
-	Usage  func(UsageEvent)
+	Holder   *Holder
+	OpenAI   *OpenAIClient
+	Log      *slog.Logger
+	Usage    func(UsageEvent)
+	Counters CounterStore
 }
 
 func NewPipeline(holder *Holder, openai *OpenAIClient, log *slog.Logger) *Pipeline {
@@ -115,6 +116,25 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	denied, err := p.checkAndIncrRequests(ctx, snap, key)
+	if err != nil {
+		log.Error("quota check", "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"error": map[string]string{"message": "quota check failed", "type": "server_error"},
+		})
+		return
+	}
+	if denied {
+		writeJSON(w, http.StatusTooManyRequests, map[string]any{
+			"error": map[string]string{
+				"message": "quota exceeded",
+				"type":    "insufficient_quota",
+				"code":    "insufficient_quota",
+			},
+		})
+		return
+	}
+
 	route, provider, ok := snap.LookupRoute(key.OrganizationID, reqBody.Model)
 	if !ok {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
@@ -172,6 +192,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		promptTokens, completionTokens = parseUsageTokens(respBody)
+		p.incrTokens(ctx, snap, key, promptTokens+completionTokens)
 		for k, vals := range resp.Header {
 			if strings.EqualFold(k, "Transfer-Encoding") || strings.EqualFold(k, "Connection") {
 				continue
