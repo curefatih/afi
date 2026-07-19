@@ -1,6 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { ActivityIcon } from "lucide-react";
+import {
+	ActivityIcon,
+	BoxIcon,
+	CircleDotIcon,
+	ClockIcon,
+	DollarSignIcon,
+	GaugeIcon,
+	KeyRoundIcon,
+	LayersIcon,
+	TimerIcon,
+	UserIcon,
+	type LucideIcon,
+} from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import {
 	Area,
@@ -16,7 +28,10 @@ import {
 import { orgKeysQueryOptions } from "#/api/keys";
 import { orgProjectsQueryOptions } from "#/api/organization";
 import {
+	formatUsageKey,
+	formatUsageKeyKind,
 	formatUsageOwner,
+	formatUsageOwnerDetail,
 	formatUsageQuantity,
 	type UsageFilters,
 	usageQueryOptions,
@@ -48,6 +63,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "#/components/ui/table";
+import { cn } from "#/lib/utils";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/usage")({
@@ -397,19 +413,22 @@ function RouteComponent() {
 							<Table>
 								<TableHeader>
 									<TableRow>
-										<TableHead>When</TableHead>
-										<TableHead>Modality</TableHead>
-										<TableHead>Owner</TableHead>
-										<TableHead>Key</TableHead>
-										<TableHead>Model</TableHead>
-										<TableHead>Status</TableHead>
-										<TableHead>Latency</TableHead>
-										<TableHead>Usage</TableHead>
-										<TableHead>Cost</TableHead>
+										<IconHead icon={ClockIcon} label="When" />
+										<IconHead icon={LayersIcon} label="Modality" />
+										<IconHead icon={UserIcon} label="Owner / scope" />
+										<IconHead icon={KeyRoundIcon} label="Key" />
+										<IconHead icon={BoxIcon} label="Model" />
+										<IconHead icon={CircleDotIcon} label="Status" />
+										<IconHead icon={TimerIcon} label="Latency" />
+										<IconHead icon={GaugeIcon} label="Usage" />
+										<IconHead icon={DollarSignIcon} label="Cost" />
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-									{(usage.data ?? []).map((e) => (
+									{(usage.data ?? []).map((e) => {
+										const ownerDetail = formatUsageOwnerDetail(e);
+										const keyKind = formatUsageKeyKind(e);
+										return (
 										<TableRow key={e.id}>
 											<TableCell className="whitespace-nowrap">
 												{new Date(e.created_at).toLocaleString()}
@@ -422,16 +441,40 @@ function RouteComponent() {
 											<TableCell>
 												<div className="flex flex-col">
 													<span>{formatUsageOwner(e)}</span>
-													{e.owner_email && e.key_kind !== "service_account" ? (
+													{ownerDetail ? (
 														<span className="text-muted-foreground text-xs">
-															{e.owner_email}
+															{ownerDetail}
 														</span>
 													) : null}
 												</div>
 											</TableCell>
-											<TableCell>{e.key_name || e.api_key_id || "—"}</TableCell>
-											<TableCell>{e.model}</TableCell>
-											<TableCell>{e.status}</TableCell>
+											<TableCell>
+												<div className="flex flex-col gap-1">
+													<span className="font-medium">
+														{formatUsageKey(e)}
+													</span>
+													{keyKind ? (
+														<Badge
+															variant="outline"
+															className="w-fit text-xs font-normal"
+														>
+															{keyKind}
+														</Badge>
+													) : null}
+												</div>
+											</TableCell>
+											<TableCell>
+												<Badge
+													variant="outline"
+													className="max-w-48 truncate font-normal"
+													title={e.model}
+												>
+													{e.model}
+												</Badge>
+											</TableCell>
+											<TableCell>
+												<StatusBadge status={e.status} />
+											</TableCell>
 											<TableCell className="tabular-nums">
 												{e.latency_ms}ms
 											</TableCell>
@@ -442,7 +485,8 @@ function RouteComponent() {
 												{e.cost_usd == null ? "—" : `$${e.cost_usd.toFixed(6)}`}
 											</TableCell>
 										</TableRow>
-									))}
+										);
+									})}
 								</TableBody>
 							</Table>
 						</div>
@@ -474,5 +518,38 @@ function ChartCard({
 			<div className="mb-2 text-sm font-medium">{title}</div>
 			{children}
 		</div>
+	);
+}
+
+function IconHead({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+	return (
+		<TableHead>
+			<span className="inline-flex items-center gap-1.5">
+				<Icon className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+				{label}
+			</span>
+		</TableHead>
+	);
+}
+
+function StatusBadge({ status }: { status: string }) {
+	const normalized = status || "unknown";
+	const isOk = normalized === "ok";
+	const isError =
+		normalized === "error" ||
+		normalized === "upstream_error" ||
+		normalized.includes("error");
+
+	return (
+		<Badge
+			variant={isError ? "destructive" : isOk ? "secondary" : "outline"}
+			className={cn(
+				"font-normal capitalize",
+				isOk &&
+					"border-transparent bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300",
+			)}
+		>
+			{normalized.replaceAll("_", " ")}
+		</Badge>
 	);
 }

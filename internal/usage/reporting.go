@@ -7,6 +7,7 @@ type Record struct {
 	ID               int64          `json:"id"`
 	OrganizationID   string         `json:"organization_id"`
 	ProjectID        string         `json:"project_id"`
+	ProjectName      string         `json:"project_name,omitempty"`
 	APIKeyID         string         `json:"api_key_id"`
 	Model            string         `json:"model"`
 	Status           string         `json:"status"`

@@ -5,6 +5,7 @@ export type UsageEvent = {
 	id: number;
 	organization_id: string;
 	project_id: string;
+	project_name?: string;
 	api_key_id: string;
 	model: string;
 	status: string;
@@ -109,10 +110,32 @@ export function formatUsageQuantity(e: UsageEvent): string {
 
 export function formatUsageOwner(e: UsageEvent): string {
 	if (e.key_kind === "service_account") {
-		return "Service account";
+		if (e.project_name) return e.project_name;
+		if (e.project_id) return e.project_id;
+		return "Organization";
 	}
-	if (e.owner_name || e.owner_email) {
-		return e.owner_name || e.owner_email || "—";
-	}
+	if (e.owner_name) return e.owner_name;
+	if (e.owner_email) return e.owner_email;
 	return "—";
+}
+
+/** Secondary line under the owner/scope primary label. */
+export function formatUsageOwnerDetail(e: UsageEvent): string | null {
+	if (e.key_kind === "service_account") {
+		return null;
+	}
+	if (e.owner_name && e.owner_email) {
+		return e.owner_email;
+	}
+	return null;
+}
+
+export function formatUsageKey(e: UsageEvent): string {
+	return e.key_name || e.api_key_id || "—";
+}
+
+export function formatUsageKeyKind(e: UsageEvent): string | null {
+	if (e.key_kind === "personal") return "Personal";
+	if (e.key_kind === "service_account") return "Service account";
+	return null;
 }

@@ -93,10 +93,12 @@ func (q *UsageQueries) List(ctx context.Context, orgID string, f usage.Filter) (
 			e.latency_ms, e.prompt_tokens, e.completion_tokens, e.cost_usd, e.created_at,
 			e.modality, e.metrics,
 			COALESCE(k.name, ''), COALESCE(k.kind, ''),
-			COALESCE(k.owner_user_id, ''), COALESCE(u.email, ''), COALESCE(u.name, '')
+			COALESCE(k.owner_user_id, ''), COALESCE(u.email, ''), COALESCE(u.name, ''),
+			COALESCE(proj.name, '')
 		FROM usage_events e
 		LEFT JOIN api_keys k ON k.id = e.api_key_id
 		LEFT JOIN users u ON u.id = k.owner_user_id
+		LEFT JOIN projects proj ON proj.id = NULLIF(e.project_id, '')
 		WHERE %s
 		ORDER BY e.created_at DESC
 		LIMIT $%d
@@ -114,6 +116,7 @@ func (q *UsageQueries) List(ctx context.Context, orgID string, f usage.Filter) (
 			&e.LatencyMs, &e.PromptTokens, &e.CompletionTokens, &e.CostUSD, &e.CreatedAt,
 			&e.Modality, &metricsJSON,
 			&e.KeyName, &e.KeyKind, &e.OwnerUserID, &e.OwnerEmail, &e.OwnerName,
+			&e.ProjectName,
 		); err != nil {
 			return nil, err
 		}
