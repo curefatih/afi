@@ -1,6 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { BarChart3Icon } from "lucide-react";
-import { ComingSoonPage } from "#/components/coming-soon-page";
+import { usageQueryOptions } from "#/api/usage";
+import { PageBody, PageHeader } from "#/components/page-header";
+import { QueryGate } from "#/components/query-state";
+import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/usage")({
 	staticData: {
@@ -10,12 +13,61 @@ export const Route = createFileRoute("/_authenticated/app/usage")({
 });
 
 function RouteComponent() {
+	const org = useActiveOrg();
+	const orgId = org?.id ?? "";
+	const usage = useQuery(usageQueryOptions(orgId));
+
 	return (
-		<ComingSoonPage
-			title="Usage"
-			description="Token accounting, latency metrics, and external user tag attribution."
-			icon={BarChart3Icon}
-			context="Usage dashboards will consume control-plane analytics APIs that are not ready yet."
-		/>
+		<PageBody>
+			<PageHeader
+				title="Usage"
+				description="Recent gateway chat completions for this organization."
+			/>
+			<QueryGate
+				isPending={usage.isPending}
+				isError={usage.isError}
+				error={usage.error}
+				onRetry={() => usage.refetch()}
+			>
+				<div className="overflow-x-auto rounded-md border">
+					<table className="w-full text-left text-sm">
+						<thead className="bg-muted/40 text-muted-foreground">
+							<tr>
+								<th className="p-2 font-medium">When</th>
+								<th className="p-2 font-medium">Model</th>
+								<th className="p-2 font-medium">Status</th>
+								<th className="p-2 font-medium">Latency</th>
+								<th className="p-2 font-medium">Tokens</th>
+							</tr>
+						</thead>
+						<tbody>
+							{(usage.data ?? []).map((e) => (
+								<tr key={e.id} className="border-t">
+									<td className="p-2 whitespace-nowrap">
+										{new Date(e.created_at).toLocaleString()}
+									</td>
+									<td className="p-2">{e.model}</td>
+									<td className="p-2">{e.status}</td>
+									<td className="p-2 tabular-nums">{e.latency_ms}ms</td>
+									<td className="p-2 tabular-nums">
+										{e.prompt_tokens}/{e.completion_tokens}
+									</td>
+								</tr>
+							))}
+							{(usage.data ?? []).length === 0 ? (
+								<tr>
+									<td
+										colSpan={5}
+										className="text-muted-foreground p-4 text-center"
+									>
+										No usage events yet. Send a chat through the gateway.
+									</td>
+								</tr>
+							) : null}
+						</tbody>
+					</table>
+				</div>
+			</QueryGate>
+		</PageBody>
 	);
 }

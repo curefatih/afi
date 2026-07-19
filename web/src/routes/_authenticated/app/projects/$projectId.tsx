@@ -43,9 +43,9 @@ export const Route = createFileRoute("/_authenticated/app/projects/$projectId")(
 	},
 );
 
-function maskKey(key: string) {
-	if (key.length <= 12) return "••••••••";
-	return `${key.slice(0, 7)}…${key.slice(-4)}`;
+function formatKeyPrefix(prefix: string) {
+	if (!prefix) return "••••••••";
+	return `${prefix}…`;
 }
 
 function RouteComponent() {
@@ -180,7 +180,7 @@ function RouteComponent() {
 											<TableCell className="font-medium">{key.name}</TableCell>
 											<TableCell>
 												<Badge variant="outline" className="font-mono">
-													{maskKey(key.key)}
+													{formatKeyPrefix(key.key_prefix)}
 												</Badge>
 											</TableCell>
 											<TableCell className="text-muted-foreground">

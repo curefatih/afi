@@ -18,7 +18,12 @@ function RouteComponent() {
 			icon={Building2Icon}
 			context="Organization switching is available from the sidebar. Create/update APIs are not exposed yet."
 			actions={
-				<Button render={<Link to="/app/dashboard" />}>Back to overview</Button>
+				<Button
+					nativeButton={false}
+					render={<Link to="/app/dashboard" />}
+				>
+					Back to overview
+				</Button>
 			}
 		/>
 	);

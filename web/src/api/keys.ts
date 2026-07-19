@@ -6,7 +6,9 @@ export type ApiKey = {
 	project_id: string;
 	organization_id: string;
 	name: string;
-	key: string;
+	key_prefix: string;
+	/** Present only on create responses. */
+	key?: string;
 	created_at: string;
 };
 

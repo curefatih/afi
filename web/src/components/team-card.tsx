@@ -44,6 +44,7 @@ export default function TeamCard({
 				<Button
 					variant="outline"
 					size="sm"
+					nativeButton={false}
 					render={<Link to="/app/teams/$teamId" params={{ teamId: id }} />}
 				>
 					View team

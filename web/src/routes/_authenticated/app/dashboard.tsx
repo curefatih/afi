@@ -57,6 +57,7 @@ function RouteComponent() {
 							<Button
 								variant="outline"
 								size="sm"
+								nativeButton={false}
 								render={<Link to="/app/teams" />}
 							>
 								<Users2Icon />
@@ -75,6 +76,7 @@ function RouteComponent() {
 							<Button
 								variant="outline"
 								size="sm"
+								nativeButton={false}
 								render={<Link to="/app/projects" />}
 							>
 								<FolderKanbanIcon />
@@ -91,6 +93,7 @@ function RouteComponent() {
 							<Button
 								variant="outline"
 								size="sm"
+								nativeButton={false}
 								render={<Link to="/app/keys" />}
 							>
 								<KeyRoundIcon />
@@ -107,6 +110,7 @@ function RouteComponent() {
 							<Button
 								variant="outline"
 								size="sm"
+								nativeButton={false}
 								render={<Link to="/app/playground/chat" />}
 							>
 								<TerminalSquareIcon />

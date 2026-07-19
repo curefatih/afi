@@ -26,7 +26,9 @@ function RouteComponent() {
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex justify-center">
-				<Button render={<Link to="/auth/login" />}>Back to sign in</Button>
+				<Button nativeButton={false} render={<Link to="/auth/login" />}>
+					Back to sign in
+				</Button>
 			</CardContent>
 		</Card>
 	);

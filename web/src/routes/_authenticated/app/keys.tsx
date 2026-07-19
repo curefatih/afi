@@ -41,9 +41,9 @@ export const Route = createFileRoute("/_authenticated/app/keys")({
 	component: RouteComponent,
 });
 
-function maskKey(key: string) {
-	if (key.length <= 12) return "••••••••";
-	return `${key.slice(0, 7)}…${key.slice(-4)}`;
+function formatKeyPrefix(prefix: string) {
+	if (!prefix) return "••••••••";
+	return `${prefix}…`;
 }
 
 function RouteComponent() {
@@ -137,7 +137,10 @@ function RouteComponent() {
 							</EmptyDescription>
 						</EmptyHeader>
 						<EmptyContent>
-							<Button render={<Link to="/app/projects" />}>
+							<Button
+								nativeButton={false}
+								render={<Link to="/app/projects" />}
+							>
 								Go to projects
 							</Button>
 						</EmptyContent>
@@ -186,7 +189,7 @@ function RouteComponent() {
 									</TableCell>
 									<TableCell>
 										<Badge variant="outline" className="font-mono">
-											{maskKey(row.key)}
+											{formatKeyPrefix(row.key_prefix)}
 										</Badge>
 									</TableCell>
 									<TableCell className="text-muted-foreground">
