@@ -62,6 +62,38 @@ func TestAudioSpeechPassThrough(t *testing.T) {
 	}
 }
 
+func TestAudioTranscriptionsRejectsTTSModel(t *testing.T) {
+	raw := "sk-stt-wrong"
+	holder := NewHolder()
+	holder.Set(snapshot.Compile(snapshot.Source{
+		APIKeys: []snapshot.APIKey{{
+			ID: "k1", KeyHash: snapshot.HashKey(raw), OrganizationID: "o1", ProjectID: "p1",
+		}},
+		Providers: []snapshot.Provider{{
+			ID: "prov_openai", Type: "openai", BaseURL: "https://api.openai.com/v1",
+			APIKeyEnv: "OPENAI_API_KEY", Capabilities: snapshot.DefaultCapabilities("openai"),
+		}},
+		Routes: []snapshot.Route{{
+			OrganizationID: "o1", Model: "tts-1", ProviderID: "prov_openai", TargetModel: "tts-1",
+		}},
+	}))
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	_ = mw.WriteField("model", "tts-1")
+	part, _ := mw.CreateFormFile("file", "a.wav")
+	_, _ = part.Write([]byte("RIFF"))
+	_ = mw.Close()
+	p := NewPipeline(holder, NewOpenAIClient(), slog.Default())
+	req := httptest.NewRequest(http.MethodPost, "/v1/audio/transcriptions", &body)
+	req.Header.Set("Authorization", "Bearer "+raw)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	rr := httptest.NewRecorder()
+	p.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestAudioSpeechRejectsAnthropic(t *testing.T) {
 	raw := "sk-audio-anth"
 	holder := NewHolder()

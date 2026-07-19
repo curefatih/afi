@@ -129,6 +129,15 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	if !modelLooksLikeTTS(reqBody.Model, route.TargetModel) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"error": map[string]string{
+				"message": "model is not a TTS model (use tts-1 or a *tts* route)",
+				"type":    "invalid_request_error",
+			},
+		})
+		return
+	}
 
 	log.Info("audio.speech", "model", reqBody.Model, "target_model", route.TargetModel, "provider", provider.ID)
 	resp, err := p.openaiAudioClient().AudioSpeech(ctx, provider, route.TargetModel, body)
@@ -232,6 +241,15 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": map[string]string{
 				"message": "STT requires an openai or openai_compatible provider with stt capability",
+				"type":    "invalid_request_error",
+			},
+		})
+		return
+	}
+	if !modelLooksLikeSTT(model, route.TargetModel) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"error": map[string]string{
+				"message": "model is not an STT model (use whisper-1 or a *transcribe* route, not tts-*)",
 				"type":    "invalid_request_error",
 			},
 		})
