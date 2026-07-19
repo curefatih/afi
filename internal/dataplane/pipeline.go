@@ -355,18 +355,20 @@ func (p *Pipeline) handleModels(w http.ResponseWriter, r *http.Request) {
 		if prov, ok := snap.Providers[route.ProviderID]; ok {
 			caps = snapshot.NormalizeCapabilities(prov.Type, prov.Capabilities)
 		}
+		tts := caps.TTS && modelLooksLikeTTS(route.Model, route.TargetModel)
+		stt := caps.STT && modelLooksLikeSTT(route.Model, route.TargetModel)
 		data = append(data, map[string]any{
 			"id":                 route.Model,
 			"object":             "model",
 			"owned_by":           "afi",
-			"supports_streaming": caps.Stream,
-			"supports_tts":       caps.TTS,
-			"supports_stt":       caps.STT,
+			"supports_streaming": caps.Stream && caps.Chat,
+			"supports_tts":       tts,
+			"supports_stt":       stt,
 			"capabilities": map[string]bool{
 				"chat":   caps.Chat,
 				"stream": caps.Stream,
-				"tts":    caps.TTS,
-				"stt":    caps.STT,
+				"tts":    tts,
+				"stt":    stt,
 			},
 		})
 	}

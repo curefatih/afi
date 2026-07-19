@@ -5,11 +5,37 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
 )
+
+func modelLooksLikeTTS(requested, target string) bool {
+	return audioModelHint(requested, target, "tts")
+}
+
+func modelLooksLikeSTT(requested, target string) bool {
+	return audioModelHint(requested, target, "stt")
+}
+
+func audioModelHint(requested, target, kind string) bool {
+	for _, m := range []string{requested, target} {
+		s := strings.ToLower(strings.TrimSpace(m))
+		switch kind {
+		case "tts":
+			if strings.Contains(s, "tts") {
+				return true
+			}
+		case "stt":
+			if strings.Contains(s, "whisper") || strings.Contains(s, "transcribe") || strings.Contains(s, "stt") {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 func (p *Pipeline) openaiAudioClient() *OpenAIClient {
 	if p.Providers != nil {
