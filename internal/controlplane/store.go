@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/curefatih/afi/internal/access"
 	"github.com/curefatih/afi/internal/adapters/postgres"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/kernel"
@@ -70,43 +71,13 @@ type Project struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
-type APIKey struct {
-	ID             string    `json:"id"`
-	ProjectID      string    `json:"project_id,omitempty"`
-	OrganizationID string    `json:"organization_id"`
-	Name           string    `json:"name"`
-	Kind           string    `json:"kind"`
-	OwnerUserID    string    `json:"owner_user_id,omitempty"`
-	KeyPrefix      string    `json:"key_prefix"`
-	Key            string    `json:"key,omitempty"` // plaintext only on create
-	CreatedAt      time.Time `json:"created_at"`
-}
+// APIKey is the platform write-model key (canonical in access).
+type APIKey = access.APIKey
 
-type Provider struct {
-	ID             string                        `json:"id"`
-	OrganizationID string                        `json:"organization_id"`
-	Name           string                        `json:"name"`
-	Type           string                        `json:"type"`
-	BaseURL        string                        `json:"base_url"`
-	APIKeyEnv      string                        `json:"api_key_env"`
-	Capabilities   snapshot.ProviderCapabilities `json:"capabilities"`
-	CreatedAt      time.Time                     `json:"created_at"`
-}
-
-type RouteFallback struct {
-	ProviderID  string `json:"provider_id"`
-	TargetModel string `json:"target_model"`
-}
-
-type Route struct {
-	ID             string          `json:"id"`
-	OrganizationID string          `json:"organization_id"`
-	Model          string          `json:"model"`
-	ProviderID     string          `json:"provider_id"`
-	TargetModel    string          `json:"target_model"`
-	Fallbacks      []RouteFallback `json:"fallbacks"`
-	CreatedAt      time.Time       `json:"created_at"`
-}
+// Provider / Route are platform write-model config (canonical in gatewayconfig).
+type Provider = gatewayconfig.Provider
+type RouteFallback = gatewayconfig.RouteFallback
+type Route = gatewayconfig.Route
 
 type UsageEvent struct {
 	ID               int64          `json:"id"`
@@ -527,97 +498,28 @@ func (s *Store) CreateProject(ctx context.Context, orgID, teamID, name string) (
 	return p, nil
 }
 
-func scanAPIKey(scan func(dest ...any) error) (APIKey, error) {
-	var k APIKey
-	var projectID, ownerUserID *string
-	err := scan(&k.ID, &projectID, &k.OrganizationID, &k.Name, &k.Kind, &ownerUserID, &k.KeyPrefix, &k.CreatedAt)
-	if err != nil {
-		return k, err
-	}
-	if projectID != nil {
-		k.ProjectID = *projectID
-	}
-	if ownerUserID != nil {
-		k.OwnerUserID = *ownerUserID
-	}
-	return k, nil
+func (s *Store) apiKeys() *postgres.APIKeys {
+	return postgres.NewAPIKeys(s.pool)
 }
 
 func (s *Store) ListAPIKeys(ctx context.Context, projectID string) ([]APIKey, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT id, project_id, organization_id, name, kind, owner_user_id, key_prefix, created_at
-		FROM api_keys WHERE project_id = $1 ORDER BY created_at
-	`, projectID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []APIKey
-	for rows.Next() {
-		k, err := scanAPIKey(rows.Scan)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, k)
-	}
-	return out, rows.Err()
+	return s.apiKeys().ListByProject(ctx, projectID)
 }
 
 func (s *Store) ListOrgAPIKeys(ctx context.Context, orgID string) ([]APIKey, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT id, project_id, organization_id, name, kind, owner_user_id, key_prefix, created_at
-		FROM api_keys WHERE organization_id = $1 ORDER BY created_at
-	`, orgID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []APIKey
-	for rows.Next() {
-		k, err := scanAPIKey(rows.Scan)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, k)
-	}
-	return out, rows.Err()
+	return s.apiKeys().ListByOrg(ctx, orgID)
 }
 
 func (s *Store) GetAPIKey(ctx context.Context, keyID string) (*APIKey, error) {
-	row := s.pool.QueryRow(ctx, `
-		SELECT id, project_id, organization_id, name, kind, owner_user_id, key_prefix, created_at
-		FROM api_keys WHERE id = $1
-	`, keyID)
-	k, err := scanAPIKey(row.Scan)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, kernel.ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &k, nil
+	return s.apiKeys().Get(ctx, keyID)
 }
 
 func (s *Store) GetAPIKeyOrgID(ctx context.Context, keyID string) (string, error) {
-	var orgID string
-	err := s.pool.QueryRow(ctx, `SELECT organization_id FROM api_keys WHERE id = $1`, keyID).Scan(&orgID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", kernel.ErrNotFound
-	}
-	return orgID, err
+	return s.apiKeys().OrgID(ctx, keyID)
 }
 
 func (s *Store) DeleteAPIKey(ctx context.Context, keyID string) error {
-	tag, err := s.pool.Exec(ctx, `DELETE FROM api_keys WHERE id=$1`, keyID)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return kernel.ErrNotFound
-	}
-	return nil
+	return s.apiKeys().Delete(ctx, keyID)
 }
 
 func (s *Store) GetProjectOrgID(ctx context.Context, projectID string) (string, error) {
@@ -633,83 +535,19 @@ func (s *Store) GetProjectOrgID(ctx context.Context, projectID string) (string, 
 // Personal: ownerUserID required, projectID must be empty.
 // Service account: ownerUserID empty, projectID optional (empty = org-wide).
 func (s *Store) CreateAPIKey(ctx context.Context, orgID, kind, ownerUserID, projectID, name, rawKey string) (*APIKey, error) {
-	if kind == "" {
-		kind = snapshot.KeyKindServiceAccount
-	}
-	switch kind {
-	case snapshot.KeyKindPersonal:
-		if ownerUserID == "" {
-			return nil, fmt.Errorf("personal keys require owner")
-		}
-		if projectID != "" {
-			return nil, fmt.Errorf("personal keys cannot have a project")
-		}
-	case snapshot.KeyKindServiceAccount:
-		if ownerUserID != "" {
-			return nil, fmt.Errorf("service account keys cannot have an owner")
-		}
-	default:
-		return nil, fmt.Errorf("invalid key kind %q", kind)
-	}
-	if projectID != "" {
-		projOrg, err := s.GetProjectOrgID(ctx, projectID)
-		if err != nil {
-			return nil, err
-		}
-		if projOrg != orgID {
-			return nil, fmt.Errorf("project not in organization")
-		}
-	}
+	return access.CreateAPIKey(ctx, s.apiKeys(), s, newID("key"), orgID, kind, ownerUserID, projectID, name, rawKey)
+}
 
-	k := &APIKey{
-		ID:             newID("key"),
-		ProjectID:      projectID,
-		OrganizationID: orgID,
-		Name:           name,
-		Kind:           kind,
-		OwnerUserID:    ownerUserID,
-		KeyPrefix:      KeyPrefix(rawKey),
-		Key:            rawKey,
-		CreatedAt:      time.Now().UTC(),
-	}
-	var project any
-	if projectID != "" {
-		project = projectID
-	}
-	var owner any
-	if ownerUserID != "" {
-		owner = ownerUserID
-	}
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO api_keys (id, project_id, organization_id, name, kind, owner_user_id, key_hash, key_prefix, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	`, k.ID, project, k.OrganizationID, k.Name, k.Kind, owner, HashAPIKey(rawKey), k.KeyPrefix, k.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	return k, nil
+func (s *Store) providers() *postgres.Providers {
+	return postgres.NewProviders(s.pool)
+}
+
+func (s *Store) routes() *postgres.Routes {
+	return postgres.NewRoutes(s.pool)
 }
 
 func (s *Store) ListProviders(ctx context.Context, orgID string) ([]Provider, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT id, organization_id, name, type, base_url, api_key_env, capabilities, created_at
-		FROM providers WHERE organization_id = $1 ORDER BY created_at
-	`, orgID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []Provider
-	for rows.Next() {
-		var p Provider
-		var caps []byte
-		if err := rows.Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Type, &p.BaseURL, &p.APIKeyEnv, &caps, &p.CreatedAt); err != nil {
-			return nil, err
-		}
-		p.Capabilities = decodeCapabilities(p.Type, caps)
-		out = append(out, p)
-	}
-	return out, rows.Err()
+	return s.providers().ListByOrg(ctx, orgID)
 }
 
 func classifyProviderHealth(requests, errors int64, errorRate float64) string {
@@ -769,168 +607,39 @@ func (s *Store) ListProviderHealth(ctx context.Context, orgID string, from, to t
 }
 
 func (s *Store) CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities) (*Provider, error) {
-	caps = snapshot.NormalizeCapabilities(typ, caps)
-	p := &Provider{
-		ID: newID("prov"), OrganizationID: orgID, Name: name, Type: typ,
-		BaseURL: baseURL, APIKeyEnv: apiKeyEnv, Capabilities: caps, CreatedAt: time.Now().UTC(),
-	}
-	raw, err := json.Marshal(caps)
-	if err != nil {
-		return nil, err
-	}
-	_, err = s.pool.Exec(ctx, `
-		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, capabilities, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-	`, p.ID, p.OrganizationID, p.Name, p.Type, p.BaseURL, p.APIKeyEnv, raw, p.CreatedAt)
-	return p, err
-}
-
-func decodeCapabilities(typ string, raw []byte) snapshot.ProviderCapabilities {
-	var c snapshot.ProviderCapabilities
-	if len(raw) > 0 {
-		_ = json.Unmarshal(raw, &c)
-	}
-	return snapshot.NormalizeCapabilities(typ, c)
+	return gatewayconfig.CreateProvider(ctx, s.providers(), newID("prov"), orgID, name, typ, baseURL, apiKeyEnv, caps)
 }
 
 func (s *Store) UpdateProvider(ctx context.Context, providerID, name, baseURL, apiKeyEnv string) (*Provider, error) {
-	p := &Provider{}
-	var caps []byte
-	err := s.pool.QueryRow(ctx, `
-		UPDATE providers SET name=$2, base_url=$3, api_key_env=$4
-		WHERE id=$1
-		RETURNING id, organization_id, name, type, base_url, api_key_env, capabilities, created_at
-	`, providerID, name, baseURL, apiKeyEnv).Scan(
-		&p.ID, &p.OrganizationID, &p.Name, &p.Type, &p.BaseURL, &p.APIKeyEnv, &caps, &p.CreatedAt,
-	)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, kernel.ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	p.Capabilities = decodeCapabilities(p.Type, caps)
-	return p, nil
+	return s.providers().Update(ctx, providerID, name, baseURL, apiKeyEnv)
 }
 
 func (s *Store) DeleteProvider(ctx context.Context, providerID string) error {
-	tag, err := s.pool.Exec(ctx, `DELETE FROM providers WHERE id=$1`, providerID)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return kernel.ErrNotFound
-	}
-	return nil
+	return s.providers().Delete(ctx, providerID)
 }
 
 func (s *Store) GetProviderOrgID(ctx context.Context, providerID string) (string, error) {
-	var orgID string
-	err := s.pool.QueryRow(ctx, `SELECT organization_id FROM providers WHERE id=$1`, providerID).Scan(&orgID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", kernel.ErrNotFound
-	}
-	return orgID, err
+	return s.providers().OrgID(ctx, providerID)
 }
 
 func (s *Store) ListRoutes(ctx context.Context, orgID string) ([]Route, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT id, organization_id, model, provider_id, target_model, fallbacks, created_at
-		FROM routes WHERE organization_id=$1 ORDER BY created_at
-	`, orgID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []Route
-	for rows.Next() {
-		var r Route
-		var fb []byte
-		if err := rows.Scan(&r.ID, &r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel, &fb, &r.CreatedAt); err != nil {
-			return nil, err
-		}
-		r.Fallbacks = decodeFallbacks(fb)
-		out = append(out, r)
-	}
-	return out, rows.Err()
+	return s.routes().ListByOrg(ctx, orgID)
 }
 
 func (s *Store) CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []RouteFallback) (*Route, error) {
-	if fallbacks == nil {
-		fallbacks = []RouteFallback{}
-	}
-	r := &Route{
-		ID: newID("route"), OrganizationID: orgID, Model: model,
-		ProviderID: providerID, TargetModel: targetModel, Fallbacks: fallbacks,
-		CreatedAt: time.Now().UTC(),
-	}
-	fb, err := json.Marshal(r.Fallbacks)
-	if err != nil {
-		return nil, err
-	}
-	_, err = s.pool.Exec(ctx, `
-		INSERT INTO routes (id, organization_id, model, provider_id, target_model, fallbacks, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7)
-	`, r.ID, r.OrganizationID, r.Model, r.ProviderID, r.TargetModel, fb, r.CreatedAt)
-	return r, err
+	return gatewayconfig.CreateRoute(ctx, s.routes(), newID("route"), orgID, model, providerID, targetModel, fallbacks)
 }
 
 func (s *Store) UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []RouteFallback) (*Route, error) {
-	if fallbacks == nil {
-		fallbacks = []RouteFallback{}
-	}
-	fb, err := json.Marshal(fallbacks)
-	if err != nil {
-		return nil, err
-	}
-	r := &Route{}
-	var raw []byte
-	err = s.pool.QueryRow(ctx, `
-		UPDATE routes SET model=$2, provider_id=$3, target_model=$4, fallbacks=$5
-		WHERE id=$1
-		RETURNING id, organization_id, model, provider_id, target_model, fallbacks, created_at
-	`, routeID, model, providerID, targetModel, fb).Scan(
-		&r.ID, &r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel, &raw, &r.CreatedAt,
-	)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, kernel.ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	r.Fallbacks = decodeFallbacks(raw)
-	return r, nil
-}
-
-func decodeFallbacks(raw []byte) []RouteFallback {
-	if len(raw) == 0 {
-		return []RouteFallback{}
-	}
-	var out []RouteFallback
-	if err := json.Unmarshal(raw, &out); err != nil || out == nil {
-		return []RouteFallback{}
-	}
-	return out
+	return s.routes().Update(ctx, routeID, model, providerID, targetModel, fallbacks)
 }
 
 func (s *Store) DeleteRoute(ctx context.Context, routeID string) error {
-	tag, err := s.pool.Exec(ctx, `DELETE FROM routes WHERE id=$1`, routeID)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return kernel.ErrNotFound
-	}
-	return nil
+	return s.routes().Delete(ctx, routeID)
 }
 
 func (s *Store) GetRouteOrgID(ctx context.Context, routeID string) (string, error) {
-	var orgID string
-	err := s.pool.QueryRow(ctx, `SELECT organization_id FROM routes WHERE id=$1`, routeID).Scan(&orgID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", kernel.ErrNotFound
-	}
-	return orgID, err
+	return s.routes().OrgID(ctx, routeID)
 }
 
 func (s *Store) InsertUsage(ctx context.Context, e UsageEvent) error {
@@ -1308,7 +1017,7 @@ func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error)
 		if err := provRows.Scan(&p.ID, &p.Type, &p.BaseURL, &p.APIKeyEnv, &p.Name, &caps); err != nil {
 			return src, err
 		}
-		p.Capabilities = decodeCapabilities(p.Type, caps)
+		p.Capabilities = postgres.DecodeCapabilities(p.Type, caps)
 		src.Providers = append(src.Providers, p)
 	}
 	if err := provRows.Err(); err != nil {
@@ -1328,7 +1037,7 @@ func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error)
 		if err := routeRows.Scan(&r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel, &fb); err != nil {
 			return src, err
 		}
-		for _, f := range decodeFallbacks(fb) {
+		for _, f := range postgres.DecodeFallbacks(fb) {
 			r.Fallbacks = append(r.Fallbacks, snapshot.RouteTarget{
 				ProviderID: f.ProviderID, TargetModel: f.TargetModel,
 			})

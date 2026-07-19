@@ -1,16 +1,12 @@
 package controlplane
 
-import "github.com/curefatih/afi/internal/snapshot"
+import "github.com/curefatih/afi/internal/access"
 
 // KeyPrefix returns a short display prefix for an API key.
 func KeyPrefix(raw string) string {
-	const n = 10
-	if len(raw) <= n {
-		return raw
-	}
-	return raw[:n]
+	return access.Prefix(raw)
 }
 
 func HashAPIKey(raw string) string {
-	return snapshot.HashKey(raw)
+	return access.Hash(raw)
 }
