@@ -32,6 +32,7 @@ type platformAPI interface {
 	CreateOrganization(ctx context.Context, name, creatorUserID string) (*Organization, error)
 	ListOrgMembers(ctx context.Context, orgID string) ([]OrgMember, error)
 	AddOrgMemberByEmail(ctx context.Context, orgID, email string) (*OrgMember, error)
+	UpdateOrgMemberRole(ctx context.Context, orgID, actorUserID, targetUserID, role string) (*OrgMember, error)
 	ListTeams(ctx context.Context, orgID string) ([]Team, error)
 	GetTeam(ctx context.Context, teamID string) (*Team, error)
 	ListTeamMembers(ctx context.Context, teamID string) ([]TeamMember, error)
@@ -50,7 +51,8 @@ type platformAPI interface {
 	CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []RouteFallback) (*Route, error)
 	UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []RouteFallback) (*Route, error)
 	DeleteRoute(ctx context.Context, routeID string) error
-	ListUsage(ctx context.Context, orgID string, limit int) ([]UsageEvent, error)
+	ListUsage(ctx context.Context, orgID string, f UsageFilter) ([]UsageEvent, error)
+	SummarizeUsage(ctx context.Context, orgID string, f UsageFilter) ([]UsageSummaryBucket, error)
 	ListQuotas(ctx context.Context, orgID string) ([]Quota, error)
 	CreateQuota(ctx context.Context, orgID, scopeType, scopeID, metric string, limitValue int64, window string) (*Quota, error)
 	UpdateQuota(ctx context.Context, quotaID string, limitValue int64) (*Quota, error)
