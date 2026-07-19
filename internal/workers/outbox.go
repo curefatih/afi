@@ -17,6 +17,8 @@ type UsagePayload struct {
 	ProjectID        string `json:"project_id"`
 	APIKeyID         string `json:"api_key_id"`
 	Model            string `json:"model"`
+	ProviderType     string `json:"provider_type"`
+	TargetModel      string `json:"target_model"`
 	Status           string `json:"status"`
 	LatencyMs        int64  `json:"latency_ms"`
 	PromptTokens     int64  `json:"prompt_tokens"`
@@ -28,12 +30,16 @@ type OutboxSource interface {
 	MarkProcessed(ctx context.Context, id int64) error
 }
 
+type PriceLookup interface {
+	LookupModelPrice(ctx context.Context, providerType, model string) (inputPerMTok, outputPerMTok float64, ok bool, err error)
+}
+
 type UsageSink interface {
-	InsertUsage(ctx context.Context, e UsagePayload) error
+	InsertUsage(ctx context.Context, e UsagePayload, costUSD *float64) error
 }
 
 // ProcessOnce claims pending outbox rows and writes usage_events.
-func ProcessOnce(ctx context.Context, src OutboxSource, sink UsageSink) (int, error) {
+func ProcessOnce(ctx context.Context, src OutboxSource, sink UsageSink, prices PriceLookup) (int, error) {
 	rows, err := src.ClaimBatch(ctx, 50)
 	if err != nil {
 		return 0, err
@@ -44,7 +50,23 @@ func ProcessOnce(ctx context.Context, src OutboxSource, sink UsageSink) (int, er
 		if err := json.Unmarshal(row.Payload, &payload); err != nil {
 			return n, err
 		}
-		if err := sink.InsertUsage(ctx, payload); err != nil {
+		var cost *float64
+		if prices != nil {
+			model := payload.TargetModel
+			if model == "" {
+				model = payload.Model
+			}
+			if payload.ProviderType != "" && model != "" {
+				in, out, ok, err := prices.LookupModelPrice(ctx, payload.ProviderType, model)
+				if err != nil {
+					return n, err
+				}
+				if ok {
+					cost = ComputeCostUSD(payload.PromptTokens, payload.CompletionTokens, in, out)
+				}
+			}
+		}
+		if err := sink.InsertUsage(ctx, payload, cost); err != nil {
 			return n, err
 		}
 		if err := src.MarkProcessed(ctx, row.ID); err != nil {

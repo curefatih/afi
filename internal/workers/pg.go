@@ -43,7 +43,7 @@ type PGUsageSink struct {
 	Store *controlplane.Store
 }
 
-func (p *PGUsageSink) InsertUsage(ctx context.Context, e UsagePayload) error {
+func (p *PGUsageSink) InsertUsage(ctx context.Context, e UsagePayload, costUSD *float64) error {
 	return p.Store.InsertUsage(ctx, controlplane.UsageEvent{
 		OrganizationID:   e.OrganizationID,
 		ProjectID:        e.ProjectID,
@@ -53,7 +53,20 @@ func (p *PGUsageSink) InsertUsage(ctx context.Context, e UsagePayload) error {
 		LatencyMs:        e.LatencyMs,
 		PromptTokens:     e.PromptTokens,
 		CompletionTokens: e.CompletionTokens,
+		CostUSD:          costUSD,
 	})
+}
+
+type PGPriceLookup struct {
+	Store *controlplane.Store
+}
+
+func (p *PGPriceLookup) LookupModelPrice(ctx context.Context, providerType, model string) (float64, float64, bool, error) {
+	price, ok, err := p.Store.LookupModelPrice(ctx, providerType, model)
+	if err != nil || !ok {
+		return 0, 0, ok, err
+	}
+	return price.InputPerMTok, price.OutputPerMTok, true, nil
 }
 
 func EncodeUsage(e UsagePayload) ([]byte, error) {

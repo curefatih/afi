@@ -40,6 +40,7 @@ func main() {
 	store := controlplane.NewStore(pool)
 	src := &workers.PGOutbox{Pool: pool}
 	sink := &workers.PGUsageSink{Store: store}
+	prices := &workers.PGPriceLookup{Store: store}
 
 	log.Info("worker started", "poll", "2s")
 	ticker := time.NewTicker(2 * time.Second)
@@ -51,7 +52,7 @@ func main() {
 			log.Info("stopped")
 			return
 		case <-ticker.C:
-			n, err := workers.ProcessOnce(ctx, src, sink)
+			n, err := workers.ProcessOnce(ctx, src, sink, prices)
 			if err != nil {
 				log.Error("process", "err", err)
 				continue

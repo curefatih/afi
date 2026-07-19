@@ -36,21 +36,35 @@ func (m *memOutbox) MarkProcessed(_ context.Context, id int64) error {
 
 type memUsage struct {
 	events []UsagePayload
+	costs  []*float64
 }
 
-func (m *memUsage) InsertUsage(_ context.Context, e UsagePayload) error {
+func (m *memUsage) InsertUsage(_ context.Context, e UsagePayload, costUSD *float64) error {
 	m.events = append(m.events, e)
+	m.costs = append(m.costs, costUSD)
 	return nil
+}
+
+type memPrices struct {
+	in, out float64
+	ok      bool
+}
+
+func (m *memPrices) LookupModelPrice(context.Context, string, string) (float64, float64, bool, error) {
+	return m.in, m.out, m.ok, nil
 }
 
 func TestProcessOutboxOnce(t *testing.T) {
 	t.Parallel()
 	payload, _ := json.Marshal(UsagePayload{
-		OrganizationID: "o1", ProjectID: "p1", Model: "gpt-4o-mini", Status: "ok",
+		OrganizationID: "o1", ProjectID: "p1", Model: "gpt-4o-mini",
+		ProviderType: "openai", TargetModel: "gpt-4o-mini",
+		Status: "ok", PromptTokens: 1_000_000, CompletionTokens: 0,
 	})
 	box := &memOutbox{rows: []OutboxRow{{ID: 1, Payload: payload}}}
 	usage := &memUsage{}
-	n, err := ProcessOnce(context.Background(), box, usage)
+	prices := &memPrices{in: 0.15, out: 0.60, ok: true}
+	n, err := ProcessOnce(context.Background(), box, usage, prices)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,5 +73,8 @@ func TestProcessOutboxOnce(t *testing.T) {
 	}
 	if box.rows[0].ProcessedAt == nil {
 		t.Fatal("expected processed")
+	}
+	if usage.costs[0] == nil || *usage.costs[0] < 0.149 || *usage.costs[0] > 0.151 {
+		t.Fatalf("cost=%v", usage.costs[0])
 	}
 }
