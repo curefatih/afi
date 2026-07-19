@@ -1,12 +1,18 @@
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "#/lib/api-client";
 
+export type RouteFallback = {
+	provider_id: string;
+	target_model: string;
+};
+
 export type RouteConfig = {
 	id: string;
 	organization_id: string;
 	model: string;
 	provider_id: string;
 	target_model: string;
+	fallbacks: RouteFallback[];
 	created_at: string;
 };
 
@@ -25,6 +31,7 @@ export type CreateRouteInput = {
 	model: string;
 	provider_id: string;
 	target_model?: string;
+	fallbacks?: RouteFallback[];
 };
 
 export const createRouteMutationOptions = () =>

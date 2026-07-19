@@ -11,6 +11,7 @@ export type UsageEvent = {
 	latency_ms: number;
 	prompt_tokens: number;
 	completion_tokens: number;
+	cost_usd?: number | null;
 	created_at: string;
 };
 

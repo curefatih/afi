@@ -38,6 +38,7 @@ function RouteComponent() {
 								<th className="p-2 font-medium">Status</th>
 								<th className="p-2 font-medium">Latency</th>
 								<th className="p-2 font-medium">Tokens</th>
+								<th className="p-2 font-medium">Cost</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -52,12 +53,17 @@ function RouteComponent() {
 									<td className="p-2 tabular-nums">
 										{e.prompt_tokens}/{e.completion_tokens}
 									</td>
+									<td className="p-2 tabular-nums">
+										{e.cost_usd == null
+											? "—"
+											: `$${e.cost_usd.toFixed(6)}`}
+									</td>
 								</tr>
 							))}
 							{(usage.data ?? []).length === 0 ? (
 								<tr>
 									<td
-										colSpan={5}
+										colSpan={6}
 										className="text-muted-foreground p-4 text-center"
 									>
 										No usage events yet. Send a chat through the gateway.

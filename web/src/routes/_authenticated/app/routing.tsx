@@ -6,6 +6,7 @@ import {
 	createRouteMutationOptions,
 	deleteRouteMutationOptions,
 	routesQueryOptions,
+	type RouteFallback,
 } from "#/api/routing";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
@@ -41,6 +42,7 @@ function RouteComponent() {
 	const [model, setModel] = useState("ping-model");
 	const [targetModel, setTargetModel] = useState("gpt-4o-mini");
 	const [providerId, setProviderId] = useState("");
+	const [fallbacks, setFallbacks] = useState<RouteFallback[]>([]);
 	const [error, setError] = useState<string | null>(null);
 
 	const providerList = providers.data ?? [];
@@ -50,7 +52,7 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Routing"
-				description="Map requested model names to providers. Saves publish a new gateway snapshot."
+				description="Map requested model names to providers. Optional fallbacks run on 5xx/timeout. Saves publish a new gateway snapshot."
 			/>
 			<QueryGate
 				isPending={routes.isPending || providers.isPending}
@@ -75,6 +77,17 @@ function RouteComponent() {
 										<div className="text-muted-foreground">
 											→ {r.target_model} via {r.provider_id}
 										</div>
+										{(r.fallbacks ?? []).length > 0 ? (
+											<div className="text-muted-foreground text-xs">
+												fallbacks:{" "}
+												{(r.fallbacks ?? [])
+													.map(
+														(f) =>
+															`${f.target_model} via ${f.provider_id}`,
+													)
+													.join(", ")}
+											</div>
+										) : null}
 									</div>
 									<Button
 										variant="outline"
@@ -105,6 +118,7 @@ function RouteComponent() {
 									model,
 									provider_id: selectedProvider,
 									target_model: targetModel || model,
+									fallbacks: fallbacks.filter((f) => f.provider_id),
 								},
 								{
 									onError: (err) =>
@@ -144,10 +158,80 @@ function RouteComponent() {
 							>
 								{providerList.map((p) => (
 									<option key={p.id} value={p.id}>
-										{p.name} ({p.id})
+										{p.name} ({p.type})
 									</option>
 								))}
 							</select>
+						</div>
+						<div className="space-y-2">
+							<div className="flex items-center justify-between">
+								<Label>Fallbacks</Label>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() =>
+										setFallbacks((prev) => [
+											...prev,
+											{
+												provider_id: providerList[0]?.id ?? "",
+												target_model: "",
+											},
+										])
+									}
+									disabled={providerList.length === 0}
+								>
+									Add fallback
+								</Button>
+							</div>
+							{fallbacks.map((fb, idx) => (
+								<div key={idx} className="grid gap-2 sm:grid-cols-2">
+									<select
+										className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+										value={fb.provider_id}
+										onChange={(e) => {
+											const v = e.target.value;
+											setFallbacks((prev) =>
+												prev.map((row, i) =>
+													i === idx ? { ...row, provider_id: v } : row,
+												),
+											);
+										}}
+									>
+										{providerList.map((p) => (
+											<option key={p.id} value={p.id}>
+												{p.name}
+											</option>
+										))}
+									</select>
+									<div className="flex gap-2">
+										<Input
+											placeholder="target model"
+											value={fb.target_model}
+											onChange={(e) => {
+												const v = e.target.value;
+												setFallbacks((prev) =>
+													prev.map((row, i) =>
+														i === idx ? { ...row, target_model: v } : row,
+													),
+												);
+											}}
+										/>
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											onClick={() =>
+												setFallbacks((prev) =>
+													prev.filter((_, i) => i !== idx),
+												)
+											}
+										>
+											×
+										</Button>
+									</div>
+								</div>
+							))}
 						</div>
 						{error ? (
 							<p className="text-destructive text-xs">{error}</p>

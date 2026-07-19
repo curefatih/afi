@@ -37,9 +37,23 @@ function RouteComponent() {
 	});
 
 	const [name, setName] = useState("OpenAI");
+	const [type, setType] = useState("openai");
 	const [baseURL, setBaseURL] = useState("https://api.openai.com/v1");
 	const [apiKeyEnv, setApiKeyEnv] = useState("OPENAI_API_KEY");
 	const [error, setError] = useState<string | null>(null);
+
+	const applyTypeDefaults = (next: string) => {
+		setType(next);
+		if (next === "anthropic") {
+			setName((n) => (n === "OpenAI" || n === "" ? "Anthropic" : n));
+			setBaseURL("https://api.anthropic.com/v1");
+			setApiKeyEnv("ANTHROPIC_API_KEY");
+		} else if (next === "openai") {
+			setName((n) => (n === "Anthropic" || n === "" ? "OpenAI" : n));
+			setBaseURL("https://api.openai.com/v1");
+			setApiKeyEnv("OPENAI_API_KEY");
+		}
+	};
 
 	return (
 		<PageBody>
@@ -100,7 +114,7 @@ function RouteComponent() {
 									name,
 									base_url: baseURL,
 									api_key_env: apiKeyEnv,
-									type: "openai",
+									type,
 								},
 								{
 									onError: (err) =>
@@ -112,6 +126,18 @@ function RouteComponent() {
 						}}
 					>
 						<h3 className="text-sm font-medium">Add provider</h3>
+						<div className="space-y-1">
+							<Label htmlFor="prov-type">Type</Label>
+							<select
+								id="prov-type"
+								className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+								value={type}
+								onChange={(e) => applyTypeDefaults(e.target.value)}
+							>
+								<option value="openai">openai</option>
+								<option value="anthropic">anthropic</option>
+							</select>
+						</div>
 						<div className="space-y-1">
 							<Label htmlFor="prov-name">Name</Label>
 							<Input
