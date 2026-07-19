@@ -46,6 +46,8 @@ func main() {
 			ProjectID:        e.ProjectID,
 			APIKeyID:         e.APIKeyID,
 			Model:            e.Model,
+			ProviderType:     e.ProviderType,
+			TargetModel:      e.TargetModel,
 			Status:           e.Status,
 			LatencyMs:        e.LatencyMs,
 			PromptTokens:     e.PromptTokens,
