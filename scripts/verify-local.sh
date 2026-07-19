@@ -70,4 +70,27 @@ echo "==> platform me"
 curl -fsS "$CP/api/v1/platform/auth/me" -H "Authorization: Bearer $TOKEN" | grep -q admin@afi.local
 echo "ok"
 
+echo "==> quota limit 0 → 429 (no OpenAI required)"
+# Clean prior verify quotas for org_local if any by creating a zero request quota on org.
+curl -fsS "$CP/api/v1/platform/organizations/org_local/quotas" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"scope_type":"organization","scope_id":"org_local","metric":"requests","limit_value":0,"window":"total"}' >/dev/null
+# wait for snapshot hot reload
+for _ in $(seq 1 20); do
+  sleep 0.5
+  code=$(curl -s -o /dev/null -w '%{http_code}' "$GW/v1/chat/completions" \
+    -H "Authorization: Bearer $VIRTUAL_KEY" \
+    -H 'Content-Type: application/json' \
+    -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"x"}]}')
+  if [ "$code" = "429" ]; then
+    break
+  fi
+done
+if [ "$code" != "429" ]; then
+  echo "expected 429 after quota limit 0, got $code" >&2
+  exit 1
+fi
+echo "ok"
+
 echo "verify-local: all checks passed"
