@@ -21,3 +21,16 @@ seed:
   openai_base_url: "https://api.openai.com/v1"
   openai_api_key_env: "OPENAI_API_KEY"
   default_model: "gpt-4o-mini"
+
+# Durable platform domain events (controlplane → platform_event_outbox → worker → broker).
+# Enable outbox_enabled and set publisher to log|nats|kafka|noop.
+events:
+  outbox_enabled: false
+  publisher: log
+  nats:
+    url: "nats://127.0.0.1:4222"
+    stream: AFI_PLATFORM
+    subject_prefix: afi.platform
+  kafka:
+    brokers: "127.0.0.1:9092"
+    topic: afi.platform.events
