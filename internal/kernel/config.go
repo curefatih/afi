@@ -55,6 +55,31 @@ type Config struct {
 			Topic   string `yaml:"topic" env:"AFI_EVENTS_KAFKA_TOPIC"`
 		} `yaml:"kafka"`
 	} `yaml:"events"`
+
+	// Mail configures outbound email for org member invites.
+	Mail struct {
+		PublicAppURL    string `yaml:"public_app_url" env:"AFI_MAIL_PUBLIC_APP_URL"`
+		From            string `yaml:"from" env:"AFI_MAIL_FROM"`
+		DefaultProvider string `yaml:"default_provider" env:"AFI_MAIL_DEFAULT_PROVIDER"`
+		SMTP            struct {
+			Enabled  bool   `yaml:"enabled" env:"AFI_MAIL_SMTP_ENABLED"`
+			Host     string `yaml:"host" env:"AFI_MAIL_SMTP_HOST"`
+			Port     int    `yaml:"port" env:"AFI_MAIL_SMTP_PORT"`
+			Username string `yaml:"username" env:"AFI_MAIL_SMTP_USERNAME"`
+			Password string `yaml:"password" env:"AFI_MAIL_SMTP_PASSWORD"`
+			TLS      bool   `yaml:"tls" env:"AFI_MAIL_SMTP_TLS"`
+		} `yaml:"smtp"`
+		Resend struct {
+			Enabled bool   `yaml:"enabled" env:"AFI_MAIL_RESEND_ENABLED"`
+			APIKey  string `yaml:"api_key" env:"AFI_MAIL_RESEND_API_KEY"`
+		} `yaml:"resend"`
+		SES struct {
+			Enabled         bool   `yaml:"enabled" env:"AFI_MAIL_SES_ENABLED"`
+			Region          string `yaml:"region" env:"AFI_MAIL_SES_REGION"`
+			AccessKeyID     string `yaml:"access_key_id" env:"AFI_MAIL_SES_ACCESS_KEY_ID"`
+			SecretAccessKey string `yaml:"secret_access_key" env:"AFI_MAIL_SES_SECRET_ACCESS_KEY"`
+		} `yaml:"ses"`
+	} `yaml:"mail"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -148,5 +173,20 @@ func LoadConfig() (*Config, error) {
 		cfg.Events.Kafka.Topic = "afi.platform.events"
 	}
 
+	if cfg.Mail.PublicAppURL == "" {
+		cfg.Mail.PublicAppURL = "http://localhost:3000"
+	}
+	if cfg.Mail.From == "" {
+		cfg.Mail.From = "AFI <noreply@afi.local>"
+	}
+	if cfg.Mail.DefaultProvider == "" {
+		cfg.Mail.DefaultProvider = "smtp"
+	}
+	if cfg.Mail.SMTP.Host == "" {
+		cfg.Mail.SMTP.Host = "localhost"
+	}
+	if cfg.Mail.SMTP.Port == 0 {
+		cfg.Mail.SMTP.Port = 1025
+	}
 	return &cfg, nil
 }
