@@ -81,6 +81,8 @@ See [Verify](verify.md) (`make verify` includes quota → 429).
 
 ## 7. Optional: platform UI
 
+Overview of screens and capabilities: [Web UI](web-ui.md).
+
 ```bash
 pnpm --dir web install
 pnpm --dir web dev

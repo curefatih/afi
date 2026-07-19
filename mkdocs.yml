@@ -24,6 +24,7 @@ nav:
   - Home: index.md
   - Getting started:
       - Local development: getting-started/local-dev.md
+      - Web UI: getting-started/web-ui.md
       - Verify: getting-started/verify.md
   - Development:
       - Repository layout: development/repository-layout.md
