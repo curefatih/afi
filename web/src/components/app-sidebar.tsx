@@ -12,6 +12,7 @@ import {
 	RouteIcon,
 	ShieldIcon,
 	TerminalSquareIcon,
+	UserRoundIcon,
 	Users2Icon,
 } from "lucide-react";
 import { NavMain } from "#/components/nav-main";
@@ -47,6 +48,11 @@ const platformNav = [
 		icon: <Users2Icon />,
 	},
 	{
+		title: "Users",
+		url: "/app/users",
+		icon: <UserRoundIcon />,
+	},
+	{
 		title: "API Keys",
 		url: "/app/keys",
 		icon: <KeyRoundIcon />,
@@ -80,13 +86,11 @@ const governanceNav = [
 		title: "Quotas",
 		url: "/app/quotas",
 		icon: <GaugeIcon />,
-		badge: "Preview",
 	},
 	{
 		title: "Usage",
 		url: "/app/usage",
 		icon: <BarChart3Icon />,
-		badge: "Soon",
 	},
 	{
 		title: "Billing",

@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { orgKeysQueryOptions } from "#/api/keys";
+import { orgMembersQueryOptions } from "#/api/organization";
 import {
 	createQuotaMutationOptions,
 	deleteQuotaMutationOptions,
@@ -11,6 +13,14 @@ import { QueryGate } from "#/components/query-state";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "#/components/ui/select";
+import { useAuthUser } from "#/state/auth-state";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/quotas")({
@@ -23,8 +33,43 @@ export const Route = createFileRoute("/_authenticated/app/quotas")({
 function RouteComponent() {
 	const org = useActiveOrg();
 	const orgId = org?.id ?? "";
+	const user = useAuthUser();
 	const qc = useQueryClient();
 	const quotas = useQuery(quotasQueryOptions(orgId));
+	const members = useQuery(orgMembersQueryOptions(orgId));
+	const keys = useQuery(orgKeysQueryOptions(orgId));
+
+	const isOrgAdmin = useMemo(() => {
+		const me = (members.data ?? []).find((m) => m.user_id === user?.id);
+		return me?.role === "owner" || me?.role === "admin";
+	}, [members.data, user?.id]);
+
+	const labels = useMemo(() => {
+		const projects = new Map(
+			(org?.projects ?? []).map((p) => [p.id, p.name] as const),
+		);
+		const users = new Map(
+			(members.data ?? []).map((m) => [m.user_id, m.email] as const),
+		);
+		const keyNames = new Map(
+			(keys.data ?? []).map((k) => [k.id, k.name] as const),
+		);
+		return (scopeType: string, scopeId: string) => {
+			switch (scopeType) {
+				case "organization":
+					return org?.name ?? scopeId;
+				case "project":
+					return projects.get(scopeId) ?? scopeId;
+				case "user":
+					return users.get(scopeId) ?? scopeId;
+				case "api_key":
+					return keyNames.get(scopeId) ?? scopeId;
+				default:
+					return scopeId;
+			}
+		};
+	}, [org, members.data, keys.data]);
+
 	const create = useMutation({
 		...createQuotaMutationOptions(),
 		onSuccess: () =>
@@ -42,18 +87,17 @@ function RouteComponent() {
 	const [limitValue, setLimitValue] = useState("100");
 	const [error, setError] = useState<string | null>(null);
 
-	if (scopeType === "organization" && scopeID !== orgId && orgId) {
-		// keep org scope_id in sync when org loads
-	}
+	const effectiveScopeID =
+		scopeType === "organization" ? orgId : scopeID;
 
 	return (
 		<PageBody>
 			<PageHeader
 				title="Quotas"
-				description="Lifetime and token lifetime limits. Changes publish into the gateway snapshot and are enforced before upstream calls."
+				description="Lifetime and token lifetime limits. Most specific wins: api key → user → project → organization."
 			/>
 			<QueryGate
-				isPending={quotas.isPending}
+				isPending={quotas.isPending || members.isPending}
 				isError={quotas.isError}
 				error={quotas.error}
 				onRetry={() => quotas.refetch()}
@@ -72,17 +116,22 @@ function RouteComponent() {
 											{q.metric} ≤ {q.limit_value} ({q.window})
 										</div>
 										<div className="text-muted-foreground">
-											{q.scope_type}: {q.scope_id}
+											{q.scope_type}: {labels(q.scope_type, q.scope_id)}
+										</div>
+										<div className="text-muted-foreground font-mono text-xs">
+											{q.scope_id}
 										</div>
 									</div>
-									<Button
-										variant="outline"
-										size="sm"
-										disabled={del.isPending}
-										onClick={() => del.mutate(q.id)}
-									>
-										Delete
-									</Button>
+									{isOrgAdmin ? (
+										<Button
+											variant="outline"
+											size="sm"
+											disabled={del.isPending}
+											onClick={() => del.mutate(q.id)}
+										>
+											Delete
+										</Button>
+									) : null}
 								</li>
 							))}
 							{(quotas.data ?? []).length === 0 ? (
@@ -92,93 +141,168 @@ function RouteComponent() {
 							) : null}
 						</ul>
 					</div>
-					<form
-						className="space-y-3 rounded-md border p-4"
-						onSubmit={(e) => {
-							e.preventDefault();
-							if (!orgId) return;
-							setError(null);
-							const sid =
-								scopeType === "organization" ? orgId : scopeID.trim();
-							create.mutate(
-								{
-									orgId,
-									scope_type: scopeType,
-									scope_id: sid,
-									metric,
-									limit_value: Number(limitValue),
-									window: "total",
-								},
-								{
-									onError: (err) =>
-										setError(
-											err instanceof Error ? err.message : "Create failed",
-										),
-								},
-							);
-						}}
-					>
-						<h3 className="text-sm font-medium">Add quota</h3>
-						<div className="space-y-1">
-							<Label htmlFor="q-scope">Scope</Label>
-							<select
-								id="q-scope"
-								className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
-								value={scopeType}
-								onChange={(e) => {
-									setScopeType(e.target.value);
-									if (e.target.value === "organization") setScopeID(orgId);
-								}}
-							>
-								<option value="organization">organization</option>
-								<option value="project">project</option>
-								<option value="api_key">api_key</option>
-							</select>
-						</div>
-						{scopeType !== "organization" ? (
+
+					{isOrgAdmin ? (
+						<form
+							className="space-y-3 rounded-md border p-4"
+							onSubmit={(e) => {
+								e.preventDefault();
+								if (!orgId) return;
+								setError(null);
+								create.mutate(
+									{
+										orgId,
+										scope_type: scopeType,
+										scope_id: effectiveScopeID,
+										metric,
+										limit_value: Number(limitValue),
+										window: "total",
+									},
+									{
+										onError: (err) =>
+											setError(
+												err instanceof Error ? err.message : "Create failed",
+											),
+										onSuccess: () => setError(null),
+									},
+								);
+							}}
+						>
+							<h3 className="text-sm font-medium">Add quota</h3>
 							<div className="space-y-1">
-								<Label htmlFor="q-scope-id">Scope ID</Label>
+								<Label>Scope</Label>
+								<Select
+									value={scopeType}
+									onValueChange={(v) => {
+										const next = v ?? "organization";
+										setScopeType(next);
+										if (next === "organization") setScopeID(orgId);
+										else if (next === "project")
+											setScopeID(org?.projects[0]?.id ?? "");
+										else if (next === "user")
+											setScopeID(members.data?.[0]?.user_id ?? "");
+										else if (next === "api_key")
+											setScopeID(keys.data?.[0]?.id ?? "");
+									}}
+								>
+									<SelectTrigger className="w-full">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="organization">Organization</SelectItem>
+										<SelectItem value="project">Project</SelectItem>
+										<SelectItem value="user">User</SelectItem>
+										<SelectItem value="api_key">API key</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+
+							{scopeType === "project" ? (
+								<div className="space-y-1">
+									<Label>Project</Label>
+									<Select
+										value={scopeID}
+										onValueChange={(v) => setScopeID(v ?? "")}
+									>
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select project" />
+										</SelectTrigger>
+										<SelectContent>
+											{(org?.projects ?? []).map((p) => (
+												<SelectItem key={p.id} value={p.id}>
+													{p.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							) : null}
+
+							{scopeType === "user" ? (
+								<div className="space-y-1">
+									<Label>Member</Label>
+									<Select
+										value={scopeID}
+										onValueChange={(v) => setScopeID(v ?? "")}
+									>
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select member" />
+										</SelectTrigger>
+										<SelectContent>
+											{(members.data ?? []).map((m) => (
+												<SelectItem key={m.user_id} value={m.user_id}>
+													{m.email}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							) : null}
+
+							{scopeType === "api_key" ? (
+								<div className="space-y-1">
+									<Label>API key</Label>
+									<Select
+										value={scopeID}
+										onValueChange={(v) => setScopeID(v ?? "")}
+									>
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select key" />
+										</SelectTrigger>
+										<SelectContent>
+											{(keys.data ?? []).map((k) => (
+												<SelectItem key={k.id} value={k.id}>
+													{k.name} ({k.kind})
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							) : null}
+
+							<div className="space-y-1">
+								<Label>Metric</Label>
+								<Select
+									value={metric}
+									onValueChange={(v) => setMetric(v ?? "requests")}
+								>
+									<SelectTrigger className="w-full">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="requests">requests</SelectItem>
+										<SelectItem value="tokens">tokens</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+							<div className="space-y-1">
+								<Label htmlFor="q-limit">Limit</Label>
 								<Input
-									id="q-scope-id"
-									value={scopeID}
-									onChange={(e) => setScopeID(e.target.value)}
-									placeholder={
-										scopeType === "project" ? "proj_local" : "key_local"
-									}
+									id="q-limit"
+									type="number"
+									min={0}
+									value={limitValue}
+									onChange={(e) => setLimitValue(e.target.value)}
 									required
 								/>
 							</div>
-						) : null}
-						<div className="space-y-1">
-							<Label htmlFor="q-metric">Metric</Label>
-							<select
-								id="q-metric"
-								className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
-								value={metric}
-								onChange={(e) => setMetric(e.target.value)}
+							{error ? (
+								<p className="text-destructive text-xs">{error}</p>
+							) : null}
+							<Button
+								type="submit"
+								disabled={
+									create.isPending || !orgId || !effectiveScopeID
+								}
 							>
-								<option value="requests">requests</option>
-								<option value="tokens">tokens</option>
-							</select>
-						</div>
-						<div className="space-y-1">
-							<Label htmlFor="q-limit">Limit</Label>
-							<Input
-								id="q-limit"
-								type="number"
-								min={0}
-								value={limitValue}
-								onChange={(e) => setLimitValue(e.target.value)}
-								required
-							/>
-						</div>
-						{error ? (
-							<p className="text-destructive text-xs">{error}</p>
-						) : null}
-						<Button type="submit" disabled={create.isPending || !orgId}>
-							Create & publish
-						</Button>
-					</form>
+								Create & publish
+							</Button>
+						</form>
+					) : (
+						<p className="text-muted-foreground rounded-md border p-4 text-sm">
+							Only organization owners and admins can create or delete quotas.
+						</p>
+					)}
 				</div>
 			</QueryGate>
 		</PageBody>

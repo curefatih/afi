@@ -81,11 +81,11 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title={project.name}
-				description="Virtual API keys and project metadata for gateway access."
+				description="Project service-account keys authenticate automation traffic for this project."
 				actions={
 					<Button onClick={() => setOpen(true)}>
 						<PlusIcon />
-						New API key
+						New service key
 					</Button>
 				}
 			/>
@@ -132,7 +132,7 @@ function RouteComponent() {
 					<div>
 						<CardTitle>API keys</CardTitle>
 						<CardDescription>
-							Authenticate inference requests against this project.
+							Service-account keys scoped to this project (admin only to create).
 						</CardDescription>
 					</div>
 					<Button variant="outline" size="sm" onClick={() => setOpen(true)}>
@@ -170,6 +170,7 @@ function RouteComponent() {
 								<TableHeader>
 									<TableRow>
 										<TableHead>Name</TableHead>
+										<TableHead>Kind</TableHead>
 										<TableHead>Key</TableHead>
 										<TableHead>Created</TableHead>
 									</TableRow>
@@ -178,6 +179,13 @@ function RouteComponent() {
 									{keysQuery.data?.map((key) => (
 										<TableRow key={key.id}>
 											<TableCell className="font-medium">{key.name}</TableCell>
+											<TableCell>
+												<Badge variant="secondary">
+													{key.kind === "personal"
+														? "Personal"
+														: "Service account"}
+												</Badge>
+											</TableCell>
 											<TableCell>
 												<Badge variant="outline" className="font-mono">
 													{formatKeyPrefix(key.key_prefix)}
