@@ -27,6 +27,15 @@ go.work.sum
 # env file
 .env
 
+# Deploy secrets (keep examples tracked)
+deploy/.env
+deploy/afi.yaml
+
+# Local build artifacts
+/bin/
+.controlplane.pid
+.worker.pid
+
 # Editor/IDE
 # .idea/
 # .vscode/
@@ -166,3 +175,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+internal-docs
+configs/dev.yaml
+
+# pnpm
+pnpm-lock.yaml
+.pnpm-debug.log
+node_modules/
+.pnpm-store/

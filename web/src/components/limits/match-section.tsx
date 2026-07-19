@@ -73,7 +73,7 @@ export function MatchSection() {
                     const checked = field.state.value.includes(model);
 
                     return (
-                      <label className="flex items-center gap-3 rounded-md border p-3">
+                      <Label className="flex items-center gap-3 rounded-md border p-3 font-normal">
                         <Checkbox
                           checked={checked}
                           onCheckedChange={(value) => {
@@ -88,7 +88,7 @@ export function MatchSection() {
                         />
 
                         {model}
-                      </label>
+                      </Label>
                     );
                   }}
                 />
@@ -112,7 +112,7 @@ export function MatchSection() {
                     const checked = field.state.value.includes(modality);
 
                     return (
-                      <label className="flex items-center gap-3 rounded-md border p-3">
+                      <Label className="flex items-center gap-3 rounded-md border p-3 font-normal">
                         <Checkbox
                           checked={checked}
                           onCheckedChange={(value) => {
@@ -130,7 +130,7 @@ export function MatchSection() {
                         />
 
                         {modality}
-                      </label>
+                      </Label>
                     );
                   }}
                 />

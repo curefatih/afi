@@ -1,66 +1,116 @@
-import { teamsQueryOptions } from "#/api/team";
-import TeamCard from "#/components/team-card";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { PlusIcon, Users2Icon } from "lucide-react";
+import { useMemo, useState } from "react";
+import { orgMembersQueryOptions } from "#/api/organization";
+import { teamsQueryOptions } from "#/api/team";
+import { CreateTeamSheet } from "#/components/create-team-sheet";
+import { PageBody, PageHeader } from "#/components/page-header";
+import { QueryGate } from "#/components/query-state";
+import TeamCard from "#/components/team-card";
+import { Button } from "#/components/ui/button";
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from "#/components/ui/empty";
+import { pageTitle } from "#/lib/page-meta";
+import { useAuthUser } from "#/state/auth-state";
+import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/teams/")({
-  staticData: {
-    getTitle: () => "Team",
-  },
-  component: RouteComponent,
+	...pageTitle("Teams"),
+	component: RouteComponent,
 });
 
-type Team = {
-  id: string;
-  name: string;
-  description: string;
-  previewMembers: {
-    name: string;
-    avatarUrl: string;
-  }[];
-  tags: string[];
-  memberCount: number;
-};
-
 function RouteComponent() {
-  const [teams, setTeams] = useState<Team[]>([]);
+	const activeOrg = useActiveOrg();
+	const orgId = activeOrg?.id ?? "";
+	const user = useAuthUser();
+	const [open, setOpen] = useState(false);
 
-  const teamsMutation = useMutation({
-    ...teamsQueryOptions(),
-  });
+	const teamsQuery = useQuery({
+		...teamsQueryOptions(orgId),
+	});
+	const members = useQuery(orgMembersQueryOptions(orgId));
 
-  useEffect(() => {
-    teamsMutation.mutate(undefined, {
-      onSuccess(data, variables, onMutateResult, context) {
-        setTeams(data);
-      },
-    });
-  }, []);
+	const isOrgAdmin = useMemo(() => {
+		const me = (members.data ?? []).find((m) => m.user_id === user?.id);
+		return me?.role === "owner" || me?.role === "admin";
+	}, [members.data, user?.id]);
 
-  return (
-    <div>
-      <h1 className="scroll-m-20 text-2xl font-extrabold tracking-tight text-balance">
-        Teams Directory
-      </h1>
-      <span className="mb-2 text-sm font-normal text-muted-foreground">
-        Monitor velocity, managed projects, and core contributors across the
-        organization.
-      </span>
+	const teams = teamsQuery.data ?? activeOrg?.teams ?? [];
+	const projectsByTeam = useMemo(() => {
+		const map = new Map<string, { id: string; name: string }[]>();
+		for (const project of activeOrg?.projects ?? []) {
+			const list = map.get(project.team_id) ?? [];
+			list.push({ id: project.id, name: project.name });
+			map.set(project.team_id, list);
+		}
+		return map;
+	}, [activeOrg?.projects]);
 
-      <div className="teams flex flex-wrap gap-4 mt-2">
-        {teams.map((team) => (
-          <TeamCard
-            key={team.id}
-            id={team.id}
-            name={team.name}
-            description={team.description}
-            previewMembers={team.previewMembers}
-            memberCount={team.memberCount}
-            tags={team.tags}
-          />
-        ))}
-      </div>
-    </div>
-  );
+	return (
+		<PageBody>
+			<PageHeader
+				title="Teams"
+				description="Teams group members and own projects within the organization."
+				actions={
+					isOrgAdmin ? (
+						<Button onClick={() => setOpen(true)} disabled={!orgId}>
+							<PlusIcon />
+							New team
+						</Button>
+					) : null
+				}
+			/>
+
+			<QueryGate
+				isPending={(teamsQuery.isPending && !teams.length) || members.isPending}
+				isError={teamsQuery.isError}
+				error={teamsQuery.error}
+				onRetry={() => void teamsQuery.refetch()}
+			>
+				{teams.length === 0 ? (
+					<Empty className="border min-h-64">
+						<EmptyHeader>
+							<EmptyMedia variant="icon">
+								<Users2Icon />
+							</EmptyMedia>
+							<EmptyTitle>No teams</EmptyTitle>
+							<EmptyDescription>
+								{isOrgAdmin
+									? "This organization has no teams yet."
+									: "You are not assigned to any teams yet. Ask an organization admin or team owner to add you."}
+							</EmptyDescription>
+						</EmptyHeader>
+						{isOrgAdmin ? (
+							<EmptyContent>
+								<Button onClick={() => setOpen(true)} disabled={!orgId}>
+									<PlusIcon />
+									Create team
+								</Button>
+							</EmptyContent>
+						) : null}
+					</Empty>
+				) : (
+					<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+						{teams.map((team) => (
+							<TeamCard
+								key={team.id}
+								id={team.id}
+								name={team.name}
+								projects={projectsByTeam.get(team.id) ?? []}
+							/>
+						))}
+					</div>
+				)}
+			</QueryGate>
+
+			<CreateTeamSheet open={open} onOpenChange={setOpen} />
+		</PageBody>
+	);
 }

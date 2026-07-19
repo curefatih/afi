@@ -1,66 +1,135 @@
-// cmd/gateway/main.go
 package main
 
 import (
-	"log"
+	"context"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/curefatih/afi/internal/core/services"
-	"github.com/curefatih/afi/internal/ports"
-	"github.com/curefatih/afi/pkg/adapters/inbound/http/openai"
-	"github.com/curefatih/afi/pkg/adapters/outbound/jsengine"
-	"github.com/curefatih/afi/pkg/adapters/outbound/llmproviders/anthropic"
-	openaiOutbound "github.com/curefatih/afi/pkg/adapters/outbound/llmproviders/openai"
+	"github.com/curefatih/afi/extensions/demohook"
+	"github.com/curefatih/afi/extensions/echo"
+	"github.com/curefatih/afi/internal/adapters/postgres"
+	afiRedis "github.com/curefatih/afi/internal/adapters/redis"
+	"github.com/curefatih/afi/internal/adapters/secrets"
+	"github.com/curefatih/afi/internal/credentials"
+	"github.com/curefatih/afi/internal/dataplane"
+	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/policy"
+	"github.com/curefatih/afi/internal/snapshot"
+	"github.com/curefatih/afi/internal/workers"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
-	// 1. Initialize DB / Infrastructure Outbound Components
-	// In production, instantiate your actual database and cache repositories here.
-	var vaultAdapter ports.CredentialVault // Your DB secret-store adapter
-	var pluginRepo ports.PluginService     // Your Postgres script tracker repo
-	var budgetRepo ports.BudgetService     // Your Distributed Redis atomic storage repo
-	var routerRepo ports.RouterService     // Your active configuration rule repo
-	var authRepo services.AuthRepository   // Your secure hash token lookups repo
+	log := kernel.NewLogger("gateway")
 
-	httpClient := &http.Client{Timeout: 90 * time.Second}
-
-	// 2. Assemble Outbound Adapter Implementations
-	jsSandboxEngine := jsengine.NewGojaEngineAdapter()
-	anthropicClient := anthropic.NewAdapter(vaultAdapter, httpClient)
-	openaiClient := openaiOutbound.NewAdapter(vaultAdapter, httpClient)
-
-	providerRegistry := map[string]ports.LLMClient{
-		"openai":    openaiClient,
-		"anthropic": anthropicClient,
+	cfg, err := kernel.LoadConfig()
+	if err != nil {
+		log.Error("config", "err", err)
+		os.Exit(1)
 	}
 
-	// 3. Assemble Core Business Logic Services
-	authService := services.NewAuthService(authRepo)
-	gatewayService := services.NewGatewayService(
-		jsSandboxEngine,
-		pluginRepo,
-		budgetRepo,
-		routerRepo,
-		providerRegistry,
-	)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
 
-	// 4. Mount Inbound Driving Adapters
-	openAIHTTPHandler := openai.NewHandler(gatewayService, authService)
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	if err != nil {
+		log.Error("db connect", "err", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
 
-	mux := http.NewServeMux()
-	// Expose our clean proxy route endpoint
-	mux.Handle("/v1/chat/completions", openAIHTTPHandler)
+	snapStore := postgres.NewSnapshotStore(pool)
+	holder := dataplane.NewHolder()
+	reg := dataplane.DefaultRegistry().RegisterSDK(echo.New())
+	hooks := dataplane.NewHookChain().RegisterHook(demohook.NewWithLog(log))
+	pipeline := dataplane.NewPipelineWithRegistry(holder, reg, log)
+	pipeline.Hooks = hooks
+	var credBox *credentials.Box
+	if cfg.Credentials.MasterKey != "" {
+		box, err := credentials.ParseMasterKey(cfg.Credentials.MasterKey)
+		if err != nil {
+			log.Error("credentials master key", "err", err)
+			os.Exit(1)
+		}
+		credBox = box
+	}
+	pipeline.Credentials = secrets.NewCredentialResolver(credBox)
 
-	server := &http.Server{
-		Addr:         ":8080",
-		Handler:      mux,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 6 * time.Minute, // Elevated budget threshold limit to allow lengthy streams
+	var timed dataplane.CounterStore
+	if cfg.RedisURL != "" {
+		opt, err := redis.ParseURL(cfg.RedisURL)
+		if err != nil {
+			log.Error("redis url", "err", err)
+			os.Exit(1)
+		}
+		rdb := redis.NewClient(opt)
+		defer rdb.Close()
+		if err := rdb.Ping(ctx).Err(); err != nil {
+			log.Warn("redis unavailable; timed quota windows will fail until Redis is up", "err", err)
+		} else {
+			log.Info("redis connected", "addr", opt.Addr)
+		}
+		timed = &afiRedis.Counters{Client: rdb}
+	}
+	pipeline.Counters = dataplane.CompositeCounters{
+		Total: &postgres.Counters{Pool: pool},
+		Timed: timed,
 	}
 
-	log.Println("⚡ LLM Gateway Engine online and listening for requests on structural port :8080...")
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("Fatal container engine termination: %v", err)
+	polEval, err := policy.NewEvaluator()
+	if err != nil {
+		log.Error("policy evaluator", "err", err)
+		os.Exit(1)
 	}
+	pipeline.Policies = polEval
+	log.Info("extensions registered", "provider_types", reg.Types(), "hooks", hooks.Infos())
+
+	outbox := &postgres.UsageOutbox{Pool: pool}
+	pipeline.Usage = func(e dataplane.UsageEvent) {
+		payload, err := workers.EncodeUsage(e)
+		if err != nil {
+			log.Error("encode usage", "err", err)
+			return
+		}
+		if err := outbox.Enqueue(context.Background(), payload); err != nil {
+			log.Error("enqueue usage", "err", err)
+		}
+	}
+
+	go func() {
+		err := snapStore.Watch(ctx, cfg.Gateway.SnapshotPollInterval, func(s *snapshot.Snapshot) {
+			holder.Set(s)
+			log.Info("snapshot loaded", "version", s.Version, "keys", len(s.APIKeys), "routes", len(s.Routes), "quotas", len(s.Quotas), "policies", len(s.Policies))
+		})
+		if err != nil && ctx.Err() == nil {
+			log.Error("snapshot watch", "err", err)
+			cancel()
+		}
+	}()
+
+	httpServer := &http.Server{
+		Addr:              cfg.Gateway.Addr,
+		Handler:           pipeline.Handler(),
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	go func() {
+		log.Info("listening", "addr", cfg.Gateway.Addr)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error("listen", "err", err)
+			cancel()
+		}
+	}()
+
+	<-ctx.Done()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		log.Error("http server shutdown failed", "err", err)
+	}
+	log.Info("stopped")
 }

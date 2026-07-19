@@ -1,40 +1,80 @@
+<p align="center">
+  <img src="assets/brand/logo.png" alt="AFI — AI Gateway" width="320" />
+</p>
+
 # AFI - AI Gateway
 
-> [!WARNING]  
-> Under development
+> [!WARNING]
+> Under development. The control/data plane vertical slice is the supported local path.
 
-This orchestration proxy is a high-performance, enterprise-grade access point designed to securely manage, route, audit, and intercept multi-tenant traffic hitting upstream LLM providers.
+AFI is a self-hostable LLM gateway with a **control plane** (configuration, identity, snapshots) and a **data plane** (high-performance inference). The data plane serves requests from immutable configuration snapshots — it never queries the config database on the hot path.
 
----
+## Prerequisites
 
-## System Architecture Overview
+| Tool | Notes |
+|------|--------|
+| Go | See `go.mod` (`1.25.x`) |
+| Docker | Postgres via Compose |
+| pnpm | Optional, for `web/` |
+| uv / uvx | Docs (`make doc-serve`) |
+| OpenAI API key | For live inference |
 
-The gateway serves as a secure compliance buffer between your internal developer environments and public model endpoints.
+## Quick start
 
+```bash
+# 1. Infrastructure
+make dev-up
+
+# 2. Provider key for the gateway
+export OPENAI_API_KEY="sk-..."
+# optional
+export ANTHROPIC_API_KEY="sk-ant-..."
+export GEMINI_API_KEY="..."
+
+# 3. Control plane (migrate, seed, listen :8081)
+make run-controlplane
+
+# 4. Gateway (load snapshot, listen :8080) — second terminal
+make run-gateway
+
+# 5. Inference
+curl -s http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Bearer sk-project-local-dev-token-12345" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"ping"}]}'
 ```
- [ Your Apps / Clients ] 
-          │
-          ▼
- ┌────────────────────────────────────────────────────────┐
- │            LOCAL HEXAGONAL AI GATEWAY ENGINE           │
- │                                                        │
- │  🔒 1. Token Auth & Project Isolation Verification     │
- │  🪝 2. PII / Credit Card Masking JavaScript Sandbox    │
- │  🚦 3. Dynamic Rule Matrix Model Routing Router        │
- │  💰 4. Strict Synchronous Streaming Budget Tracker     │
- └────────────────────────────────────────────────────────┘
-          │
-          ▼
- [ Upstream Providers: OpenAI / Anthropic / Local Models ]
 
+Full checklist: [docs/getting-started/local-dev.md](docs/getting-started/local-dev.md).
+
+## Components
+
+| Process | Port | Role |
+|---------|------|------|
+| `controlplane` | `:8081` | Admin, platform API, snapshot publish |
+| `gateway` | `:8080` | OpenAI-compatible inference + quota enforcement |
+| `worker` | — | Drains usage outbox → `usage_events` |
+| Postgres | `:5433` | Config + snapshots (`make dev-up`) |
+| Adminer | `:5050` | DB UI |
+| `web/` | `:3000` | Platform UI (`pnpm --dir web dev`) |
+
+## Common commands
+
+```bash
+make build              # bin/controlplane, bin/gateway, bin/afi
+make test               # unit tests (preferred quality bar)
+make verify             # smoke against a running local stack
+make seed               # CLI: seed local data + publish snapshot
+make snapshot-publish
+make doc-serve          # http://127.0.0.1:8000
 ```
 
----
+## Architecture (short)
 
-## Key Operational Features
+```mermaid
+flowchart LR
+  UI[Platform UI / CLI] --> CP[Control Plane] --> SS[(Snapshot Store)]
+  Clients --> GW[Gateway] --> PA[Provider adapters]
+  SS -.->|watch / hot reload| GW
+```
 
-* **🪝 Sandboxed Plugin Hooks Pipeline:** Inject JavaScript hooks natively (`onRequest`, `onBeforeUpstreamCall`, `onResponseChunk`) to scrub secrets, inject standard corporate guardrails, or alter streaming responses dynamically.
-* **📈 Air-Tight SSE Streaming Telemetry:** Seamless interception of trailing vendor statistics frames ensures budget consumption limits and token-usage matrices are tracked perfectly on every connection closure.
-* **🚦 Lightweight Condition Routing:** Zero-dependency wildcard or static route mappings configured natively via a decoupled memory state layer.
-
----
+See [docs/development/architecture.md](docs/development/architecture.md).

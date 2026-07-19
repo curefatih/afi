@@ -1,78 +1,91 @@
-import { useAuthStore } from "#/state/auth-state";
-import { useOrgStore } from "#/state/organization-state";
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
+import { apiFetch } from "#/lib/api-client";
+import type { Team } from "#/state/organization-state";
 
-export const teamsQueryOptions = () =>
-  mutationOptions({
-    mutationFn: async () => {
-      const isAuthenticated = useAuthStore.getState().isAuthenticated;
-      if (!isAuthenticated) {
-        throw new Error("Not authenticated");
-      }
-      const activeOrgId = useOrgStore.getState().activeOrgId;
-      if (!activeOrgId) {
-        return;
-      }
+export type TeamRole = "owner" | "admin" | "member";
 
-      const res = await fetch(
-        `http://localhost:8080/api/v1/platform/organizations/${activeOrgId}/teams`,
-        {
-          headers: {
-            Authorization: `Bearer ${useAuthStore.getState().user?.accessToken}`,
-          },
-        },
-      );
-      if (!res.ok) throw new Error("Failed to fetch teams");
-      const teams = await res.json();
+export type TeamMember = {
+	user_id: string;
+	name: string;
+	email: string;
+	role: TeamRole | string;
+};
 
-      return teams.map((i) => ({ ...i, previewMembers: [] }));
-    },
-  });
+export const teamsQueryOptions = (orgId: string) =>
+	queryOptions({
+		queryKey: ["organizations", orgId, "teams"],
+		queryFn: () =>
+			apiFetch<Team[]>(`/api/v1/platform/organizations/${orgId}/teams`),
+		enabled: !!orgId,
+	});
+
+export type CreateTeamInput = {
+	orgId: string;
+	name: string;
+};
+
+export const createTeamMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ orgId, name }: CreateTeamInput) =>
+			apiFetch<Team>(`/api/v1/platform/organizations/${orgId}/teams`, {
+				method: "POST",
+				body: { name },
+			}),
+	});
 
 export const teamQueryOptions = (teamId: string) =>
-  queryOptions({
-    queryKey: ["team", teamId],
-    queryFn: async () => {
-      const isAuthenticated = useAuthStore.getState().isAuthenticated;
-      if (!isAuthenticated) {
-        throw new Error("Not authenticated");
-      }
-
-      const res = await fetch(
-        `http://localhost:8080/api/v1/platform/teams/${teamId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${useAuthStore.getState().user?.accessToken}`,
-          },
-        },
-      );
-      if (!res.ok) throw new Error("Failed to fetch teams");
-      const team = await res.json();
-
-      return team;
-    },
-  });
+	queryOptions({
+		queryKey: ["teams", teamId],
+		queryFn: () => apiFetch<Team>(`/api/v1/platform/teams/${teamId}`),
+		enabled: !!teamId,
+	});
 
 export const teamMembersQueryOptions = (teamId: string) =>
-  queryOptions({
-    queryKey: ["teamMembers", teamId],
-    queryFn: async () => {
-      const isAuthenticated = useAuthStore.getState().isAuthenticated;
-      if (!isAuthenticated) {
-        throw new Error("Not authenticated");
-      }
+	queryOptions({
+		queryKey: ["teams", teamId, "members"],
+		queryFn: () =>
+			apiFetch<TeamMember[]>(`/api/v1/platform/teams/${teamId}/members`),
+		enabled: !!teamId,
+	});
 
-      const res = await fetch(
-        `http://localhost:8080/api/v1/platform/teams/${teamId}/members`,
-        {
-          headers: {
-            Authorization: `Bearer ${useAuthStore.getState().user?.accessToken}`,
-          },
-        },
-      );
-      if (!res.ok) throw new Error("Failed to fetch team members");
-      const team = await res.json();
+export type AddTeamMemberInput = {
+	teamId: string;
+	user_id: string;
+};
 
-      return team;
-    },
-  });
+export const addTeamMemberMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ teamId, user_id }: AddTeamMemberInput) =>
+			apiFetch<TeamMember>(`/api/v1/platform/teams/${teamId}/members`, {
+				method: "POST",
+				body: { user_id },
+			}),
+	});
+
+export type RemoveTeamMemberInput = {
+	teamId: string;
+	userId: string;
+};
+
+export const removeTeamMemberMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ teamId, userId }: RemoveTeamMemberInput) =>
+			apiFetch<void>(`/api/v1/platform/teams/${teamId}/members/${userId}`, {
+				method: "DELETE",
+			}),
+	});
+
+export type UpdateTeamMemberRoleInput = {
+	teamId: string;
+	userId: string;
+	role: TeamRole;
+};
+
+export const updateTeamMemberRoleMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ teamId, userId, role }: UpdateTeamMemberRoleInput) =>
+			apiFetch<TeamMember>(
+				`/api/v1/platform/teams/${teamId}/members/${userId}`,
+				{ method: "PATCH", body: { role } },
+			),
+	});

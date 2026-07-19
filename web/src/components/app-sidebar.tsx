@@ -1,172 +1,175 @@
 "use client";
 
-import * as React from "react";
-
-import { organizationsQueryOptions } from "#/api/user";
-import { TeamSwitcher } from "#/components/team-switcher";
+import { NavMain } from "#/components/nav-main";
+import { NavProjects } from "#/components/nav-projects";
+import { NavUser } from "#/components/nav-user";
+import { OrgSwitcher } from "#/components/org-switcher";
+import { useOrgBootstrap } from "#/hooks/use-org-bootstrap";
 import { useAuthUser } from "#/state/auth-state";
+import { useActiveOrg, useOrgStore } from "#/state/organization-state";
 import {
-  useActiveOrg,
-  useActiveTeam,
-  useOrgStore,
-} from "#/state/organization-state";
-import { NavMain } from "@/components/nav-main";
-import { NavTeam } from "#/components/nav-team";
-import { NavUser } from "@/components/nav-user";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarRail,
+	Sidebar,
+	SidebarContent,
+	SidebarFooter,
+	SidebarHeader,
+	SidebarRail,
 } from "@/components/ui/sidebar";
-import { useMutation } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-  AudioLinesIcon,
-  FishIcon,
-  FrameIcon,
-  GalleryVerticalEndIcon,
-  Settings2Icon,
-  TerminalIcon,
-  TerminalSquareIcon,
-  Users2,
+	BarChart3Icon,
+	Building2Icon,
+	FolderKanbanIcon,
+	GaugeIcon,
+	KeyRoundIcon,
+	LayoutDashboardIcon,
+	PlugIcon,
+	PuzzleIcon,
+	RouteIcon,
+	ScrollTextIcon,
+	Settings2Icon,
+	ShieldIcon,
+	TerminalSquareIcon,
+	UserRoundIcon,
+	Users2Icon
 } from "lucide-react";
-import { useEffect } from "react";
-import { Empty, EmptyContent, EmptyDescription } from "./ui/empty";
-import { useNavigate } from "@tanstack/react-router";
 
-// This is sample data.
-const data = {
-  organizationSwitcher: [
-    {
-      name: "AFI Inc",
-      team: "Enterprise",
-    },
-    {
-      name: "Acme Corp.",
-      team: "Startup",
-    },
-    {
-      name: "Evil Corp.",
-      team: "Free",
-    },
-  ],
-  navMain: [
-    {
-      title: "Playground",
-      url: "/app/playground/chat",
-      icon: <TerminalSquareIcon />,
-      items: [
-        {
-          title: "Chat",
-          url: "/app/playground/chat",
-        },
-        {
-          title: "TTS",
-          url: "/app/playground/tts",
-        },
-        {
-          title: "STT",
-          url: "/app/playground/stt",
-        },
-      ],
-    },
-    {
-      title: "Teams",
-      url: "/app/teams",
-      icon: <Users2 />,
-    },
-    {
-      title: "Hooks",
-      url: "/app/hooks",
-      icon: <FishIcon />,
-    },
-    {
-      title: "Settings",
-      url: "/app/settings/general",
-      icon: <Settings2Icon />,
-      items: [
-        {
-          title: "General",
-          url: "/app/settings/general",
-        },
-        {
-          title: "Team",
-          url: "/app/settings/teams",
-        },
-        {
-          title: "Limits",
-          url: "/app/settings/limits",
-        },
-      ],
-    },
-  ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: <FrameIcon />,
-    },
-  ],
-};
+const platformNav = [
+  {
+    title: "Overview",
+    url: "/app/dashboard",
+    icon: <LayoutDashboardIcon />,
+  },
+  {
+    title: "Organizations",
+    url: "/app/organizations",
+    icon: <Building2Icon />,
+  },
+  {
+    title: "Settings",
+    url: "/app/settings/general",
+    icon: <Settings2Icon />,
+  },
+  {
+    title: "Projects",
+    url: "/app/projects",
+    icon: <FolderKanbanIcon />,
+  },
+  {
+    title: "Teams",
+    url: "/app/teams",
+    icon: <Users2Icon />,
+  },
+  {
+    title: "Users",
+    url: "/app/users",
+    icon: <UserRoundIcon />,
+  },
+  {
+    title: "API Keys",
+    url: "/app/keys",
+    icon: <KeyRoundIcon />,
+  },
+  {
+    title: "Playground",
+    url: "/app/playground/chat",
+    icon: <TerminalSquareIcon />,
+    items: [
+      { title: "Chat", url: "/app/playground/chat" },
+      { title: "TTS", url: "/app/playground/tts" },
+      { title: "STT", url: "/app/playground/stt" },
+    ],
+  },
+];
+
+const governanceNav = [
+  {
+    title: "Providers",
+    url: "/app/providers",
+    icon: <PlugIcon />,
+  },
+  {
+    title: "Routing",
+    url: "/app/routing",
+    icon: <RouteIcon />,
+  },
+  {
+    title: "Quotas",
+    url: "/app/quotas",
+    icon: <GaugeIcon />,
+  },
+  {
+    title: "Policies",
+    url: "/app/policies",
+    icon: <ScrollTextIcon />,
+  },
+  {
+    title: "Usage",
+    url: "/app/usage",
+    icon: <BarChart3Icon />,
+  },
+  // {
+  // 	title: "Billing",
+  // 	url: "/app/billing",
+  // 	icon: <CreditCardIcon />,
+  // 	badge: "Soon",
+  // },
+  {
+    title: "Secrets",
+    url: "/app/secrets",
+    icon: <ShieldIcon />,
+  },
+  {
+    title: "Hooks",
+    url: "/app/hooks",
+    icon: <PuzzleIcon />,
+  },
+];
+
+function SidebarSkeleton() {
+  return (
+    <div className="flex flex-col gap-4 p-4">
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-4 w-20" />
+      <Skeleton className="h-8 w-full" />
+      <Skeleton className="h-8 w-full" />
+      <Skeleton className="h-8 w-full" />
+      <Skeleton className="h-4 w-24 mt-4" />
+      <Skeleton className="h-8 w-full" />
+      <Skeleton className="h-8 w-full" />
+    </div>
+  );
+}
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const navigate = useNavigate();
   const user = useAuthUser();
-  const organizations = useOrgStore();
+  const orgs = useOrgStore((s) => s.orgs);
   const activeOrg = useActiveOrg();
-  const activeTeam = useActiveTeam();
+  const { isBootstrapping } = useOrgBootstrap();
 
-  const organizationsMutation = useMutation({
-    ...organizationsQueryOptions(),
-  });
-
-  useEffect(() => {
-    organizationsMutation.mutate(undefined);
-  }, []);
-
-  if (!user) {
-    navigate({ to: "/auth/login" });
-  }
-
-  if (!user || !activeOrg) {
-    return null;
-  }
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        {!activeOrg ? (
-          "You dont have any organization yet"
+        {isBootstrapping && !activeOrg ? (
+          <Skeleton className="h-12 w-full" />
         ) : (
-          <TeamSwitcher teams={activeOrg.teams} />
+          <OrgSwitcher organizations={orgs} />
         )}
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        {!activeOrg || !activeTeam ? (
-          <Empty>
-            <EmptyContent>
-              <EmptyDescription>Select team for team options</EmptyDescription>
-            </EmptyContent>
-          </Empty>
+        {isBootstrapping && !activeOrg ? (
+          <SidebarSkeleton />
         ) : (
           <>
-            <NavTeam
-              teams={activeOrg.projects.map((p) => ({
-                name: p.name,
-                url: `/app/projects/${p.id}`,
-              }))}
-            />
+            <NavMain label="Platform" items={platformNav} />
+            {activeOrg && activeOrg.projects.length > 0 ? (
+              <NavProjects projects={activeOrg.projects} />
+            ) : null}
+            <NavMain label="Governance" items={governanceNav} />
           </>
         )}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser
-          user={user}
-          activeOrganization={activeOrg!}
-          organizations={organizations.orgs}
-          onOrganizationChange={() => {}}
-        />
+        {user ? <NavUser user={user} /> : <Skeleton className="h-12 w-full" />}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="AFI">
+  <defs>
+    <linearGradient id="bg" x1="72" y1="40" x2="440" y2="472" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1c222b"/>
+      <stop offset="100%" stop-color="#0b0f14"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- Stylized A / gateway peak -->
+  <path
+    fill="#f4f7fb"
+    d="M256 102c9.4 0 17.9 5.3 22.1 13.7l114 228c7 14-3.2 30.3-18.7 30.3h-50.8c-7.5 0-14.3-4.3-17.6-11.1L256 236.8l-49 126.1c-3.3 6.8-10.1 11.1-17.6 11.1H138.6c-15.5 0-25.7-16.3-18.7-30.3l114-228C238.1 107.3 246.6 102 256 102z"
+  />
+  <!-- Gateway aperture bar -->
+  <rect x="168" y="290" width="176" height="38" rx="11" fill="#5eead4"/>
+</svg>

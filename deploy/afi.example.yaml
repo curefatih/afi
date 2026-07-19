@@ -1,0 +1,45 @@
+# Example production-oriented AFI config.
+# Copy to deploy/afi.yaml (or mount at /config/afi.yaml) and edit before use.
+# Environment variables override any matching key — prefer secrets via env.
+
+database_url: "postgres://afi:CHANGE_ME@postgres:5432/afi?sslmode=disable"
+redis_url: "redis://redis:6379/0"
+
+controlplane:
+  addr: ":8081"
+
+gateway:
+  addr: ":8080"
+  # How often the gateway polls Postgres for new snapshots (also uses LISTEN/NOTIFY).
+  snapshot_poll_interval: "2s"
+
+auth:
+  # REQUIRED: replace before any non-local deployment.
+  jwt_secret: "CHANGE_ME_long_random_jwt_secret"
+  token_ttl: "24h"
+  # REQUIRED: protects POST /internal/v1/* (seed, snapshot publish over HTTP).
+  internal_token: "CHANGE_ME_long_random_internal_token"
+
+# Applied only when the database is empty (first control-plane start).
+# These fields are YAML-only — they are not overridden by AFI_* env vars.
+seed:
+  virtual_api_key: "CHANGE_ME_seed_virtual_api_key"
+  admin_email: "admin@example.com"
+  admin_password: "CHANGE_ME_strong_password"
+  admin_name: "Admin"
+  openai_base_url: "https://api.openai.com/v1"
+  openai_api_key_env: "OPENAI_API_KEY"
+  default_model: "gpt-4o-mini"
+
+# Durable platform domain events (controlplane enqueue → worker → broker).
+# See docs/development/platform-events.md
+events:
+  outbox_enabled: false
+  publisher: log # log | nats | kafka | noop
+  nats:
+    url: "nats://nats:4222"
+    stream: AFI_PLATFORM
+    subject_prefix: afi.platform
+  kafka:
+    brokers: "kafka:9092"
+    topic: afi.platform.events

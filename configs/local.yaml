@@ -1,73 +1,60 @@
-# Setup Local Platform Context Matrix
-organizations:
-  - id: "org_local"
-    name: "Development Corp"
+database_url: "postgres://afi:afi@localhost:5433/afi?sslmode=disable"
+redis_url: "redis://localhost:6379/0"
 
-teams:
-  - id: "team_local"
-    org_id: "org_local"
-    name: "Engineering Team"
-projects:
-  - id: "proj_local"
-    team_id: "team_local"
-    name: "LLM Sandbox"
+controlplane:
+  addr: ":8081"
+
+gateway:
+  addr: ":8080"
+  snapshot_poll_interval: "2s"
 
 auth:
-  token_secret: "super-secure-dev-platform-secret-key-change-in-prod"
-  token_duration: 12h
-  issuer: "afi-gateway-platform"
+  jwt_secret: "afi-local-dev-jwt-secret-change-me"
+  token_ttl: "24h"
+  internal_token: "afi-local-internal-token"
 
-# Seed valid API Keys
-api_keys:
-  - raw_key_prefix: "sk-project-local-dev-token-12345" # Becomes sk-project-local-dev-token-12345...
-    type: "SERVICE_ACCOUNT"
-    project_id: "proj_local"
+# Required for Secrets → storage_kind=encrypted_db (controlplane + gateway).
+# Any string is SHA-256-derived; or use base64:<32-byte-key>.
+credentials:
+  master_key: "afi-local-dev-credentials-master-key"
 
-# Local Vault Provider Mapping
-upstream_credentials:
-  - project_id: "proj_local"
-    provider: "openai"
-    env_var_key: "LOCAL_OPENAI_API_KEY" # Reads from your local shell environment
-  - project_id: "proj_local"
-    provider: "anthropic"
-    env_var_key: "LOCAL_ANTHROPIC_API_KEY"
+seed:
+  virtual_api_key: "sk-project-local-dev-token-12345"
+  admin_email: "admin@afi.local"
+  admin_password: "admin"
+  admin_name: "Admin"
+  openai_base_url: "https://api.openai.com/v1"
+  openai_api_key_env: "OPENAI_API_KEY"
+  default_model: "gpt-4o-mini"
 
-# Hierarchical Budgets Checkpoints Setup
-budgets:
-  - scope: "PROJECT"
-    target_id: "proj_local"
-    max_cost: 50.00
-    used_cost: 0.00
+# Durable platform domain events (controlplane → platform_event_outbox → worker → broker).
+# Enable outbox_enabled and set publisher to log|nats|kafka|noop.
+events:
+  outbox_enabled: false
+  publisher: log
+  nats:
+    url: "nats://127.0.0.1:4222"
+    stream: AFI_PLATFORM
+    subject_prefix: afi.platform
+  kafka:
+    brokers: "127.0.0.1:9092"
+    topic: afi.platform.events
 
-routing_rules:
-  - id: "rule_1"
-    name: "Catch-all Local Dev Rule"
-    priority: 1
-    is_active: true
-    conditions: [] # Ensure this array is explicitly empty to match EVERYTHING
-    target:
-      provider: "openai"
-      target_model: "gpt-4o"
+# Outbound mail for org member invites.
+# default_provider: log | smtp | resend (log = print to controlplane logs).
+# Point smtp at Mailpit/Mailhog for local delivery (e.g. localhost:1025).
+mail:
+  public_app_url: "http://localhost:3000"
+  from: "AFI <noreply@afi.local>"
+  default_provider: log
+  smtp:
+    enabled: false
+    host: localhost
+    port: 1025
+    username: ""
+    password: ""
+    tls: false
+  resend:
+    enabled: false
+    api_key: ""
 
-# Dynamic JavaScript Hooks Intercept Binding Locations
-hooks:
-  timeout_ms: 50
-  specs:
-    - name: "onRequest"
-      path: "configs/hooks/req_mask_cc.js"
-    - name: "onResponse"
-      path: "configs/hooks/res_inject_meta.js"
-
-http:
-  port: 8080
-  read_timeout: 15s
-  write_timeout: 0s
-
-database:
-  host: localhost
-  port: 5433
-  user: afi
-  password: afi
-  name: afi
-  ssl_mode: disable
-  connection_string: postgresql://afi:afi@localhost:5433/afi?sslmode=disable

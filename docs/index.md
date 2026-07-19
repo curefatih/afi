@@ -1,38 +1,46 @@
-# AFI - AI Gateway
+<p align="center">
+  <img src="assets/brand/logo.png" alt="AFI — AI Gateway" width="280" />
+</p>
 
-Welcome to your local cloud-native AI gateway environment! This orchestration proxy is a high-performance, enterprise-grade access point designed to securely manage, route, audit, and intercept multi-tenant traffic hitting upstream LLM providers.
+# AFI
 
+AFI is a self-hostable, cloud-native **LLM gateway**.
 
----
+It has two major parts:
 
-## System Architecture Overview
+* **Control plane** — configuration, identities, policies, quotas, routing, and platform APIs. Owns business rules and compiles **immutable snapshots**.
+* **Data plane (gateway)** — processes inference with a request pipeline. Loads snapshots and never queries the configuration database during a request.
 
-The gateway serves as a secure compliance buffer between your internal developer environments and public model endpoints.
+Start here: [Local development](getting-started/local-dev.md). Self-hosting: [Deployment](deployment.md).
 
+## High-level flow
+
+```mermaid
+flowchart TB
+  UI[Platform UI]
+  CP[Control Plane]
+  SS[Snapshot Store]
+  DP[Data Plane]
+  PA[Provider Adapters]
+  Prov[OpenAI / Anthropic / Gemini / compatible]
+
+  UI --> CP
+  CP -->|Builds gateway snapshot| SS
+  SS -->|Watch / hot reload| DP
+  DP --> PA
+  PA --> Prov
 ```
- [ Your Apps / Clients ] 
-          │
-          ▼
- ┌────────────────────────────────────────────────────────┐
- │            LOCAL HEXAGONAL AI GATEWAY ENGINE           │
- │                                                        │
- │  🔒 1. Token Auth & Project Isolation Verification     │
- │  🪝 2. PII / Credit Card Masking JavaScript Sandbox    │
- │  🚦 3. Dynamic Rule Matrix Model Routing Router        │
- │  💰 4. Strict Synchronous Streaming Budget Tracker     │
- └────────────────────────────────────────────────────────┘
-          │
-          ▼
- [ Upstream Providers: OpenAI / Anthropic / Local Models ]
 
-```
+## What works locally today
 
----
-
-## Key Operational Features
-
-* **🪝 Sandboxed Plugin Hooks Pipeline:** Inject JavaScript hooks natively (`onRequest`, `onBeforeUpstreamCall`, `onResponseChunk`) to scrub secrets, inject standard corporate guardrails, or alter streaming responses dynamically.
-* **📈 Air-Tight SSE Streaming Telemetry:** Seamless interception of trailing vendor statistics frames ensures budget consumption limits and token-usage matrices are tracked perfectly on every connection closure.
-* **🚦 Lightweight Condition Routing:** Zero-dependency wildcard or static route mappings configured natively via a decoupled memory state layer.
-
----
+* Postgres + Adminer via `make dev-up`
+* Control plane: migrate, seed, snapshot publish, platform auth, org create + member invite
+* Personal and service-account API keys; quotas on org / project / user / api_key
+* Gateway: virtual API key auth → quotas → routes (with failover) → provider registry
+* OpenAI-compatible `POST /v1/chat/completions` and `GET /v1/models` (`supports_streaming` / `supports_tts` / `supports_stt`)
+* Native Anthropic `POST /v1/messages` (Anthropic providers / routes)
+* OpenAI-compatible `POST /v1/audio/speech` and `POST /v1/audio/transcriptions` (openai / openai_compatible)
+* Streaming for OpenAI, Anthropic, Gemini, and `openai_compatible` (capability-gated)
+* Usage outbox + worker with optional `cost_usd`
+* Web UI: Providers, Routing, Keys, Quotas, Policies, chat/TTS/STT playground against the gateway
+* Docs via `make doc-serve`

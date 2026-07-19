@@ -2,16 +2,40 @@ site_name: AFI Documentation
 site_url: https://afi.fatihcure.com
 theme:
   name: material
+  logo: assets/brand/logo-mark.svg
+  favicon: assets/brand/favicon-32.png
   palette:
     primary: black
   font:
     code: Roboto Mono
-  language: en 
+  language: en
   copyright: ""
 
 markdown_extensions:
+  - admonition
+  - pymdownx.details
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Local development: getting-started/local-dev.md
+      - Verify: getting-started/verify.md
+  - Development:
+      - Repository layout: development/repository-layout.md
+      - Architecture: development/architecture.md
+      - Providers: development/providers.md
+      - Platform events: development/platform-events.md
+      - Config reference: development/config-reference.md
+      - Testing: development/testing.md
+  - Concepts:
+      - Plugins (hooks): hooks/usage.md
+  - Deployment:
+      - Overview: deployment.md
+      - Customization: deployment/customization.md
+      - Docker Compose: deployment/docker.md
+      - Binaries: deployment/binary.md
