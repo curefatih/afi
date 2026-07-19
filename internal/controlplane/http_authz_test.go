@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/curefatih/afi/internal/app/platform"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
 )
@@ -233,7 +234,7 @@ func (f *fakePlatform) GetAPIKey(context.Context, string) (*APIKey, error) {
 func (f *fakePlatform) CreateAPIKey(context.Context, string, string, string, string, string, string) (*APIKey, error) {
 	return nil, errors.New("unused")
 }
-func (f *fakePlatform) DeleteAPIKey(context.Context, string) error { return kernel.ErrNotFound }
+func (f *fakePlatform) DeleteAPIKey(context.Context, string) error                { return kernel.ErrNotFound }
 func (f *fakePlatform) ListProviders(context.Context, string) ([]Provider, error) { return nil, nil }
 func (f *fakePlatform) ListProviderHealth(context.Context, string, time.Time, time.Time) ([]ProviderHealth, error) {
 	return nil, nil
@@ -244,7 +245,7 @@ func (f *fakePlatform) CreateProvider(context.Context, string, string, string, s
 func (f *fakePlatform) UpdateProvider(context.Context, string, string, string, string) (*Provider, error) {
 	return nil, errors.New("unused")
 }
-func (f *fakePlatform) DeleteProvider(context.Context, string) error { return nil }
+func (f *fakePlatform) DeleteProvider(context.Context, string) error        { return nil }
 func (f *fakePlatform) ListRoutes(context.Context, string) ([]Route, error) { return nil, nil }
 func (f *fakePlatform) CreateRoute(context.Context, string, string, string, string, []RouteFallback) (*Route, error) {
 	return nil, errors.New("unused")
@@ -259,7 +260,7 @@ func (f *fakePlatform) ListUsage(context.Context, string, UsageFilter) ([]UsageE
 func (f *fakePlatform) SummarizeUsage(context.Context, string, UsageFilter) ([]UsageSummaryBucket, error) {
 	return nil, nil
 }
-func (f *fakePlatform) ListQuotas(context.Context, string) ([]Quota, error)           { return nil, nil }
+func (f *fakePlatform) ListQuotas(context.Context, string) ([]Quota, error) { return nil, nil }
 func (f *fakePlatform) CreateQuota(context.Context, string, string, string, string, int64, string) (*Quota, error) {
 	return nil, errors.New("unused")
 }
@@ -309,6 +310,21 @@ func testCfg() *kernel.Config {
 	cfg.Mail.SMTP.Enabled = false
 	cfg.Mail.Resend.Enabled = false
 	return cfg
+}
+
+// testServer wires a fake that implements both thin platformAPI and platform.ConfigAPI.
+func testServer(api interface {
+	platformAPI
+	platform.ConfigAPI
+}, members membershipChecker) *Server {
+	return &Server{
+		cfg:       testCfg(),
+		api:       api,
+		config:    api,
+		members:   members,
+		publisher: &fakePublisher{},
+		log:       slog.Default(),
+	}
 }
 
 func TestInternalSeedRequiresToken(t *testing.T) {
@@ -428,7 +444,7 @@ func TestCreateProjectSurfacesPublishError(t *testing.T) {
 		cfg:       testCfg(),
 		members:   api,
 		publisher: pub,
-		api:       api,
+		api: api, config: api,
 		log:       slog.Default(),
 	}
 	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_1", "a@b.c", "admin")
@@ -456,7 +472,7 @@ func TestCreateProviderRequiresAdmin(t *testing.T) {
 		admins:  map[string]bool{},
 	}}
 	s := &Server{
-		cfg: testCfg(), api: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
+		cfg: testCfg(), api: api, config: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
 	}
 	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_1", "a@b.c", "member")
 	if err != nil {
@@ -480,7 +496,7 @@ func TestCreateRouteRequiresAdmin(t *testing.T) {
 		admins:  map[string]bool{},
 	}}
 	s := &Server{
-		cfg: testCfg(), api: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
+		cfg: testCfg(), api: api, config: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
 	}
 	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_1", "a@b.c", "member")
 	if err != nil {
@@ -504,7 +520,7 @@ func TestUpdateProviderRequiresAdmin(t *testing.T) {
 		admins:  map[string]bool{},
 	}}
 	s := &Server{
-		cfg: testCfg(), api: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
+		cfg: testCfg(), api: api, config: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
 	}
 	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_1", "a@b.c", "member")
 	if err != nil {
@@ -529,7 +545,7 @@ func TestUpdateOrgMemberRoleRequiresOwner(t *testing.T) {
 		owners:  map[string]bool{},
 	}}
 	s := &Server{
-		cfg: testCfg(), api: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
+		cfg: testCfg(), api: api, config: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
 	}
 	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_admin", "admin@afi.local", "admin")
 	if err != nil {

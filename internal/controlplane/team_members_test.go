@@ -160,7 +160,7 @@ func (f *teamMembersFake) UpdateTeamMemberRole(_ context.Context, teamID, userID
 
 func teamServer(api *teamMembersFake) *Server {
 	return &Server{
-		cfg: testCfg(), api: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
+		cfg: testCfg(), api: api, config: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
 	}
 }
 

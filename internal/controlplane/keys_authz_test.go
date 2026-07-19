@@ -96,7 +96,7 @@ func TestCreatePersonalKeyAsMember(t *testing.T) {
 	api := newKeysFake()
 	pub := &fakePublisher{}
 	cfg := testCfg()
-	s := &Server{cfg: cfg, api: api, members: api, publisher: pub, log: slog.Default()}
+	s := &Server{cfg: cfg, api: api, config: api, members: api, publisher: pub, log: slog.Default()}
 	tok := bearer(t, cfg, "user_member", "member@afi.local")
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/platform/organizations/org_a/keys",
 		bytes.NewBufferString(`{"name":"mine","kind":"personal"}`))
@@ -120,7 +120,7 @@ func TestCreateServiceAccountForbiddenForMember(t *testing.T) {
 	t.Parallel()
 	api := newKeysFake()
 	cfg := testCfg()
-	s := &Server{cfg: cfg, api: api, members: api, publisher: &fakePublisher{}, log: slog.Default()}
+	s := &Server{cfg: cfg, api: api, config: api, members: api, publisher: &fakePublisher{}, log: slog.Default()}
 	tok := bearer(t, cfg, "user_member", "member@afi.local")
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/platform/organizations/org_a/keys",
 		bytes.NewBufferString(`{"name":"bot","kind":"service_account"}`))
@@ -137,7 +137,7 @@ func TestCreateServiceAccountAsAdmin(t *testing.T) {
 	t.Parallel()
 	api := newKeysFake()
 	cfg := testCfg()
-	s := &Server{cfg: cfg, api: api, members: api, publisher: &fakePublisher{}, log: slog.Default()}
+	s := &Server{cfg: cfg, api: api, config: api, members: api, publisher: &fakePublisher{}, log: slog.Default()}
 	tok := bearer(t, cfg, "user_admin", "admin@afi.local")
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/platform/organizations/org_a/keys",
 		bytes.NewBufferString(`{"name":"bot","kind":"service_account"}`))
@@ -158,7 +158,7 @@ func TestDeletePersonalKeyAsOwner(t *testing.T) {
 		OwnerUserID: "user_member", Name: "mine",
 	}
 	cfg := testCfg()
-	s := &Server{cfg: cfg, api: api, members: api, publisher: &fakePublisher{}, log: slog.Default()}
+	s := &Server{cfg: cfg, api: api, config: api, members: api, publisher: &fakePublisher{}, log: slog.Default()}
 	tok := bearer(t, cfg, "user_member", "member@afi.local")
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/platform/keys/key_mine", nil)
 	req.SetPathValue("keyID", "key_mine")
@@ -174,7 +174,7 @@ func TestCreateQuotaForbiddenForMember(t *testing.T) {
 	t.Parallel()
 	api := newKeysFake()
 	cfg := testCfg()
-	s := &Server{cfg: cfg, api: api, members: api, publisher: &fakePublisher{}, log: slog.Default()}
+	s := &Server{cfg: cfg, api: api, config: api, members: api, publisher: &fakePublisher{}, log: slog.Default()}
 	tok := bearer(t, cfg, "user_member", "member@afi.local")
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/platform/organizations/org_a/quotas",
 		bytes.NewBufferString(`{"scope_type":"user","scope_id":"user_member","metric":"requests","limit_value":10}`))
@@ -191,7 +191,7 @@ func TestCreateUserQuotaAsAdmin(t *testing.T) {
 	t.Parallel()
 	api := newKeysFake()
 	cfg := testCfg()
-	s := &Server{cfg: cfg, api: api, members: api, publisher: &fakePublisher{}, log: slog.Default()}
+	s := &Server{cfg: cfg, api: api, config: api, members: api, publisher: &fakePublisher{}, log: slog.Default()}
 	tok := bearer(t, cfg, "user_admin", "admin@afi.local")
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/platform/organizations/org_a/quotas",
 		bytes.NewBufferString(`{"scope_type":"user","scope_id":"user_member","metric":"requests","limit_value":10}`))

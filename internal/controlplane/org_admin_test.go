@@ -167,7 +167,7 @@ func TestCreateOrganization(t *testing.T) {
 	t.Parallel()
 	api := newOrgAdminFake()
 	s := &Server{
-		cfg: testCfg(), api: api, members: &fakeMembers{}, publisher: &fakePublisher{}, log: slog.Default(),
+		cfg: testCfg(), api: api, config: api, members: &fakeMembers{}, publisher: &fakePublisher{}, log: slog.Default(),
 	}
 	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_admin", "admin@afi.local", "admin")
 	if err != nil {
@@ -193,7 +193,7 @@ func TestCreateTeamRequiresAdmin(t *testing.T) {
 	t.Parallel()
 	api := newOrgAdminFake()
 	s := &Server{
-		cfg: testCfg(), api: api,
+		cfg: testCfg(), api: api, config: api,
 		members: &fakeMembers{
 			allowed: map[string]bool{"user_admin|org_x": true},
 			admins:  map[string]bool{},
@@ -219,7 +219,7 @@ func TestCreateTeamSuccess(t *testing.T) {
 	t.Parallel()
 	api := newOrgAdminFake()
 	s := &Server{
-		cfg: testCfg(), api: api,
+		cfg: testCfg(), api: api, config: api,
 		members: &fakeMembers{
 			allowed: map[string]bool{"user_admin|org_x": true},
 			admins:  map[string]bool{"user_admin|org_x": true},
@@ -254,7 +254,7 @@ func TestInviteOrgMemberExistingUser(t *testing.T) {
 	api.orgs["org_x"] = &Organization{ID: "org_x", Name: "X"}
 	api.members["org_x"] = []OrgMember{{UserID: "user_admin", Email: "admin@afi.local", Role: OrgRoleOwner}}
 	s := &Server{
-		cfg: testCfg(), api: api,
+		cfg: testCfg(), api: api, config: api,
 		members: &fakeMembers{
 			allowed: map[string]bool{"user_admin|org_x": true},
 			admins:  map[string]bool{"user_admin|org_x": true},
@@ -282,7 +282,7 @@ func TestInviteOrgMemberUnknownEmailCreatesInvite(t *testing.T) {
 	api.orgs["org_x"] = &Organization{ID: "org_x", Name: "X"}
 	api.members["org_x"] = []OrgMember{{UserID: "user_admin", Email: "admin@afi.local", Role: OrgRoleOwner}}
 	s := &Server{
-		cfg: testCfg(), api: api,
+		cfg: testCfg(), api: api, config: api,
 		members: &fakeMembers{
 			allowed: map[string]bool{"user_admin|org_x": true},
 			admins:  map[string]bool{"user_admin|org_x": true},
@@ -316,7 +316,7 @@ func TestAddOrgMemberForbiddenForNonMember(t *testing.T) {
 	api := newOrgAdminFake()
 	api.orgs["org_x"] = &Organization{ID: "org_x", Name: "X"}
 	s := &Server{
-		cfg: testCfg(), api: api,
+		cfg: testCfg(), api: api, config: api,
 		members:   &fakeMembers{allowed: map[string]bool{}},
 		publisher: &fakePublisher{}, log: slog.Default(),
 	}
@@ -344,7 +344,7 @@ func TestUpdateOrgMemberRoleSuccess(t *testing.T) {
 		{UserID: "user_other", Email: "other@afi.local", Name: "Other", Role: OrgRoleMember},
 	}
 	s := &Server{
-		cfg: testCfg(), api: api,
+		cfg: testCfg(), api: api, config: api,
 		members: &fakeMembers{
 			allowed: map[string]bool{"user_admin|org_x": true},
 			owners:  map[string]bool{"user_admin|org_x": true},
@@ -383,7 +383,7 @@ func TestUpdateOrgMemberRoleForbiddenForNonOwner(t *testing.T) {
 		{UserID: "user_other", Email: "other@afi.local", Name: "Other", Role: OrgRoleAdmin},
 	}
 	s := &Server{
-		cfg: testCfg(), api: api,
+		cfg: testCfg(), api: api, config: api,
 		members:   &fakeMembers{allowed: map[string]bool{"user_other|org_x": true}},
 		publisher: &fakePublisher{}, log: slog.Default(),
 	}
@@ -411,7 +411,7 @@ func TestUpdateOrgMemberRoleRejectsSoleOwnerDemotion(t *testing.T) {
 		{UserID: "user_admin", Email: "admin@afi.local", Name: "Admin", Role: OrgRoleOwner},
 	}
 	s := &Server{
-		cfg: testCfg(), api: api,
+		cfg: testCfg(), api: api, config: api,
 		members: &fakeMembers{
 			allowed: map[string]bool{"user_admin|org_x": true},
 			owners:  map[string]bool{"user_admin|org_x": true},
