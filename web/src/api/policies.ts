@@ -34,12 +34,12 @@ export function createPolicyMutationOptions() {
 				`/api/v1/platform/organizations/${input.orgId}/policies`,
 				{
 					method: "POST",
-					body: JSON.stringify({
+					body: {
 						name: input.name,
 						expression: input.expression,
 						enabled: input.enabled ?? true,
 						priority: input.priority ?? 100,
-					}),
+					},
 				},
 			),
 	};
