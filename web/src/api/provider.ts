@@ -8,11 +8,7 @@ export type ProviderCapabilities = {
 	stt?: boolean;
 };
 
-export type ProviderHealthStatus =
-	| "healthy"
-	| "degraded"
-	| "down"
-	| "unknown";
+export type ProviderHealthStatus = "healthy" | "degraded" | "down" | "unknown";
 
 export type ProviderHealth = {
 	provider_id: string;

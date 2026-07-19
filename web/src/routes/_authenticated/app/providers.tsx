@@ -4,12 +4,12 @@ import { PlugIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
+	createProviderMutationOptions,
+	deleteProviderMutationOptions,
+	PROVIDER_TYPE_PRESETS,
 	type Provider,
 	type ProviderHealth,
 	type ProviderHealthStatus,
-	PROVIDER_TYPE_PRESETS,
-	createProviderMutationOptions,
-	deleteProviderMutationOptions,
 	providerHealthQueryOptions,
 	providersQueryOptions,
 	updateProviderMutationOptions,
@@ -213,8 +213,8 @@ function RouteComponent() {
 							</EmptyMedia>
 							<EmptyTitle>No providers</EmptyTitle>
 							<EmptyDescription>
-								Add OpenAI, Anthropic, Gemini, or an OpenAI-compatible base
-								URL. Then create routes under Routing.
+								Add OpenAI, Anthropic, Gemini, or an OpenAI-compatible base URL.
+								Then create routes under Routing.
 							</EmptyDescription>
 						</EmptyHeader>
 						<EmptyContent>
@@ -322,7 +322,10 @@ function RouteComponent() {
 					>
 						<div className="space-y-1">
 							<Label>Type</Label>
-							<Select value={type} onValueChange={(v) => applyTypeDefaults(v ?? "openai")}>
+							<Select
+								value={type}
+								onValueChange={(v) => applyTypeDefaults(v ?? "openai")}
+							>
 								<SelectTrigger className="w-full">
 									<SelectValue />
 								</SelectTrigger>
@@ -375,9 +378,7 @@ function RouteComponent() {
 								required
 							/>
 						</div>
-						{error ? (
-							<p className="text-destructive text-xs">{error}</p>
-						) : null}
+						{error ? <p className="text-destructive text-xs">{error}</p> : null}
 						<SheetFooter>
 							<Button
 								type="button"
