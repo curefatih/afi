@@ -64,7 +64,8 @@ type APIKey struct {
 	ProjectID      string    `json:"project_id"`
 	OrganizationID string    `json:"organization_id"`
 	Name           string    `json:"name"`
-	KeyValue       string    `json:"key"`
+	KeyPrefix      string    `json:"key_prefix"`
+	Key            string    `json:"key,omitempty"` // plaintext only on create
 	CreatedAt      time.Time `json:"created_at"`
 }
 
@@ -87,10 +88,34 @@ type Route struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+type UsageEvent struct {
+	ID               int64     `json:"id"`
+	OrganizationID   string    `json:"organization_id"`
+	ProjectID        string    `json:"project_id"`
+	APIKeyID         string    `json:"api_key_id"`
+	Model            string    `json:"model"`
+	Status           string    `json:"status"`
+	LatencyMs        int64     `json:"latency_ms"`
+	PromptTokens     int64     `json:"prompt_tokens"`
+	CompletionTokens int64     `json:"completion_tokens"`
+	CreatedAt        time.Time `json:"created_at"`
+}
+
 func (s *Store) CountOrgs(ctx context.Context) (int64, error) {
 	var n int64
 	err := s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM organizations`).Scan(&n)
 	return n, err
+}
+
+func (s *Store) IsOrgMember(ctx context.Context, userID, orgID string) (bool, error) {
+	var ok bool
+	err := s.pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM organization_members
+			WHERE user_id = $1 AND organization_id = $2
+		)
+	`, userID, orgID).Scan(&ok)
+	return ok, err
 }
 
 func (s *Store) GetUserByEmail(ctx context.Context, email string) (*User, error) {
@@ -179,6 +204,15 @@ func (s *Store) GetTeam(ctx context.Context, teamID string) (*Team, error) {
 	return t, nil
 }
 
+func (s *Store) GetTeamOrgID(ctx context.Context, teamID string) (string, error) {
+	var orgID string
+	err := s.pool.QueryRow(ctx, `SELECT organization_id FROM teams WHERE id = $1`, teamID).Scan(&orgID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", kernel.ErrNotFound
+	}
+	return orgID, err
+}
+
 func (s *Store) ListTeamMembers(ctx context.Context, teamID string) ([]TeamMember, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT u.id, u.name, u.email, tm.role
@@ -249,7 +283,7 @@ func (s *Store) CreateProject(ctx context.Context, orgID, teamID, name string) (
 
 func (s *Store) ListAPIKeys(ctx context.Context, projectID string) ([]APIKey, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, project_id, organization_id, name, key_value, created_at
+		SELECT id, project_id, organization_id, name, key_prefix, created_at
 		FROM api_keys WHERE project_id = $1 ORDER BY created_at
 	`, projectID)
 	if err != nil {
@@ -260,7 +294,7 @@ func (s *Store) ListAPIKeys(ctx context.Context, projectID string) ([]APIKey, er
 	var out []APIKey
 	for rows.Next() {
 		var k APIKey
-		if err := rows.Scan(&k.ID, &k.ProjectID, &k.OrganizationID, &k.Name, &k.KeyValue, &k.CreatedAt); err != nil {
+		if err := rows.Scan(&k.ID, &k.ProjectID, &k.OrganizationID, &k.Name, &k.KeyPrefix, &k.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, k)
@@ -277,30 +311,204 @@ func (s *Store) GetProjectOrgID(ctx context.Context, projectID string) (string, 
 	return orgID, err
 }
 
-func (s *Store) CreateAPIKey(ctx context.Context, orgID, projectID, name, keyValue string) (*APIKey, error) {
+func (s *Store) CreateAPIKey(ctx context.Context, orgID, projectID, name, rawKey string) (*APIKey, error) {
 	k := &APIKey{
 		ID:             newID("key"),
 		ProjectID:      projectID,
 		OrganizationID: orgID,
 		Name:           name,
-		KeyValue:       keyValue,
+		KeyPrefix:      KeyPrefix(rawKey),
+		Key:            rawKey,
 		CreatedAt:      time.Now().UTC(),
 	}
 	_, err := s.pool.Exec(ctx, `
-		INSERT INTO api_keys (id, project_id, organization_id, name, key_value, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, k.ID, k.ProjectID, k.OrganizationID, k.Name, k.KeyValue, k.CreatedAt)
+		INSERT INTO api_keys (id, project_id, organization_id, name, key_hash, key_prefix, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, k.ID, k.ProjectID, k.OrganizationID, k.Name, HashAPIKey(rawKey), k.KeyPrefix, k.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
 	return k, nil
 }
 
+func (s *Store) ListProviders(ctx context.Context, orgID string) ([]Provider, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, organization_id, name, type, base_url, api_key_env, created_at
+		FROM providers WHERE organization_id = $1 ORDER BY created_at
+	`, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Provider
+	for rows.Next() {
+		var p Provider
+		if err := rows.Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Type, &p.BaseURL, &p.APIKeyEnv, &p.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string) (*Provider, error) {
+	p := &Provider{
+		ID: newID("prov"), OrganizationID: orgID, Name: name, Type: typ,
+		BaseURL: baseURL, APIKeyEnv: apiKeyEnv, CreatedAt: time.Now().UTC(),
+	}
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7)
+	`, p.ID, p.OrganizationID, p.Name, p.Type, p.BaseURL, p.APIKeyEnv, p.CreatedAt)
+	return p, err
+}
+
+func (s *Store) UpdateProvider(ctx context.Context, providerID, name, baseURL, apiKeyEnv string) (*Provider, error) {
+	p := &Provider{}
+	err := s.pool.QueryRow(ctx, `
+		UPDATE providers SET name=$2, base_url=$3, api_key_env=$4
+		WHERE id=$1
+		RETURNING id, organization_id, name, type, base_url, api_key_env, created_at
+	`, providerID, name, baseURL, apiKeyEnv).Scan(
+		&p.ID, &p.OrganizationID, &p.Name, &p.Type, &p.BaseURL, &p.APIKeyEnv, &p.CreatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, kernel.ErrNotFound
+	}
+	return p, err
+}
+
+func (s *Store) DeleteProvider(ctx context.Context, providerID string) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM providers WHERE id=$1`, providerID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return kernel.ErrNotFound
+	}
+	return nil
+}
+
+func (s *Store) GetProviderOrgID(ctx context.Context, providerID string) (string, error) {
+	var orgID string
+	err := s.pool.QueryRow(ctx, `SELECT organization_id FROM providers WHERE id=$1`, providerID).Scan(&orgID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", kernel.ErrNotFound
+	}
+	return orgID, err
+}
+
+func (s *Store) ListRoutes(ctx context.Context, orgID string) ([]Route, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, organization_id, model, provider_id, target_model, created_at
+		FROM routes WHERE organization_id=$1 ORDER BY created_at
+	`, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Route
+	for rows.Next() {
+		var r Route
+		if err := rows.Scan(&r.ID, &r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string) (*Route, error) {
+	r := &Route{
+		ID: newID("route"), OrganizationID: orgID, Model: model,
+		ProviderID: providerID, TargetModel: targetModel, CreatedAt: time.Now().UTC(),
+	}
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO routes (id, organization_id, model, provider_id, target_model, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6)
+	`, r.ID, r.OrganizationID, r.Model, r.ProviderID, r.TargetModel, r.CreatedAt)
+	return r, err
+}
+
+func (s *Store) UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string) (*Route, error) {
+	r := &Route{}
+	err := s.pool.QueryRow(ctx, `
+		UPDATE routes SET model=$2, provider_id=$3, target_model=$4
+		WHERE id=$1
+		RETURNING id, organization_id, model, provider_id, target_model, created_at
+	`, routeID, model, providerID, targetModel).Scan(
+		&r.ID, &r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel, &r.CreatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, kernel.ErrNotFound
+	}
+	return r, err
+}
+
+func (s *Store) DeleteRoute(ctx context.Context, routeID string) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM routes WHERE id=$1`, routeID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return kernel.ErrNotFound
+	}
+	return nil
+}
+
+func (s *Store) GetRouteOrgID(ctx context.Context, routeID string) (string, error) {
+	var orgID string
+	err := s.pool.QueryRow(ctx, `SELECT organization_id FROM routes WHERE id=$1`, routeID).Scan(&orgID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", kernel.ErrNotFound
+	}
+	return orgID, err
+}
+
+func (s *Store) InsertUsage(ctx context.Context, e UsageEvent) error {
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO usage_events (
+			organization_id, project_id, api_key_id, model, status,
+			latency_ms, prompt_tokens, completion_tokens
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+	`, e.OrganizationID, e.ProjectID, e.APIKeyID, e.Model, e.Status,
+		e.LatencyMs, e.PromptTokens, e.CompletionTokens)
+	return err
+}
+
+func (s *Store) ListUsage(ctx context.Context, orgID string, limit int) ([]UsageEvent, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, organization_id, project_id, api_key_id, model, status,
+			latency_ms, prompt_tokens, completion_tokens, created_at
+		FROM usage_events WHERE organization_id=$1
+		ORDER BY created_at DESC LIMIT $2
+	`, orgID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []UsageEvent
+	for rows.Next() {
+		var e UsageEvent
+		if err := rows.Scan(
+			&e.ID, &e.OrganizationID, &e.ProjectID, &e.APIKeyID, &e.Model, &e.Status,
+			&e.LatencyMs, &e.PromptTokens, &e.CompletionTokens, &e.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
 func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error) {
 	var src snapshot.Source
 
 	keyRows, err := s.pool.Query(ctx, `
-		SELECT key_value, project_id, organization_id, name FROM api_keys
+		SELECT id, key_hash, key_prefix, project_id, organization_id, name FROM api_keys
 	`)
 	if err != nil {
 		return src, err
@@ -308,7 +516,7 @@ func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error)
 	defer keyRows.Close()
 	for keyRows.Next() {
 		var k snapshot.APIKey
-		if err := keyRows.Scan(&k.Key, &k.ProjectID, &k.OrganizationID, &k.Name); err != nil {
+		if err := keyRows.Scan(&k.ID, &k.KeyHash, &k.KeyPrefix, &k.ProjectID, &k.OrganizationID, &k.Name); err != nil {
 			return src, err
 		}
 		src.APIKeys = append(src.APIKeys, k)
@@ -336,7 +544,7 @@ func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error)
 	}
 
 	routeRows, err := s.pool.Query(ctx, `
-		SELECT model, provider_id, target_model FROM routes
+		SELECT organization_id, model, provider_id, target_model FROM routes
 	`)
 	if err != nil {
 		return src, err
@@ -344,7 +552,7 @@ func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error)
 	defer routeRows.Close()
 	for routeRows.Next() {
 		var r snapshot.Route
-		if err := routeRows.Scan(&r.Model, &r.ProviderID, &r.TargetModel); err != nil {
+		if err := routeRows.Scan(&r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel); err != nil {
 			return src, err
 		}
 		src.Routes = append(src.Routes, r)
