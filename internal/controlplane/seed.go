@@ -11,10 +11,10 @@ import (
 )
 
 type Seeder struct {
-	pool     *pgxpool.Pool
-	store    *Store
+	pool      *pgxpool.Pool
+	store     *Store
 	snapStore *snapshot.Store
-	cfg      *kernel.Config
+	cfg       *kernel.Config
 }
 
 func NewSeeder(pool *pgxpool.Pool, store *Store, snapStore *snapshot.Store, cfg *kernel.Config) *Seeder {
@@ -22,7 +22,7 @@ func NewSeeder(pool *pgxpool.Pool, store *Store, snapStore *snapshot.Store, cfg 
 }
 
 // SeedIfEmpty inserts local-dev data when the database has no organizations.
-// When the DB already has orgs, it still ensures local audio routes exist (idempotent).
+// When the DB already has orgs, it still ensures local audio + echo extension routes (idempotent).
 func (s *Seeder) SeedIfEmpty(ctx context.Context) error {
 	n, err := s.store.CountOrgs(ctx)
 	if err != nil {
@@ -31,7 +31,49 @@ func (s *Seeder) SeedIfEmpty(ctx context.Context) error {
 	if n == 0 {
 		return s.Seed(ctx)
 	}
-	return s.EnsureLocalAudioRoutes(ctx)
+	if err := s.EnsureLocalAudioRoutes(ctx); err != nil {
+		return err
+	}
+	return s.EnsureEchoExtension(ctx)
+}
+
+// EnsureEchoExtension upserts prov_echo + echo-demo route for org_local and republishes.
+func (s *Seeder) EnsureEchoExtension(ctx context.Context) error {
+	orgID := "org_local"
+	now := time.Now().UTC()
+	var exists bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM organizations WHERE id=$1)`, orgID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+	_, err = s.pool.Exec(ctx, `
+		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, capabilities, created_at)
+		VALUES ($1, $2, $3, 'echo', $4, $5, $6::jsonb, $7)
+		ON CONFLICT (id) DO UPDATE SET
+			base_url = EXCLUDED.base_url,
+			api_key_env = EXCLUDED.api_key_env,
+			name = EXCLUDED.name,
+			type = EXCLUDED.type,
+			capabilities = EXCLUDED.capabilities
+	`, "prov_echo", orgID, "Echo (extension)", "http://localhost/echo", "ECHO_UNUSED",
+		`{"chat":true,"stream":false,"tts":false,"stt":false}`, now)
+	if err != nil {
+		return fmt.Errorf("ensure echo provider: %w", err)
+	}
+	_, err = s.pool.Exec(ctx, `
+		INSERT INTO routes (id, organization_id, model, provider_id, target_model, created_at)
+		VALUES ($1, $2, $3, $4, $3, $5)
+		ON CONFLICT (organization_id, model) DO UPDATE SET
+			provider_id = EXCLUDED.provider_id,
+			target_model = EXCLUDED.target_model
+	`, "route_echo", orgID, "echo-demo", "prov_echo", now)
+	if err != nil {
+		return fmt.Errorf("ensure echo route: %w", err)
+	}
+	return s.PublishSnapshot(ctx)
 }
 
 // EnsureLocalAudioRoutes upserts tts-1 / whisper-1 → prov_openai for org_local and republishes.
@@ -215,6 +257,32 @@ func (s *Seeder) Seed(ctx context.Context) error {
 	`, "prov_ollama", orgID, "Ollama (compatible)", "http://127.0.0.1:11434/v1", "OLLAMA_API_KEY", now)
 	if err != nil {
 		return fmt.Errorf("ollama provider: %w", err)
+	}
+
+	// In-process echo extension (no API key) — local verify / demos.
+	_, err = tx.Exec(ctx, `
+		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, capabilities, created_at)
+		VALUES ($1, $2, $3, 'echo', $4, $5, $6::jsonb, $7)
+		ON CONFLICT (id) DO UPDATE SET
+			base_url = EXCLUDED.base_url,
+			api_key_env = EXCLUDED.api_key_env,
+			name = EXCLUDED.name,
+			type = EXCLUDED.type,
+			capabilities = EXCLUDED.capabilities
+	`, "prov_echo", orgID, "Echo (extension)", "http://localhost/echo", "ECHO_UNUSED",
+		`{"chat":true,"stream":false,"tts":false,"stt":false}`, now)
+	if err != nil {
+		return fmt.Errorf("echo provider: %w", err)
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO routes (id, organization_id, model, provider_id, target_model, created_at)
+		VALUES ($1, $2, $3, $4, $3, $5)
+		ON CONFLICT (organization_id, model) DO UPDATE SET
+			provider_id = EXCLUDED.provider_id,
+			target_model = EXCLUDED.target_model
+	`, "route_echo", orgID, "echo-demo", "prov_echo", now)
+	if err != nil {
+		return fmt.Errorf("echo route: %w", err)
 	}
 
 	_, err = tx.Exec(ctx, `

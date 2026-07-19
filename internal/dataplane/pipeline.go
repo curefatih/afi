@@ -44,6 +44,7 @@ type UsageEvent struct {
 type Pipeline struct {
 	Holder    *Holder
 	Providers *Registry
+	Hooks     *HookChain
 	Log       *slog.Logger
 	Usage     func(UsageEvent)
 	Counters  CounterStore
@@ -95,6 +96,14 @@ func (p *Pipeline) handleHealth(w http.ResponseWriter, r *http.Request) {
 		out["snapshot_version"] = snap.Version
 	} else {
 		out["snapshot_version"] = nil
+	}
+	if p.Providers != nil {
+		out["provider_types"] = p.Providers.Types()
+	}
+	if names := p.Hooks.Names(); len(names) > 0 {
+		out["hooks"] = names
+	} else {
+		out["hooks"] = []string{}
 	}
 	writeJSON(w, http.StatusOK, out)
 }
@@ -184,6 +193,15 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 	if len(attempts) == 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": map[string]string{"message": "no usable providers for route", "type": "invalid_request_error"},
+		})
+		return
+	}
+
+	body, err = p.Hooks.RunBeforeChat(ctx, body)
+	if err != nil {
+		log.Error("chat hook", "err", err)
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"error": map[string]string{"message": "chat hook failed: " + err.Error(), "type": "invalid_request_error"},
 		})
 		return
 	}
