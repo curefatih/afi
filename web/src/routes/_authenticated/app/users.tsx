@@ -15,6 +15,7 @@ import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import {
 	Empty,
+	EmptyContent,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
@@ -89,13 +90,31 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Users"
-				description="Organization members. Owners and admins manage service-account keys and quotas; members manage their personal keys. Only the owner can change roles."
+				description={
+					org
+						? `People in ${org.name}. Change roles here; invite from Organization settings.`
+						: "Organization members. Change roles here; invite from Organization settings."
+				}
 				actions={
-					isOrgAdmin ? (
-						<Button nativeButton={false} render={<Link to="/app/quotas" />}>
-							Manage quotas
-						</Button>
-					) : null
+					<div className="flex flex-wrap gap-2">
+						{isOrgAdmin ? (
+							<Button
+								nativeButton={false}
+								render={<Link to="/app/settings/general" />}
+							>
+								Invite member
+							</Button>
+						) : null}
+						{isOrgAdmin ? (
+							<Button
+								variant="outline"
+								nativeButton={false}
+								render={<Link to="/app/quotas" />}
+							>
+								Manage quotas
+							</Button>
+						) : null}
+					</div>
 				}
 			/>
 			<QueryGate
@@ -112,9 +131,17 @@ function RouteComponent() {
 							</EmptyMedia>
 							<EmptyTitle>No members</EmptyTitle>
 							<EmptyDescription>
-								Invite members from Organizations.
+								Invite existing platform users from Organization settings.
 							</EmptyDescription>
 						</EmptyHeader>
+						<EmptyContent>
+							<Button
+								nativeButton={false}
+								render={<Link to="/app/settings/general" />}
+							>
+								Invite member
+							</Button>
+						</EmptyContent>
 					</Empty>
 				) : (
 					<Table>

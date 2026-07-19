@@ -28,12 +28,29 @@ export const Route = createFileRoute("/_authenticated/app/hooks")({
 	component: RouteComponent,
 });
 
+type HookInfo = {
+	name: string;
+	before_chat?: boolean;
+	after_chat?: boolean;
+};
+
 type GatewayHealth = {
 	status: string;
 	snapshot_version?: number | null;
 	provider_types?: string[];
-	hooks?: string[];
+	hooks?: HookInfo[] | string[];
 };
+
+function normalizeHooks(raw: GatewayHealth["hooks"]): HookInfo[] {
+	if (!raw?.length) return [];
+	if (typeof raw[0] === "string") {
+		return (raw as string[]).map((name) => ({
+			name,
+			before_chat: true,
+		}));
+	}
+	return raw as HookInfo[];
+}
 
 function RouteComponent() {
 	const health = useQuery({
@@ -48,14 +65,14 @@ function RouteComponent() {
 		refetchInterval: 10_000,
 	});
 
-	const hooks = health.data?.hooks ?? [];
+	const hooks = normalizeHooks(health.data?.hooks);
 	const providers = health.data?.provider_types ?? [];
 
 	return (
 		<PageBody>
 			<PageHeader
 				title="Hooks"
-				description="In-process BeforeChat hooks registered at gateway startup. gRPC/WASM runtimes are not shipped yet."
+				description="In-process BeforeChat / AfterChat hooks registered in cmd/gateway at startup. gRPC/WASM runtimes are not shipped yet."
 			/>
 			<QueryGate
 				isPending={health.isPending}
@@ -71,7 +88,7 @@ function RouteComponent() {
 							</EmptyMedia>
 							<EmptyTitle>No hooks registered</EmptyTitle>
 							<EmptyDescription>
-								Register ChatHook implementations in cmd/gateway (see
+								Register ChatHook / AfterChatHook in cmd/gateway (see
 								extensions/demohook). Provider SDK adapters live under
 								extensions/ and register via Registry.RegisterSDK.
 							</EmptyDescription>
@@ -85,15 +102,22 @@ function RouteComponent() {
 								<TableHeader>
 									<TableRow>
 										<TableHead>Name</TableHead>
-										<TableHead>Kind</TableHead>
+										<TableHead>Phases</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-									{hooks.map((name) => (
-										<TableRow key={name}>
-											<TableCell className="font-medium">{name}</TableCell>
+									{hooks.map((h) => (
+										<TableRow key={h.name}>
+											<TableCell className="font-medium">{h.name}</TableCell>
 											<TableCell>
-												<Badge variant="secondary">BeforeChat</Badge>
+												<div className="flex flex-wrap gap-1">
+													{h.before_chat ? (
+														<Badge variant="secondary">BeforeChat</Badge>
+													) : null}
+													{h.after_chat ? (
+														<Badge variant="outline">AfterChat</Badge>
+													) : null}
+												</div>
 											</TableCell>
 										</TableRow>
 									))}

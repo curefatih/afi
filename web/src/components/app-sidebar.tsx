@@ -11,6 +11,7 @@ import {
 	PlugIcon,
 	PuzzleIcon,
 	RouteIcon,
+	Settings2Icon,
 	ShieldIcon,
 	TerminalSquareIcon,
 	UserRoundIcon,
@@ -42,6 +43,11 @@ const platformNav = [
 		title: "Organizations",
 		url: "/app/organizations",
 		icon: <Building2Icon />,
+	},
+	{
+		title: "Settings",
+		url: "/app/settings/general",
+		icon: <Settings2Icon />,
 	},
 	{
 		title: "Projects",
@@ -112,7 +118,6 @@ const governanceNav = [
 		title: "Hooks",
 		url: "/app/hooks",
 		icon: <PuzzleIcon />,
-		badge: "Soon",
 	},
 ];
 

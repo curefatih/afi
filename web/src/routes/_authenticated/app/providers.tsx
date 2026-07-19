@@ -5,9 +5,12 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
 	type Provider,
+	type ProviderHealth,
+	type ProviderHealthStatus,
 	PROVIDER_TYPE_PRESETS,
 	createProviderMutationOptions,
 	deleteProviderMutationOptions,
+	providerHealthQueryOptions,
 	providersQueryOptions,
 	updateProviderMutationOptions,
 } from "#/api/provider";
@@ -76,11 +79,46 @@ function CapChips({ p }: { p: Provider }) {
 	);
 }
 
+function HealthChip({ h }: { h?: ProviderHealth }) {
+	const status: ProviderHealthStatus = h?.status ?? "unknown";
+	const label =
+		status === "healthy"
+			? "Healthy"
+			: status === "degraded"
+				? "Degraded"
+				: status === "down"
+					? "Down"
+					: "Unknown";
+	const tip = h
+		? `${h.requests} req · ${Math.round(h.error_rate * 100)}% err · ${Math.round(h.avg_latency_ms)}ms avg (24h)`
+		: "No traffic in the last 24h";
+	return (
+		<span title={tip}>
+			<Badge
+				variant={
+					status === "healthy"
+						? "secondary"
+						: status === "unknown"
+							? "outline"
+							: "destructive"
+				}
+				className="text-xs font-normal"
+			>
+				{label}
+			</Badge>
+		</span>
+	);
+}
+
 function RouteComponent() {
 	const org = useActiveOrg();
 	const orgId = org?.id ?? "";
 	const qc = useQueryClient();
 	const providers = useQuery(providersQueryOptions(orgId));
+	const health = useQuery(providerHealthQueryOptions(orgId));
+	const healthById = new Map(
+		(health.data ?? []).map((h) => [h.provider_id, h] as const),
+	);
 
 	const [createOpen, setCreateOpen] = useState(false);
 	const [edit, setEdit] = useState<Provider | null>(null);
@@ -150,7 +188,7 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Providers"
-				description="Upstream LLM providers. Credentials are environment variable references on the gateway — no secrets are stored here."
+				description="Upstream LLM providers. Health is derived from usage over the last 24h (routed models). Credentials are environment variable references on the gateway."
 				actions={
 					<Button onClick={() => setCreateOpen(true)} disabled={!orgId}>
 						<PlusIcon />
@@ -162,7 +200,10 @@ function RouteComponent() {
 				isPending={!!orgId && providers.isLoading}
 				isError={providers.isError}
 				error={providers.error}
-				onRetry={() => providers.refetch()}
+				onRetry={() => {
+					void providers.refetch();
+					void health.refetch();
+				}}
 			>
 				{(providers.data ?? []).length === 0 ? (
 					<Empty className="border min-h-64">
@@ -189,6 +230,7 @@ function RouteComponent() {
 							<TableRow>
 								<TableHead>Name</TableHead>
 								<TableHead>Type</TableHead>
+								<TableHead>Health</TableHead>
 								<TableHead>Base URL</TableHead>
 								<TableHead>Env</TableHead>
 								<TableHead>Capabilities</TableHead>
@@ -201,6 +243,9 @@ function RouteComponent() {
 									<TableCell className="font-medium">{p.name}</TableCell>
 									<TableCell>
 										<Badge variant="secondary">{p.type}</Badge>
+									</TableCell>
+									<TableCell>
+										<HealthChip h={healthById.get(p.id)} />
 									</TableCell>
 									<TableCell className="text-muted-foreground max-w-[14rem] truncate text-xs">
 										{p.base_url}

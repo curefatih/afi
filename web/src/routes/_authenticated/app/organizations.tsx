@@ -1,18 +1,43 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Building2Icon, PlusIcon } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import {
-	addOrgMemberMutationOptions,
 	createOrganizationMutationOptions,
-	orgMembersQueryOptions,
 	organizationsQueryOptions,
 	toOrganization,
 } from "#/api/organization";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
+import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from "#/components/ui/empty";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetFooter,
+	SheetHeader,
+	SheetTitle,
+} from "#/components/ui/sheet";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "#/components/ui/table";
 import { useActiveOrg, useOrgActions } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/organizations")({
@@ -28,7 +53,10 @@ function RouteComponent() {
 	const { setOrganizations, setActiveOrgById } = useOrgActions();
 	const qc = useQueryClient();
 	const orgs = useQuery(organizationsQueryOptions());
-	const members = useQuery(orgMembersQueryOptions(orgId));
+
+	const [createOpen, setCreateOpen] = useState(false);
+	const [name, setName] = useState("");
+	const [error, setError] = useState<string | null>(null);
 
 	const create = useMutation({
 		...createOrganizationMutationOptions(),
@@ -45,24 +73,25 @@ function RouteComponent() {
 				),
 			);
 			setActiveOrgById(created.id);
+			setName("");
+			setCreateOpen(false);
+			toast.success("Organization created");
 		},
 	});
 
-	const invite = useMutation({
-		...addOrgMemberMutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({ queryKey: ["organizations", orgId, "members"] }),
-	});
-
-	const [name, setName] = useState("");
-	const [email, setEmail] = useState("");
-	const [error, setError] = useState<string | null>(null);
+	const list = orgs.data ?? [];
 
 	return (
 		<PageBody>
 			<PageHeader
 				title="Organizations"
-				description="Create organizations and invite existing platform users by email (no email send — user must already exist)."
+				description="Organizations you belong to. Switch the active org here or in the sidebar; manage invites under Organization settings."
+				actions={
+					<Button onClick={() => setCreateOpen(true)}>
+						<PlusIcon />
+						Create organization
+					</Button>
+				}
 			/>
 			<QueryGate
 				isPending={orgs.isPending}
@@ -70,139 +99,127 @@ function RouteComponent() {
 				error={orgs.error}
 				onRetry={() => orgs.refetch()}
 			>
-				<div className="grid gap-6 lg:grid-cols-2">
-					<div className="space-y-3">
-						<h3 className="text-sm font-medium">Your organizations</h3>
-						<ul className="divide-y rounded-md border">
-							{(orgs.data ?? []).map((o) => (
-								<li
-									key={o.id}
-									className="flex items-center justify-between gap-2 p-3 text-sm"
-								>
-									<div>
-										<div className="font-medium">{o.name}</div>
-										<div className="text-muted-foreground text-xs">{o.id}</div>
-									</div>
-									{o.id === orgId ? (
-										<span className="text-muted-foreground text-xs">
-											Active
-										</span>
-									) : (
-										<Button
-											variant="outline"
-											size="sm"
-											onClick={() => setActiveOrgById(o.id)}
-										>
-											Switch
-										</Button>
-									)}
-								</li>
-							))}
-						</ul>
-
-						<form
-							className="space-y-3 rounded-md border p-4"
-							onSubmit={(e) => {
-								e.preventDefault();
-								setError(null);
-								create.mutate(
-									{ name },
-									{
-										onError: (err) =>
-											setError(
-												err instanceof Error ? err.message : "Create failed",
-											),
-										onSuccess: () => setName(""),
-									},
-								);
-							}}
-						>
-							<h3 className="text-sm font-medium">Create organization</h3>
-							<div className="space-y-1">
-								<Label htmlFor="org-name">Name</Label>
-								<Input
-									id="org-name"
-									value={name}
-									onChange={(e) => setName(e.target.value)}
-									required
-								/>
-							</div>
-							{error ? (
-								<p className="text-destructive text-xs">{error}</p>
-							) : null}
-							<Button type="submit" disabled={create.isPending || !name.trim()}>
-								Create
+				{list.length === 0 ? (
+					<Empty className="border min-h-64">
+						<EmptyHeader>
+							<EmptyMedia variant="icon">
+								<Building2Icon />
+							</EmptyMedia>
+							<EmptyTitle>No organizations</EmptyTitle>
+							<EmptyDescription>
+								Create an organization to start managing projects, keys, and
+								routing.
+							</EmptyDescription>
+						</EmptyHeader>
+						<EmptyContent>
+							<Button onClick={() => setCreateOpen(true)}>
+								<PlusIcon />
+								Create organization
 							</Button>
-						</form>
-					</div>
-
-					<div className="space-y-3">
-						<h3 className="text-sm font-medium">
-							Members{orgId ? ` · ${activeOrg?.name ?? orgId}` : ""}
-						</h3>
-						{!orgId ? (
-							<p className="text-muted-foreground text-sm">
-								Select or create an organization.
-							</p>
-						) : (
-							<>
-								<ul className="divide-y rounded-md border">
-									{(members.data ?? []).map((m) => (
-										<li key={m.user_id} className="p-3 text-sm">
-											<div className="font-medium">{m.name}</div>
-											<div className="text-muted-foreground text-xs">
-												{m.email}
+						</EmptyContent>
+					</Empty>
+				) : (
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Name</TableHead>
+								<TableHead>ID</TableHead>
+								<TableHead className="w-48" />
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{list.map((o) => {
+								const isActive = o.id === orgId;
+								return (
+									<TableRow key={o.id}>
+										<TableCell className="font-medium">
+											<div className="flex items-center gap-2">
+												{o.name}
+												{isActive ? (
+													<Badge variant="secondary">Active</Badge>
+												) : null}
 											</div>
-										</li>
-									))}
-									{(members.data ?? []).length === 0 && !members.isPending ? (
-										<li className="text-muted-foreground p-3 text-sm">
-											No members loaded.
-										</li>
-									) : null}
-								</ul>
-								<form
-									className="space-y-3 rounded-md border p-4"
-									onSubmit={(e) => {
-										e.preventDefault();
-										setError(null);
-										invite.mutate(
-											{ orgId, email },
-											{
-												onError: (err) =>
-													setError(
-														err instanceof Error
-															? err.message
-															: "Invite failed",
-													),
-												onSuccess: () => setEmail(""),
-											},
-										);
-									}}
-								>
-									<h3 className="text-sm font-medium">Add member by email</h3>
-									<div className="space-y-1">
-										<Label htmlFor="member-email">Email</Label>
-										<Input
-											id="member-email"
-											type="email"
-											value={email}
-											onChange={(e) => setEmail(e.target.value)}
-											required
-										/>
-									</div>
-									<Button
-										type="submit"
-										disabled={invite.isPending || !email.trim()}
-									>
-										Add member
-									</Button>
-								</form>
-							</>
-						)}
-					</div>
-				</div>
+										</TableCell>
+										<TableCell className="text-muted-foreground font-mono text-xs">
+											{o.id}
+										</TableCell>
+										<TableCell className="space-x-2 text-right">
+											{isActive ? (
+												<Button
+													variant="outline"
+													size="sm"
+													nativeButton={false}
+													render={<Link to="/app/settings/general" />}
+												>
+													Settings
+												</Button>
+											) : (
+												<Button
+													variant="outline"
+													size="sm"
+													onClick={() => setActiveOrgById(o.id)}
+												>
+													Switch
+												</Button>
+											)}
+										</TableCell>
+									</TableRow>
+								);
+							})}
+						</TableBody>
+					</Table>
+				)}
 			</QueryGate>
+
+			<Sheet open={createOpen} onOpenChange={setCreateOpen}>
+				<SheetContent>
+					<SheetHeader>
+						<SheetTitle>Create organization</SheetTitle>
+						<SheetDescription>
+							Creates a new organization and switches you into it.
+						</SheetDescription>
+					</SheetHeader>
+					<form
+						className="flex flex-1 flex-col gap-4 px-4"
+						onSubmit={(e) => {
+							e.preventDefault();
+							setError(null);
+							create.mutate(
+								{ name },
+								{
+									onError: (err) =>
+										setError(
+											err instanceof Error ? err.message : "Create failed",
+										),
+								},
+							);
+						}}
+					>
+						<div className="space-y-1">
+							<Label htmlFor="org-name">Name</Label>
+							<Input
+								id="org-name"
+								value={name}
+								onChange={(e) => setName(e.target.value)}
+								required
+							/>
+						</div>
+						{error ? <p className="text-destructive text-xs">{error}</p> : null}
+						<SheetFooter>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setCreateOpen(false)}
+							>
+								Cancel
+							</Button>
+							<Button type="submit" disabled={create.isPending || !name.trim()}>
+								{create.isPending ? "Creating…" : "Create"}
+							</Button>
+						</SheetFooter>
+					</form>
+				</SheetContent>
+			</Sheet>
 		</PageBody>
 	);
 }

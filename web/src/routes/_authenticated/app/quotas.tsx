@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { GaugeIcon, PlusIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { orgKeysQueryOptions } from "#/api/keys";
 import { orgMembersQueryOptions } from "#/api/organization";
 import {
@@ -11,6 +13,14 @@ import {
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
 import { Button } from "#/components/ui/button";
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from "#/components/ui/empty";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import {
@@ -20,6 +30,22 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "#/components/ui/select";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetFooter,
+	SheetHeader,
+	SheetTitle,
+} from "#/components/ui/sheet";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "#/components/ui/table";
 import { useAuthUser } from "#/state/auth-state";
 import { useActiveOrg } from "#/state/organization-state";
 
@@ -38,6 +64,7 @@ function RouteComponent() {
 	const quotas = useQuery(quotasQueryOptions(orgId));
 	const members = useQuery(orgMembersQueryOptions(orgId));
 	const keys = useQuery(orgKeysQueryOptions(orgId));
+	const [createOpen, setCreateOpen] = useState(false);
 
 	const isOrgAdmin = useMemo(() => {
 		const me = (members.data ?? []).find((m) => m.user_id === user?.id);
@@ -72,13 +99,22 @@ function RouteComponent() {
 
 	const create = useMutation({
 		...createQuotaMutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({ queryKey: ["organizations", orgId, "quotas"] }),
+		onSuccess: () => {
+			void qc.invalidateQueries({
+				queryKey: ["organizations", orgId, "quotas"],
+			});
+			toast.success("Quota created");
+			setCreateOpen(false);
+		},
 	});
 	const del = useMutation({
 		...deleteQuotaMutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({ queryKey: ["organizations", orgId, "quotas"] }),
+		onSuccess: () => {
+			void qc.invalidateQueries({
+				queryKey: ["organizations", orgId, "quotas"],
+			});
+			toast.success("Quota deleted");
+		},
 	});
 
 	const [scopeType, setScopeType] = useState("organization");
@@ -87,14 +123,22 @@ function RouteComponent() {
 	const [limitValue, setLimitValue] = useState("100");
 	const [error, setError] = useState<string | null>(null);
 
-	const effectiveScopeID =
-		scopeType === "organization" ? orgId : scopeID;
+	const effectiveScopeID = scopeType === "organization" ? orgId : scopeID;
+	const quotaList = quotas.data ?? [];
 
 	return (
 		<PageBody>
 			<PageHeader
 				title="Quotas"
 				description="Lifetime and token lifetime limits. Most specific wins: api key → user → project → organization."
+				actions={
+					isOrgAdmin ? (
+						<Button onClick={() => setCreateOpen(true)} disabled={!orgId}>
+							<PlusIcon />
+							Add quota
+						</Button>
+					) : null
+				}
 			/>
 			<QueryGate
 				isPending={quotas.isPending || members.isPending}
@@ -102,209 +146,247 @@ function RouteComponent() {
 				error={quotas.error}
 				onRetry={() => quotas.refetch()}
 			>
-				<div className="grid gap-6 lg:grid-cols-2">
-					<div className="space-y-3">
-						<h3 className="text-sm font-medium">Configured quotas</h3>
-						<ul className="divide-y rounded-md border">
-							{(quotas.data ?? []).map((q) => (
-								<li
-									key={q.id}
-									className="flex items-start justify-between gap-2 p-3 text-sm"
-								>
-									<div>
-										<div className="font-medium">
-											{q.metric} ≤ {q.limit_value} ({q.window})
-										</div>
-										<div className="text-muted-foreground">
+				{quotaList.length === 0 ? (
+					<Empty className="border min-h-64">
+						<EmptyHeader>
+							<EmptyMedia variant="icon">
+								<GaugeIcon />
+							</EmptyMedia>
+							<EmptyTitle>No quotas</EmptyTitle>
+							<EmptyDescription>
+								Traffic is unlimited until you add a quota.
+								{!isOrgAdmin
+									? " Only organization owners and admins can create quotas."
+									: ""}
+							</EmptyDescription>
+						</EmptyHeader>
+						{isOrgAdmin ? (
+							<EmptyContent>
+								<Button onClick={() => setCreateOpen(true)} disabled={!orgId}>
+									<PlusIcon />
+									Add quota
+								</Button>
+							</EmptyContent>
+						) : null}
+					</Empty>
+				) : (
+					<>
+						{!isOrgAdmin ? (
+							<p className="text-muted-foreground text-sm">
+								Only organization owners and admins can create or delete quotas.
+							</p>
+						) : null}
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>Metric</TableHead>
+									<TableHead>Limit</TableHead>
+									<TableHead>Scope</TableHead>
+									<TableHead>Scope ID</TableHead>
+									{isOrgAdmin ? <TableHead className="w-24" /> : null}
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{quotaList.map((q) => (
+									<TableRow key={q.id}>
+										<TableCell className="font-medium">{q.metric}</TableCell>
+										<TableCell>
+											{q.limit_value} ({q.window})
+										</TableCell>
+										<TableCell>
 											{q.scope_type}: {labels(q.scope_type, q.scope_id)}
-										</div>
-										<div className="text-muted-foreground font-mono text-xs">
+										</TableCell>
+										<TableCell className="text-muted-foreground font-mono text-xs">
 											{q.scope_id}
-										</div>
-									</div>
-									{isOrgAdmin ? (
-										<Button
-											variant="outline"
-											size="sm"
-											disabled={del.isPending}
-											onClick={() => del.mutate(q.id)}
-										>
-											Delete
-										</Button>
-									) : null}
-								</li>
-							))}
-							{(quotas.data ?? []).length === 0 ? (
-								<li className="text-muted-foreground p-3 text-sm">
-									No quotas — traffic is unlimited until you add one.
-								</li>
-							) : null}
-						</ul>
-					</div>
+										</TableCell>
+										{isOrgAdmin ? (
+											<TableCell>
+												<Button
+													variant="outline"
+													size="sm"
+													disabled={del.isPending}
+													onClick={() => del.mutate(q.id)}
+												>
+													Delete
+												</Button>
+											</TableCell>
+										) : null}
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</>
+				)}
+			</QueryGate>
 
-					{isOrgAdmin ? (
-						<form
-							className="space-y-3 rounded-md border p-4"
-							onSubmit={(e) => {
-								e.preventDefault();
-								if (!orgId) return;
-								setError(null);
-								create.mutate(
-									{
-										orgId,
-										scope_type: scopeType,
-										scope_id: effectiveScopeID,
-										metric,
-										limit_value: Number(limitValue),
-										window: "total",
-									},
-									{
-										onError: (err) =>
-											setError(
-												err instanceof Error ? err.message : "Create failed",
-											),
-										onSuccess: () => setError(null),
-									},
-								);
-							}}
-						>
-							<h3 className="text-sm font-medium">Add quota</h3>
+			<Sheet open={createOpen} onOpenChange={setCreateOpen}>
+				<SheetContent>
+					<SheetHeader>
+						<SheetTitle>Add quota</SheetTitle>
+						<SheetDescription>
+							Publishes a new gateway snapshot with this limit.
+						</SheetDescription>
+					</SheetHeader>
+					<form
+						className="flex flex-1 flex-col gap-4 px-4"
+						onSubmit={(e) => {
+							e.preventDefault();
+							if (!orgId) return;
+							setError(null);
+							create.mutate(
+								{
+									orgId,
+									scope_type: scopeType,
+									scope_id: effectiveScopeID,
+									metric,
+									limit_value: Number(limitValue),
+									window: "total",
+								},
+								{
+									onError: (err) =>
+										setError(
+											err instanceof Error ? err.message : "Create failed",
+										),
+								},
+							);
+						}}
+					>
+						<div className="space-y-1">
+							<Label>Scope</Label>
+							<Select
+								value={scopeType}
+								onValueChange={(v) => {
+									const next = v ?? "organization";
+									setScopeType(next);
+									if (next === "organization") setScopeID(orgId);
+									else if (next === "project")
+										setScopeID(org?.projects[0]?.id ?? "");
+									else if (next === "user")
+										setScopeID(members.data?.[0]?.user_id ?? "");
+									else if (next === "api_key")
+										setScopeID(keys.data?.[0]?.id ?? "");
+								}}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="organization">Organization</SelectItem>
+									<SelectItem value="project">Project</SelectItem>
+									<SelectItem value="user">User</SelectItem>
+									<SelectItem value="api_key">API key</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+
+						{scopeType === "project" ? (
 							<div className="space-y-1">
-								<Label>Scope</Label>
+								<Label>Project</Label>
 								<Select
-									value={scopeType}
-									onValueChange={(v) => {
-										const next = v ?? "organization";
-										setScopeType(next);
-										if (next === "organization") setScopeID(orgId);
-										else if (next === "project")
-											setScopeID(org?.projects[0]?.id ?? "");
-										else if (next === "user")
-											setScopeID(members.data?.[0]?.user_id ?? "");
-										else if (next === "api_key")
-											setScopeID(keys.data?.[0]?.id ?? "");
-									}}
+									value={scopeID}
+									onValueChange={(v) => setScopeID(v ?? "")}
 								>
 									<SelectTrigger className="w-full">
-										<SelectValue />
+										<SelectValue placeholder="Select project" />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="organization">Organization</SelectItem>
-										<SelectItem value="project">Project</SelectItem>
-										<SelectItem value="user">User</SelectItem>
-										<SelectItem value="api_key">API key</SelectItem>
+										{(org?.projects ?? []).map((p) => (
+											<SelectItem key={p.id} value={p.id}>
+												{p.name}
+											</SelectItem>
+										))}
 									</SelectContent>
 								</Select>
 							</div>
+						) : null}
 
-							{scopeType === "project" ? (
-								<div className="space-y-1">
-									<Label>Project</Label>
-									<Select
-										value={scopeID}
-										onValueChange={(v) => setScopeID(v ?? "")}
-									>
-										<SelectTrigger className="w-full">
-											<SelectValue placeholder="Select project" />
-										</SelectTrigger>
-										<SelectContent>
-											{(org?.projects ?? []).map((p) => (
-												<SelectItem key={p.id} value={p.id}>
-													{p.name}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-							) : null}
-
-							{scopeType === "user" ? (
-								<div className="space-y-1">
-									<Label>Member</Label>
-									<Select
-										value={scopeID}
-										onValueChange={(v) => setScopeID(v ?? "")}
-									>
-										<SelectTrigger className="w-full">
-											<SelectValue placeholder="Select member" />
-										</SelectTrigger>
-										<SelectContent>
-											{(members.data ?? []).map((m) => (
-												<SelectItem key={m.user_id} value={m.user_id}>
-													{m.email}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-							) : null}
-
-							{scopeType === "api_key" ? (
-								<div className="space-y-1">
-									<Label>API key</Label>
-									<Select
-										value={scopeID}
-										onValueChange={(v) => setScopeID(v ?? "")}
-									>
-										<SelectTrigger className="w-full">
-											<SelectValue placeholder="Select key" />
-										</SelectTrigger>
-										<SelectContent>
-											{(keys.data ?? []).map((k) => (
-												<SelectItem key={k.id} value={k.id}>
-													{k.name} ({k.kind})
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-							) : null}
-
+						{scopeType === "user" ? (
 							<div className="space-y-1">
-								<Label>Metric</Label>
+								<Label>Member</Label>
 								<Select
-									value={metric}
-									onValueChange={(v) => setMetric(v ?? "requests")}
+									value={scopeID}
+									onValueChange={(v) => setScopeID(v ?? "")}
 								>
 									<SelectTrigger className="w-full">
-										<SelectValue />
+										<SelectValue placeholder="Select member" />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="requests">requests</SelectItem>
-										<SelectItem value="tokens">tokens</SelectItem>
+										{(members.data ?? []).map((m) => (
+											<SelectItem key={m.user_id} value={m.user_id}>
+												{m.email}
+											</SelectItem>
+										))}
 									</SelectContent>
 								</Select>
 							</div>
+						) : null}
+
+						{scopeType === "api_key" ? (
 							<div className="space-y-1">
-								<Label htmlFor="q-limit">Limit</Label>
-								<Input
-									id="q-limit"
-									type="number"
-									min={0}
-									value={limitValue}
-									onChange={(e) => setLimitValue(e.target.value)}
-									required
-								/>
+								<Label>API key</Label>
+								<Select
+									value={scopeID}
+									onValueChange={(v) => setScopeID(v ?? "")}
+								>
+									<SelectTrigger className="w-full">
+										<SelectValue placeholder="Select key" />
+									</SelectTrigger>
+									<SelectContent>
+										{(keys.data ?? []).map((k) => (
+											<SelectItem key={k.id} value={k.id}>
+												{k.name} ({k.kind})
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 							</div>
-							{error ? (
-								<p className="text-destructive text-xs">{error}</p>
-							) : null}
+						) : null}
+
+						<div className="space-y-1">
+							<Label>Metric</Label>
+							<Select
+								value={metric}
+								onValueChange={(v) => setMetric(v ?? "requests")}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="requests">requests</SelectItem>
+									<SelectItem value="tokens">tokens</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="space-y-1">
+							<Label htmlFor="q-limit">Limit</Label>
+							<Input
+								id="q-limit"
+								type="number"
+								min={0}
+								value={limitValue}
+								onChange={(e) => setLimitValue(e.target.value)}
+								required
+							/>
+						</div>
+						{error ? <p className="text-destructive text-xs">{error}</p> : null}
+						<SheetFooter>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setCreateOpen(false)}
+							>
+								Cancel
+							</Button>
 							<Button
 								type="submit"
-								disabled={
-									create.isPending || !orgId || !effectiveScopeID
-								}
+								disabled={create.isPending || !orgId || !effectiveScopeID}
 							>
-								Create & publish
+								{create.isPending ? "Creating…" : "Create & publish"}
 							</Button>
-						</form>
-					) : (
-						<p className="text-muted-foreground rounded-md border p-4 text-sm">
-							Only organization owners and admins can create or delete quotas.
-						</p>
-					)}
-				</div>
-			</QueryGate>
+						</SheetFooter>
+					</form>
+				</SheetContent>
+			</Sheet>
 		</PageBody>
 	);
 }

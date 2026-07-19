@@ -7,8 +7,8 @@ import { providersQueryOptions } from "#/api/provider";
 import {
 	createRouteMutationOptions,
 	deleteRouteMutationOptions,
-	routesQueryOptions,
 	type RouteFallback,
+	routesQueryOptions,
 } from "#/api/routing";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
@@ -32,6 +32,14 @@ import {
 	SelectValue,
 } from "#/components/ui/select";
 import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetFooter,
+	SheetHeader,
+	SheetTitle,
+} from "#/components/ui/sheet";
+import {
 	Table,
 	TableBody,
 	TableCell,
@@ -54,6 +62,8 @@ function RouteComponent() {
 	const qc = useQueryClient();
 	const routes = useQuery(routesQueryOptions(orgId));
 	const providers = useQuery(providersQueryOptions(orgId));
+	const [createOpen, setCreateOpen] = useState(false);
+
 	const create = useMutation({
 		...createRouteMutationOptions(),
 		onSuccess: () => {
@@ -61,6 +71,7 @@ function RouteComponent() {
 				queryKey: ["organizations", orgId, "routes"],
 			});
 			toast.success("Route created");
+			setCreateOpen(false);
 		},
 	});
 	const del = useMutation({
@@ -76,24 +87,33 @@ function RouteComponent() {
 	const [model, setModel] = useState("ping-model");
 	const [targetModel, setTargetModel] = useState("gpt-4o-mini");
 	const [providerId, setProviderId] = useState("");
-	const [fallbacks, setFallbacks] = useState<RouteFallback[]>([]);
+	const [fallbacks, setFallbacks] = useState<
+		Array<RouteFallback & { key: string }>
+	>([]);
 	const [error, setError] = useState<string | null>(null);
 
 	const providerList = providers.data ?? [];
+	const routeList = routes.data ?? [];
 	const selectedProvider = providerId || providerList[0]?.id || "";
 	const providerName = (id: string) =>
 		providerList.find((p) => p.id === id)?.name ?? id;
+
+	const canAddRoute = !!orgId && providerList.length > 0;
 
 	return (
 		<PageBody>
 			<PageHeader
 				title="Routing"
 				description="Map requested model names to providers. Optional fallbacks run on 5xx/timeout/429 before the response body is committed."
+				actions={
+					<Button onClick={() => setCreateOpen(true)} disabled={!canAddRoute}>
+						<PlusIcon />
+						Add route
+					</Button>
+				}
 			/>
 			<QueryGate
-				isPending={
-					!!orgId && (routes.isLoading || providers.isLoading)
-				}
+				isPending={!!orgId && (routes.isLoading || providers.isLoading)}
 				isError={routes.isError || providers.isError}
 				error={routes.error || providers.error}
 				onRetry={() => {
@@ -122,233 +142,254 @@ function RouteComponent() {
 							</Button>
 						</EmptyContent>
 					</Empty>
+				) : routeList.length === 0 ? (
+					<Empty className="border min-h-64">
+						<EmptyHeader>
+							<EmptyMedia variant="icon">
+								<RouteIcon />
+							</EmptyMedia>
+							<EmptyTitle>No routes</EmptyTitle>
+							<EmptyDescription>
+								Create a virtual model name clients will request.
+							</EmptyDescription>
+						</EmptyHeader>
+						<EmptyContent>
+							<Button onClick={() => setCreateOpen(true)}>
+								<PlusIcon />
+								Add route
+							</Button>
+						</EmptyContent>
+					</Empty>
 				) : (
-					<div className="grid gap-6 lg:grid-cols-2">
-						<div className="space-y-3">
-							<h3 className="text-sm font-medium">Routes</h3>
-							{(routes.data ?? []).length === 0 ? (
-								<Empty className="border min-h-48">
-									<EmptyHeader>
-										<EmptyMedia variant="icon">
-											<RouteIcon />
-										</EmptyMedia>
-										<EmptyTitle>No routes</EmptyTitle>
-										<EmptyDescription>
-											Create a virtual model name clients will request.
-										</EmptyDescription>
-									</EmptyHeader>
-								</Empty>
-							) : (
-								<Table>
-									<TableHeader>
-										<TableRow>
-											<TableHead>Model</TableHead>
-											<TableHead>Target</TableHead>
-											<TableHead>Provider</TableHead>
-											<TableHead>Fallbacks</TableHead>
-											<TableHead className="w-24" />
-										</TableRow>
-									</TableHeader>
-									<TableBody>
-										{(routes.data ?? []).map((r) => (
-											<TableRow key={r.id}>
-												<TableCell className="font-medium">{r.model}</TableCell>
-												<TableCell className="font-mono text-xs">
-													{r.target_model}
-												</TableCell>
-												<TableCell>
-													<div className="text-sm">
-														{providerName(r.provider_id)}
-													</div>
-													<div className="text-muted-foreground font-mono text-xs">
-														{r.provider_id}
-													</div>
-												</TableCell>
-												<TableCell>
-													{(r.fallbacks ?? []).length === 0 ? (
-														<span className="text-muted-foreground text-xs">
-															—
-														</span>
-													) : (
-														<div className="flex flex-wrap gap-1">
-															{(r.fallbacks ?? []).map((f, i) => (
-																<Badge
-																	key={`${f.provider_id}-${i}`}
-																	variant="outline"
-																	className="text-xs font-normal"
-																>
-																	{providerName(f.provider_id)} →{" "}
-																	{f.target_model || r.target_model}
-																</Badge>
-															))}
-														</div>
-													)}
-												</TableCell>
-												<TableCell>
-													<Button
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Model</TableHead>
+								<TableHead>Target</TableHead>
+								<TableHead>Provider</TableHead>
+								<TableHead>Fallbacks</TableHead>
+								<TableHead className="w-24" />
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{routeList.map((r) => (
+								<TableRow key={r.id}>
+									<TableCell className="font-medium">{r.model}</TableCell>
+									<TableCell className="font-mono text-xs">
+										{r.target_model}
+									</TableCell>
+									<TableCell>
+										<div className="text-sm">{providerName(r.provider_id)}</div>
+										<div className="text-muted-foreground font-mono text-xs">
+											{r.provider_id}
+										</div>
+									</TableCell>
+									<TableCell>
+										{(r.fallbacks ?? []).length === 0 ? (
+											<span className="text-muted-foreground text-xs">—</span>
+										) : (
+											<div className="flex flex-wrap gap-1">
+												{(r.fallbacks ?? []).map((f) => (
+													<Badge
+														key={`${f.provider_id}:${f.target_model}`}
 														variant="outline"
-														size="sm"
-														disabled={del.isPending}
-														onClick={() => del.mutate(r.id)}
+														className="text-xs font-normal"
 													>
-														Delete
-													</Button>
-												</TableCell>
-											</TableRow>
-										))}
-									</TableBody>
-								</Table>
-							)}
-						</div>
+														{providerName(f.provider_id)} →{" "}
+														{f.target_model || r.target_model}
+													</Badge>
+												))}
+											</div>
+										)}
+									</TableCell>
+									<TableCell>
+										<Button
+											variant="outline"
+											size="sm"
+											disabled={del.isPending}
+											onClick={() => del.mutate(r.id)}
+										>
+											Delete
+										</Button>
+									</TableCell>
+								</TableRow>
+							))}
+						</TableBody>
+					</Table>
+				)}
+			</QueryGate>
 
-						<form
-							className="space-y-3 rounded-md border p-4"
-							onSubmit={(e) => {
-								e.preventDefault();
-								if (!orgId || !selectedProvider) return;
-								setError(null);
-								create.mutate(
-									{
-										orgId,
-										model,
-										provider_id: selectedProvider,
-										target_model: targetModel || model,
-										fallbacks: fallbacks.filter((f) => f.provider_id),
-									},
-									{
-										onError: (err) =>
-											setError(
-												err instanceof Error ? err.message : "Create failed",
-											),
-									},
-								);
-							}}
-						>
-							<h3 className="text-sm font-medium">Add route</h3>
-							<div className="space-y-1">
-								<Label htmlFor="route-model">Requested model</Label>
-								<Input
-									id="route-model"
-									value={model}
-									onChange={(e) => setModel(e.target.value)}
-									required
-								/>
-							</div>
-							<div className="space-y-1">
-								<Label htmlFor="route-target">Target model</Label>
-								<Input
-									id="route-target"
-									value={targetModel}
-									onChange={(e) => setTargetModel(e.target.value)}
-									placeholder={model}
-								/>
-							</div>
-							<div className="space-y-1">
-								<Label>Provider</Label>
-								<Select
-									value={selectedProvider}
-									onValueChange={(v) => setProviderId(v ?? "")}
+			<Sheet open={createOpen} onOpenChange={setCreateOpen}>
+				<SheetContent>
+					<SheetHeader>
+						<SheetTitle>Add route</SheetTitle>
+						<SheetDescription>
+							Publishes a new gateway snapshot with this model mapping.
+						</SheetDescription>
+					</SheetHeader>
+					<form
+						className="flex flex-1 flex-col gap-4 px-4"
+						onSubmit={(e) => {
+							e.preventDefault();
+							if (!orgId || !selectedProvider) return;
+							setError(null);
+							create.mutate(
+								{
+									orgId,
+									model,
+									provider_id: selectedProvider,
+									target_model: targetModel || model,
+									fallbacks: fallbacks
+										.filter((f) => f.provider_id)
+										.map(({ provider_id, target_model }) => ({
+											provider_id,
+											target_model,
+										})),
+								},
+								{
+									onError: (err) =>
+										setError(
+											err instanceof Error ? err.message : "Create failed",
+										),
+								},
+							);
+						}}
+					>
+						<div className="space-y-1">
+							<Label htmlFor="route-model">Requested model</Label>
+							<Input
+								id="route-model"
+								value={model}
+								onChange={(e) => setModel(e.target.value)}
+								required
+							/>
+						</div>
+						<div className="space-y-1">
+							<Label htmlFor="route-target">Target model</Label>
+							<Input
+								id="route-target"
+								value={targetModel}
+								onChange={(e) => setTargetModel(e.target.value)}
+								placeholder={model}
+							/>
+						</div>
+						<div className="space-y-1">
+							<Label>Provider</Label>
+							<Select
+								value={selectedProvider}
+								onValueChange={(v) => setProviderId(v ?? "")}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder="Select provider" />
+								</SelectTrigger>
+								<SelectContent>
+									{providerList.map((p) => (
+										<SelectItem key={p.id} value={p.id}>
+											{p.name} ({p.type})
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="space-y-2">
+							<div className="flex items-center justify-between">
+								<Label>Fallbacks</Label>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() =>
+										setFallbacks((prev) => [
+											...prev,
+											{
+												key: crypto.randomUUID(),
+												provider_id: providerList[0]?.id ?? "",
+												target_model: targetModel || model,
+											},
+										])
+									}
 								>
-									<SelectTrigger className="w-full">
-										<SelectValue placeholder="Select provider" />
-									</SelectTrigger>
-									<SelectContent>
-										{providerList.map((p) => (
-											<SelectItem key={p.id} value={p.id}>
-												{p.name} ({p.type})
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
+									<PlusIcon />
+									Add
+								</Button>
 							</div>
-							<div className="space-y-2">
-								<div className="flex items-center justify-between">
-									<Label>Fallbacks</Label>
+							{fallbacks.map((fb) => (
+								<div
+									key={fb.key}
+									className="grid gap-2 rounded-md border p-2 sm:grid-cols-[1fr_1fr_auto]"
+								>
+									<Select
+										value={fb.provider_id}
+										onValueChange={(v) => {
+											const next = v ?? "";
+											setFallbacks((prev) =>
+												prev.map((row) =>
+													row.key === fb.key
+														? { ...row, provider_id: next }
+														: row,
+												),
+											);
+										}}
+									>
+										<SelectTrigger className="w-full">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											{providerList.map((p) => (
+												<SelectItem key={p.id} value={p.id}>
+													{p.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<Input
+										placeholder="target model"
+										value={fb.target_model}
+										onChange={(e) => {
+											const v = e.target.value;
+											setFallbacks((prev) =>
+												prev.map((row) =>
+													row.key === fb.key
+														? { ...row, target_model: v }
+														: row,
+												),
+											);
+										}}
+									/>
 									<Button
 										type="button"
 										variant="outline"
 										size="sm"
 										onClick={() =>
-											setFallbacks((prev) => [
-												...prev,
-												{
-													provider_id: providerList[0]?.id ?? "",
-													target_model: targetModel || model,
-												},
-											])
+											setFallbacks((prev) =>
+												prev.filter((row) => row.key !== fb.key),
+											)
 										}
 									>
-										<PlusIcon />
-										Add
+										Remove
 									</Button>
 								</div>
-								{fallbacks.map((fb, idx) => (
-									<div
-										key={idx}
-										className="grid gap-2 rounded-md border p-2 sm:grid-cols-[1fr_1fr_auto]"
-									>
-										<Select
-											value={fb.provider_id}
-											onValueChange={(v) => {
-												const next = v ?? "";
-												setFallbacks((prev) =>
-													prev.map((row, i) =>
-														i === idx ? { ...row, provider_id: next } : row,
-													),
-												);
-											}}
-										>
-											<SelectTrigger className="w-full">
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												{providerList.map((p) => (
-													<SelectItem key={p.id} value={p.id}>
-														{p.name}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<Input
-											placeholder="target model"
-											value={fb.target_model}
-											onChange={(e) => {
-												const v = e.target.value;
-												setFallbacks((prev) =>
-													prev.map((row, i) =>
-														i === idx ? { ...row, target_model: v } : row,
-													),
-												);
-											}}
-										/>
-										<Button
-											type="button"
-											variant="outline"
-											size="sm"
-											onClick={() =>
-												setFallbacks((prev) =>
-													prev.filter((_, i) => i !== idx),
-												)
-											}
-										>
-											Remove
-										</Button>
-									</div>
-								))}
-							</div>
-							{error ? (
-								<p className="text-destructive text-xs">{error}</p>
-							) : null}
+							))}
+						</div>
+						{error ? <p className="text-destructive text-xs">{error}</p> : null}
+						<SheetFooter>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setCreateOpen(false)}
+							>
+								Cancel
+							</Button>
 							<Button
 								type="submit"
 								disabled={create.isPending || !orgId || !selectedProvider}
 							>
 								{create.isPending ? "Creating…" : "Create & publish"}
 							</Button>
-						</form>
-					</div>
-				)}
-			</QueryGate>
+						</SheetFooter>
+					</form>
+				</SheetContent>
+			</Sheet>
 		</PageBody>
 	);
 }

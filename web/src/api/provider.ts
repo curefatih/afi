@@ -8,6 +8,23 @@ export type ProviderCapabilities = {
 	stt?: boolean;
 };
 
+export type ProviderHealthStatus =
+	| "healthy"
+	| "degraded"
+	| "down"
+	| "unknown";
+
+export type ProviderHealth = {
+	provider_id: string;
+	name: string;
+	type: string;
+	requests: number;
+	errors: number;
+	error_rate: number;
+	avg_latency_ms: number;
+	status: ProviderHealthStatus;
+};
+
 export type Provider = {
 	id: string;
 	organization_id: string;
@@ -66,6 +83,17 @@ export const providersQueryOptions = (orgId: string) =>
 		queryFn: () =>
 			apiFetch<Provider[]>(`/api/v1/platform/organizations/${orgId}/providers`),
 		enabled: !!orgId,
+	});
+
+export const providerHealthQueryOptions = (orgId: string) =>
+	queryOptions({
+		queryKey: ["organizations", orgId, "providers", "health"],
+		queryFn: () =>
+			apiFetch<ProviderHealth[]>(
+				`/api/v1/platform/organizations/${orgId}/providers/health`,
+			),
+		enabled: !!orgId,
+		refetchInterval: 30_000,
 	});
 
 export type CreateProviderInput = {

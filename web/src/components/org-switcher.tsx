@@ -1,6 +1,12 @@
 "use client";
 
-import { Building2Icon, CheckIcon, ChevronsUpDownIcon } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import {
+	Building2Icon,
+	CheckIcon,
+	ChevronsUpDownIcon,
+	Settings2Icon,
+} from "lucide-react";
 import {
 	type Organization,
 	useActiveOrg,
@@ -12,6 +18,7 @@ import {
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -26,6 +33,7 @@ export function OrgSwitcher({
 }: {
 	organizations: Organization[];
 }) {
+	const navigate = useNavigate();
 	const { isMobile } = useSidebar();
 	const activeOrg = useActiveOrg();
 	const { setActiveOrgById } = useOrgActions();
@@ -98,6 +106,20 @@ export function OrgSwitcher({
 									) : null}
 								</DropdownMenuItem>
 							))}
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DropdownMenuItem
+								className="gap-2 p-2"
+								onClick={() => {
+									void navigate({ to: "/app/settings/general" });
+								}}
+							>
+								<div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+									<Settings2Icon className="size-3.5" />
+								</div>
+								<span className="flex-1 truncate">Organization settings</span>
+							</DropdownMenuItem>
 						</DropdownMenuGroup>
 					</DropdownMenuContent>
 				</DropdownMenu>
