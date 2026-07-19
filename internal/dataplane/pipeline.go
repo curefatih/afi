@@ -52,19 +52,18 @@ type Pipeline struct {
 	Policies  *policy.Evaluator
 }
 
-// NewPipeline builds a pipeline. If reg is nil, DefaultRegistry is used.
-// Prefer RegistryWithOpenAI in tests that need a custom OpenAI HTTP client.
-func NewPipeline(holder *Holder, openai *OpenAIClient, log *slog.Logger) *Pipeline {
-	reg := RegistryWithOpenAI(openai)
+// NewPipeline builds a pipeline with an explicit provider registry.
+// Built-in LLM adapters are registered from cmd/gateway via adapters/llm.
+func NewPipeline(holder *Holder, reg *Registry, log *slog.Logger) *Pipeline {
+	if reg == nil {
+		reg = NewRegistry()
+	}
 	return &Pipeline{Holder: holder, Providers: reg, Log: log}
 }
 
 // NewPipelineWithRegistry uses an explicit provider registry.
 func NewPipelineWithRegistry(holder *Holder, reg *Registry, log *slog.Logger) *Pipeline {
-	if reg == nil {
-		reg = DefaultRegistry()
-	}
-	return &Pipeline{Holder: holder, Providers: reg, Log: log}
+	return NewPipeline(holder, reg, log)
 }
 
 func (p *Pipeline) Handler() http.Handler {

@@ -1,6 +1,7 @@
 package dataplane
 
 import (
+	"github.com/curefatih/afi/internal/adapters/llm"
 	"bytes"
 	"encoding/json"
 	"log/slog"
@@ -54,7 +55,7 @@ func TestStreamRejectedViaExplicitCapabilities(t *testing.T) {
 			OrganizationID: "o1", Model: "g", ProviderID: "prov_gem", TargetModel: "gemini-2.0-flash",
 		}},
 	}))
-	p := NewPipeline(holder, NewOpenAIClient(), slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(llm.NewOpenAIClient(nil)), slog.Default())
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(
 		`{"model":"g","stream":true,"messages":[{"role":"user","content":"hi"}]}`,
 	))
@@ -79,13 +80,13 @@ func TestOpenAICompatibleViaRegistry(t *testing.T) {
 	defer upstream.Close()
 
 	t.Setenv("OLLAMA_API_KEY", "ollama")
-	compat := NewOpenAIClient()
+	compat := llm.NewOpenAIClient(nil)
 	compat.HTTP = upstream.Client()
 	reg := NewRegistry().
-		Register(newOpenAIChatProvider("openai", NewOpenAIClient(), ProviderCaps{Chat: true, Stream: true})).
+		Register(newOpenAIChatProvider("openai", llm.NewOpenAIClient(nil), ProviderCaps{Chat: true, Stream: true})).
 		Register(newOpenAIChatProvider("openai_compatible", compat, ProviderCaps{Chat: true, Stream: true})).
-		Register(newAnthropicChatProvider(NewAnthropicClient())).
-		Register(newGeminiChatProvider(NewGeminiClient()))
+		Register(newAnthropicChatProvider(llm.NewAnthropicClient(nil))).
+		Register(newGeminiChatProvider(llm.NewGeminiClient(nil)))
 
 	holder := NewHolder()
 	holder.Set(snapshot.Compile(snapshot.Source{
@@ -132,7 +133,7 @@ func TestListModelsIncludesStreamingCapability(t *testing.T) {
 			{OrganizationID: "o1", Model: "gemini-flash", ProviderID: "gem", TargetModel: "gemini-2.0-flash"},
 		},
 	}))
-	p := NewPipeline(holder, NewOpenAIClient(), slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(llm.NewOpenAIClient(nil)), slog.Default())
 	req := httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	req.Header.Set("Authorization", "Bearer sk-good")
 	rr := httptest.NewRecorder()

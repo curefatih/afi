@@ -37,17 +37,6 @@ func audioModelHint(requested, target, kind string) bool {
 	return false
 }
 
-func (p *Pipeline) openaiAudioClient() *OpenAIClient {
-	if p.Providers != nil {
-		if cp, ok := p.Providers.Get("openai"); ok {
-			if a, ok := cp.(*openaiChatProvider); ok && a != nil && a.client != nil {
-				return a.client
-			}
-		}
-	}
-	return NewOpenAIClient()
-}
-
 func audioOpenAICompatible(typ string) bool {
 	return typ == "openai" || typ == "openai_compatible"
 }
@@ -149,7 +138,14 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info("audio.speech", "model", reqBody.Model, "target_model", route.TargetModel, "provider", provider.ID)
-	resp, err := p.openaiAudioClient().AudioSpeech(ctx, provider, route.TargetModel, body)
+	client, err := p.openaiAudioClient()
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]any{
+			"error": map[string]string{"message": err.Error(), "type": "server_error"},
+		})
+		return
+	}
+	resp, err := client.AudioSpeech(ctx, provider, route.TargetModel, body)
 	status := "ok"
 	if err != nil {
 		log.Error("audio speech upstream", "err", err)
@@ -272,7 +268,14 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 	}
 
 	log.Info("audio.transcriptions", "model", model, "target_model", route.TargetModel, "provider", provider.ID)
-	resp, err := p.openaiAudioClient().AudioTranscriptions(ctx, provider, route.TargetModel, ct, bytes.NewReader(body))
+	client, err := p.openaiAudioClient()
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]any{
+			"error": map[string]string{"message": err.Error(), "type": "server_error"},
+		})
+		return
+	}
+	resp, err := client.AudioTranscriptions(ctx, provider, route.TargetModel, ct, bytes.NewReader(body))
 	status := "ok"
 	if err != nil {
 		log.Error("audio transcriptions upstream", "err", err)

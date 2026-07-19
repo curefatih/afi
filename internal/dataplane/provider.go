@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/curefatih/afi/internal/adapters/llm"
+	"github.com/curefatih/afi/internal/adapters/secrets"
 	"github.com/curefatih/afi/internal/snapshot"
 )
 
@@ -23,7 +25,7 @@ type ChatProvider interface {
 
 // Registry maps provider type strings to ChatProvider implementations.
 type Registry struct {
-	mu   sync.RWMutex
+	mu     sync.RWMutex
 	byType map[string]ChatProvider
 }
 
@@ -57,34 +59,38 @@ func (r *Registry) Types() []string {
 
 // DefaultRegistry registers built-in OpenAI, Anthropic, Gemini, and openai_compatible adapters.
 func DefaultRegistry() *Registry {
-	oai := NewOpenAIClient()
+	return RegistryFromClients(llm.NewClients(secrets.Default()))
+}
+
+// RegistryFromClients wires ChatProvider adapters over outbound LLM clients.
+func RegistryFromClients(c *llm.Clients) *Registry {
+	if c == nil {
+		c = llm.NewClients(nil)
+	}
 	return NewRegistry().
-		Register(newOpenAIChatProvider("openai", oai, ProviderCaps{Chat: true, Stream: true})).
-		Register(newOpenAIChatProvider("openai_compatible", NewOpenAIClient(), ProviderCaps{Chat: true, Stream: true})).
-		Register(newAnthropicChatProvider(NewAnthropicClient())).
-		Register(newGeminiChatProvider(NewGeminiClient()))
+		Register(newOpenAIChatProvider("openai", c.OpenAI, ProviderCaps{Chat: true, Stream: true})).
+		Register(newOpenAIChatProvider("openai_compatible", c.OpenAICompatible, ProviderCaps{Chat: true, Stream: true})).
+		Register(newAnthropicChatProvider(c.Anthropic)).
+		Register(newGeminiChatProvider(c.Gemini))
 }
 
 // RegistryWithOpenAI builds DefaultRegistry but uses the given OpenAI client for type "openai"
 // (tests inject mock HTTP transports).
-func RegistryWithOpenAI(openai *OpenAIClient) *Registry {
-	if openai == nil {
-		openai = NewOpenAIClient()
+func RegistryWithOpenAI(openai *llm.OpenAIClient) *Registry {
+	c := llm.NewClients(nil)
+	if openai != nil {
+		c.OpenAI = openai
 	}
-	return NewRegistry().
-		Register(newOpenAIChatProvider("openai", openai, ProviderCaps{Chat: true, Stream: true})).
-		Register(newOpenAIChatProvider("openai_compatible", NewOpenAIClient(), ProviderCaps{Chat: true, Stream: true})).
-		Register(newAnthropicChatProvider(NewAnthropicClient())).
-		Register(newGeminiChatProvider(NewGeminiClient()))
+	return RegistryFromClients(c)
 }
 
 type openaiChatProvider struct {
 	typ    string
-	client *OpenAIClient
+	client *llm.OpenAIClient
 	caps   ProviderCaps
 }
 
-func newOpenAIChatProvider(typ string, client *OpenAIClient, caps ProviderCaps) *openaiChatProvider {
+func newOpenAIChatProvider(typ string, client *llm.OpenAIClient, caps ProviderCaps) *openaiChatProvider {
 	return &openaiChatProvider{typ: typ, client: client, caps: caps}
 }
 
@@ -95,11 +101,13 @@ func (p *openaiChatProvider) Chat(ctx context.Context, provider snapshot.Provide
 	return p.client.ChatCompletions(ctx, provider, targetModel, body, stream)
 }
 
+func (p *openaiChatProvider) OpenAITransport() OpenAITransport { return p.client }
+
 type anthropicChatProvider struct {
-	client *AnthropicClient
+	client *llm.AnthropicClient
 }
 
-func newAnthropicChatProvider(client *AnthropicClient) *anthropicChatProvider {
+func newAnthropicChatProvider(client *llm.AnthropicClient) *anthropicChatProvider {
 	return &anthropicChatProvider{client: client}
 }
 
@@ -112,11 +120,13 @@ func (p *anthropicChatProvider) Chat(ctx context.Context, provider snapshot.Prov
 	return p.client.Messages(ctx, provider, targetModel, body, stream)
 }
 
+func (p *anthropicChatProvider) AnthropicTransport() AnthropicTransport { return p.client }
+
 type geminiChatProvider struct {
-	client *GeminiClient
+	client *llm.GeminiClient
 }
 
-func newGeminiChatProvider(client *GeminiClient) *geminiChatProvider {
+func newGeminiChatProvider(client *llm.GeminiClient) *geminiChatProvider {
 	return &geminiChatProvider{client: client}
 }
 

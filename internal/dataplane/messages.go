@@ -102,7 +102,13 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := p.anthropicClient()
+	client, err := p.anthropicClient()
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]any{
+			"error": map[string]string{"message": err.Error(), "type": "server_error"},
+		})
+		return
+	}
 	log.Info("messages",
 		"project_id", key.ProjectID,
 		"model", reqBody.Model,
@@ -229,17 +235,6 @@ func buildAnthropicAttempts(snap *snapshot.Snapshot, route snapshot.Route, prima
 		out = append(out, routeAttempt{Provider: p, TargetModel: target})
 	}
 	return out
-}
-
-func (p *Pipeline) anthropicClient() *AnthropicClient {
-	if p.Providers != nil {
-		if cp, ok := p.Providers.Get("anthropic"); ok {
-			if a, ok := cp.(*anthropicChatProvider); ok && a != nil && a.client != nil {
-				return a.client
-			}
-		}
-	}
-	return NewAnthropicClient()
 }
 
 func parseAnthropicUsageTokens(body []byte) (prompt, completion int64) {

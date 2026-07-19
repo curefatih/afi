@@ -1,6 +1,7 @@
 package dataplane
 
 import (
+	"github.com/curefatih/afi/internal/adapters/llm"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -45,7 +46,7 @@ func TestChatCompletionsUnauthorized(t *testing.T) {
 		}},
 	}))
 
-	p := NewPipeline(holder, NewOpenAIClient(), slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(llm.NewOpenAIClient(nil)), slog.Default())
 	body := `{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hi"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(body))
 	req.Header.Set("Authorization", "Bearer sk-bad")
@@ -87,9 +88,9 @@ func TestChatCompletionsNonStreamMockUpstream(t *testing.T) {
 		}},
 	}))
 
-	client := NewOpenAIClient()
+	client := llm.NewOpenAIClient(nil)
 	client.HTTP = upstream.Client()
-	p := NewPipeline(holder, client, slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(client), slog.Default())
 	var got UsageEvent
 	p.Usage = func(e UsageEvent) { got = e }
 

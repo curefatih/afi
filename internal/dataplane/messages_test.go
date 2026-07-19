@@ -1,6 +1,7 @@
 package dataplane
 
 import (
+	"github.com/curefatih/afi/internal/adapters/llm"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -37,12 +38,12 @@ func TestNativeMessagesPassThrough(t *testing.T) {
 	defer upstream.Close()
 
 	t.Setenv("ANTHROPIC_API_KEY", "ak")
-	anth := NewAnthropicClient()
+	anth := llm.NewAnthropicClient(nil)
 	anth.HTTP = upstream.Client()
 	reg := NewRegistry().
-		Register(newOpenAIChatProvider("openai", NewOpenAIClient(), ProviderCaps{Chat: true, Stream: true})).
+		Register(newOpenAIChatProvider("openai", llm.NewOpenAIClient(nil), ProviderCaps{Chat: true, Stream: true})).
 		Register(newAnthropicChatProvider(anth)).
-		Register(newGeminiChatProvider(NewGeminiClient()))
+		Register(newGeminiChatProvider(llm.NewGeminiClient(nil)))
 
 	holder := NewHolder()
 	holder.Set(snapshot.Compile(snapshot.Source{
@@ -89,7 +90,7 @@ func TestNativeMessagesRejectsNonAnthropic(t *testing.T) {
 			OrganizationID: "o1", Model: "gpt-4o-mini", ProviderID: "prov", TargetModel: "gpt-4o-mini",
 		}},
 	}))
-	p := NewPipeline(holder, NewOpenAIClient(), slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(llm.NewOpenAIClient(nil)), slog.Default())
 	body := `{"model":"gpt-4o-mini","max_tokens":64,"messages":[{"role":"user","content":"hi"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewBufferString(body))
 	req.Header.Set("Authorization", "Bearer sk-good")

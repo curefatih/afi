@@ -1,6 +1,7 @@
 package dataplane
 
 import (
+	"github.com/curefatih/afi/internal/adapters/llm"
 	"bytes"
 	"context"
 	"log/slog"
@@ -48,7 +49,7 @@ func TestQuotaExceededReturns429(t *testing.T) {
 	holder := NewHolder()
 	holder.Set(testSnapWithRequestQuota(0))
 	counters := &memCounters{used: map[string]int64{}}
-	p := NewPipeline(holder, NewOpenAIClient(), slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(llm.NewOpenAIClient(nil)), slog.Default())
 	p.Counters = counters
 
 	body := `{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hi"}]}`
@@ -65,7 +66,7 @@ func TestQuotaAllowsWhenUnderLimit(t *testing.T) {
 	holder := NewHolder()
 	holder.Set(testSnapWithRequestQuota(10))
 	counters := &memCounters{used: map[string]int64{}}
-	p := NewPipeline(holder, NewOpenAIClient(), slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(llm.NewOpenAIClient(nil)), slog.Default())
 	p.Counters = counters
 	// Upstream will fail (bad URL) but after quota check — expect not 429.
 	t.Setenv("OPENAI_API_KEY", "x")
@@ -96,7 +97,7 @@ func TestNoQuotaAllows(t *testing.T) {
 			OrganizationID: "o1", Model: "gpt-4o-mini", ProviderID: "prov", TargetModel: "gpt-4o-mini",
 		}},
 	}))
-	p := NewPipeline(holder, NewOpenAIClient(), slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(llm.NewOpenAIClient(nil)), slog.Default())
 	p.Counters = &memCounters{used: map[string]int64{}}
 	t.Setenv("OPENAI_API_KEY", "x")
 	body := `{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hi"}]}`

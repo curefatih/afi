@@ -1,6 +1,7 @@
 package dataplane
 
 import (
+	"github.com/curefatih/afi/internal/adapters/llm"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -49,9 +50,9 @@ func TestFailoverPrimary500UsesFallback(t *testing.T) {
 		}},
 	}))
 
-	client := NewOpenAIClient()
+	client := llm.NewOpenAIClient(nil)
 	client.HTTP = primary.Client()
-	p := NewPipeline(holder, client, slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(client), slog.Default())
 
 	body := `{"model":"m1","messages":[{"role":"user","content":"hi"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(body))
@@ -101,9 +102,9 @@ func TestFailoverPrimary400NoFallback(t *testing.T) {
 		}},
 	}))
 
-	client := NewOpenAIClient()
+	client := llm.NewOpenAIClient(nil)
 	client.HTTP = primary.Client()
-	p := NewPipeline(holder, client, slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(client), slog.Default())
 
 	body := `{"model":"m1","messages":[{"role":"user","content":"hi"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(body))
@@ -145,9 +146,9 @@ func TestFailoverAllFailReturnsLastError(t *testing.T) {
 		}},
 	}))
 
-	client := NewOpenAIClient()
+	client := llm.NewOpenAIClient(nil)
 	client.HTTP = primary.Client()
-	p := NewPipeline(holder, client, slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(client), slog.Default())
 
 	body := `{"model":"m1","messages":[{"role":"user","content":"hi"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(body))
@@ -185,12 +186,12 @@ func TestChatCompletionsAnthropicProvider(t *testing.T) {
 		}},
 	}))
 
-	anth := NewAnthropicClient()
+	anth := llm.NewAnthropicClient(nil)
 	anth.HTTP = upstream.Client()
 	reg := NewRegistry().
-		Register(newOpenAIChatProvider("openai", NewOpenAIClient(), ProviderCaps{Chat: true, Stream: true})).
+		Register(newOpenAIChatProvider("openai", llm.NewOpenAIClient(nil), ProviderCaps{Chat: true, Stream: true})).
 		Register(newAnthropicChatProvider(anth)).
-		Register(newGeminiChatProvider(NewGeminiClient()))
+		Register(newGeminiChatProvider(llm.NewGeminiClient(nil)))
 	p := NewPipelineWithRegistry(holder, reg, slog.Default())
 
 	body := `{"model":"claude-x","messages":[{"role":"user","content":"hi"}]}`

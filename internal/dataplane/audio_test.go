@@ -1,6 +1,7 @@
 package dataplane
 
 import (
+	"github.com/curefatih/afi/internal/adapters/llm"
 	"bytes"
 	"io"
 	"log/slog"
@@ -27,7 +28,7 @@ func TestAudioSpeechPassThrough(t *testing.T) {
 	t.Cleanup(upstream.Close)
 
 	t.Setenv("OPENAI_API_KEY", "sk-test")
-	client := NewOpenAIClient()
+	client := llm.NewOpenAIClient(nil)
 	client.HTTP = upstream.Client()
 
 	raw := "sk-audio-test"
@@ -83,7 +84,7 @@ func TestAudioTranscriptionsRejectsTTSModel(t *testing.T) {
 	part, _ := mw.CreateFormFile("file", "a.wav")
 	_, _ = part.Write([]byte("RIFF"))
 	_ = mw.Close()
-	p := NewPipeline(holder, NewOpenAIClient(), slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(llm.NewOpenAIClient(nil)), slog.Default())
 	req := httptest.NewRequest(http.MethodPost, "/v1/audio/transcriptions", &body)
 	req.Header.Set("Authorization", "Bearer "+raw)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
@@ -109,7 +110,7 @@ func TestAudioSpeechRejectsAnthropic(t *testing.T) {
 			OrganizationID: "o1", Model: "tts-1", ProviderID: "prov_a", TargetModel: "tts-1",
 		}},
 	}))
-	p := NewPipeline(holder, NewOpenAIClient(), slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(llm.NewOpenAIClient(nil)), slog.Default())
 	req := httptest.NewRequest(http.MethodPost, "/v1/audio/speech", bytes.NewBufferString(
 		`{"model":"tts-1","input":"hi","voice":"alloy"}`,
 	))
@@ -136,7 +137,7 @@ func TestAudioTranscriptionsPassThrough(t *testing.T) {
 	t.Cleanup(upstream.Close)
 
 	t.Setenv("OPENAI_API_KEY", "sk-test")
-	client := NewOpenAIClient()
+	client := llm.NewOpenAIClient(nil)
 	client.HTTP = upstream.Client()
 
 	raw := "sk-stt-test"

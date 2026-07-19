@@ -11,6 +11,7 @@ import (
 	"github.com/curefatih/afi/extensions/demohook"
 	"github.com/curefatih/afi/extensions/echo"
 	"github.com/curefatih/afi/internal/adapters/postgres"
+	afiRedis "github.com/curefatih/afi/internal/adapters/redis"
 	"github.com/curefatih/afi/internal/dataplane"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/policy"
@@ -60,7 +61,7 @@ func main() {
 		} else {
 			log.Info("redis connected", "addr", opt.Addr)
 		}
-		timed = &dataplane.RedisCounters{Client: rdb}
+		timed = &afiRedis.Counters{Client: rdb}
 	}
 	pipeline.Counters = dataplane.CompositeCounters{
 		Total: &postgres.Counters{Pool: pool},

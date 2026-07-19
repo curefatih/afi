@@ -1,6 +1,8 @@
 package dataplane
 
 import (
+	"github.com/curefatih/afi/internal/adapters/llm"
+	afiredis "github.com/curefatih/afi/internal/adapters/redis"
 	"bytes"
 	"context"
 	"log/slog"
@@ -23,7 +25,7 @@ func TestRedisMinuteWindowRateLimit(t *testing.T) {
 	fixed := time.Unix(1_700_000_000, 0)
 	counters := CompositeCounters{
 		Total: &memCounters{used: map[string]int64{}},
-		Timed: &RedisCounters{Client: rdb, Now: func() time.Time { return fixed }},
+		Timed: &afiredis.Counters{Client: rdb, Now: func() time.Time { return fixed }},
 	}
 
 	raw := "sk-good"
@@ -43,7 +45,7 @@ func TestRedisMinuteWindowRateLimit(t *testing.T) {
 			Metric: snapshot.MetricRequests, LimitValue: 1, Window: snapshot.WindowMinute,
 		}},
 	}))
-	p := NewPipeline(holder, NewOpenAIClient(), slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(llm.NewOpenAIClient(nil)), slog.Default())
 	p.Counters = counters
 	t.Setenv("OPENAI_API_KEY", "x")
 
@@ -87,7 +89,7 @@ func TestCELPolicyDenies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := NewPipeline(holder, NewOpenAIClient(), slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(llm.NewOpenAIClient(nil)), slog.Default())
 	p.Policies = ev
 	p.Counters = &memCounters{used: map[string]int64{}}
 
@@ -105,7 +107,7 @@ func TestRedisCountersBucket(t *testing.T) {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = rdb.Close() })
-	c := &RedisCounters{Client: rdb, Now: func() time.Time { return time.Unix(100, 0) }}
+	c := &afiredis.Counters{Client: rdb, Now: func() time.Time { return time.Unix(100, 0) }}
 	ctx := context.Background()
 	n, err := c.Incr(ctx, "api_key", "k1", "requests", snapshot.WindowMinute, 2)
 	if err != nil || n != 2 {
