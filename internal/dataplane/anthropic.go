@@ -28,6 +28,47 @@ func NewAnthropicClient() *AnthropicClient {
 	}
 }
 
+// PassThrough forwards an Anthropic-shaped /v1/messages body to upstream,
+// rewriting only the model field to targetModel.
+func (c *AnthropicClient) PassThrough(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
+	apiKey := os.Getenv(provider.APIKeyEnv)
+	if apiKey == "" {
+		return nil, fmt.Errorf("missing env %s for provider %s", provider.APIKeyEnv, provider.ID)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, fmt.Errorf("invalid request body: %w", err)
+	}
+	payload["model"] = targetModel
+	if stream {
+		payload["stream"] = true
+	}
+	rewritten, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	base := strings.TrimRight(provider.BaseURL, "/")
+	url := base + "/messages"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(rewritten))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("x-api-key", apiKey)
+	req.Header.Set("anthropic-version", anthropicVersion)
+	req.Header.Set("Content-Type", "application/json")
+	if stream {
+		req.Header.Set("Accept", "text/event-stream")
+	}
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 // Messages translates an OpenAI-shaped chat body to Anthropic /v1/messages
 // and returns an OpenAI-shaped chat completion response (JSON or SSE).
 func (c *AnthropicClient) Messages(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {

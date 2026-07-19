@@ -60,6 +60,7 @@ func (p *Pipeline) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", p.handleHealth)
 	mux.HandleFunc("GET /v1/models", p.handleModels)
 	mux.HandleFunc("POST /v1/chat/completions", p.handleChatCompletions)
+	mux.HandleFunc("POST /v1/messages", p.handleMessages)
 	return withCORS(mux)
 }
 

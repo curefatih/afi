@@ -40,7 +40,7 @@ func TestRegistryUnknownType(t *testing.T) {
 	}
 }
 
-func TestGeminiStreamRejectedViaCapabilities(t *testing.T) {
+func TestStreamRejectedViaExplicitCapabilities(t *testing.T) {
 	holder := NewHolder()
 	holder.Set(snapshot.Compile(snapshot.Source{
 		APIKeys: []snapshot.APIKey{{
@@ -48,6 +48,7 @@ func TestGeminiStreamRejectedViaCapabilities(t *testing.T) {
 		}},
 		Providers: []snapshot.Provider{{
 			ID: "prov_gem", Type: "gemini", BaseURL: "http://example.invalid", APIKeyEnv: "GEMINI_API_KEY",
+			Capabilities: snapshot.ProviderCapabilities{Chat: true, Stream: false},
 		}},
 		Routes: []snapshot.Route{{
 			OrganizationID: "o1", Model: "g", ProviderID: "prov_gem", TargetModel: "gemini-2.0-flash",
@@ -123,7 +124,8 @@ func TestListModelsIncludesStreamingCapability(t *testing.T) {
 		}},
 		Providers: []snapshot.Provider{
 			{ID: "oai", Type: "openai", BaseURL: "http://x", APIKeyEnv: "OPENAI_API_KEY"},
-			{ID: "gem", Type: "gemini", BaseURL: "http://x", APIKeyEnv: "GEMINI_API_KEY"},
+			{ID: "gem", Type: "gemini", BaseURL: "http://x", APIKeyEnv: "GEMINI_API_KEY",
+				Capabilities: snapshot.ProviderCapabilities{Chat: true, Stream: false}},
 		},
 		Routes: []snapshot.Route{
 			{OrganizationID: "o1", Model: "gpt-4o-mini", ProviderID: "oai", TargetModel: "gpt-4o-mini"},
@@ -155,6 +157,6 @@ func TestListModelsIncludesStreamingCapability(t *testing.T) {
 		t.Fatal("openai route should support streaming")
 	}
 	if byID["gemini-flash"] {
-		t.Fatal("gemini route should not support streaming")
+		t.Fatal("explicit no-stream provider should report false")
 	}
 }

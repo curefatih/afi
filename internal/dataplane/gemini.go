@@ -1,6 +1,7 @@
 package dataplane
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -26,8 +27,8 @@ func NewGeminiClient() *GeminiClient {
 	}
 }
 
-// GenerateContent translates OpenAI chat → Gemini generateContent and maps back.
-func (c *GeminiClient) GenerateContent(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte) (*http.Response, error) {
+// GenerateContent translates OpenAI chat → Gemini generateContent / streamGenerateContent.
+func (c *GeminiClient) GenerateContent(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
 	apiKey := os.Getenv(provider.APIKeyEnv)
 	if apiKey == "" {
 		return nil, fmt.Errorf("missing env %s for provider %s", provider.APIKeyEnv, provider.ID)
@@ -39,13 +40,20 @@ func (c *GeminiClient) GenerateContent(ctx context.Context, provider snapshot.Pr
 	}
 
 	base := strings.TrimRight(provider.BaseURL, "/")
-	path := fmt.Sprintf("%s/models/%s:generateContent", base, url.PathEscape(targetModel))
+	method := "generateContent"
+	if stream {
+		method = "streamGenerateContent"
+	}
+	path := fmt.Sprintf("%s/models/%s:%s", base, url.PathEscape(targetModel), method)
 	u, err := url.Parse(path)
 	if err != nil {
 		return nil, err
 	}
 	q := u.Query()
 	q.Set("key", apiKey)
+	if stream {
+		q.Set("alt", "sse")
+	}
 	u.RawQuery = q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), bytes.NewReader(gemBody))
@@ -53,6 +61,9 @@ func (c *GeminiClient) GenerateContent(ctx context.Context, provider snapshot.Pr
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if stream {
+		req.Header.Set("Accept", "text/event-stream")
+	}
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
@@ -60,6 +71,27 @@ func (c *GeminiClient) GenerateContent(ctx context.Context, provider snapshot.Pr
 	}
 	if resp.StatusCode >= 400 {
 		return resp, nil
+	}
+
+	if stream {
+		pr, pw := io.Pipe()
+		go func() {
+			defer resp.Body.Close()
+			err := translateGeminiSSE(resp.Body, pw, targetModel)
+			if err != nil {
+				_ = pw.CloseWithError(err)
+				return
+			}
+			_ = pw.Close()
+		}()
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header: http.Header{
+				"Content-Type":  []string{"text/event-stream"},
+				"Cache-Control": []string{"no-cache"},
+			},
+			Body: pr,
+		}, nil
 	}
 
 	raw, err := io.ReadAll(resp.Body)
@@ -164,15 +196,7 @@ func geminiToOpenAIChat(raw []byte, model string) ([]byte, error) {
 		text.WriteString(part.Text)
 	}
 
-	finish := "stop"
-	switch in.Candidates[0].FinishReason {
-	case "MAX_TOKENS":
-		finish = "length"
-	case "STOP", "":
-		finish = "stop"
-	default:
-		finish = strings.ToLower(in.Candidates[0].FinishReason)
-	}
+	finish := mapGeminiFinish(in.Candidates[0].FinishReason)
 
 	out := map[string]any{
 		"id":     "chatcmpl-gemini",
@@ -195,4 +219,94 @@ func geminiToOpenAIChat(raw []byte, model string) ([]byte, error) {
 		},
 	}
 	return json.Marshal(out)
+}
+
+func mapGeminiFinish(r string) string {
+	switch r {
+	case "MAX_TOKENS":
+		return "length"
+	case "STOP", "":
+		return "stop"
+	default:
+		return strings.ToLower(r)
+	}
+}
+
+func translateGeminiSSE(r io.Reader, w io.Writer, model string) error {
+	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+
+	msgID := "chatcmpl-gemini"
+	started := false
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data:") {
+			continue
+		}
+		payload := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+		if payload == "" || payload == "[DONE]" {
+			continue
+		}
+
+		var raw map[string]any
+		if err := json.Unmarshal([]byte(payload), &raw); err != nil {
+			continue
+		}
+
+		text := extractGeminiDeltaText(raw)
+		finish := extractGeminiFinish(raw)
+
+		if !started {
+			started = true
+			if err := openaichat.WriteSSEChunk(w, msgID, model, map[string]any{"role": "assistant"}, nil); err != nil {
+				return err
+			}
+		}
+		if text != "" {
+			if err := openaichat.WriteSSEChunk(w, msgID, model, map[string]any{"content": text}, nil); err != nil {
+				return err
+			}
+		}
+		if finish != "" {
+			if err := openaichat.WriteSSEChunk(w, msgID, model, map[string]any{}, finish); err != nil {
+				return err
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+	return openaichat.WriteSSEDone(w)
+}
+
+func extractGeminiDeltaText(raw map[string]any) string {
+	cands, _ := raw["candidates"].([]any)
+	if len(cands) == 0 {
+		return ""
+	}
+	cand, _ := cands[0].(map[string]any)
+	content, _ := cand["content"].(map[string]any)
+	parts, _ := content["parts"].([]any)
+	var b strings.Builder
+	for _, p := range parts {
+		part, _ := p.(map[string]any)
+		if t, ok := part["text"].(string); ok {
+			b.WriteString(t)
+		}
+	}
+	return b.String()
+}
+
+func extractGeminiFinish(raw map[string]any) string {
+	cands, _ := raw["candidates"].([]any)
+	if len(cands) == 0 {
+		return ""
+	}
+	cand, _ := cands[0].(map[string]any)
+	fr, _ := cand["finishReason"].(string)
+	if fr == "" {
+		return ""
+	}
+	return mapGeminiFinish(fr)
 }

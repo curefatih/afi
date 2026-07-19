@@ -2,7 +2,6 @@ package dataplane
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"sync"
 
@@ -123,12 +122,9 @@ func newGeminiChatProvider(client *GeminiClient) *geminiChatProvider {
 
 func (p *geminiChatProvider) Type() string { return "gemini" }
 func (p *geminiChatProvider) Capabilities() ProviderCaps {
-	return ProviderCaps{Chat: true, Stream: false}
+	return ProviderCaps{Chat: true, Stream: true}
 }
 
 func (p *geminiChatProvider) Chat(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
-	if stream {
-		return nil, fmt.Errorf("streaming is not supported for provider type %q", p.Type())
-	}
-	return p.client.GenerateContent(ctx, provider, targetModel, body)
+	return p.client.GenerateContent(ctx, provider, targetModel, body, stream)
 }
