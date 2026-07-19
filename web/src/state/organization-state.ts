@@ -2,110 +2,154 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 export type Team = {
-  id: string;
-  team_id: string;
-  name: string;
-  created_at: string;
-  updated_at: string;
+	id: string;
+	team_id: string;
+	organization_id?: string;
+	name: string;
+	created_at: string;
+	updated_at: string;
 };
 
 export type Project = {
-  id: string;
-  team_id: string;
-  name: string;
-  created_at: string;
-  updated_at: string;
+	id: string;
+	organization_id?: string;
+	team_id: string;
+	name: string;
+	created_at: string;
+	updated_at: string;
 };
 
 export type Organization = {
-  id: string;
-  name: string;
-  projects: Project[];
-  teams: Team[];
-  created_at?: string;
+	id: string;
+	name: string;
+	projects: Project[];
+	teams: Team[];
+	created_at?: string;
 };
 
 type OrganizationState = {
-  orgs: Organization[];
-  activeOrgId?: string;
-  activeTeamId?: string;
-  actions: {
-    setOrganizations: (orgs: Organization[]) => void;
-    setActiveOrg: (org: Organization) => void;
-    setActiveTeamById: (teamId: string) => void;
-    addActiveOrganizationTeams: (teams: Team[]) => void;
-  };
+	orgs: Organization[];
+	activeOrgId?: string;
+	activeTeamId?: string;
+	activeProjectId?: string;
+	actions: {
+		setOrganizations: (orgs: Organization[]) => void;
+		setActiveOrgById: (orgId: string) => void;
+		setActiveTeamById: (teamId: string | undefined) => void;
+		setActiveProjectById: (projectId: string | undefined) => void;
+		setOrgTeams: (orgId: string, teams: Team[]) => void;
+		setOrgProjects: (orgId: string, projects: Project[]) => void;
+		upsertProject: (orgId: string, project: Project) => void;
+	};
 };
 
 export const useOrgStore = create<OrganizationState>()(
-  persist(
-    (set, get) => ({
-      orgs: [],
-      actions: {
-        setOrganizations: (orgs) =>
-          set({
-            orgs,
-          }),
-        setActiveOrg: (org) => {
-          if (org.id === get().activeOrgId) {
-            return;
-          }
-          set({
-            activeOrgId: org.id,
-          });
-        },
-        setActiveTeamById(teamId) {
-          const exists = get()
-            .orgs.find((i) => i.id == get().activeOrgId)
-            ?.teams.find((t) => t.id === teamId);
-
-          if (!exists) {
-            console.log("no active team found");
-            
-            return;
-          }
-
-          set({
-            activeTeamId: teamId,
-          });
-        },
-        addActiveOrganizationTeams(teams: Team[]) {
-          if (!get().activeOrgId) {
-            return;
-          }
-
-          set({
-            orgs: get().orgs.map((org) => {
-              if (org.id === get().activeOrgId) {
-                return {
-                  ...org,
-                  teams,
-                };
-              }
-              return org;
-            }),
-          });
-        },
-      },
-    }),
-    {
-      name: "org-state",
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        activeOrgId: state.activeOrgId,
-        activeTeamId: state.activeTeamId,
-      }),
-    },
-  ),
+	persist(
+		(set, get) => ({
+			orgs: [],
+			actions: {
+				setOrganizations: (orgs) => {
+					const { activeOrgId } = get();
+					const nextActive =
+						(activeOrgId && orgs.find((o) => o.id === activeOrgId)?.id) ||
+						orgs[0]?.id;
+					set({
+						orgs,
+						activeOrgId: nextActive,
+					});
+				},
+				setActiveOrgById: (orgId) => {
+					const org = get().orgs.find((o) => o.id === orgId);
+					if (!org) return;
+					set({
+						activeOrgId: orgId,
+						activeTeamId: undefined,
+						activeProjectId: undefined,
+					});
+				},
+				setActiveTeamById(teamId) {
+					if (!teamId) {
+						set({ activeTeamId: undefined });
+						return;
+					}
+					const org = get().orgs.find((o) => o.id === get().activeOrgId);
+					if (!org?.teams.find((t) => t.id === teamId)) return;
+					set({ activeTeamId: teamId });
+				},
+				setActiveProjectById(projectId) {
+					set({ activeProjectId: projectId });
+				},
+				setOrgTeams(orgId, teams) {
+					set({
+						orgs: get().orgs.map((org) =>
+							org.id === orgId ? { ...org, teams } : org,
+						),
+					});
+					const { activeTeamId } = get();
+					if (
+						activeTeamId &&
+						!teams.some((t) => t.id === activeTeamId) &&
+						get().activeOrgId === orgId
+					) {
+						set({ activeTeamId: teams[0]?.id });
+					} else if (
+						!activeTeamId &&
+						teams.length > 0 &&
+						get().activeOrgId === orgId
+					) {
+						set({ activeTeamId: teams[0].id });
+					}
+				},
+				setOrgProjects(orgId, projects) {
+					set({
+						orgs: get().orgs.map((org) =>
+							org.id === orgId ? { ...org, projects } : org,
+						),
+					});
+				},
+				upsertProject(orgId, project) {
+					set({
+						orgs: get().orgs.map((org) => {
+							if (org.id !== orgId) return org;
+							const exists = org.projects.some((p) => p.id === project.id);
+							return {
+								...org,
+								projects: exists
+									? org.projects.map((p) => (p.id === project.id ? project : p))
+									: [...org.projects, project],
+							};
+						}),
+					});
+				},
+			},
+		}),
+		{
+			name: "org-state",
+			storage: createJSONStorage(() => localStorage),
+			partialize: (state) => ({
+				activeOrgId: state.activeOrgId,
+				activeTeamId: state.activeTeamId,
+				activeProjectId: state.activeProjectId,
+			}),
+		},
+	),
 );
 
 export const useActiveOrg = () =>
-  useOrgStore((state) => state.orgs.find((o) => o.id === state.activeOrgId));
-export const useActiveTeam = () =>
-  useOrgStore((state) => {
-    const orgId = state.activeOrgId;
-    const org = state.orgs.find((o) => o.id === orgId);
-    if (!org) return undefined;
+	useOrgStore((state) => state.orgs.find((o) => o.id === state.activeOrgId));
 
-    return org.teams?.find((p) => p.id === state.activeTeamId);
-  });
+export const useActiveTeam = () =>
+	useOrgStore((state) => {
+		const org = state.orgs.find((o) => o.id === state.activeOrgId);
+		if (!org) return undefined;
+		return org.teams?.find((t) => t.id === state.activeTeamId);
+	});
+
+export const useActiveProject = () =>
+	useOrgStore((state) => {
+		const org = state.orgs.find((o) => o.id === state.activeOrgId);
+		if (!org) return undefined;
+		return org.projects?.find((p) => p.id === state.activeProjectId);
+	});
+
+export const useOrgActions = () => useOrgStore((state) => state.actions);
