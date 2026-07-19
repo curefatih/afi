@@ -1,15 +1,14 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRightIcon, FolderKanbanIcon } from "lucide-react";
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
+import { FolderKanbanIcon, Users2Icon } from "lucide-react";
 import {
 	Card,
 	CardContent,
 	CardDescription,
-	CardFooter,
 	CardHeader,
 	CardTitle,
 } from "./ui/card";
+
+const PREVIEW_LIMIT = 2;
 
 type TeamProject = {
 	id: string;
@@ -19,82 +18,61 @@ type TeamProject = {
 type TeamCardProps = {
 	id: string;
 	name: string;
-	description: string;
 	projects: TeamProject[];
 };
 
-export default function TeamCard({
-	id,
-	name,
-	description,
-	projects,
-}: TeamCardProps) {
-	const previewProjects = projects.slice(0, 4);
-	const remaining = projects.length - previewProjects.length;
+export default function TeamCard({ id, name, projects }: TeamCardProps) {
+	const hasMore = projects.length > PREVIEW_LIMIT;
+	const previewProjects = hasMore ? projects.slice(0, PREVIEW_LIMIT) : projects;
+	const projectLabel =
+		projects.length === 1 ? "1 project" : `${projects.length} projects`;
 
 	return (
-		<Card className="flex w-full max-w-md flex-col">
-			<CardHeader className="gap-2">
-				<div className="flex items-start justify-between gap-3">
-					<div className="min-w-0 space-y-1">
-						<CardTitle className="text-lg">{name}</CardTitle>
-						<CardDescription className="font-mono text-xs">
-							{description}
-						</CardDescription>
-					</div>
-					<Badge variant="secondary" className="shrink-0">
-						{projects.length} {projects.length === 1 ? "project" : "projects"}
-					</Badge>
-				</div>
+		<Card className="h-full transition-colors hover:bg-muted/40">
+			<CardHeader>
+				<Link
+					to="/app/teams/$teamId"
+					params={{ teamId: id }}
+					className="group/team block space-y-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				>
+					<CardTitle className="flex items-center gap-2">
+						<Users2Icon className="size-4 text-muted-foreground" />
+						<span className="truncate group-hover/team:underline">{name}</span>
+					</CardTitle>
+					<CardDescription>{projectLabel}</CardDescription>
+				</Link>
 			</CardHeader>
 
-			<CardContent className="flex flex-1 flex-col gap-2">
+			<CardContent className="flex flex-1 flex-col">
 				{projects.length === 0 ? (
-					<p className="text-sm text-muted-foreground">
-						No projects yet for this team.
-					</p>
+					<div className="flex flex-1 items-center rounded-lg border border-dashed px-3 py-4 text-sm text-muted-foreground">
+						No projects yet
+					</div>
 				) : (
-					<ul className="space-y-1.5">
+					<div className="flex flex-1 flex-col gap-1 rounded-lg bg-muted/40 p-1">
 						{previewProjects.map((project) => (
-							<li key={project.id}>
-								<Link
-									to="/app/projects/$projectId"
-									params={{ projectId: project.id }}
-									className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-								>
-									<FolderKanbanIcon className="size-3.5 shrink-0 text-muted-foreground" />
-									<span className="truncate font-medium">{project.name}</span>
-								</Link>
-							</li>
+							<Link
+								key={project.id}
+								to="/app/projects/$projectId"
+								params={{ projectId: project.id }}
+								className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								<FolderKanbanIcon className="size-3.5 shrink-0 text-muted-foreground" />
+								<span className="truncate">{project.name}</span>
+							</Link>
 						))}
-						{remaining > 0 ? (
-							<li className="px-2 text-xs text-muted-foreground">
-								+{remaining} more
-							</li>
+						{hasMore ? (
+							<Link
+								to="/app/projects"
+								search={{ team: id }}
+								className="rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								More…
+							</Link>
 						) : null}
-					</ul>
+					</div>
 				)}
 			</CardContent>
-
-			<CardFooter className="flex flex-wrap gap-2">
-				<Button
-					variant="outline"
-					size="sm"
-					nativeButton={false}
-					render={<Link to="/app/teams/$teamId" params={{ teamId: id }} />}
-				>
-					View team
-				</Button>
-				<Button
-					variant="ghost"
-					size="sm"
-					nativeButton={false}
-					render={<Link to="/app/projects" search={{ team: id }} />}
-				>
-					View projects
-					<ArrowRightIcon />
-				</Button>
-			</CardFooter>
 		</Card>
 	);
 }

@@ -103,7 +103,6 @@ function RouteComponent() {
 								key={team.id}
 								id={team.id}
 								name={team.name}
-								description={team.team_id}
 								projects={projectsByTeam.get(team.id) ?? []}
 							/>
 						))}

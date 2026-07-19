@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { PlusIcon, Users2Icon } from "lucide-react";
+import {
+	ArrowRightIcon,
+	FolderKanbanIcon,
+	PlusIcon,
+	Users2Icon,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { orgMembersQueryOptions } from "#/api/organization";
@@ -16,6 +21,7 @@ import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import {
 	Card,
+	CardAction,
 	CardContent,
 	CardDescription,
 	CardHeader,
@@ -153,46 +159,85 @@ function RouteComponent() {
 					}
 				/>
 
-				<div className="grid gap-4 md:grid-cols-2">
-					<Card>
-						<CardHeader>
-							<CardDescription>Team ID</CardDescription>
-							<CardTitle className="font-mono text-sm break-all">
-								{teamQuery.data?.id}
-							</CardTitle>
-						</CardHeader>
-					</Card>
-					<Card>
-						<CardHeader className="gap-2">
-							<div className="flex items-center justify-between gap-2">
-								<CardDescription>Projects</CardDescription>
-								{projects.length > 0 ? (
-									<Link
-										to="/app/projects"
-										search={{ team: teamId }}
-										className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+				<Card>
+					<CardHeader>
+						<CardDescription>Team ID</CardDescription>
+						<CardTitle className="font-mono text-sm break-all">
+							{teamQuery.data?.id}
+						</CardTitle>
+					</CardHeader>
+				</Card>
+
+				<Card>
+					<CardHeader>
+						<CardTitle>Projects</CardTitle>
+						<CardDescription>Projects owned by this team.</CardDescription>
+						{projects.length > 0 ? (
+							<CardAction>
+								<Button
+									variant="outline"
+									size="sm"
+									nativeButton={false}
+									render={<Link to="/app/projects" search={{ team: teamId }} />}
+								>
+									Browse projects
+									<ArrowRightIcon />
+								</Button>
+							</CardAction>
+						) : null}
+					</CardHeader>
+					<CardContent>
+						{projects.length === 0 ? (
+							<Empty className="border min-h-40">
+								<EmptyHeader>
+									<EmptyMedia variant="icon">
+										<FolderKanbanIcon />
+									</EmptyMedia>
+									<EmptyTitle>No projects</EmptyTitle>
+									<EmptyDescription>
+										This team does not own any projects yet.
+									</EmptyDescription>
+								</EmptyHeader>
+								<EmptyContent>
+									<Button
+										variant="outline"
+										size="sm"
+										nativeButton={false}
+										render={
+											<Link to="/app/projects" search={{ team: teamId }} />
+										}
 									>
-										View all
-									</Link>
-								) : null}
-							</div>
-							<CardTitle className="text-base">
-								{projects.length === 0
-									? "None"
-									: projects.map((p) => (
-											<Link
-												key={p.id}
-												to="/app/projects/$projectId"
-												params={{ projectId: p.id }}
-												className="mr-2 hover:underline"
-											>
-												{p.name}
-											</Link>
-										))}
-							</CardTitle>
-						</CardHeader>
-					</Card>
-				</div>
+										Go to projects
+										<ArrowRightIcon />
+									</Button>
+								</EmptyContent>
+							</Empty>
+						) : (
+							<ul className="divide-y rounded-xl border">
+								{projects.map((project) => (
+									<li key={project.id}>
+										<Link
+											to="/app/projects/$projectId"
+											params={{ projectId: project.id }}
+											className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										>
+											<FolderKanbanIcon className="size-4 shrink-0 text-muted-foreground" />
+											<span className="min-w-0 flex-1 truncate font-medium">
+												{project.name}
+											</span>
+											<span className="hidden max-w-48 truncate font-mono text-xs text-muted-foreground sm:block">
+												{project.id}
+											</span>
+											<span className="shrink-0 text-xs text-muted-foreground">
+												Open
+											</span>
+										</Link>
+									</li>
+								))}
+							</ul>
+						)}
+					</CardContent>
+				</Card>
 
 				<Card>
 					<CardHeader>
