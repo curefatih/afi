@@ -10,9 +10,9 @@ go test ./...
 
 Covered areas:
 
-* Snapshot compile + org-scoped `LookupRoute` + hashed `LookupKey`
-* Data-plane auth (reject unknown keys) and mock upstream chat
-* Usage token parsing on non-stream success
+* Snapshot compile + org-scoped `LookupRoute` + hashed `LookupKey` + quota resolve
+* Data-plane auth, quota 429 / under-limit, mock upstream chat
+* Usage outbox worker `ProcessOnce`
 * Control-plane JWT/password helpers
 * Internal token checks
 * Org membership middleware (403 when not a member)

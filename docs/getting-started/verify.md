@@ -89,3 +89,26 @@ curl -s -X POST http://localhost:8081/internal/v1/snapshots/publish \
 ```
 
 Gateway `snapshot_version` increases without process restart.
+
+## Quota enforcement (429)
+
+Create a lifetime `requests` limit of `0` for the org (no OpenAI needed):
+
+```bash
+TOKEN=$(curl -s http://localhost:8081/api/v1/platform/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@afi.local","password":"admin"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["token"])')
+
+curl -s http://localhost:8081/api/v1/platform/organizations/org_local/quotas \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"scope_type":"organization","scope_id":"org_local","metric":"requests","limit_value":0,"window":"total"}'
+
+# after hot reload:
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Bearer sk-project-local-dev-token-12345" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"x"}]}'
+```
+
+Expect `429`.

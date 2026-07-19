@@ -59,13 +59,23 @@ make run-gateway
 
 The gateway loads the latest snapshot from Postgres, watches for new versions, and listens on **`:8080`**.
 
-Alternatively: `make run-all` (control plane in background, gateway in foreground). Stop with Ctrl+C then `make stop-all` if needed.
+## 5. Run the usage worker (optional but recommended)
 
-## 5. Verify inference
+In a third terminal:
 
-See [Verify](verify.md).
+```bash
+make run-worker
+```
 
-## 6. Optional: platform UI
+The worker drains `usage_outbox` into `usage_events` (Usage page). Chat still works if the worker is stopped; usage just lags.
+
+Alternatively: `make run-all` (control plane + worker in background, gateway in foreground). Stop with Ctrl+C then `make stop-all` if needed.
+
+## 6. Verify inference
+
+See [Verify](verify.md) (`make verify` includes quota → 429).
+
+## 7. Optional: platform UI
 
 ```bash
 pnpm --dir web install
@@ -76,7 +86,7 @@ Open http://localhost:3000 and sign in with `admin@afi.local` / `admin`.
 
 The web app calls the control plane at `http://localhost:8081` (override with `VITE_PLATFORM_API_URL`).
 
-## 7. Optional: docs site
+## 8. Optional: docs site
 
 ```bash
 make doc-serve

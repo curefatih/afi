@@ -71,3 +71,16 @@ Written on first control-plane start (or `make seed`):
 | GET/POST | `/api/v1/platform/organizations/{orgID}/routes` |
 | PATCH/DELETE | `/api/v1/platform/routes/{routeID}` |
 | GET | `/api/v1/platform/organizations/{orgID}/usage` |
+| GET/POST | `/api/v1/platform/organizations/{orgID}/quotas` |
+| PATCH/DELETE | `/api/v1/platform/quotas/{quotaID}` |
+
+### Quotas
+
+| Field | Values |
+|-------|--------|
+| `scope_type` | `organization`, `project`, `api_key` |
+| `metric` | `requests`, `tokens` |
+| `window` | `total` (lifetime counter) |
+| `limit_value` | integer ≥ 0 (`0` blocks immediately) |
+
+Most specific scope wins: api_key → project → organization.
