@@ -14,11 +14,13 @@ type snapshotPublisher interface {
 // membershipChecker resolves org membership for authorization.
 type membershipChecker interface {
 	IsOrgMember(ctx context.Context, userID, orgID string) (bool, error)
+	IsOrgAdmin(ctx context.Context, userID, orgID string) (bool, error)
 	GetTeamOrgID(ctx context.Context, teamID string) (string, error)
 	GetProjectOrgID(ctx context.Context, projectID string) (string, error)
 	GetProviderOrgID(ctx context.Context, providerID string) (string, error)
 	GetRouteOrgID(ctx context.Context, routeID string) (string, error)
 	GetQuotaOrgID(ctx context.Context, quotaID string) (string, error)
+	GetAPIKeyOrgID(ctx context.Context, keyID string) (string, error)
 }
 
 // platformAPI is the control-plane persistence surface used by HTTP handlers.
@@ -36,7 +38,10 @@ type platformAPI interface {
 	ListProjects(ctx context.Context, orgID string) ([]Project, error)
 	CreateProject(ctx context.Context, orgID, teamID, name string) (*Project, error)
 	ListAPIKeys(ctx context.Context, projectID string) ([]APIKey, error)
-	CreateAPIKey(ctx context.Context, orgID, projectID, name, rawKey string) (*APIKey, error)
+	ListOrgAPIKeys(ctx context.Context, orgID string) ([]APIKey, error)
+	GetAPIKey(ctx context.Context, keyID string) (*APIKey, error)
+	CreateAPIKey(ctx context.Context, orgID, kind, ownerUserID, projectID, name, rawKey string) (*APIKey, error)
+	DeleteAPIKey(ctx context.Context, keyID string) error
 	ListProviders(ctx context.Context, orgID string) ([]Provider, error)
 	CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities) (*Provider, error)
 	UpdateProvider(ctx context.Context, providerID, name, baseURL, apiKeyEnv string) (*Provider, error)
