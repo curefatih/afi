@@ -151,6 +151,20 @@ func (s *Seeder) Seed(ctx context.Context) error {
 		return fmt.Errorf("gemini provider: %w", err)
 	}
 
+	// Optional OpenAI-compatible provider (e.g. local Ollama) — no default route.
+	_, err = tx.Exec(ctx, `
+		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, created_at)
+		VALUES ($1, $2, $3, 'openai_compatible', $4, $5, $6)
+		ON CONFLICT (id) DO UPDATE SET
+			base_url = EXCLUDED.base_url,
+			api_key_env = EXCLUDED.api_key_env,
+			name = EXCLUDED.name,
+			type = EXCLUDED.type
+	`, "prov_ollama", orgID, "Ollama (compatible)", "http://127.0.0.1:11434/v1", "OLLAMA_API_KEY", now)
+	if err != nil {
+		return fmt.Errorf("ollama provider: %w", err)
+	}
+
 	_, err = tx.Exec(ctx, `
 		INSERT INTO routes (id, organization_id, model, provider_id, target_model, created_at)
 		VALUES ($1, $2, $3, $4, $3, $5)

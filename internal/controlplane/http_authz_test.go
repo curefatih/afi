@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/snapshot"
 )
 
 type fakeMembers struct {
@@ -97,7 +98,7 @@ func (f *fakePlatform) CreateAPIKey(context.Context, string, string, string, str
 	return nil, errors.New("unused")
 }
 func (f *fakePlatform) ListProviders(context.Context, string) ([]Provider, error) { return nil, nil }
-func (f *fakePlatform) CreateProvider(context.Context, string, string, string, string, string) (*Provider, error) {
+func (f *fakePlatform) CreateProvider(context.Context, string, string, string, string, string, snapshot.ProviderCapabilities) (*Provider, error) {
 	return nil, errors.New("unused")
 }
 func (f *fakePlatform) UpdateProvider(context.Context, string, string, string, string) (*Provider, error) {

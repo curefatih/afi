@@ -71,13 +71,14 @@ type APIKey struct {
 }
 
 type Provider struct {
-	ID             string    `json:"id"`
-	OrganizationID string    `json:"organization_id"`
-	Name           string    `json:"name"`
-	Type           string    `json:"type"`
-	BaseURL        string    `json:"base_url"`
-	APIKeyEnv      string    `json:"api_key_env"`
-	CreatedAt      time.Time `json:"created_at"`
+	ID             string                        `json:"id"`
+	OrganizationID string                        `json:"organization_id"`
+	Name           string                        `json:"name"`
+	Type           string                        `json:"type"`
+	BaseURL        string                        `json:"base_url"`
+	APIKeyEnv      string                        `json:"api_key_env"`
+	Capabilities   snapshot.ProviderCapabilities `json:"capabilities"`
+	CreatedAt      time.Time                     `json:"created_at"`
 }
 
 type RouteFallback struct {
@@ -348,7 +349,7 @@ func (s *Store) CreateAPIKey(ctx context.Context, orgID, projectID, name, rawKey
 
 func (s *Store) ListProviders(ctx context.Context, orgID string) ([]Provider, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, organization_id, name, type, base_url, api_key_env, created_at
+		SELECT id, organization_id, name, type, base_url, api_key_env, capabilities, created_at
 		FROM providers WHERE organization_id = $1 ORDER BY created_at
 	`, orgID)
 	if err != nil {
@@ -358,39 +359,59 @@ func (s *Store) ListProviders(ctx context.Context, orgID string) ([]Provider, er
 	var out []Provider
 	for rows.Next() {
 		var p Provider
-		if err := rows.Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Type, &p.BaseURL, &p.APIKeyEnv, &p.CreatedAt); err != nil {
+		var caps []byte
+		if err := rows.Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Type, &p.BaseURL, &p.APIKeyEnv, &caps, &p.CreatedAt); err != nil {
 			return nil, err
 		}
+		p.Capabilities = decodeCapabilities(p.Type, caps)
 		out = append(out, p)
 	}
 	return out, rows.Err()
 }
 
-func (s *Store) CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string) (*Provider, error) {
+func (s *Store) CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities) (*Provider, error) {
+	caps = snapshot.NormalizeCapabilities(typ, caps)
 	p := &Provider{
 		ID: newID("prov"), OrganizationID: orgID, Name: name, Type: typ,
-		BaseURL: baseURL, APIKeyEnv: apiKeyEnv, CreatedAt: time.Now().UTC(),
+		BaseURL: baseURL, APIKeyEnv: apiKeyEnv, Capabilities: caps, CreatedAt: time.Now().UTC(),
 	}
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7)
-	`, p.ID, p.OrganizationID, p.Name, p.Type, p.BaseURL, p.APIKeyEnv, p.CreatedAt)
+	raw, err := json.Marshal(caps)
+	if err != nil {
+		return nil, err
+	}
+	_, err = s.pool.Exec(ctx, `
+		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, capabilities, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+	`, p.ID, p.OrganizationID, p.Name, p.Type, p.BaseURL, p.APIKeyEnv, raw, p.CreatedAt)
 	return p, err
+}
+
+func decodeCapabilities(typ string, raw []byte) snapshot.ProviderCapabilities {
+	var c snapshot.ProviderCapabilities
+	if len(raw) > 0 {
+		_ = json.Unmarshal(raw, &c)
+	}
+	return snapshot.NormalizeCapabilities(typ, c)
 }
 
 func (s *Store) UpdateProvider(ctx context.Context, providerID, name, baseURL, apiKeyEnv string) (*Provider, error) {
 	p := &Provider{}
+	var caps []byte
 	err := s.pool.QueryRow(ctx, `
 		UPDATE providers SET name=$2, base_url=$3, api_key_env=$4
 		WHERE id=$1
-		RETURNING id, organization_id, name, type, base_url, api_key_env, created_at
+		RETURNING id, organization_id, name, type, base_url, api_key_env, capabilities, created_at
 	`, providerID, name, baseURL, apiKeyEnv).Scan(
-		&p.ID, &p.OrganizationID, &p.Name, &p.Type, &p.BaseURL, &p.APIKeyEnv, &p.CreatedAt,
+		&p.ID, &p.OrganizationID, &p.Name, &p.Type, &p.BaseURL, &p.APIKeyEnv, &caps, &p.CreatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, kernel.ErrNotFound
 	}
-	return p, err
+	if err != nil {
+		return nil, err
+	}
+	p.Capabilities = decodeCapabilities(p.Type, caps)
+	return p, nil
 }
 
 func (s *Store) DeleteProvider(ctx context.Context, providerID string) error {
@@ -698,7 +719,7 @@ func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error)
 	}
 
 	provRows, err := s.pool.Query(ctx, `
-		SELECT id, type, base_url, api_key_env, name FROM providers
+		SELECT id, type, base_url, api_key_env, name, capabilities FROM providers
 	`)
 	if err != nil {
 		return src, err
@@ -706,9 +727,11 @@ func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error)
 	defer provRows.Close()
 	for provRows.Next() {
 		var p snapshot.Provider
-		if err := provRows.Scan(&p.ID, &p.Type, &p.BaseURL, &p.APIKeyEnv, &p.Name); err != nil {
+		var caps []byte
+		if err := provRows.Scan(&p.ID, &p.Type, &p.BaseURL, &p.APIKeyEnv, &p.Name, &caps); err != nil {
 			return src, err
 		}
+		p.Capabilities = decodeCapabilities(p.Type, caps)
 		src.Providers = append(src.Providers, p)
 	}
 	if err := provRows.Err(); err != nil {

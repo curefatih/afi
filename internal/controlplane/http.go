@@ -291,10 +291,11 @@ func (s *Server) handleListProviders(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Name      string `json:"name"`
-		Type      string `json:"type"`
-		BaseURL   string `json:"base_url"`
-		APIKeyEnv string `json:"api_key_env"`
+		Name         string                        `json:"name"`
+		Type         string                        `json:"type"`
+		BaseURL      string                        `json:"base_url"`
+		APIKeyEnv    string                        `json:"api_key_env"`
+		Capabilities snapshot.ProviderCapabilities `json:"capabilities"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" || body.BaseURL == "" {
 		writeErr(w, http.StatusBadRequest, "name and base_url required")
@@ -304,16 +305,9 @@ func (s *Server) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 		body.Type = "openai"
 	}
 	if body.APIKeyEnv == "" {
-		switch body.Type {
-		case "anthropic":
-			body.APIKeyEnv = "ANTHROPIC_API_KEY"
-		case "gemini":
-			body.APIKeyEnv = "GEMINI_API_KEY"
-		default:
-			body.APIKeyEnv = "OPENAI_API_KEY"
-		}
+		body.APIKeyEnv = snapshot.DefaultAPIKeyEnv(body.Type)
 	}
-	p, err := s.api.CreateProvider(r.Context(), r.PathValue("orgID"), body.Name, body.Type, body.BaseURL, body.APIKeyEnv)
+	p, err := s.api.CreateProvider(r.Context(), r.PathValue("orgID"), body.Name, body.Type, body.BaseURL, body.APIKeyEnv, body.Capabilities)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return

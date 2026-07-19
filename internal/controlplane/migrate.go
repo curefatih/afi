@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 4
+const schemaVersion = 5
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS usage_outbox CASCADE;
@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS providers (
     type TEXT NOT NULL,
     base_url TEXT NOT NULL,
     api_key_env TEXT NOT NULL,
+    capabilities JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -317,6 +318,12 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		ON CONFLICT (provider_type, model) DO NOTHING;
 	`); err != nil {
 		return fmt.Errorf("cycle4 migrations: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE providers ADD COLUMN IF NOT EXISTS capabilities JSONB NOT NULL DEFAULT '{}'::jsonb;
+	`); err != nil {
+		return fmt.Errorf("cycle5 provider capabilities: %w", err)
 	}
 	return nil
 }
