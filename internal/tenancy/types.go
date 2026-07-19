@@ -69,12 +69,12 @@ func ValidateOrgRole(role string) error {
 
 // IsOrgAdminRole reports whether the role grants admin privileges.
 func IsOrgAdminRole(role string) bool {
-	return role == OrgRoleOwner || role == OrgRoleAdmin
+	return OrgRole(role).IsAdmin()
 }
 
 // AssertActorCanChangeRoles requires the actor to be the org owner.
 func AssertActorCanChangeRoles(actorRole string) error {
-	if actorRole != OrgRoleOwner {
+	if !OrgRole(actorRole).CanChangeRoles() {
 		return kernel.ErrUnauthorized
 	}
 	return nil

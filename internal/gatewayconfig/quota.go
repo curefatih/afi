@@ -97,7 +97,19 @@ func ValidateNewFields(orgID, scopeType, scopeID, metric string, limitValue int6
 // NewQuota builds a validated quota entity (does not check membership).
 func NewQuota(id, orgID, scopeType, scopeID, metric string, limitValue int64, window string, now time.Time) (*Quota, error) {
 	window = NormalizeWindow(window)
-	if err := ValidateNewFields(orgID, scopeType, scopeID, metric, limitValue, window); err != nil {
+	scope, err := ParseQuotaScope(scopeType)
+	if err != nil {
+		return nil, err
+	}
+	met, err := ParseQuotaMetric(metric)
+	if err != nil {
+		return nil, err
+	}
+	win, err := ParseQuotaWindow(window)
+	if err != nil {
+		return nil, err
+	}
+	if err := ValidateNewFields(orgID, scope.String(), scopeID, met.String(), limitValue, win.String()); err != nil {
 		return nil, err
 	}
 	if id == "" {
@@ -109,11 +121,11 @@ func NewQuota(id, orgID, scopeType, scopeID, metric string, limitValue int64, wi
 	return &Quota{
 		ID:             id,
 		OrganizationID: orgID,
-		ScopeType:      scopeType,
+		ScopeType:      scope.String(),
 		ScopeID:        scopeID,
-		Metric:         metric,
+		Metric:         met.String(),
 		LimitValue:     limitValue,
-		Window:         window,
+		Window:         win.String(),
 		CreatedAt:      now.UTC(),
 	}, nil
 }

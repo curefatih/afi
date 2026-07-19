@@ -45,20 +45,22 @@ func NormalizeKind(kind string) string {
 
 // ValidateKindRules enforces personal vs service_account invariants.
 func ValidateKindRules(kind, ownerUserID, projectID string) error {
-	switch kind {
-	case snapshot.KeyKindPersonal:
+	k, err := ParseKeyKind(kind)
+	if err != nil {
+		return err
+	}
+	switch k {
+	case KeyKindPersonal:
 		if ownerUserID == "" {
 			return fmt.Errorf("%w: personal keys require owner", kernel.ErrInvalidRequest)
 		}
 		if projectID != "" {
 			return fmt.Errorf("%w: personal keys cannot have a project", kernel.ErrInvalidRequest)
 		}
-	case snapshot.KeyKindServiceAccount:
+	case KeyKindServiceAccount:
 		if ownerUserID != "" {
 			return fmt.Errorf("%w: service account keys cannot have an owner", kernel.ErrInvalidRequest)
 		}
-	default:
-		return fmt.Errorf("%w: invalid key kind %q", kernel.ErrInvalidRequest, kind)
 	}
 	return nil
 }

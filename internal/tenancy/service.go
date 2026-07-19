@@ -51,9 +51,11 @@ func AddOrgMemberByEmail(ctx context.Context, orgs OrganizationRepository, users
 
 // UpdateOrgMemberRole applies ownership/admin/member transitions with sole-owner guards.
 func UpdateOrgMemberRole(ctx context.Context, repo OrganizationRepository, orgID, actorUserID, targetUserID, role string) (*OrgMember, error) {
-	if err := ValidateOrgRole(role); err != nil {
+	parsed, err := ParseOrgRole(role)
+	if err != nil {
 		return nil, err
 	}
+	role = parsed.String()
 	actorRole, err := repo.GetMemberRole(ctx, actorUserID, orgID)
 	if err != nil {
 		return nil, err
