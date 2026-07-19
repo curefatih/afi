@@ -10,6 +10,7 @@ import (
 
 type Config struct {
 	DatabaseURL string `yaml:"database_url" env:"AFI_DATABASE_URL"`
+	RedisURL    string `yaml:"redis_url" env:"AFI_REDIS_URL"`
 
 	ControlPlane struct {
 		Addr string `yaml:"addr" env:"AFI_CONTROLPLANE_ADDR" env-default:":8081"`
@@ -56,6 +57,9 @@ func LoadConfig() (*Config, error) {
 
 	if cfg.DatabaseURL == "" {
 		cfg.DatabaseURL = "postgres://afi:afi@localhost:5433/afi?sslmode=disable"
+	}
+	if cfg.RedisURL == "" {
+		cfg.RedisURL = "redis://localhost:6379/0"
 	}
 	if cfg.ControlPlane.Addr == "" {
 		cfg.ControlPlane.Addr = ":8081"
