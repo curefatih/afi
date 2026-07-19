@@ -1,4 +1,5 @@
 database_url: "postgres://afi:afi@localhost:5433/afi?sslmode=disable"
+redis_url: "redis://localhost:6379/0"
 
 controlplane:
   addr: ":8081"

@@ -277,4 +277,63 @@ for qid in $ZERO_IDS; do
 done
 echo "ok"
 
+echo "==> CEL policy deny → 403 (no OpenAI required)"
+POL_JSON=$(curl -fsS "$CP/api/v1/platform/organizations/org_local/policies" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"verify-deny-echo","expression":"request.model != \"echo-demo\"","priority":1000}')
+POL_ID=$(echo "$POL_JSON" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
+for _ in $(seq 1 20); do
+  sleep 0.5
+  code=$(curl -s -o /tmp/afi-verify-pol.json -w '%{http_code}' "$GW/v1/chat/completions" \
+    -H "Authorization: Bearer $VIRTUAL_KEY" \
+    -H 'Content-Type: application/json' \
+    -d '{"model":"echo-demo","messages":[{"role":"user","content":"x"}]}')
+  if [ "$code" = "403" ]; then
+    break
+  fi
+done
+if [ "$code" != "403" ]; then
+  echo "expected 403 after CEL deny policy, got $code body=$(cat /tmp/afi-verify-pol.json)" >&2
+  curl -fsS -X DELETE "$CP/api/v1/platform/policies/$POL_ID" -H "Authorization: Bearer $TOKEN" >/dev/null || true
+  exit 1
+fi
+curl -fsS -X DELETE "$CP/api/v1/platform/policies/$POL_ID" -H "Authorization: Bearer $TOKEN" >/dev/null
+echo "ok"
+
+echo "==> Redis minute rate limit → 429 (requires Redis)"
+if ! redis-cli -u "${AFI_REDIS_URL:-redis://localhost:6379/0}" ping >/dev/null 2>&1; then
+  echo "redis not reachable; skip minute rate-limit check" >&2
+else
+  curl -fsS "$CP/api/v1/platform/organizations/org_local/quotas" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H 'Content-Type: application/json' \
+    -d "{\"scope_type\":\"api_key\",\"scope_id\":\"$KEY_ID\",\"metric\":\"requests\",\"limit_value\":0,\"window\":\"minute\"}" >/dev/null
+  for _ in $(seq 1 20); do
+    sleep 0.5
+    code=$(curl -s -o /dev/null -w '%{http_code}' "$GW/v1/chat/completions" \
+      -H "Authorization: Bearer $VIRTUAL_KEY" \
+      -H 'Content-Type: application/json' \
+      -d '{"model":"echo-demo","messages":[{"role":"user","content":"x"}]}')
+    if [ "$code" = "429" ]; then
+      break
+    fi
+  done
+  if [ "$code" != "429" ]; then
+    echo "expected 429 after minute rate limit 0, got $code" >&2
+    exit 1
+  fi
+  MIN_IDS=$(curl -fsS "$CP/api/v1/platform/organizations/org_local/quotas" \
+    -H "Authorization: Bearer $TOKEN" | python3 -c '
+import sys,json
+for q in json.load(sys.stdin):
+  if q.get("metric")=="requests" and q.get("window")=="minute" and int(q.get("limit_value",-1))==0 and q.get("scope_id")=="'"$KEY_ID"'":
+    print(q["id"])
+')
+  for qid in $MIN_IDS; do
+    curl -fsS -X DELETE "$CP/api/v1/platform/quotas/$qid" -H "Authorization: Bearer $TOKEN" >/dev/null || true
+  done
+  echo "ok"
+fi
+
 echo "verify-local: all checks passed"
