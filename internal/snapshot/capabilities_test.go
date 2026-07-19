@@ -16,6 +16,10 @@ func TestDefaultCapabilities(t *testing.T) {
 	if !oa.TTS || !oa.STT {
 		t.Fatalf("openai=%+v", oa)
 	}
+	echo := DefaultCapabilities("echo")
+	if !echo.Chat || echo.Stream || echo.TTS || echo.STT {
+		t.Fatalf("echo=%+v", echo)
+	}
 }
 
 func TestNormalizeCapabilitiesEmpty(t *testing.T) {

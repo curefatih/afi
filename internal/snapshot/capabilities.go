@@ -13,6 +13,8 @@ func DefaultCapabilities(typ string) ProviderCapabilities {
 	switch typ {
 	case "openai", "openai_compatible":
 		return ProviderCapabilities{Chat: true, Stream: true, TTS: true, STT: true}
+	case "echo":
+		return ProviderCapabilities{Chat: true, Stream: false}
 	default:
 		// anthropic, gemini, …
 		return ProviderCapabilities{Chat: true, Stream: true}
@@ -43,6 +45,8 @@ func DefaultAPIKeyEnv(typ string) string {
 		return "GEMINI_API_KEY"
 	case "openai_compatible":
 		return "OLLAMA_API_KEY"
+	case "echo":
+		return "ECHO_UNUSED"
 	default:
 		return "OPENAI_API_KEY"
 	}
