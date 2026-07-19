@@ -1102,7 +1102,7 @@ func (s *Server) requireOrgAdminViaPolicy(next http.HandlerFunc) http.HandlerFun
 			return
 		}
 		next(w, r)
-	})
+	}
 }
 
 func (s *Server) requireOrgMemberViaTeam(next http.HandlerFunc) http.HandlerFunc {
