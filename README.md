@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/brand/logo.png" alt="AFI — AI Gateway" width="280" />
+  <img src="assets/brand/logo.svg" alt="AFI — AI Gateway" width="280" />
 </p>
 
 # AFI - AI Gateway
