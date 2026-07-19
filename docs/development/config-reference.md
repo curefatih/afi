@@ -75,6 +75,7 @@ Written on first control-plane start (or `make seed`):
 |--------|------|
 | GET/POST | `/api/v1/platform/organizations` |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/members` |
+| PATCH | `/api/v1/platform/organizations/{orgID}/members/{userID}` |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/keys` |
 | DELETE | `/api/v1/platform/keys/{keyID}` |
 | GET/POST | `/api/v1/platform/projects/{projectID}/keys` |
@@ -83,10 +84,20 @@ Written on first control-plane start (or `make seed`):
 | GET/POST | `/api/v1/platform/organizations/{orgID}/routes` |
 | PATCH/DELETE | `/api/v1/platform/routes/{routeID}` |
 | GET | `/api/v1/platform/organizations/{orgID}/usage` |
+| GET | `/api/v1/platform/organizations/{orgID}/usage/summary` |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/quotas` |
 | PATCH/DELETE | `/api/v1/platform/quotas/{quotaID}` |
 
-Member invite looks up an existing user by email (no SMTP). Org roles: `owner` / `admin` / `member`. Native Anthropic inference: gateway `POST /v1/messages` (Anthropic providers only).
+Member invite looks up an existing user by email (no SMTP). Org roles: `owner` / `admin` / `member`. Only the **owner** can `PATCH` a member role (`{ "role": "admin" }`); setting `owner` transfers ownership. Native Anthropic inference: gateway `POST /v1/messages` (Anthropic providers only).
+
+### Usage
+
+| Query | Notes |
+|-------|--------|
+| `limit`, `project_id`, `api_key_id`, `model`, `modality`, `from`, `to` | List + summary filters (`from`/`to` as RFC3339 or `YYYY-MM-DD`) |
+| `group_by` | Summary only: `day` (default), `model`, `key`, `modality` |
+
+Each event has `modality` (`chat`, `messages`, `tts`, `stt`, …), extensible `metrics` JSON (e.g. TTS `characters`), optional token fields for chat, and key owner fields (`key_name`, `key_kind`, `owner_email`, …). Personal keys attribute to the owner user; service-account keys have no human owner.
 
 ### API keys
 

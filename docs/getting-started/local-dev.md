@@ -70,7 +70,7 @@ In a third terminal:
 make run-worker
 ```
 
-The worker drains `usage_outbox` into `usage_events` (Usage page). Chat still works if the worker is stopped; usage just lags.
+The worker drains `usage_outbox` into `usage_events` (Usage page: filters, owner, modality charts). Chat/TTS/STT still work if the worker is stopped; usage just lags.
 
 Alternatively: `make run-all` (control plane + worker in background, gateway in foreground). Stop with Ctrl+C then `make stop-all` if needed.
 

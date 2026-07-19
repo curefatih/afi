@@ -72,7 +72,7 @@ flowchart LR
   Gateway --> usage_outbox --> worker --> usage_events
 ```
 
-The request path never waits on `usage_events` consumers. Run `make run-worker` locally to populate the Usage UI (including `cost_usd` when prices match).
+The request path never waits on `usage_events` consumers. Run `make run-worker` locally to populate the Usage UI (including `cost_usd` when prices match). Events carry a `modality` (`chat` / `messages` / `tts` / `stt`, …) and a `metrics` JSON object for non-token quantities; token columns remain for chat pricing.
 
 ## Future extensions
 
