@@ -44,6 +44,14 @@ func (u *Users) GetByID(ctx context.Context, id string) (*identity.User, error) 
 	return user, err
 }
 
+func (u *Users) Create(ctx context.Context, user identity.User) error {
+	_, err := u.Pool.Exec(ctx, `
+		INSERT INTO users (id, email, name, role, password_hash, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6)
+	`, user.ID, user.Email, user.Name, user.Role, user.PasswordHash, user.CreatedAt)
+	return err
+}
+
 // Organizations implements tenancy.OrganizationRepository.
 type Organizations struct {
 	Pool *pgxpool.Pool
@@ -59,9 +67,21 @@ func (o *Organizations) Count(ctx context.Context) (int64, error) {
 	return n, err
 }
 
+func (o *Organizations) Get(ctx context.Context, orgID string) (*tenancy.Organization, error) {
+	var item tenancy.Organization
+	err := o.Pool.QueryRow(ctx, `
+		SELECT id, name, COALESCE(mail_provider, ''), created_at
+		FROM organizations WHERE id = $1
+	`, orgID).Scan(&item.ID, &item.Name, &item.MailProvider, &item.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, kernel.ErrNotFound
+	}
+	return &item, err
+}
+
 func (o *Organizations) ListForUser(ctx context.Context, userID string) ([]tenancy.Organization, error) {
 	rows, err := o.Pool.Query(ctx, `
-		SELECT org.id, org.name, org.created_at
+		SELECT org.id, org.name, COALESCE(org.mail_provider, ''), org.created_at
 		FROM organizations org
 		JOIN organization_members m ON m.organization_id = org.id
 		WHERE m.user_id = $1
@@ -74,12 +94,25 @@ func (o *Organizations) ListForUser(ctx context.Context, userID string) ([]tenan
 	var out []tenancy.Organization
 	for rows.Next() {
 		var item tenancy.Organization
-		if err := rows.Scan(&item.ID, &item.Name, &item.CreatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Name, &item.MailProvider, &item.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, item)
 	}
 	return out, rows.Err()
+}
+
+func (o *Organizations) SetMailProvider(ctx context.Context, orgID, provider string) error {
+	tag, err := o.Pool.Exec(ctx, `
+		UPDATE organizations SET mail_provider = $1 WHERE id = $2
+	`, provider, orgID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return kernel.ErrNotFound
+	}
+	return nil
 }
 
 func (o *Organizations) CreateWithOwner(ctx context.Context, org tenancy.Organization, ownerUserID string) error {
@@ -89,8 +122,8 @@ func (o *Organizations) CreateWithOwner(ctx context.Context, org tenancy.Organiz
 	}
 	defer tx.Rollback(ctx)
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO organizations (id, name, created_at) VALUES ($1,$2,$3)
-	`, org.ID, org.Name, org.CreatedAt); err != nil {
+		INSERT INTO organizations (id, name, mail_provider, created_at) VALUES ($1,$2,$3,$4)
+	`, org.ID, org.Name, org.MailProvider, org.CreatedAt); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `
