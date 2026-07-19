@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/curefatih/afi/internal/snapshot"
@@ -54,7 +55,7 @@ func TestAnthropicMessagesMapsContent(t *testing.T) {
 		ID: "prov_anth", Type: "anthropic", BaseURL: upstream.URL, APIKeyEnv: "ANTHROPIC_API_KEY",
 	}
 	body := []byte(`{"model":"claude-sonnet","messages":[{"role":"user","content":"hi"}],"max_tokens":256}`)
-	resp, err := client.Messages(t.Context(), provider, "claude-sonnet-4-20250514", body)
+	resp, err := client.Messages(t.Context(), provider, "claude-sonnet-4-20250514", body, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,6 +86,57 @@ func TestAnthropicMessagesMapsContent(t *testing.T) {
 	}
 }
 
+func TestAnthropicMessagesStreamMapsChunks(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if req["stream"] != true {
+			http.Error(w, "expected stream", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		flusher, _ := w.(http.Flusher)
+		events := []string{
+			`data: {"type":"message_start","message":{"id":"msg_s","model":"claude-x","role":"assistant"}}` + "\n\n",
+			`data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"hel"}}` + "\n\n",
+			`data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"lo"}}` + "\n\n",
+			`data: {"type":"message_delta","delta":{"stop_reason":"end_turn"}}` + "\n\n",
+			`data: {"type":"message_stop"}` + "\n\n",
+		}
+		for _, e := range events {
+			_, _ = w.Write([]byte(e))
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+	}))
+	defer upstream.Close()
+
+	t.Setenv("ANTHROPIC_API_KEY", "anth-key")
+	client := NewAnthropicClient()
+	client.HTTP = upstream.Client()
+	provider := snapshot.Provider{
+		ID: "prov_anth", Type: "anthropic", BaseURL: upstream.URL, APIKeyEnv: "ANTHROPIC_API_KEY",
+	}
+	body := []byte(`{"model":"claude-x","messages":[{"role":"user","content":"hi"}],"stream":true}`)
+	resp, err := client.Messages(t.Context(), provider, "claude-x", body, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	s := string(raw)
+	if !strings.Contains(s, `"content":"hel"`) || !strings.Contains(s, `"content":"lo"`) {
+		t.Fatalf("missing content chunks: %s", s)
+	}
+	if !strings.Contains(s, "data: [DONE]") {
+		t.Fatalf("missing DONE: %s", s)
+	}
+	if !strings.Contains(s, "chat.completion.chunk") {
+		t.Fatalf("not openai chunks: %s", s)
+	}
+}
+
 func TestOpenAIChatToAnthropicExtractsSystem(t *testing.T) {
 	body := []byte(`{
 		"model":"x",
@@ -94,7 +146,7 @@ func TestOpenAIChatToAnthropicExtractsSystem(t *testing.T) {
 		],
 		"max_tokens":100
 	}`)
-	raw, err := openAIChatToAnthropic(body, "claude-x")
+	raw, err := openAIChatToAnthropic(body, "claude-x", false)
 	if err != nil {
 		t.Fatal(err)
 	}

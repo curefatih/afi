@@ -32,6 +32,7 @@ type Pipeline struct {
 	Holder    *Holder
 	OpenAI    *OpenAIClient
 	Anthropic *AnthropicClient
+	Gemini    *GeminiClient
 	Log       *slog.Logger
 	Usage     func(UsageEvent)
 	Counters  CounterStore
@@ -42,6 +43,7 @@ func NewPipeline(holder *Holder, openai *OpenAIClient, log *slog.Logger) *Pipeli
 		Holder:    holder,
 		OpenAI:    openai,
 		Anthropic: NewAnthropicClient(),
+		Gemini:    NewGeminiClient(),
 		Log:       log,
 	}
 }
@@ -49,6 +51,7 @@ func NewPipeline(holder *Holder, openai *OpenAIClient, log *slog.Logger) *Pipeli
 func (p *Pipeline) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", p.handleHealth)
+	mux.HandleFunc("GET /v1/models", p.handleModels)
 	mux.HandleFunc("POST /v1/chat/completions", p.handleChatCompletions)
 	return withCORS(mux)
 }
@@ -301,6 +304,46 @@ func shouldFailoverError(err error) bool {
 	return err != nil
 }
 
+func (p *Pipeline) handleModels(w http.ResponseWriter, r *http.Request) {
+	rawKey, err := bearerToken(r.Header.Get("Authorization"))
+	if err != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]any{
+			"error": map[string]string{"message": "missing or invalid authorization", "type": "invalid_request_error"},
+		})
+		return
+	}
+	snap := p.Holder.Get()
+	if snap == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+			"error": map[string]string{"message": "no snapshot loaded", "type": "server_error"},
+		})
+		return
+	}
+	key, ok := snap.LookupKey(rawKey)
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]any{
+			"error": map[string]string{"message": "invalid api key", "type": "invalid_request_error"},
+		})
+		return
+	}
+
+	data := make([]map[string]any, 0)
+	for _, route := range snap.Routes {
+		if route.OrganizationID != key.OrganizationID {
+			continue
+		}
+		data = append(data, map[string]any{
+			"id":       route.Model,
+			"object":   "model",
+			"owned_by": "afi",
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"object": "list",
+		"data":   data,
+	})
+}
+
 func (p *Pipeline) callProvider(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
 	switch provider.Type {
 	case "openai":
@@ -309,13 +352,18 @@ func (p *Pipeline) callProvider(ctx context.Context, provider snapshot.Provider,
 		}
 		return p.OpenAI.ChatCompletions(ctx, provider, targetModel, body, stream)
 	case "anthropic":
-		if stream {
-			return nil, fmt.Errorf("anthropic streaming is not supported")
-		}
 		if p.Anthropic == nil {
 			return nil, fmt.Errorf("anthropic client not configured")
 		}
-		return p.Anthropic.Messages(ctx, provider, targetModel, body)
+		return p.Anthropic.Messages(ctx, provider, targetModel, body, stream)
+	case "gemini":
+		if stream {
+			return nil, fmt.Errorf("gemini streaming is not supported")
+		}
+		if p.Gemini == nil {
+			return nil, fmt.Errorf("gemini client not configured")
+		}
+		return p.Gemini.GenerateContent(ctx, provider, targetModel, body)
 	default:
 		return nil, fmt.Errorf("unsupported provider type %q", provider.Type)
 	}

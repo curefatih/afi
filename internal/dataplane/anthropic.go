@@ -1,6 +1,7 @@
 package dataplane
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -27,14 +28,14 @@ func NewAnthropicClient() *AnthropicClient {
 }
 
 // Messages translates an OpenAI-shaped chat body to Anthropic /v1/messages
-// and returns an OpenAI-shaped chat completion response.
-func (c *AnthropicClient) Messages(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte) (*http.Response, error) {
+// and returns an OpenAI-shaped chat completion response (JSON or SSE).
+func (c *AnthropicClient) Messages(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
 	apiKey := os.Getenv(provider.APIKeyEnv)
 	if apiKey == "" {
 		return nil, fmt.Errorf("missing env %s for provider %s", provider.APIKeyEnv, provider.ID)
 	}
 
-	anthBody, err := openAIChatToAnthropic(body, targetModel)
+	anthBody, err := openAIChatToAnthropic(body, targetModel, stream)
 	if err != nil {
 		return nil, err
 	}
@@ -49,6 +50,9 @@ func (c *AnthropicClient) Messages(ctx context.Context, provider snapshot.Provid
 	req.Header.Set("x-api-key", apiKey)
 	req.Header.Set("anthropic-version", anthropicVersion)
 	req.Header.Set("Content-Type", "application/json")
+	if stream {
+		req.Header.Set("Accept", "text/event-stream")
+	}
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
@@ -57,6 +61,27 @@ func (c *AnthropicClient) Messages(ctx context.Context, provider snapshot.Provid
 
 	if resp.StatusCode >= 400 {
 		return resp, nil
+	}
+
+	if stream {
+		pr, pw := io.Pipe()
+		go func() {
+			defer resp.Body.Close()
+			err := translateAnthropicSSE(resp.Body, pw)
+			if err != nil {
+				_ = pw.CloseWithError(err)
+				return
+			}
+			_ = pw.Close()
+		}()
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header: http.Header{
+				"Content-Type": []string{"text/event-stream"},
+				"Cache-Control": []string{"no-cache"},
+			},
+			Body: pr,
+		}, nil
 	}
 
 	raw, err := io.ReadAll(resp.Body)
@@ -77,7 +102,7 @@ func (c *AnthropicClient) Messages(ctx context.Context, provider snapshot.Provid
 	}, nil
 }
 
-func openAIChatToAnthropic(body []byte, targetModel string) ([]byte, error) {
+func openAIChatToAnthropic(body []byte, targetModel string, stream bool) ([]byte, error) {
 	var in struct {
 		Messages []struct {
 			Role    string `json:"role"`
@@ -122,6 +147,9 @@ func openAIChatToAnthropic(body []byte, targetModel string) ([]byte, error) {
 		"model":      targetModel,
 		"max_tokens": maxTokens,
 		"messages":   messages,
+	}
+	if stream {
+		out["stream"] = true
 	}
 	if len(systemParts) > 0 {
 		out["system"] = strings.Join(systemParts, "\n\n")
@@ -177,25 +205,16 @@ func anthropicToOpenAIChat(raw []byte) ([]byte, error) {
 		}
 	}
 
-	finish := "stop"
-	switch in.StopReason {
-	case "max_tokens":
-		finish = "length"
-	case "end_turn", "stop_sequence", "":
-		finish = "stop"
-	default:
-		finish = in.StopReason
-	}
-
+	finish := mapAnthropicStopReason(in.StopReason)
 	role := in.Role
 	if role == "" {
 		role = "assistant"
 	}
 
 	out := map[string]any{
-		"id":      in.ID,
-		"object":  "chat.completion",
-		"model":   in.Model,
+		"id":     in.ID,
+		"object": "chat.completion",
+		"model":  in.Model,
 		"choices": []map[string]any{
 			{
 				"index": 0,
@@ -213,4 +232,115 @@ func anthropicToOpenAIChat(raw []byte) ([]byte, error) {
 		},
 	}
 	return json.Marshal(out)
+}
+
+func mapAnthropicStopReason(r string) string {
+	switch r {
+	case "max_tokens":
+		return "length"
+	case "end_turn", "stop_sequence", "":
+		return "stop"
+	default:
+		return r
+	}
+}
+
+// translateAnthropicSSE reads Anthropic event-stream and writes OpenAI chat.completion.chunk SSE.
+func translateAnthropicSSE(r io.Reader, w io.Writer) error {
+	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+
+	var (
+		msgID   = "chatcmpl-anthropic"
+		model   string
+		started bool
+	)
+
+	writeChunk := func(delta map[string]any, finish any) error {
+		chunk := map[string]any{
+			"id":     msgID,
+			"object": "chat.completion.chunk",
+			"model":  model,
+			"choices": []map[string]any{
+				{
+					"index":         0,
+					"delta":         delta,
+					"finish_reason": finish,
+				},
+			},
+		}
+		b, err := json.Marshal(chunk)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(w, "data: %s\n\n", b)
+		return err
+	}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data:") {
+			continue
+		}
+		payload := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+		if payload == "" || payload == "[DONE]" {
+			continue
+		}
+
+		var raw map[string]any
+		if err := json.Unmarshal([]byte(payload), &raw); err != nil {
+			continue
+		}
+		evType, _ := raw["type"].(string)
+
+		switch evType {
+		case "message_start":
+			if msg, ok := raw["message"].(map[string]any); ok {
+				if id, ok := msg["id"].(string); ok && id != "" {
+					msgID = id
+				}
+				if m, ok := msg["model"].(string); ok && m != "" {
+					model = m
+				}
+			}
+			if !started {
+				started = true
+				if err := writeChunk(map[string]any{"role": "assistant"}, nil); err != nil {
+					return err
+				}
+			}
+		case "content_block_start":
+			if block, ok := raw["content_block"].(map[string]any); ok {
+				if typ, _ := block["type"].(string); typ == "text" {
+					if text, ok := block["text"].(string); ok && text != "" {
+						if err := writeChunk(map[string]any{"content": text}, nil); err != nil {
+							return err
+						}
+					}
+				}
+			}
+		case "content_block_delta":
+			if delta, ok := raw["delta"].(map[string]any); ok {
+				text, _ := delta["text"].(string)
+				if text != "" {
+					if err := writeChunk(map[string]any{"content": text}, nil); err != nil {
+						return err
+					}
+				}
+			}
+		case "message_delta":
+			if delta, ok := raw["delta"].(map[string]any); ok {
+				if sr, ok := delta["stop_reason"].(string); ok && sr != "" {
+					if err := writeChunk(map[string]any{}, mapAnthropicStopReason(sr)); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+	_, err := io.WriteString(w, "data: [DONE]\n\n")
+	return err
 }
