@@ -55,10 +55,7 @@ type UsageSink struct {
 }
 
 func (s *UsageSink) InsertUsage(ctx context.Context, e usage.Event, costUSD *float64) error {
-	modality := e.Modality
-	if modality == "" {
-		modality = "chat"
-	}
+	modality := usage.NormalizeModality(e.Modality)
 	metrics := e.Metrics
 	if metrics == nil {
 		metrics = map[string]any{}

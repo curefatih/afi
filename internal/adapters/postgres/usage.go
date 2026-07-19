@@ -24,10 +24,7 @@ func NewUsageQueries(pool *pgxpool.Pool) *UsageQueries {
 }
 
 func (q *UsageQueries) InsertRecord(ctx context.Context, e usage.Record) error {
-	modality := e.Modality
-	if modality == "" {
-		modality = "chat"
-	}
+	modality := usage.NormalizeModality(e.Modality)
 	metrics := e.Metrics
 	if metrics == nil {
 		metrics = map[string]any{}
