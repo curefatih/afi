@@ -8,6 +8,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/curefatih/afi/extensions/demohook"
+	"github.com/curefatih/afi/extensions/echo"
 	"github.com/curefatih/afi/internal/controlplane"
 	"github.com/curefatih/afi/internal/dataplane"
 	"github.com/curefatih/afi/internal/kernel"
@@ -38,8 +40,12 @@ func main() {
 	store := controlplane.NewStore(pool)
 	snapStore := snapshot.NewStore(pool)
 	holder := dataplane.NewHolder()
-	pipeline := dataplane.NewPipelineWithRegistry(holder, dataplane.DefaultRegistry(), log)
+	reg := dataplane.DefaultRegistry().RegisterSDK(echo.New())
+	hooks := dataplane.NewHookChain().Register(demohook.New())
+	pipeline := dataplane.NewPipelineWithRegistry(holder, reg, log)
+	pipeline.Hooks = hooks
 	pipeline.Counters = controlplane.CounterAdapter{Store: store}
+	log.Info("extensions registered", "provider_types", reg.Types(), "hooks", hooks.Names())
 	pipeline.Usage = func(e dataplane.UsageEvent) {
 		payload, err := workers.EncodeUsage(workers.UsagePayload{
 			OrganizationID:   e.OrganizationID,

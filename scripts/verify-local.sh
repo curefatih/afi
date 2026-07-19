@@ -48,6 +48,48 @@ assert all("supports_tts" in m and "supports_stt" in m for m in d["data"]), d
 has_tts = any(m.get("id")=="tts-1" and m.get("supports_tts") for m in d["data"])
 has_stt = any(m.get("id")=="whisper-1" and m.get("supports_stt") for m in d["data"])
 assert has_tts and has_stt, d
+assert any(m.get("id")=="echo-demo" for m in d["data"]), d
+'
+echo "ok"
+
+echo "==> echo extension + demo hook (no OpenAI)"
+# Clear leftover request quotas with limit 0 from prior verify runs.
+while read -r qid; do
+  [ -n "$qid" ] || continue
+  curl -fsS -X DELETE "$CP/api/v1/platform/quotas/$qid" -H "Authorization: Bearer $TOKEN" >/dev/null || true
+done < <(curl -fsS "$CP/api/v1/platform/organizations/org_local/quotas" \
+  -H "Authorization: Bearer $TOKEN" | python3 -c '
+import sys,json
+for q in json.load(sys.stdin):
+  if q.get("metric")=="requests" and int(q.get("limit_value",-1))==0:
+    print(q["id"])
+')
+# wait for snapshot after deletes
+for _ in $(seq 1 10); do
+  sleep 0.3
+  code=$(curl -s -o /dev/null -w '%{http_code}' "$GW/v1/chat/completions" \
+    -H "Authorization: Bearer $VIRTUAL_KEY" \
+    -H 'Content-Type: application/json' \
+    -d '{"model":"echo-demo","messages":[{"role":"user","content":"warmup"}]}')
+  if [ "$code" != "429" ]; then
+    break
+  fi
+done
+curl -fsS "$GW/healthz" | python3 -c '
+import sys,json
+d=json.load(sys.stdin)
+assert "echo" in d.get("provider_types",[]), d
+assert "demo_tag" in d.get("hooks",[]), d
+'
+curl -fsS "$GW/v1/chat/completions" \
+  -H "Authorization: Bearer $VIRTUAL_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"echo-demo","messages":[{"role":"user","content":"ping"}]}' \
+  | python3 -c '
+import sys,json
+d=json.load(sys.stdin)
+content=d["choices"][0]["message"]["content"]
+assert "echo:" in content and "[hook:demo]" in content and "ping" in content, content
 '
 echo "ok"
 
@@ -203,6 +245,17 @@ if [ "$code" != "429" ]; then
   echo "expected 429 after quota limit 0, got $code" >&2
   exit 1
 fi
+# Remove the zero quota so the next verify (and local demos) are not stuck at 429.
+ZERO_IDS=$(curl -fsS "$CP/api/v1/platform/organizations/org_local/quotas" \
+  -H "Authorization: Bearer $TOKEN" | python3 -c '
+import sys,json
+for q in json.load(sys.stdin):
+  if q.get("metric")=="requests" and int(q.get("limit_value",-1))==0 and q.get("scope_id")=="'"$KEY_ID"'":
+    print(q["id"])
+')
+for qid in $ZERO_IDS; do
+  curl -fsS -X DELETE "$CP/api/v1/platform/quotas/$qid" -H "Authorization: Bearer $TOKEN" >/dev/null || true
+done
 echo "ok"
 
 echo "verify-local: all checks passed"
