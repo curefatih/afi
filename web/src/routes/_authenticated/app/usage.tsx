@@ -6,10 +6,12 @@ import {
 	CircleDotIcon,
 	ClockIcon,
 	DollarSignIcon,
+	FolderIcon,
 	GaugeIcon,
 	KeyRoundIcon,
 	LayersIcon,
 	type LucideIcon,
+	ShapesIcon,
 	TimerIcon,
 	UserIcon,
 } from "lucide-react";
@@ -37,6 +39,11 @@ import {
 	usageQueryOptions,
 	usageSummaryQueryOptions,
 } from "#/api/usage";
+import {
+	DateRangePicker,
+	type DateRangeValue,
+	defaultDateRange,
+} from "#/components/date-range-picker";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
 import { Badge } from "#/components/ui/badge";
@@ -82,12 +89,6 @@ const MODALITIES = [
 	"video",
 ];
 
-function rangeFrom(days: number): string {
-	const d = new Date();
-	d.setUTCDate(d.getUTCDate() - days);
-	return d.toISOString();
-}
-
 function RouteComponent() {
 	const org = useActiveOrg();
 	const orgId = org?.id ?? "";
@@ -95,15 +96,20 @@ function RouteComponent() {
 	const [apiKeyId, setApiKeyId] = useState("");
 	const [modality, setModality] = useState("");
 	const [model, setModel] = useState("");
-	const [rangeDays, setRangeDays] = useState("30");
+	const [dateRange, setDateRange] = useState<DateRangeValue>(() =>
+		defaultDateRange("last_30"),
+	);
 
 	const baseFilters: UsageFilters = useMemo(() => {
-		const f: UsageFilters = { from: rangeFrom(Number(rangeDays) || 30) };
+		const f: UsageFilters = {
+			from: dateRange.from.toISOString(),
+			to: dateRange.to.toISOString(),
+		};
 		if (projectId) f.project_id = projectId;
 		if (apiKeyId) f.api_key_id = apiKeyId;
 		if (modality) f.modality = modality;
 		return f;
-	}, [projectId, apiKeyId, modality, rangeDays]);
+	}, [projectId, apiKeyId, modality, dateRange]);
 
 	const filters: UsageFilters = useMemo(() => {
 		const f = { ...baseFilters };
@@ -175,24 +181,19 @@ function RouteComponent() {
 			/>
 
 			<div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+				<DateRangePicker
+					className="sm:col-span-2 lg:col-span-1"
+					value={dateRange}
+					onChange={setDateRange}
+				/>
 				<div className="space-y-1">
-					<Label>Range</Label>
-					<Select
-						value={rangeDays}
-						onValueChange={(v) => setRangeDays(v ?? "30")}
-					>
-						<SelectTrigger className="w-full">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="7">Last 7 days</SelectItem>
-							<SelectItem value="30">Last 30 days</SelectItem>
-							<SelectItem value="90">Last 90 days</SelectItem>
-						</SelectContent>
-					</Select>
-				</div>
-				<div className="space-y-1">
-					<Label>Project</Label>
+					<Label className="inline-flex items-center gap-1.5">
+						<FolderIcon
+							className="size-3.5 text-muted-foreground"
+							aria-hidden
+						/>
+						Project
+					</Label>
 					<Select
 						value={projectId || "__all__"}
 						onValueChange={(v) =>
@@ -213,7 +214,13 @@ function RouteComponent() {
 					</Select>
 				</div>
 				<div className="space-y-1">
-					<Label>API key</Label>
+					<Label className="inline-flex items-center gap-1.5">
+						<KeyRoundIcon
+							className="size-3.5 text-muted-foreground"
+							aria-hidden
+						/>
+						API key
+					</Label>
 					<Select
 						value={apiKeyId || "__all__"}
 						onValueChange={(v) => setApiKeyId(v === "__all__" ? "" : (v ?? ""))}
@@ -232,7 +239,13 @@ function RouteComponent() {
 					</Select>
 				</div>
 				<div className="space-y-1">
-					<Label>Modality</Label>
+					<Label className="inline-flex items-center gap-1.5">
+						<LayersIcon
+							className="size-3.5 text-muted-foreground"
+							aria-hidden
+						/>
+						Modality
+					</Label>
 					<Select
 						value={modality || "__all__"}
 						onValueChange={(v) => setModality(v === "__all__" ? "" : (v ?? ""))}
@@ -251,7 +264,13 @@ function RouteComponent() {
 					</Select>
 				</div>
 				<div className="space-y-1">
-					<Label>Model</Label>
+					<Label className="inline-flex items-center gap-1.5">
+						<ShapesIcon
+							className="size-3.5 text-muted-foreground"
+							aria-hidden
+						/>
+						Model
+					</Label>
 					<Select
 						value={model || "__all__"}
 						onValueChange={(v) => setModel(v === "__all__" ? "" : (v ?? ""))}
