@@ -35,7 +35,7 @@ docs/                 # Public MkDocs site
 | `cmd/cli` | `seed`, `snapshot publish`, `db reset`, `version` |
 | `internal/snapshot` | Types, compile, Postgres store + watch |
 | `internal/controlplane` | Schema, repositories, HTTP handlers |
-| `internal/dataplane` | Auth → quota → route → OpenAI/Anthropic (+ failover) |
+| `internal/dataplane` | Auth → quota → route → OpenAI/Anthropic/Gemini (+ failover, `/v1/models`) |
 | `internal/workers` | Outbox process loop helpers |
 | `internal/kernel` | Logging, request IDs, config loading |
 | `configs/` | `local.yaml` defaults |

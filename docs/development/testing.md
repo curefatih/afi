@@ -11,7 +11,7 @@ go test ./...
 Covered areas:
 
 * Snapshot compile + org-scoped `LookupRoute` + hashed `LookupKey` + quota resolve
-* Data-plane auth, quota 429 / under-limit, mock OpenAI/Anthropic chat, route failover
+* Data-plane auth, quota 429 / under-limit, mock OpenAI/Anthropic/Gemini chat, Anthropic SSE, `/v1/models`, route failover
 * Usage outbox worker `ProcessOnce` + cost calculation
 
 * Control-plane JWT/password helpers

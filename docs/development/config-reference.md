@@ -18,6 +18,7 @@
 | `AFI_TOKEN_TTL` | `24h` | JWT lifetime |
 | `OPENAI_API_KEY` | _(required for OpenAI live calls)_ | gateway → OpenAI |
 | `ANTHROPIC_API_KEY` | _(required for Anthropic routes)_ | gateway → Anthropic |
+| `GEMINI_API_KEY` | _(required for Gemini routes)_ | gateway → Gemini |
 | `VITE_PLATFORM_API_URL` | `http://localhost:8081` | web UI (platform APIs) |
 | `VITE_GATEWAY_API_URL` | `http://localhost:8080` | web playground |
 | `VITE_GATEWAY_API_KEY` | seed virtual key | web playground |
@@ -50,8 +51,9 @@ Written on first control-plane start (or `make seed`):
 | Platform email | `admin@afi.local` |
 | Platform password | `admin` |
 | Default model route | `gpt-4o-mini` → OpenAI `gpt-4o-mini` |
-| Seeded providers | `prov_openai` (`OPENAI_API_KEY`), `prov_anthropic` (`ANTHROPIC_API_KEY`, no default route) |
+| Seeded providers | `prov_openai`, `prov_anthropic`, `prov_gemini` (Anthropic/Gemini have no default route) |
 | Route `fallbacks` | optional ordered `[{provider_id,target_model}]` for 5xx/timeout/429 retry |
+| Gateway models | `GET /v1/models` lists org route model ids for the virtual key |
 
 ## Ports
 

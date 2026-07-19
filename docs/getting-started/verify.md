@@ -29,6 +29,15 @@ curl -s http://localhost:8080/v1/chat/completions \
 
 Expect a JSON response with `choices[0].message.content`. Requires `OPENAI_API_KEY`.
 
+## List models
+
+```bash
+curl -s http://localhost:8080/v1/models \
+  -H "Authorization: Bearer sk-project-local-dev-token-12345"
+```
+
+Expect `object: "list"` with route model ids (at least `gpt-4o-mini` after seed).
+
 ## Anthropic route (optional)
 
 Seed includes `prov_anthropic`. Create a route (or use Routing UI), then:
@@ -45,6 +54,28 @@ curl -s http://localhost:8080/v1/chat/completions \
   -H "Authorization: Bearer sk-project-local-dev-token-12345" \
   -H "Content-Type: application/json" \
   -d '{"model":"claude-sonnet","messages":[{"role":"user","content":"ping"}]}'
+
+# streaming (OpenAI-shaped SSE)
+curl -sN http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Bearer sk-project-local-dev-token-12345" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"claude-sonnet","stream":true,"messages":[{"role":"user","content":"ping"}]}'
+```
+
+## Gemini route (optional)
+
+```bash
+export GEMINI_API_KEY="..."
+
+curl -s http://localhost:8081/api/v1/platform/organizations/org_local/routes \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gemini-flash","provider_id":"prov_gemini","target_model":"gemini-2.0-flash"}'
+
+curl -s http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Bearer sk-project-local-dev-token-12345" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gemini-flash","messages":[{"role":"user","content":"ping"}]}'
 ```
 
 Failover: set `"fallbacks":[{"provider_id":"prov_anthropic","target_model":"claude-sonnet-4-20250514"}]` on an OpenAI primary route to retry on 5xx/timeout/429.

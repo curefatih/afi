@@ -31,12 +31,19 @@ flowchart TD
   B[Load Snapshot — in-memory]
   C[QuotaCheck — request counters]
   D[Routing — model to provider + fallbacks]
-  E[Provider — OpenAI / Anthropic]
+  E[Provider — OpenAI / Anthropic / Gemini]
   F[EnqueueUsage — outbox]
   G[Response]
 
   A --> B --> C --> D --> E --> F --> G
 ```
+
+Also exposes:
+
+* `GET /v1/models` — virtual models from the key’s organization routes
+* `POST /v1/chat/completions` — OpenAI-shaped chat (adapters translate Anthropic/Gemini)
+
+Streaming: OpenAI and Anthropic return OpenAI-compatible SSE. Gemini is non-stream in the current release. Failover retries only before the response body is committed to the client.
 
 Pipeline stages stay stateless aside from the in-memory snapshot pointer. Quota counters and the usage outbox use Postgres as operational stores.
 
@@ -58,7 +65,7 @@ flowchart LR
   Gateway --> usage_outbox --> worker --> usage_events
 ```
 
-The request path never waits on `usage_events` consumers. Run `make run-worker` locally to populate the Usage UI.
+The request path never waits on `usage_events` consumers. Run `make run-worker` locally to populate the Usage UI (including `cost_usd` when prices match).
 
 ## Future extensions
 

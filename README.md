@@ -25,6 +25,7 @@ make dev-up
 export OPENAI_API_KEY="sk-..."
 # optional
 export ANTHROPIC_API_KEY="sk-ant-..."
+export GEMINI_API_KEY="..."
 
 # 3. Control plane (migrate, seed, listen :8081)
 make run-controlplane

@@ -24,11 +24,12 @@ make dev-up
 
 ```bash
 export OPENAI_API_KEY="sk-..."
-# optional — for Anthropic routes (seeded as prov_anthropic)
+# optional — Anthropic / Gemini routes (seeded as prov_anthropic / prov_gemini)
 export ANTHROPIC_API_KEY="sk-ant-..."
+export GEMINI_API_KEY="..."
 ```
 
-The gateway reads these env vars when calling upstream providers (see snapshot provider `api_key_env`).
+The gateway reads these env vars when calling upstream providers (see snapshot provider `api_key_env`). The chat playground loads models from `GET /v1/models` and streams via `stream: true`.
 
 ## 3. Run the control plane
 
