@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/adapters/postgres"
+	"github.com/curefatih/afi/internal/app/platform"
 	"github.com/curefatih/afi/internal/controlplane"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -55,7 +56,13 @@ func main() {
 		}
 	}
 
-	srv := controlplane.NewServer(cfg, store, seeder, snapStore, log)
+	var eventOutbox platform.EventEnqueuer
+	if cfg.Events.OutboxEnabled {
+		eventOutbox = postgres.NewPlatformEventOutbox(pool)
+		log.Info("platform event outbox enabled")
+	}
+
+	srv := controlplane.NewServer(cfg, store, seeder, snapStore, log, eventOutbox)
 	httpServer := &http.Server{
 		Addr:              cfg.ControlPlane.Addr,
 		Handler:           srv.Handler(),
