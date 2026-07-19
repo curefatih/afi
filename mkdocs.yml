@@ -6,12 +6,28 @@ theme:
     primary: black
   font:
     code: Roboto Mono
-  language: en 
+  language: en
   copyright: ""
 
 markdown_extensions:
+  - admonition
+  - pymdownx.details
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Local development: getting-started/local-dev.md
+      - Verify: getting-started/verify.md
+  - Development:
+      - Repository layout: development/repository-layout.md
+      - Architecture: development/architecture.md
+      - Config reference: development/config-reference.md
+      - Testing: development/testing.md
+  - Concepts:
+      - Plugins (hooks): hooks/usage.md
+  - Deployment: deployment.md

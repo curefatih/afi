@@ -1,38 +1,46 @@
-# AFI - AI Gateway
+# AFI
 
-Welcome to your local cloud-native AI gateway environment! This orchestration proxy is a high-performance, enterprise-grade access point designed to securely manage, route, audit, and intercept multi-tenant traffic hitting upstream LLM providers.
+AFI is a self-hostable, cloud-native **LLM gateway**.
 
+It has two major parts:
 
----
+* **Control plane** — configuration, identities, policies, quotas, routing, and platform APIs. Owns business rules and compiles **immutable snapshots**.
+* **Data plane (gateway)** — processes inference with a request pipeline. Loads snapshots and never queries the configuration database during a request.
 
-## System Architecture Overview
+Start here: [Local development](getting-started/local-dev.md).
 
-The gateway serves as a secure compliance buffer between your internal developer environments and public model endpoints.
+## High-level flow
 
+```text
+                +---------------------------+
+                |       Platform UI         |
+                +------------+--------------+
+                             |
+                +------------v--------------+
+                |      Control Plane        |
+                +------------+--------------+
+                             |
+                 Builds Gateway Snapshot
+                             |
+                +------------v--------------+
+                |      Snapshot Store       |
+                +------------+--------------+
+                             |
+                     Watch / Hot Reload
+                             |
+                +------------v--------------+
+                |       Data Plane          |
+                +------------+--------------+
+                             |
+                 Provider Adapters
+                             |
+                      OpenAI (Phase 1)
 ```
- [ Your Apps / Clients ] 
-          │
-          ▼
- ┌────────────────────────────────────────────────────────┐
- │            LOCAL HEXAGONAL AI GATEWAY ENGINE           │
- │                                                        │
- │  🔒 1. Token Auth & Project Isolation Verification     │
- │  🪝 2. PII / Credit Card Masking JavaScript Sandbox    │
- │  🚦 3. Dynamic Rule Matrix Model Routing Router        │
- │  💰 4. Strict Synchronous Streaming Budget Tracker     │
- └────────────────────────────────────────────────────────┘
-          │
-          ▼
- [ Upstream Providers: OpenAI / Anthropic / Local Models ]
 
-```
+## What works locally today
 
----
-
-## Key Operational Features
-
-* **🪝 Sandboxed Plugin Hooks Pipeline:** Inject JavaScript hooks natively (`onRequest`, `onBeforeUpstreamCall`, `onResponseChunk`) to scrub secrets, inject standard corporate guardrails, or alter streaming responses dynamically.
-* **📈 Air-Tight SSE Streaming Telemetry:** Seamless interception of trailing vendor statistics frames ensures budget consumption limits and token-usage matrices are tracked perfectly on every connection closure.
-* **🚦 Lightweight Condition Routing:** Zero-dependency wildcard or static route mappings configured natively via a decoupled memory state layer.
-
----
+* Postgres + Adminer via `make dev-up`
+* Control plane: migrate, seed, snapshot publish, platform auth APIs
+* Gateway: virtual API key auth → route → OpenAI chat completions (stream + non-stream)
+* Web UI against the control plane (`:8081`)
+* Docs via `make doc-serve`

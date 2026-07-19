@@ -27,6 +27,10 @@ go.work.sum
 # env file
 .env
 
+# Local build artifacts
+/bin/
+.controlplane.pid
+
 # Editor/IDE
 # .idea/
 # .vscode/
@@ -168,4 +172,4 @@ dmypy.json
 .pyre/
 
 
-internal.md
+internal-docs
