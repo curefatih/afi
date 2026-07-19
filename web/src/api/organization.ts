@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "#/lib/api-client";
 import type { Organization, Project, Team } from "#/state/organization-state";
 
@@ -8,10 +8,45 @@ export type OrgSummary = {
 	created_at?: string;
 };
 
+export type OrgMember = {
+	user_id: string;
+	email: string;
+	name: string;
+	role: string;
+};
+
 export const organizationsQueryOptions = () =>
 	queryOptions({
 		queryKey: ["organizations"],
 		queryFn: () => apiFetch<OrgSummary[]>("/api/v1/platform/organizations"),
+	});
+
+export const orgMembersQueryOptions = (orgId: string) =>
+	queryOptions({
+		queryKey: ["organizations", orgId, "members"],
+		queryFn: () =>
+			apiFetch<OrgMember[]>(
+				`/api/v1/platform/organizations/${orgId}/members`,
+			),
+		enabled: !!orgId,
+	});
+
+export const createOrganizationMutationOptions = () =>
+	mutationOptions({
+		mutationFn: (body: { name: string }) =>
+			apiFetch<OrgSummary>("/api/v1/platform/organizations", {
+				method: "POST",
+				body,
+			}),
+	});
+
+export const addOrgMemberMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ orgId, email }: { orgId: string; email: string }) =>
+			apiFetch<OrgMember>(
+				`/api/v1/platform/organizations/${orgId}/members`,
+				{ method: "POST", body: { email } },
+			),
 	});
 
 export const orgTeamsQueryOptions = (orgId: string) =>

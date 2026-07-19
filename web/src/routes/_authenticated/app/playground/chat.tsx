@@ -70,7 +70,7 @@ export const Route = createFileRoute("/_authenticated/app/playground/chat")({
 	component: RouteComponent,
 });
 
-type GatewayModel = { id: string };
+type GatewayModel = { id: string; supports_streaming?: boolean };
 
 type Message = {
 	id: string;
@@ -158,7 +158,8 @@ function SettingsFields({
 					</SelectContent>
 				</Select>
 				<p className="text-muted-foreground text-xs">
-					From gateway /v1/models (org routes in the current snapshot).
+					From gateway /v1/models. Streaming follows each model&apos;s
+					supports_streaming capability.
 				</p>
 			</div>
 
@@ -235,7 +236,12 @@ function RouteComponent() {
 					data?: GatewayModel[];
 				};
 				if (cancelled) return;
-				const list = (data.data ?? []).filter((m) => m.id);
+				const list = (data.data ?? [])
+					.filter((m) => m.id)
+					.map((m) => ({
+						id: m.id,
+						supports_streaming: m.supports_streaming !== false,
+					}));
 				setModels(list);
 				setModel((prev) => prev || list[0]?.id || "");
 				setModelsError(null);
@@ -251,6 +257,9 @@ function RouteComponent() {
 			cancelled = true;
 		};
 	}, []);
+
+	const selectedModel = models.find((m) => m.id === model);
+	const useStream = selectedModel?.supports_streaming !== false;
 
 	const send = async () => {
 		const text = input.trim();
@@ -275,6 +284,24 @@ function RouteComponent() {
 		setIsBusy(true);
 		setError(null);
 
+		const appendAssistant = (piece: string) => {
+			setMessages((prev) =>
+				prev.map((m) =>
+					m.id === assistantId
+						? {
+								...m,
+								parts: [
+									{
+										type: "text",
+										text: (m.parts[0]?.text ?? "") + piece,
+									},
+								],
+							}
+						: m,
+				),
+			);
+		};
+
 		try {
 			const res = await fetch(`${GATEWAY_API_URL}/v1/chat/completions`, {
 				method: "POST",
@@ -284,7 +311,7 @@ function RouteComponent() {
 				},
 				body: JSON.stringify({
 					model,
-					stream: true,
+					stream: useStream,
 					messages: next.map((m) => ({
 						role: m.role,
 						content: m.parts.map((c) => c.text).join("\n"),
@@ -296,23 +323,15 @@ function RouteComponent() {
 				throw new Error(body || `HTTP ${res.status}`);
 			}
 
-			await readSSEContent(res, (piece) => {
-				setMessages((prev) =>
-					prev.map((m) =>
-						m.id === assistantId
-							? {
-									...m,
-									parts: [
-										{
-											type: "text",
-											text: (m.parts[0]?.text ?? "") + piece,
-										},
-									],
-								}
-							: m,
-					),
-				);
-			});
+			if (useStream) {
+				await readSSEContent(res, appendAssistant);
+			} else {
+				const data = (await res.json()) as {
+					choices?: Array<{ message?: { content?: string } }>;
+				};
+				const content = data?.choices?.[0]?.message?.content ?? "(empty response)";
+				appendAssistant(String(content));
+			}
 		} catch (e) {
 			setError(e instanceof Error ? e.message : "Request failed");
 			setMessages((prev) =>
@@ -352,7 +371,8 @@ function RouteComponent() {
 					</h1>
 					<p className="truncate text-sm text-muted-foreground">
 						{GATEWAY_API_URL}
-						{model ? ` · ${model}` : ""} · stream
+						{model ? ` · ${model}` : ""} ·{" "}
+						{useStream ? "stream" : "non-stream"}
 					</p>
 				</div>
 				<Sheet>
