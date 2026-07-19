@@ -22,9 +22,9 @@ need magick "brew install imagemagick"
 
 mkdir -p "$BRAND" "$WEB_PUBLIC" "$DOCS_BRAND"
 
-# README / docs wordmark
-rsvg-convert -w 460 -h 120 "$LOGO" -o "$BRAND/logo.png"
-rsvg-convert -w 920 -h 240 "$LOGO" -o "$BRAND/logo@2x.png"
+# README / docs wordmark (viewBox 500x240)
+rsvg-convert -w 250 -h 120 "$LOGO" -o "$BRAND/logo.png"
+rsvg-convert -w 500 -h 240 "$LOGO" -o "$BRAND/logo@2x.png"
 
 # Square mark variants
 rsvg-convert -w 512 -h 512 "$MARK" -o "$BRAND/logo-mark.png"

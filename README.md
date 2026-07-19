@@ -1,11 +1,8 @@
 <p align="center">
-  <img src="assets/brand/logo.png" alt="AFI — AI Gateway" width="320" />
+  <img src="assets/brand/logo.png" alt="AFI — AI Gateway" width="280" />
 </p>
 
 # AFI - AI Gateway
-
-> [!WARNING]
-> Under development. The control/data plane vertical slice is the supported local path.
 
 AFI is a self-hostable LLM gateway with a **control plane** (configuration, identity, snapshots) and a **data plane** (high-performance inference). The data plane serves requests from immutable configuration snapshots — it never queries the config database on the hot path.
 
