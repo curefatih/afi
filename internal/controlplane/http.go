@@ -304,7 +304,11 @@ func (s *Server) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 		body.Type = "openai"
 	}
 	if body.APIKeyEnv == "" {
-		body.APIKeyEnv = "OPENAI_API_KEY"
+		if body.Type == "anthropic" {
+			body.APIKeyEnv = "ANTHROPIC_API_KEY"
+		} else {
+			body.APIKeyEnv = "OPENAI_API_KEY"
+		}
 	}
 	p, err := s.api.CreateProvider(r.Context(), r.PathValue("orgID"), body.Name, body.Type, body.BaseURL, body.APIKeyEnv)
 	if err != nil {
@@ -376,9 +380,10 @@ func (s *Server) handleListRoutes(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCreateRoute(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Model       string `json:"model"`
-		ProviderID  string `json:"provider_id"`
-		TargetModel string `json:"target_model"`
+		Model       string          `json:"model"`
+		ProviderID  string          `json:"provider_id"`
+		TargetModel string          `json:"target_model"`
+		Fallbacks   []RouteFallback `json:"fallbacks"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Model == "" || body.ProviderID == "" {
 		writeErr(w, http.StatusBadRequest, "model and provider_id required")
@@ -387,7 +392,7 @@ func (s *Server) handleCreateRoute(w http.ResponseWriter, r *http.Request) {
 	if body.TargetModel == "" {
 		body.TargetModel = body.Model
 	}
-	route, err := s.api.CreateRoute(r.Context(), r.PathValue("orgID"), body.Model, body.ProviderID, body.TargetModel)
+	route, err := s.api.CreateRoute(r.Context(), r.PathValue("orgID"), body.Model, body.ProviderID, body.TargetModel, body.Fallbacks)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -401,9 +406,10 @@ func (s *Server) handleCreateRoute(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleUpdateRoute(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Model       string `json:"model"`
-		ProviderID  string `json:"provider_id"`
-		TargetModel string `json:"target_model"`
+		Model       string          `json:"model"`
+		ProviderID  string          `json:"provider_id"`
+		TargetModel string          `json:"target_model"`
+		Fallbacks   []RouteFallback `json:"fallbacks"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Model == "" || body.ProviderID == "" {
 		writeErr(w, http.StatusBadRequest, "model and provider_id required")
@@ -412,7 +418,7 @@ func (s *Server) handleUpdateRoute(w http.ResponseWriter, r *http.Request) {
 	if body.TargetModel == "" {
 		body.TargetModel = body.Model
 	}
-	route, err := s.api.UpdateRoute(r.Context(), r.PathValue("routeID"), body.Model, body.ProviderID, body.TargetModel)
+	route, err := s.api.UpdateRoute(r.Context(), r.PathValue("routeID"), body.Model, body.ProviderID, body.TargetModel, body.Fallbacks)
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
