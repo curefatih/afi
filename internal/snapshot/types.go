@@ -44,17 +44,24 @@ type APIKey struct {
 
 type Provider struct {
 	ID        string `json:"id"`
-	Type      string `json:"type"` // openai
+	Type      string `json:"type"` // openai | anthropic
 	BaseURL   string `json:"base_url"`
 	APIKeyEnv string `json:"api_key_env"`
 	Name      string `json:"name"`
 }
 
+// RouteTarget is a provider + model pair used for primary routing or failover.
+type RouteTarget struct {
+	ProviderID  string `json:"provider_id"`
+	TargetModel string `json:"target_model"`
+}
+
 type Route struct {
-	OrganizationID string `json:"organization_id"`
-	Model          string `json:"model"`
-	ProviderID     string `json:"provider_id"`
-	TargetModel    string `json:"target_model"`
+	OrganizationID string        `json:"organization_id"`
+	Model          string        `json:"model"`
+	ProviderID     string        `json:"provider_id"`
+	TargetModel    string        `json:"target_model"`
+	Fallbacks      []RouteTarget `json:"fallbacks,omitempty"`
 }
 
 func routeKey(orgID, model string) string {
