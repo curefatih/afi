@@ -13,6 +13,7 @@ import (
 
 	"github.com/curefatih/afi/internal/dataplane/openaichat"
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/modelcatalog"
 	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/usage"
@@ -395,31 +396,92 @@ func (p *Pipeline) handleModels(w http.ResponseWriter, r *http.Request) {
 		if route.OrganizationID != key.OrganizationID {
 			continue
 		}
-		caps := snapshot.DefaultCapabilities("openai")
+		providerType := "openai"
+		caps := snapshot.DefaultCapabilities(providerType)
 		if prov, ok := snap.Providers[route.ProviderID]; ok {
+			providerType = prov.Type
 			caps = snapshot.NormalizeCapabilities(prov.Type, prov.Capabilities)
 		}
-		tts := caps.TTS && modelLooksLikeTTS(route.Model, route.TargetModel)
-		stt := caps.STT && modelLooksLikeSTT(route.Model, route.TargetModel)
-		data = append(data, map[string]any{
-			"id":                 route.Model,
-			"object":             "model",
-			"owned_by":           "afi",
-			"supports_streaming": caps.Stream && caps.Chat,
-			"supports_tts":       tts,
-			"supports_stt":       stt,
-			"capabilities": map[string]bool{
-				"chat":   caps.Chat,
-				"stream": caps.Stream,
-				"tts":    tts,
-				"stt":    stt,
-			},
-		})
+		item := modelListItem(route.Model, route.TargetModel, providerType, caps)
+		data = append(data, item)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"object": "list",
 		"data":   data,
 	})
+}
+
+// modelListItem builds a /v1/models entry from route + provider caps + curated catalog.
+func modelListItem(virtualModel, targetModel, providerType string, caps snapshot.ProviderCapabilities) map[string]any {
+	mode := modelcatalog.ModeChat
+	chat := caps.Chat
+	stream := caps.Stream && caps.Chat
+	tts := caps.TTS && modelLooksLikeTTS(virtualModel, targetModel)
+	stt := caps.STT && modelLooksLikeSTT(virtualModel, targetModel)
+	var maxIn, maxOut int
+	var supportsVision, supportsTools bool
+
+	if entry, ok := modelcatalog.Lookup(providerType, targetModel); ok {
+		mode = entry.Mode
+		if mode == "" {
+			mode = modelcatalog.ModeChat
+		}
+		maxIn = entry.MaxInputTokens
+		maxOut = entry.MaxOutputTokens
+		supportsVision = entry.SupportsVision
+		supportsTools = entry.SupportsTools
+		switch {
+		case entry.IsTTS():
+			chat, stream, tts, stt = false, false, caps.TTS, false
+		case entry.IsSTT():
+			chat, stream, tts, stt = false, false, false, caps.STT
+		default:
+			chat = caps.Chat
+			stream = caps.Stream && caps.Chat && entry.StreamingEnabled()
+			tts, stt = false, false
+		}
+	} else {
+		switch {
+		case tts:
+			mode = modelcatalog.ModeAudioSpeech
+			chat, stream, stt = false, false, false
+		case stt:
+			mode = modelcatalog.ModeAudioTranscription
+			chat, stream, tts = false, false, false
+		default:
+			mode = modelcatalog.ModeChat
+			tts, stt = false, false
+		}
+	}
+
+	item := map[string]any{
+		"id":                 virtualModel,
+		"object":             "model",
+		"owned_by":           "afi",
+		"mode":               mode,
+		"supports_streaming": stream,
+		"supports_tts":       tts,
+		"supports_stt":       stt,
+		"capabilities": map[string]bool{
+			"chat":   chat,
+			"stream": stream,
+			"tts":    tts,
+			"stt":    stt,
+		},
+	}
+	if maxIn > 0 {
+		item["max_input_tokens"] = maxIn
+	}
+	if maxOut > 0 {
+		item["max_output_tokens"] = maxOut
+	}
+	if supportsVision {
+		item["supports_vision"] = true
+	}
+	if supportsTools {
+		item["supports_tools"] = true
+	}
+	return item
 }
 
 func (p *Pipeline) callProvider(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {

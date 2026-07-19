@@ -47,21 +47,9 @@ func ProcessOnce(ctx context.Context, src OutboxSource, sink UsageSink, prices P
 		if err := json.Unmarshal(row.Payload, &payload); err != nil {
 			return n, err
 		}
-		var cost *float64
-		if prices != nil {
-			model := payload.TargetModel
-			if model == "" {
-				model = payload.Model
-			}
-			if payload.ProviderType != "" && model != "" {
-				in, out, ok, err := prices.LookupModelPrice(ctx, payload.ProviderType, model)
-				if err != nil {
-					return n, err
-				}
-				if ok {
-					cost = ComputeCostUSD(payload.PromptTokens, payload.CompletionTokens, in, out)
-				}
-			}
+		cost, err := estimateUsageCost(ctx, payload, prices)
+		if err != nil {
+			return n, err
 		}
 		if err := sink.InsertUsage(ctx, payload, cost); err != nil {
 			return n, err
