@@ -38,6 +38,23 @@ type Config struct {
 		OpenAIAPIKeyEnv string `yaml:"openai_api_key_env"`
 		DefaultModel    string `yaml:"default_model"`
 	} `yaml:"seed"`
+
+	// Events configures durable platform domain-event delivery.
+	Events struct {
+		// OutboxEnabled enqueues platform.Bus events into platform_event_outbox.
+		OutboxEnabled bool `yaml:"outbox_enabled" env:"AFI_EVENTS_OUTBOX_ENABLED"`
+		// Publisher is log | nats | kafka | noop (worker drain target).
+		Publisher string `yaml:"publisher" env:"AFI_EVENTS_PUBLISHER" env-default:"log"`
+		NATS      struct {
+			URL           string `yaml:"url" env:"AFI_EVENTS_NATS_URL"`
+			Stream        string `yaml:"stream" env:"AFI_EVENTS_NATS_STREAM"`
+			SubjectPrefix string `yaml:"subject_prefix" env:"AFI_EVENTS_NATS_SUBJECT_PREFIX"`
+		} `yaml:"nats"`
+		Kafka struct {
+			Brokers string `yaml:"brokers" env:"AFI_EVENTS_KAFKA_BROKERS"`
+			Topic   string `yaml:"topic" env:"AFI_EVENTS_KAFKA_TOPIC"`
+		} `yaml:"kafka"`
+	} `yaml:"events"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -111,6 +128,24 @@ func LoadConfig() (*Config, error) {
 	}
 	if cfg.Seed.DefaultModel == "" {
 		cfg.Seed.DefaultModel = "gpt-4o-mini"
+	}
+	if cfg.Events.Publisher == "" {
+		cfg.Events.Publisher = "log"
+	}
+	if cfg.Events.NATS.URL == "" {
+		cfg.Events.NATS.URL = "nats://127.0.0.1:4222"
+	}
+	if cfg.Events.NATS.Stream == "" {
+		cfg.Events.NATS.Stream = "AFI_PLATFORM"
+	}
+	if cfg.Events.NATS.SubjectPrefix == "" {
+		cfg.Events.NATS.SubjectPrefix = "afi.platform"
+	}
+	if cfg.Events.Kafka.Brokers == "" {
+		cfg.Events.Kafka.Brokers = "127.0.0.1:9092"
+	}
+	if cfg.Events.Kafka.Topic == "" {
+		cfg.Events.Kafka.Topic = "afi.platform.events"
 	}
 
 	return &cfg, nil

@@ -6,10 +6,13 @@ import (
 	"github.com/curefatih/afi/internal/app/platform"
 )
 
-// newPlatformEventBus builds the default in-process bus with slog debug logging.
-func newPlatformEventBus(log *slog.Logger) *platform.Bus {
+// newPlatformEventBus builds the in-process bus with slog logging and optional durable outbox.
+func newPlatformEventBus(log *slog.Logger, outbox platform.EventEnqueuer) *platform.Bus {
 	bus := platform.NewBus()
 	bus.SubscribeAll(platform.SlogHandler(log))
+	if outbox != nil {
+		bus.SubscribeAll(platform.OutboxHandler(outbox, log))
+	}
 	if log != nil {
 		bus.OnPanic(func(recovered any, e platform.Event) {
 			log.Error("platform event subscriber panic",

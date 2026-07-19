@@ -37,12 +37,12 @@ const EventAll EventName = "*"
 
 // Event is a domain event emitted after successful platform work.
 type Event struct {
-	ID             string
-	Name           EventName
-	ResourceID     string
-	OrganizationID string
-	At             time.Time
-	Meta           map[string]string
+	ID             string            `json:"id"`
+	Name           EventName         `json:"name"`
+	ResourceID     string            `json:"resource_id,omitempty"`
+	OrganizationID string            `json:"organization_id,omitempty"`
+	At             time.Time         `json:"at"`
+	Meta           map[string]string `json:"meta,omitempty"`
 }
 
 // Handler receives a domain event. Handlers must not panic; the bus recovers panics.

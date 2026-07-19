@@ -20,28 +20,30 @@ import (
 )
 
 type Server struct {
-	cfg       *kernel.Config
-	api       platformAPI
-	app       *platform.Service
-	members   membershipChecker
-	publisher snapshotPublisher
-	seeder    *Seeder
-	snapStore snapshot.Store
-	log       *slog.Logger
+	cfg         *kernel.Config
+	api         platformAPI
+	app         *platform.Service
+	members     membershipChecker
+	publisher   snapshotPublisher
+	seeder      *Seeder
+	snapStore   snapshot.Store
+	log         *slog.Logger
+	eventOutbox platform.EventEnqueuer
 }
 
-func NewServer(cfg *kernel.Config, store *Store, seeder *Seeder, snapStore snapshot.Store, log *slog.Logger) *Server {
+func NewServer(cfg *kernel.Config, store *Store, seeder *Seeder, snapStore snapshot.Store, log *slog.Logger, eventOutbox platform.EventEnqueuer) *Server {
 	app := platform.New(store, seeder)
-	app.Events = newPlatformEventBus(log)
+	app.Events = newPlatformEventBus(log, eventOutbox)
 	return &Server{
-		cfg:       cfg,
-		api:       store,
-		app:       app,
-		members:   store,
-		publisher: seeder,
-		seeder:    seeder,
-		snapStore: snapStore,
-		log:       log,
+		cfg:         cfg,
+		api:         store,
+		app:         app,
+		members:     store,
+		publisher:   seeder,
+		seeder:      seeder,
+		snapStore:   snapStore,
+		log:         log,
+		eventOutbox: eventOutbox,
 	}
 }
 
@@ -53,7 +55,7 @@ func (s *Server) ensureApp() {
 		return
 	}
 	s.app = platform.New(configAPIAdapter{s.api}, s.publisher)
-	s.app.Events = newPlatformEventBus(s.log)
+	s.app.Events = newPlatformEventBus(s.log, s.eventOutbox)
 }
 
 func (s *Server) Handler() http.Handler {

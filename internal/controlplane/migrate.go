@@ -10,9 +10,10 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 7
+const schemaVersion = 8
 
 const dropAllSQL = `
+DROP TABLE IF EXISTS platform_event_outbox CASCADE;
 DROP TABLE IF EXISTS usage_outbox CASCADE;
 DROP TABLE IF EXISTS quota_counters CASCADE;
 DROP TABLE IF EXISTS quotas CASCADE;
@@ -175,6 +176,13 @@ CREATE TABLE IF NOT EXISTS quota_counters (
 );
 
 CREATE TABLE IF NOT EXISTS usage_outbox (
+    id BIGSERIAL PRIMARY KEY,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processed_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS platform_event_outbox (
     id BIGSERIAL PRIMARY KEY,
     payload JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -404,6 +412,19 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			ON request_policies (organization_id, priority DESC);
 	`); err != nil {
 		return fmt.Errorf("cycle13 request policies: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS platform_event_outbox (
+			id BIGSERIAL PRIMARY KEY,
+			payload JSONB NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			processed_at TIMESTAMPTZ
+		);
+		CREATE INDEX IF NOT EXISTS platform_event_outbox_pending_idx
+			ON platform_event_outbox (id) WHERE processed_at IS NULL;
+	`); err != nil {
+		return fmt.Errorf("cycle14 platform event outbox: %w", err)
 	}
 	return nil
 }
