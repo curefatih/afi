@@ -44,8 +44,28 @@ d=json.load(sys.stdin)
 assert d.get("object")=="list" and isinstance(d.get("data"), list), d
 assert any(m.get("id")=="gpt-4o-mini" for m in d["data"]), d
 assert all("supports_streaming" in m for m in d["data"]), d
+assert all("supports_tts" in m and "supports_stt" in m for m in d["data"]), d
+has_tts = any(m.get("id")=="tts-1" and m.get("supports_tts") for m in d["data"])
+has_stt = any(m.get("id")=="whisper-1" and m.get("supports_stt") for m in d["data"])
+assert has_tts and has_stt, d
 '
 echo "ok"
+
+if [ -n "${OPENAI_API_KEY:-}" ]; then
+  echo "==> TTS speech (optional live)"
+  code=$(curl -s -o /tmp/afi-verify-tts.bin -w '%{http_code}' "$GW/v1/audio/speech" \
+    -H "Authorization: Bearer $VIRTUAL_KEY" \
+    -H 'Content-Type: application/json' \
+    -d '{"model":"tts-1","input":"afi verify","voice":"alloy"}')
+  if [ "$code" = "200" ]; then
+    test -s /tmp/afi-verify-tts.bin
+    echo "ok"
+  else
+    echo "SKIPPED (speech HTTP $code — check OPENAI_API_KEY / route)"
+  fi
+else
+  echo "==> TTS speech SKIPPED (OPENAI_API_KEY unset)"
+fi
 
 if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
   has_claude=$(curl -fsS "$GW/v1/models" -H "Authorization: Bearer $VIRTUAL_KEY" \

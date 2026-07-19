@@ -64,6 +64,51 @@ func (c *OpenAIClient) ChatCompletions(ctx context.Context, provider snapshot.Pr
 	return resp, nil
 }
 
+// AudioSpeech forwards an OpenAI-shaped /v1/audio/speech body, rewriting model.
+func (c *OpenAIClient) AudioSpeech(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte) (*http.Response, error) {
+	apiKey := os.Getenv(provider.APIKeyEnv)
+	if apiKey == "" {
+		return nil, fmt.Errorf("missing env %s for provider %s", provider.APIKeyEnv, provider.ID)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, fmt.Errorf("invalid request body: %w", err)
+	}
+	payload["model"] = targetModel
+	rewritten, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	base := strings.TrimRight(provider.BaseURL, "/")
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/audio/speech", bytes.NewReader(rewritten))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	return c.HTTP.Do(req)
+}
+
+// AudioTranscriptions forwards multipart /v1/audio/transcriptions, rewriting the model field.
+func (c *OpenAIClient) AudioTranscriptions(ctx context.Context, provider snapshot.Provider, targetModel, contentType string, body io.Reader) (*http.Response, error) {
+	apiKey := os.Getenv(provider.APIKeyEnv)
+	if apiKey == "" {
+		return nil, fmt.Errorf("missing env %s for provider %s", provider.APIKeyEnv, provider.ID)
+	}
+	rewritten, newCT, err := rewriteMultipartModel(contentType, body, targetModel)
+	if err != nil {
+		return nil, err
+	}
+	base := strings.TrimRight(provider.BaseURL, "/")
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/audio/transcriptions", bytes.NewReader(rewritten))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", newCT)
+	return c.HTTP.Do(req)
+}
+
 // CopyResponse copies an upstream response to the client writer.
 func CopyResponse(w http.ResponseWriter, resp *http.Response) error {
 	for k, vals := range resp.Header {

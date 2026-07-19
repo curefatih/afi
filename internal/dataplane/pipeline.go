@@ -61,6 +61,8 @@ func (p *Pipeline) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/models", p.handleModels)
 	mux.HandleFunc("POST /v1/chat/completions", p.handleChatCompletions)
 	mux.HandleFunc("POST /v1/messages", p.handleMessages)
+	mux.HandleFunc("POST /v1/audio/speech", p.handleAudioSpeech)
+	mux.HandleFunc("POST /v1/audio/transcriptions", p.handleAudioTranscriptions)
 	return withCORS(mux)
 }
 
@@ -358,9 +360,13 @@ func (p *Pipeline) handleModels(w http.ResponseWriter, r *http.Request) {
 			"object":             "model",
 			"owned_by":           "afi",
 			"supports_streaming": caps.Stream,
+			"supports_tts":       caps.TTS,
+			"supports_stt":       caps.STT,
 			"capabilities": map[string]bool{
 				"chat":   caps.Chat,
 				"stream": caps.Stream,
+				"tts":    caps.TTS,
+				"stt":    caps.STT,
 			},
 		})
 	}

@@ -176,6 +176,22 @@ func (s *Seeder) Seed(ctx context.Context) error {
 		return fmt.Errorf("route: %w", err)
 	}
 
+	for _, audio := range []struct{ id, model string }{
+		{"route_tts", "tts-1"},
+		{"route_whisper", "whisper-1"},
+	} {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO routes (id, organization_id, model, provider_id, target_model, created_at)
+			VALUES ($1, $2, $3, $4, $3, $5)
+			ON CONFLICT (organization_id, model) DO UPDATE SET
+				provider_id = EXCLUDED.provider_id,
+				target_model = EXCLUDED.target_model
+		`, audio.id, orgID, audio.model, providerID, now)
+		if err != nil {
+			return fmt.Errorf("audio route %s: %w", audio.model, err)
+		}
+	}
+
 	keyHash := HashAPIKey(cfg.VirtualAPIKey)
 	keyPrefix := KeyPrefix(cfg.VirtualAPIKey)
 	_, err = tx.Exec(ctx, `
