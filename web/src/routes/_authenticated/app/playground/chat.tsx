@@ -4,7 +4,7 @@ import {
 	MessageCircleDashedIcon,
 	RotateCwIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { Button } from "#/components/ui/button";
 import {
@@ -60,10 +60,7 @@ export const Route = createFileRoute("/_authenticated/app/playground/chat")({
 	component: RouteComponent,
 });
 
-const models = [
-	{ label: "gpt-4o-mini", value: "gpt-4o-mini" },
-	{ label: "gpt-4o", value: "gpt-4o" },
-];
+type GatewayModel = { id: string };
 
 type Message = {
 	id: string;
@@ -74,11 +71,47 @@ type Message = {
 	}>;
 };
 
+async function readSSEContent(
+	res: Response,
+	onDelta: (text: string) => void,
+): Promise<void> {
+	const reader = res.body?.getReader();
+	if (!reader) {
+		throw new Error("No response body");
+	}
+	const decoder = new TextDecoder();
+	let buffer = "";
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		buffer += decoder.decode(value, { stream: true });
+		const parts = buffer.split("\n");
+		buffer = parts.pop() ?? "";
+		for (const line of parts) {
+			const trimmed = line.trim();
+			if (!trimmed.startsWith("data:")) continue;
+			const payload = trimmed.slice(5).trim();
+			if (!payload || payload === "[DONE]") continue;
+			try {
+				const chunk = JSON.parse(payload) as {
+					choices?: Array<{ delta?: { content?: string } }>;
+				};
+				const piece = chunk.choices?.[0]?.delta?.content;
+				if (piece) onDelta(piece);
+			} catch {
+				// skip malformed chunk lines
+			}
+		}
+	}
+}
+
 function RouteComponent() {
 	const activeOrg = useActiveOrg();
 	const { setActiveProjectById } = useOrgActions();
 	const [input, setInput] = useState("");
-	const [model, setModel] = useState(models[0].value);
+	const [models, setModels] = useState<GatewayModel[]>([]);
+	const [model, setModel] = useState("");
+	const [modelsError, setModelsError] = useState<string | null>(null);
 	const [isBusy, setIsBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [messages, setMessages] = useState<Message[]>([]);
@@ -87,21 +120,59 @@ function RouteComponent() {
 	const projects = activeOrg?.projects ?? [];
 
 	const apiKey = useMemo(() => {
-		// Project-scoped keys are not listed with secrets for reuse; fall back to seeded key.
 		return GATEWAY_API_KEY;
+	}, []);
+
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			try {
+				const res = await fetch(`${GATEWAY_API_URL}/v1/models`, {
+					headers: { Authorization: `Bearer ${GATEWAY_API_KEY}` },
+				});
+				if (!res.ok) {
+					throw new Error(`models HTTP ${res.status}`);
+				}
+				const data = (await res.json()) as {
+					data?: GatewayModel[];
+				};
+				if (cancelled) return;
+				const list = (data.data ?? []).filter((m) => m.id);
+				setModels(list);
+				setModel((prev) => prev || list[0]?.id || "");
+				setModelsError(null);
+			} catch (e) {
+				if (!cancelled) {
+					setModelsError(
+						e instanceof Error ? e.message : "Failed to load models",
+					);
+				}
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
 	}, []);
 
 	const send = async () => {
 		const text = input.trim();
-		if (!text || isBusy) return;
+		if (!text || isBusy || !model) return;
 
 		const userMsg: Message = {
 			id: crypto.randomUUID(),
 			role: "user",
 			content: [{ type: "text", text }],
 		};
+		const assistantId = crypto.randomUUID();
 		const next = [...messages, userMsg];
-		setMessages(next);
+		setMessages([
+			...next,
+			{
+				id: assistantId,
+				role: "assistant",
+				content: [{ type: "text", text: "" }],
+			},
+		]);
 		setInput("");
 		setIsBusy(true);
 		setError(null);
@@ -115,6 +186,7 @@ function RouteComponent() {
 				},
 				body: JSON.stringify({
 					model,
+					stream: true,
 					messages: next.map((m) => ({
 						role: m.role,
 						content: m.content.map((c) => c.text).join("\n"),
@@ -125,19 +197,32 @@ function RouteComponent() {
 				const body = await res.text();
 				throw new Error(body || `HTTP ${res.status}`);
 			}
-			const data = await res.json();
-			const content =
-				data?.choices?.[0]?.message?.content ?? "(empty response)";
-			setMessages((prev) => [
-				...prev,
-				{
-					id: crypto.randomUUID(),
-					role: "assistant",
-					content: [{ type: "text", text: String(content) }],
-				},
-			]);
+
+			await readSSEContent(res, (piece) => {
+				setMessages((prev) =>
+					prev.map((m) =>
+						m.id === assistantId
+							? {
+									...m,
+									content: [
+										{
+											type: "text",
+											text: (m.content[0]?.text ?? "") + piece,
+										},
+									],
+								}
+							: m,
+					),
+				);
+			});
 		} catch (e) {
 			setError(e instanceof Error ? e.message : "Request failed");
+			setMessages((prev) =>
+				prev.filter(
+					(m) =>
+						m.id !== assistantId || (m.content[0]?.text ?? "").length > 0,
+				),
+			);
 		} finally {
 			setIsBusy(false);
 		}
@@ -147,7 +232,7 @@ function RouteComponent() {
 		<PageBody className="h-full min-h-0">
 			<PageHeader
 				title="Chat playground"
-				description="Exercise the data-plane OpenAI-compatible chat path through the local gateway."
+				description="Streams OpenAI-compatible chat through the local gateway. Models come from GET /v1/models (your org routes)."
 			/>
 
 			<div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
@@ -157,7 +242,7 @@ function RouteComponent() {
 							<CardHeader className="gap-1 border-b">
 								<CardTitle>Conversation</CardTitle>
 								<CardDescription>
-									{GATEWAY_API_URL} · {model}
+									{GATEWAY_API_URL} · {model || "—"} · stream
 								</CardDescription>
 								<CardAction>
 									<Tooltip>
@@ -232,14 +317,14 @@ function RouteComponent() {
 											value={input}
 											onChange={(e) => setInput(e.target.value)}
 											placeholder="Message the gateway…"
-											disabled={isBusy}
+											disabled={isBusy || !model}
 										/>
 										<InputGroupAddon align="inline-end">
 											<InputGroupButton
 												type="submit"
 												variant="default"
 												size="icon-sm"
-												disabled={isBusy || !input.trim()}
+												disabled={isBusy || !input.trim() || !model}
 											>
 												<ArrowUpIcon />
 												<span className="sr-only">Send</span>
@@ -260,21 +345,28 @@ function RouteComponent() {
 					<CardContent className="space-y-4">
 						<div className="space-y-2">
 							<Label>Model</Label>
+							{modelsError ? (
+								<p className="text-destructive text-xs">{modelsError}</p>
+							) : null}
 							<Select
 								value={model}
-								onValueChange={(value) => setModel(value ?? models[0].value)}
+								onValueChange={(value) => setModel(value ?? models[0]?.id ?? "")}
+								disabled={models.length === 0}
 							>
 								<SelectTrigger className="w-full">
-									<SelectValue />
+									<SelectValue placeholder="Loading routes…" />
 								</SelectTrigger>
 								<SelectContent>
 									{models.map((m) => (
-										<SelectItem key={m.value} value={m.value}>
-											{m.label}
+										<SelectItem key={m.id} value={m.id}>
+											{m.id}
 										</SelectItem>
 									))}
 								</SelectContent>
 							</Select>
+							<p className="text-muted-foreground text-xs">
+								From gateway /v1/models (org routes in the current snapshot).
+							</p>
 						</div>
 
 						<div className="space-y-2">

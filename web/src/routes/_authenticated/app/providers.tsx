@@ -45,11 +45,21 @@ function RouteComponent() {
 	const applyTypeDefaults = (next: string) => {
 		setType(next);
 		if (next === "anthropic") {
-			setName((n) => (n === "OpenAI" || n === "" ? "Anthropic" : n));
+			setName((n) =>
+				n === "OpenAI" || n === "Gemini" || n === "" ? "Anthropic" : n,
+			);
 			setBaseURL("https://api.anthropic.com/v1");
 			setApiKeyEnv("ANTHROPIC_API_KEY");
+		} else if (next === "gemini") {
+			setName((n) =>
+				n === "OpenAI" || n === "Anthropic" || n === "" ? "Gemini" : n,
+			);
+			setBaseURL("https://generativelanguage.googleapis.com/v1beta");
+			setApiKeyEnv("GEMINI_API_KEY");
 		} else if (next === "openai") {
-			setName((n) => (n === "Anthropic" || n === "" ? "OpenAI" : n));
+			setName((n) =>
+				n === "Anthropic" || n === "Gemini" || n === "" ? "OpenAI" : n,
+			);
 			setBaseURL("https://api.openai.com/v1");
 			setApiKeyEnv("OPENAI_API_KEY");
 		}
@@ -136,6 +146,7 @@ function RouteComponent() {
 							>
 								<option value="openai">openai</option>
 								<option value="anthropic">anthropic</option>
+								<option value="gemini">gemini</option>
 							</select>
 						</div>
 						<div className="space-y-1">
