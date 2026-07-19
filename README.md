@@ -53,7 +53,8 @@ Full checklist: [docs/getting-started/local-dev.md](docs/getting-started/local-d
 
 ```bash
 make build              # bin/controlplane, bin/gateway, bin/afi
-make test
+make test               # unit tests (preferred quality bar)
+make verify             # smoke against a running local stack
 make seed               # CLI: seed local data + publish snapshot
 make snapshot-publish
 make doc-serve          # http://127.0.0.1:8000

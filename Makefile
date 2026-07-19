@@ -1,6 +1,6 @@
 .PHONY: doc-serve doc-build doc-deploy \
 	dev-up dev-down dev-build dev-restart \
-	build test fmt tidy \
+	build test fmt tidy verify \
 	run-controlplane run-gateway run-all \
 	seed snapshot-publish
 
@@ -42,6 +42,9 @@ build:
 
 test:
 	$(GO) test ./...
+
+verify:
+	bash scripts/verify-local.sh
 
 run-controlplane:
 	$(GO) run ./cmd/controlplane
