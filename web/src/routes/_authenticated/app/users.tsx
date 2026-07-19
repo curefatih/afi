@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { UsersIcon } from "lucide-react";
+import { PlusIcon, UsersIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
+	addOrgMemberMutationOptions,
 	type OrgMember,
 	type OrgRole,
 	orgMembersQueryOptions,
@@ -21,6 +22,8 @@ import {
 	EmptyMedia,
 	EmptyTitle,
 } from "#/components/ui/empty";
+import { Input } from "#/components/ui/input";
+import { Label } from "#/components/ui/label";
 import {
 	Select,
 	SelectContent,
@@ -28,6 +31,14 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "#/components/ui/select";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetFooter,
+	SheetHeader,
+	SheetTitle,
+} from "#/components/ui/sheet";
 import {
 	Table,
 	TableBody,
@@ -54,6 +65,9 @@ function RouteComponent() {
 	const members = useQuery(orgMembersQueryOptions(orgId));
 	const updateRole = useMutation(updateOrgMemberRoleMutationOptions());
 	const [busyUserId, setBusyUserId] = useState<string | null>(null);
+	const [inviteOpen, setInviteOpen] = useState(false);
+	const [email, setEmail] = useState("");
+	const [inviteError, setInviteError] = useState<string | null>(null);
 
 	const me = useMemo(
 		() => (members.data ?? []).find((m) => m.user_id === user?.id),
@@ -61,6 +75,18 @@ function RouteComponent() {
 	);
 	const isOwner = me?.role === "owner";
 	const isOrgAdmin = isOwner || me?.role === "admin";
+
+	const invite = useMutation({
+		...addOrgMemberMutationOptions(),
+		onSuccess: () => {
+			void qc.invalidateQueries({
+				queryKey: ["organizations", orgId, "members"],
+			});
+			setEmail("");
+			setInviteOpen(false);
+			toast.success("Member added");
+		},
+	});
 
 	async function applyRole(m: OrgMember, role: OrgRole) {
 		if (role === m.role) return;
@@ -92,16 +118,14 @@ function RouteComponent() {
 				title="Users"
 				description={
 					org
-						? `People in ${org.name}. Change roles here; invite from Organization settings.`
-						: "Organization members. Change roles here; invite from Organization settings."
+						? `People in ${org.name}. Invite members and change roles here.`
+						: "Organization members. Invite members and change roles here."
 				}
 				actions={
 					<div className="flex flex-wrap gap-2">
 						{isOrgAdmin ? (
-							<Button
-								nativeButton={false}
-								render={<Link to="/app/settings/general" />}
-							>
+							<Button onClick={() => setInviteOpen(true)} disabled={!orgId}>
+								<PlusIcon />
 								Invite member
 							</Button>
 						) : null}
@@ -131,17 +155,18 @@ function RouteComponent() {
 							</EmptyMedia>
 							<EmptyTitle>No members</EmptyTitle>
 							<EmptyDescription>
-								Invite existing platform users from Organization settings.
+								Invite an existing platform user by email. No email is sent —
+								the user must already have an account.
 							</EmptyDescription>
 						</EmptyHeader>
-						<EmptyContent>
-							<Button
-								nativeButton={false}
-								render={<Link to="/app/settings/general" />}
-							>
-								Invite member
-							</Button>
-						</EmptyContent>
+						{isOrgAdmin ? (
+							<EmptyContent>
+								<Button onClick={() => setInviteOpen(true)} disabled={!orgId}>
+									<PlusIcon />
+									Invite member
+								</Button>
+							</EmptyContent>
+						) : null}
 					</Empty>
 				) : (
 					<Table>
@@ -201,6 +226,64 @@ function RouteComponent() {
 					</Table>
 				)}
 			</QueryGate>
+
+			<Sheet open={inviteOpen} onOpenChange={setInviteOpen}>
+				<SheetContent>
+					<SheetHeader>
+						<SheetTitle>Invite member</SheetTitle>
+						<SheetDescription>
+							Add an existing platform user by email. No email is sent — the
+							user must already have an account.
+						</SheetDescription>
+					</SheetHeader>
+					<form
+						className="flex flex-1 flex-col gap-4 px-4"
+						onSubmit={(e) => {
+							e.preventDefault();
+							if (!orgId) return;
+							setInviteError(null);
+							invite.mutate(
+								{ orgId, email },
+								{
+									onError: (err) =>
+										setInviteError(
+											err instanceof Error ? err.message : "Invite failed",
+										),
+								},
+							);
+						}}
+					>
+						<div className="space-y-1">
+							<Label htmlFor="member-email">Email</Label>
+							<Input
+								id="member-email"
+								type="email"
+								value={email}
+								onChange={(e) => setEmail(e.target.value)}
+								required
+							/>
+						</div>
+						{inviteError ? (
+							<p className="text-destructive text-xs">{inviteError}</p>
+						) : null}
+						<SheetFooter>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setInviteOpen(false)}
+							>
+								Cancel
+							</Button>
+							<Button
+								type="submit"
+								disabled={invite.isPending || !email.trim() || !orgId}
+							>
+								{invite.isPending ? "Adding…" : "Add member"}
+							</Button>
+						</SheetFooter>
+					</form>
+				</SheetContent>
+			</Sheet>
 		</PageBody>
 	);
 }

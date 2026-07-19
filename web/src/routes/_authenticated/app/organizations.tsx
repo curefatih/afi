@@ -85,7 +85,7 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Organizations"
-				description="Organizations you belong to. Switch the active org here or in the sidebar; manage invites under Organization settings."
+				description="Organizations you belong to. Switch the active org here or in the sidebar; invite members on Users."
 				actions={
 					<Button onClick={() => setCreateOpen(true)}>
 						<PlusIcon />

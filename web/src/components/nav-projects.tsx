@@ -1,7 +1,7 @@
 "use client";
 
 import { Link, useLocation } from "@tanstack/react-router";
-import { FolderKanbanIcon, MoreHorizontalIcon } from "lucide-react";
+import { FolderKanbanIcon } from "lucide-react";
 import {
 	SidebarGroup,
 	SidebarGroupLabel,
@@ -45,15 +45,6 @@ export function NavProjects({
 						</SidebarMenuItem>
 					);
 				})}
-				<SidebarMenuItem>
-					<SidebarMenuButton
-						className="text-sidebar-foreground/70"
-						render={<Link to="/app/projects" />}
-					>
-						<MoreHorizontalIcon className="text-sidebar-foreground/70" />
-						<span>All projects</span>
-					</SidebarMenuButton>
-				</SidebarMenuItem>
 			</SidebarMenu>
 		</SidebarGroup>
 	);
