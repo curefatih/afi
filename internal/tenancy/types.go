@@ -13,7 +13,8 @@ const (
 	OrgRoleAdmin  = "admin"
 	OrgRoleMember = "member"
 
-	TeamRoleOwner = "owner"
+	TeamRoleOwner  = "owner"
+	TeamRoleMember = "member"
 )
 
 // Organization is a tenant root.

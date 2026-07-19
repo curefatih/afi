@@ -102,8 +102,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PATCH /api/v1/platform/policies/{policyID}", s.requireAuth(s.requireOrgAdminViaPolicy(s.handleUpdatePolicy)))
 	mux.HandleFunc("DELETE /api/v1/platform/policies/{policyID}", s.requireAuth(s.requireOrgAdminViaPolicy(s.handleDeletePolicy)))
 
-	mux.HandleFunc("GET /api/v1/platform/teams/{teamID}", s.requireAuth(s.requireOrgMemberViaTeam(s.handleGetTeam)))
-	mux.HandleFunc("GET /api/v1/platform/teams/{teamID}/members", s.requireAuth(s.requireOrgMemberViaTeam(s.handleListTeamMembers)))
+	mux.HandleFunc("GET /api/v1/platform/teams/{teamID}", s.requireAuth(s.requireTeamAccess(s.handleGetTeam)))
+	mux.HandleFunc("GET /api/v1/platform/teams/{teamID}/members", s.requireAuth(s.requireTeamAccess(s.handleListTeamMembers)))
+	mux.HandleFunc("POST /api/v1/platform/teams/{teamID}/members", s.requireAuth(s.requireTeamManager(s.handleAddTeamMember)))
+	mux.HandleFunc("DELETE /api/v1/platform/teams/{teamID}/members/{userID}", s.requireAuth(s.requireTeamManager(s.handleRemoveTeamMember)))
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/keys", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListOrgKeys)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/keys", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleCreateOrgKey)))
@@ -286,7 +288,8 @@ func (s *Server) handleUpdateOrgMemberRole(w http.ResponseWriter, r *http.Reques
 }
 
 func (s *Server) handleListTeams(w http.ResponseWriter, r *http.Request) {
-	teams, err := s.app.ListTeams(r.Context(), r.PathValue("orgID"))
+	claims := claimsFrom(r.Context())
+	teams, err := s.app.ListTeams(r.Context(), r.PathValue("orgID"), claims.UserID)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -339,8 +342,50 @@ func (s *Server) handleListTeamMembers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, members)
 }
 
+func (s *Server) handleAddTeamMember(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		UserID string `json:"user_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.UserID) == "" {
+		writeErr(w, http.StatusBadRequest, "user_id required")
+		return
+	}
+	member, err := s.api.AddTeamMember(r.Context(), r.PathValue("teamID"), strings.TrimSpace(body.UserID))
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, member)
+}
+
+func (s *Server) handleRemoveTeamMember(w http.ResponseWriter, r *http.Request) {
+	err := s.api.RemoveTeamMember(r.Context(), r.PathValue("teamID"), r.PathValue("userID"))
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, "cannot remove the sole team owner")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
-	projects, err := s.app.ListProjects(r.Context(), r.PathValue("orgID"))
+	claims := claimsFrom(r.Context())
+	projects, err := s.app.ListProjects(r.Context(), r.PathValue("orgID"), claims.UserID)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -1070,9 +1115,10 @@ func (s *Server) requireOrgAdminViaPolicy(next http.HandlerFunc) http.HandlerFun
 	}
 }
 
-func (s *Server) requireOrgMemberViaTeam(next http.HandlerFunc) http.HandlerFunc {
+func (s *Server) requireTeamAccess(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := s.members.GetTeamOrgID(r.Context(), r.PathValue("teamID"))
+		teamID := r.PathValue("teamID")
+		_, err := s.members.GetTeamOrgID(r.Context(), teamID)
 		if errors.Is(err, kernel.ErrNotFound) {
 			writeErr(w, http.StatusNotFound, "not found")
 			return
@@ -1082,7 +1128,33 @@ func (s *Server) requireOrgMemberViaTeam(next http.HandlerFunc) http.HandlerFunc
 			return
 		}
 		claims := claimsFrom(r.Context())
-		ok, err := s.members.IsOrgMember(r.Context(), claims.UserID, orgID)
+		ok, err := s.members.CanAccessTeam(r.Context(), teamID, claims.UserID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !ok {
+			writeErr(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next(w, r)
+	}
+}
+
+func (s *Server) requireTeamManager(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		teamID := r.PathValue("teamID")
+		_, err := s.members.GetTeamOrgID(r.Context(), teamID)
+		if errors.Is(err, kernel.ErrNotFound) {
+			writeErr(w, http.StatusNotFound, "not found")
+			return
+		}
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		claims := claimsFrom(r.Context())
+		ok, err := s.members.CanManageTeam(r.Context(), teamID, claims.UserID)
 		if err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return

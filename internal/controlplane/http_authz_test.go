@@ -15,9 +15,12 @@ import (
 )
 
 type fakeMembers struct {
-	allowed map[string]bool
-	admins  map[string]bool
-	keyOrg  map[string]string
+	allowed    map[string]bool
+	admins     map[string]bool
+	keyOrg     map[string]string
+	teamOrg    map[string]string
+	teamAccess map[string]bool // userID|teamID
+	teamManage map[string]bool // userID|teamID
 }
 
 func (f *fakeMembers) IsOrgMember(_ context.Context, userID, orgID string) (bool, error) {
@@ -41,10 +44,44 @@ func (f *fakeMembers) GetAPIKeyOrgID(_ context.Context, keyID string) (string, e
 }
 
 func (f *fakeMembers) GetTeamOrgID(_ context.Context, teamID string) (string, error) {
-	if teamID == "team_ok" {
+	if f.teamOrg != nil {
+		if org, ok := f.teamOrg[teamID]; ok {
+			return org, nil
+		}
+	}
+	if teamID == "team_ok" || teamID == "team_new" {
 		return "org_a", nil
 	}
 	return "", kernel.ErrNotFound
+}
+
+func (f *fakeMembers) CanAccessTeam(ctx context.Context, teamID, userID string) (bool, error) {
+	if f.teamAccess != nil {
+		return f.teamAccess[userID+"|"+teamID], nil
+	}
+	orgID, err := f.GetTeamOrgID(ctx, teamID)
+	if err != nil {
+		return false, err
+	}
+	admin, err := f.IsOrgAdmin(ctx, userID, orgID)
+	if err != nil {
+		return false, err
+	}
+	if admin {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (f *fakeMembers) CanManageTeam(ctx context.Context, teamID, userID string) (bool, error) {
+	if f.teamManage != nil {
+		return f.teamManage[userID+"|"+teamID], nil
+	}
+	orgID, err := f.GetTeamOrgID(ctx, teamID)
+	if err != nil {
+		return false, err
+	}
+	return f.IsOrgAdmin(ctx, userID, orgID)
 }
 
 func (f *fakeMembers) GetProjectOrgID(_ context.Context, projectID string) (string, error) {
@@ -116,7 +153,7 @@ func (f *fakePlatform) UpdateOrgMemberRole(context.Context, string, string, stri
 func (f *fakePlatform) ListOrganizationsForUser(context.Context, string) ([]Organization, error) {
 	return nil, nil
 }
-func (f *fakePlatform) ListTeams(context.Context, string) ([]Team, error) { return nil, nil }
+func (f *fakePlatform) ListTeams(context.Context, string, string) ([]Team, error) { return nil, nil }
 func (f *fakePlatform) CreateTeam(context.Context, string, string, string) (*Team, error) {
 	return nil, errors.New("unused")
 }
@@ -126,7 +163,15 @@ func (f *fakePlatform) GetTeam(context.Context, string) (*Team, error) {
 func (f *fakePlatform) ListTeamMembers(context.Context, string) ([]TeamMember, error) {
 	return nil, nil
 }
-func (f *fakePlatform) ListProjects(context.Context, string) ([]Project, error) { return nil, nil }
+func (f *fakePlatform) AddTeamMember(context.Context, string, string) (*TeamMember, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) RemoveTeamMember(context.Context, string, string) error {
+	return errors.New("unused")
+}
+func (f *fakePlatform) ListProjects(context.Context, string, string) ([]Project, error) {
+	return nil, nil
+}
 func (f *fakePlatform) CreateProject(_ context.Context, orgID, teamID, name string) (*Project, error) {
 	f.created = &Project{ID: "proj_new", OrganizationID: orgID, TeamID: teamID, Name: name}
 	return f.created, nil

@@ -19,8 +19,8 @@ func (s *Service) ListOrgMembers(ctx context.Context, orgID string) ([]tenancy.O
 	return s.API.ListOrgMembers(ctx, orgID)
 }
 
-func (s *Service) ListTeams(ctx context.Context, orgID string) ([]tenancy.Team, error) {
-	return s.API.ListTeams(ctx, orgID)
+func (s *Service) ListTeams(ctx context.Context, orgID, userID string) ([]tenancy.Team, error) {
+	return s.API.ListTeams(ctx, orgID, userID)
 }
 
 func (s *Service) GetTeam(ctx context.Context, teamID string) (*tenancy.Team, error) {
@@ -31,8 +31,8 @@ func (s *Service) ListTeamMembers(ctx context.Context, teamID string) ([]tenancy
 	return s.API.ListTeamMembers(ctx, teamID)
 }
 
-func (s *Service) ListProjects(ctx context.Context, orgID string) ([]tenancy.Project, error) {
-	return s.API.ListProjects(ctx, orgID)
+func (s *Service) ListProjects(ctx context.Context, orgID, userID string) ([]tenancy.Project, error) {
+	return s.API.ListProjects(ctx, orgID, userID)
 }
 
 func (s *Service) ListAPIKeys(ctx context.Context, projectID string) ([]access.APIKey, error) {

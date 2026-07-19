@@ -18,15 +18,22 @@ type OrganizationRepository interface {
 // TeamRepository persists teams.
 type TeamRepository interface {
 	ListByOrg(ctx context.Context, orgID string) ([]Team, error)
+	ListByOrgForUser(ctx context.Context, orgID, userID string) ([]Team, error)
 	Get(ctx context.Context, teamID string) (*Team, error)
 	OrgID(ctx context.Context, teamID string) (string, error)
 	ListMembers(ctx context.Context, teamID string) ([]TeamMember, error)
+	GetMember(ctx context.Context, teamID, userID string) (*TeamMember, error)
+	GetMemberRole(ctx context.Context, teamID, userID string) (string, error)
+	AddMember(ctx context.Context, teamID, userID, role string) error
+	RemoveMember(ctx context.Context, teamID, userID string) error
+	CountOwners(ctx context.Context, teamID string) (int, error)
 	CreateWithOwner(ctx context.Context, team Team, ownerUserID string) error
 }
 
 // ProjectRepository persists projects.
 type ProjectRepository interface {
 	ListByOrg(ctx context.Context, orgID string) ([]Project, error)
+	ListByOrgForUser(ctx context.Context, orgID, userID string) ([]Project, error)
 	Insert(ctx context.Context, p Project) error
 	OrgID(ctx context.Context, projectID string) (string, error)
 }

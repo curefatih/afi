@@ -76,10 +76,9 @@ function RouteComponent() {
 							</EmptyMedia>
 							<EmptyTitle>No teams</EmptyTitle>
 							<EmptyDescription>
-								This organization has no teams yet.
-								{!isOrgAdmin
-									? " Only organization owners and admins can create teams."
-									: ""}
+								{isOrgAdmin
+									? "This organization has no teams yet."
+									: "You are not assigned to any teams yet. Ask an organization admin or team owner to add you."}
 							</EmptyDescription>
 						</EmptyHeader>
 						{isOrgAdmin ? (

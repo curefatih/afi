@@ -45,3 +45,30 @@ export const teamMembersQueryOptions = (teamId: string) =>
 			apiFetch<TeamMember[]>(`/api/v1/platform/teams/${teamId}/members`),
 		enabled: !!teamId,
 	});
+
+export type AddTeamMemberInput = {
+	teamId: string;
+	user_id: string;
+};
+
+export const addTeamMemberMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ teamId, user_id }: AddTeamMemberInput) =>
+			apiFetch<TeamMember>(`/api/v1/platform/teams/${teamId}/members`, {
+				method: "POST",
+				body: { user_id },
+			}),
+	});
+
+export type RemoveTeamMemberInput = {
+	teamId: string;
+	userId: string;
+};
+
+export const removeTeamMemberMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ teamId, userId }: RemoveTeamMemberInput) =>
+			apiFetch<void>(`/api/v1/platform/teams/${teamId}/members/${userId}`, {
+				method: "DELETE",
+			}),
+	});

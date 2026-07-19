@@ -21,6 +21,9 @@ const (
 	OrgRoleOwner  = tenancy.OrgRoleOwner
 	OrgRoleAdmin  = tenancy.OrgRoleAdmin
 	OrgRoleMember = tenancy.OrgRoleMember
+
+	TeamRoleOwner  = tenancy.TeamRoleOwner
+	TeamRoleMember = tenancy.TeamRoleMember
 )
 
 type User = identity.User
@@ -131,8 +134,8 @@ func (s *Store) UpdateOrgMemberRole(ctx context.Context, orgID, actorUserID, tar
 	return tenancy.UpdateOrgMemberRole(ctx, s.organizations(), orgID, actorUserID, targetUserID, role)
 }
 
-func (s *Store) ListTeams(ctx context.Context, orgID string) ([]Team, error) {
-	return s.teamsRepo().ListByOrg(ctx, orgID)
+func (s *Store) ListTeams(ctx context.Context, orgID, userID string) ([]Team, error) {
+	return tenancy.ListVisibleTeams(ctx, s.teamsRepo(), s.organizations(), orgID, userID)
 }
 
 func (s *Store) CreateTeam(ctx context.Context, orgID, name, creatorUserID string) (*Team, error) {
@@ -151,8 +154,24 @@ func (s *Store) ListTeamMembers(ctx context.Context, teamID string) ([]TeamMembe
 	return s.teamsRepo().ListMembers(ctx, teamID)
 }
 
-func (s *Store) ListProjects(ctx context.Context, orgID string) ([]Project, error) {
-	return s.projectsRepo().ListByOrg(ctx, orgID)
+func (s *Store) AddTeamMember(ctx context.Context, teamID, userID string) (*TeamMember, error) {
+	return tenancy.AddTeamMember(ctx, s.teamsRepo(), s.organizations(), teamID, userID)
+}
+
+func (s *Store) RemoveTeamMember(ctx context.Context, teamID, userID string) error {
+	return tenancy.RemoveTeamMember(ctx, s.teamsRepo(), teamID, userID)
+}
+
+func (s *Store) CanAccessTeam(ctx context.Context, teamID, userID string) (bool, error) {
+	return tenancy.CanAccessTeam(ctx, s.teamsRepo(), s.organizations(), teamID, userID)
+}
+
+func (s *Store) CanManageTeam(ctx context.Context, teamID, userID string) (bool, error) {
+	return tenancy.CanManageTeam(ctx, s.teamsRepo(), s.organizations(), teamID, userID)
+}
+
+func (s *Store) ListProjects(ctx context.Context, orgID, userID string) ([]Project, error) {
+	return tenancy.ListVisibleProjects(ctx, s.projectsRepo(), s.organizations(), orgID, userID)
 }
 
 func (s *Store) CreateProject(ctx context.Context, orgID, teamID, name string) (*Project, error) {

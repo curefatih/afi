@@ -217,6 +217,30 @@ func (t *Teams) ListByOrg(ctx context.Context, orgID string) ([]tenancy.Team, er
 	return out, rows.Err()
 }
 
+func (t *Teams) ListByOrgForUser(ctx context.Context, orgID, userID string) ([]tenancy.Team, error) {
+	rows, err := t.Pool.Query(ctx, `
+		SELECT t.id, t.organization_id, t.name, t.created_at, t.updated_at
+		FROM teams t
+		JOIN team_members tm ON tm.team_id = t.id
+		WHERE t.organization_id = $1 AND tm.user_id = $2
+		ORDER BY t.created_at
+	`, orgID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []tenancy.Team
+	for rows.Next() {
+		var item tenancy.Team
+		if err := rows.Scan(&item.ID, &item.OrganizationID, &item.Name, &item.CreatedAt, &item.UpdatedAt); err != nil {
+			return nil, err
+		}
+		item.TeamID = item.ID
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
 func (t *Teams) Get(ctx context.Context, teamID string) (*tenancy.Team, error) {
 	item := &tenancy.Team{}
 	err := t.Pool.QueryRow(ctx, `
@@ -265,6 +289,59 @@ func (t *Teams) ListMembers(ctx context.Context, teamID string) ([]tenancy.TeamM
 	return out, rows.Err()
 }
 
+func (t *Teams) GetMember(ctx context.Context, teamID, userID string) (*tenancy.TeamMember, error) {
+	var m tenancy.TeamMember
+	err := t.Pool.QueryRow(ctx, `
+		SELECT u.id, u.name, u.email, tm.role
+		FROM team_members tm
+		JOIN users u ON u.id = tm.user_id
+		WHERE tm.team_id = $1 AND tm.user_id = $2
+	`, teamID, userID).Scan(&m.UserID, &m.Name, &m.Email, &m.Role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, kernel.ErrNotFound
+	}
+	return &m, err
+}
+
+func (t *Teams) GetMemberRole(ctx context.Context, teamID, userID string) (string, error) {
+	var role string
+	err := t.Pool.QueryRow(ctx, `
+		SELECT role FROM team_members WHERE team_id = $1 AND user_id = $2
+	`, teamID, userID).Scan(&role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", kernel.ErrNotFound
+	}
+	return role, err
+}
+
+func (t *Teams) AddMember(ctx context.Context, teamID, userID, role string) error {
+	_, err := t.Pool.Exec(ctx, `
+		INSERT INTO team_members (team_id, user_id, role) VALUES ($1,$2,$3)
+	`, teamID, userID, role)
+	return err
+}
+
+func (t *Teams) RemoveMember(ctx context.Context, teamID, userID string) error {
+	tag, err := t.Pool.Exec(ctx, `
+		DELETE FROM team_members WHERE team_id = $1 AND user_id = $2
+	`, teamID, userID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return kernel.ErrNotFound
+	}
+	return nil
+}
+
+func (t *Teams) CountOwners(ctx context.Context, teamID string) (int, error) {
+	var n int
+	err := t.Pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND role = $2
+	`, teamID, tenancy.TeamRoleOwner).Scan(&n)
+	return n, err
+}
+
 func (t *Teams) CreateWithOwner(ctx context.Context, team tenancy.Team, ownerUserID string) error {
 	tx, err := t.Pool.Begin(ctx)
 	if err != nil {
@@ -299,6 +376,29 @@ func (p *Projects) ListByOrg(ctx context.Context, orgID string) ([]tenancy.Proje
 		SELECT id, organization_id, COALESCE(team_id, ''), name, created_at, updated_at
 		FROM projects WHERE organization_id = $1 ORDER BY created_at
 	`, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []tenancy.Project
+	for rows.Next() {
+		var item tenancy.Project
+		if err := rows.Scan(&item.ID, &item.OrganizationID, &item.TeamID, &item.Name, &item.CreatedAt, &item.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
+func (p *Projects) ListByOrgForUser(ctx context.Context, orgID, userID string) ([]tenancy.Project, error) {
+	rows, err := p.Pool.Query(ctx, `
+		SELECT p.id, p.organization_id, COALESCE(p.team_id, ''), p.name, p.created_at, p.updated_at
+		FROM projects p
+		JOIN team_members tm ON tm.team_id = p.team_id
+		WHERE p.organization_id = $1 AND tm.user_id = $2
+		ORDER BY p.created_at
+	`, orgID, userID)
 	if err != nil {
 		return nil, err
 	}

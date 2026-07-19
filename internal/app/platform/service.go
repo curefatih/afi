@@ -20,10 +20,10 @@ type SnapshotPublisher interface {
 type ConfigAPI interface {
 	ListOrganizationsForUser(ctx context.Context, userID string) ([]tenancy.Organization, error)
 	ListOrgMembers(ctx context.Context, orgID string) ([]tenancy.OrgMember, error)
-	ListTeams(ctx context.Context, orgID string) ([]tenancy.Team, error)
+	ListTeams(ctx context.Context, orgID, userID string) ([]tenancy.Team, error)
 	GetTeam(ctx context.Context, teamID string) (*tenancy.Team, error)
 	ListTeamMembers(ctx context.Context, teamID string) ([]tenancy.TeamMember, error)
-	ListProjects(ctx context.Context, orgID string) ([]tenancy.Project, error)
+	ListProjects(ctx context.Context, orgID, userID string) ([]tenancy.Project, error)
 	CreateProject(ctx context.Context, orgID, teamID, name string) (*tenancy.Project, error)
 
 	ListAPIKeys(ctx context.Context, projectID string) ([]access.APIKey, error)

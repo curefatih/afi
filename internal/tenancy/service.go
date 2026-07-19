@@ -107,3 +107,120 @@ func IsOrgAdmin(ctx context.Context, repo OrganizationRepository, userID, orgID 
 	}
 	return IsOrgAdminRole(role), nil
 }
+
+// ListVisibleTeams returns all org teams for admins, otherwise only teams the user belongs to.
+func ListVisibleTeams(ctx context.Context, teams TeamRepository, orgs OrganizationRepository, orgID, userID string) ([]Team, error) {
+	admin, err := IsOrgAdmin(ctx, orgs, userID, orgID)
+	if err != nil {
+		return nil, err
+	}
+	if admin {
+		return teams.ListByOrg(ctx, orgID)
+	}
+	return teams.ListByOrgForUser(ctx, orgID, userID)
+}
+
+// ListVisibleProjects returns all org projects for admins, otherwise projects on the user's teams.
+func ListVisibleProjects(ctx context.Context, projects ProjectRepository, orgs OrganizationRepository, orgID, userID string) ([]Project, error) {
+	admin, err := IsOrgAdmin(ctx, orgs, userID, orgID)
+	if err != nil {
+		return nil, err
+	}
+	if admin {
+		return projects.ListByOrg(ctx, orgID)
+	}
+	return projects.ListByOrgForUser(ctx, orgID, userID)
+}
+
+// CanAccessTeam reports whether the user may view the team (org admin or team member).
+func CanAccessTeam(ctx context.Context, teams TeamRepository, orgs OrganizationRepository, teamID, userID string) (bool, error) {
+	orgID, err := teams.OrgID(ctx, teamID)
+	if err != nil {
+		return false, err
+	}
+	admin, err := IsOrgAdmin(ctx, orgs, userID, orgID)
+	if err != nil {
+		return false, err
+	}
+	if admin {
+		return true, nil
+	}
+	_, err = teams.GetMemberRole(ctx, teamID, userID)
+	if errors.Is(err, kernel.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// CanManageTeam reports whether the user may add/remove team members (org admin or team owner).
+func CanManageTeam(ctx context.Context, teams TeamRepository, orgs OrganizationRepository, teamID, userID string) (bool, error) {
+	orgID, err := teams.OrgID(ctx, teamID)
+	if err != nil {
+		return false, err
+	}
+	admin, err := IsOrgAdmin(ctx, orgs, userID, orgID)
+	if err != nil {
+		return false, err
+	}
+	if admin {
+		return true, nil
+	}
+	role, err := teams.GetMemberRole(ctx, teamID, userID)
+	if errors.Is(err, kernel.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return role == TeamRoleOwner, nil
+}
+
+// AddTeamMember adds an existing org member to the team as a member.
+func AddTeamMember(ctx context.Context, teams TeamRepository, orgs OrganizationRepository, teamID, userID string) (*TeamMember, error) {
+	if userID == "" {
+		return nil, kernel.ErrInvalidRequest
+	}
+	orgID, err := teams.OrgID(ctx, teamID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := orgs.GetMemberRole(ctx, userID, orgID); err != nil {
+		if errors.Is(err, kernel.ErrNotFound) {
+			return nil, kernel.ErrInvalidRequest
+		}
+		return nil, err
+	}
+	if _, err := teams.GetMemberRole(ctx, teamID, userID); err == nil {
+		return nil, kernel.ErrInvalidRequest
+	} else if !errors.Is(err, kernel.ErrNotFound) {
+		return nil, err
+	}
+	if err := teams.AddMember(ctx, teamID, userID, TeamRoleMember); err != nil {
+		return nil, err
+	}
+	return teams.GetMember(ctx, teamID, userID)
+}
+
+// RemoveTeamMember removes a user from the team. Cannot remove the sole team owner.
+func RemoveTeamMember(ctx context.Context, teams TeamRepository, teamID, targetUserID string) error {
+	if targetUserID == "" {
+		return kernel.ErrInvalidRequest
+	}
+	role, err := teams.GetMemberRole(ctx, teamID, targetUserID)
+	if err != nil {
+		return err
+	}
+	if role == TeamRoleOwner {
+		owners, err := teams.CountOwners(ctx, teamID)
+		if err != nil {
+			return err
+		}
+		if owners <= 1 {
+			return kernel.ErrInvalidRequest
+		}
+	}
+	return teams.RemoveMember(ctx, teamID, targetUserID)
+}

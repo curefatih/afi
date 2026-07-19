@@ -32,12 +32,14 @@ func (m *memAPI) ListOrganizationsForUser(context.Context, string) ([]tenancy.Or
 	return nil, nil
 }
 func (m *memAPI) ListOrgMembers(context.Context, string) ([]tenancy.OrgMember, error) { return nil, nil }
-func (m *memAPI) ListTeams(context.Context, string) ([]tenancy.Team, error)           { return nil, nil }
-func (m *memAPI) GetTeam(context.Context, string) (*tenancy.Team, error)              { return nil, nil }
+func (m *memAPI) ListTeams(context.Context, string, string) ([]tenancy.Team, error) { return nil, nil }
+func (m *memAPI) GetTeam(context.Context, string) (*tenancy.Team, error)             { return nil, nil }
 func (m *memAPI) ListTeamMembers(context.Context, string) ([]tenancy.TeamMember, error) {
 	return nil, nil
 }
-func (m *memAPI) ListProjects(context.Context, string) ([]tenancy.Project, error) { return nil, nil }
+func (m *memAPI) ListProjects(context.Context, string, string) ([]tenancy.Project, error) {
+	return nil, nil
+}
 func (m *memAPI) CreateProject(context.Context, string, string, string) (*tenancy.Project, error) {
 	panic("unused")
 }
