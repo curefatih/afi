@@ -11,30 +11,20 @@ Start here: [Local development](getting-started/local-dev.md).
 
 ## High-level flow
 
-```text
-                +---------------------------+
-                |       Platform UI         |
-                +------------+--------------+
-                             |
-                +------------v--------------+
-                |      Control Plane        |
-                +------------+--------------+
-                             |
-                 Builds Gateway Snapshot
-                             |
-                +------------v--------------+
-                |      Snapshot Store       |
-                +------------+--------------+
-                             |
-                     Watch / Hot Reload
-                             |
-                +------------v--------------+
-                |       Data Plane          |
-                +------------+--------------+
-                             |
-                 Provider Adapters
-                             |
-                      OpenAI (Phase 1)
+```mermaid
+flowchart TB
+  UI[Platform UI]
+  CP[Control Plane]
+  SS[Snapshot Store]
+  DP[Data Plane]
+  PA[Provider Adapters]
+  OAI[OpenAI / Anthropic]
+
+  UI --> CP
+  CP -->|Builds gateway snapshot| SS
+  SS -->|Watch / hot reload| DP
+  DP --> PA
+  PA --> OAI
 ```
 
 ## What works locally today

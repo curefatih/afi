@@ -6,6 +6,19 @@ Local development is the supported path today. See [Local development](getting-s
 
 A production deployment will typically run:
 
+```mermaid
+flowchart TB
+  CP[Control plane replicas]
+  GW[Gateway replicas]
+  PG[(Postgres — metadata + snapshots)]
+  W[Workers — usage / billing]
+
+  CP --> PG
+  GW -->|snapshot watch| PG
+  GW -->|usage outbox| PG
+  W -->|drain outbox| PG
+```
+
 * Control plane replicas (stateless HTTP + Postgres)
 * Gateway replicas (stateless HTTP + snapshot watch against shared store)
 * Postgres (primary metadata + snapshots)

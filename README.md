@@ -65,10 +65,11 @@ make doc-serve          # http://127.0.0.1:8000
 
 ## Architecture (short)
 
-```text
-Platform UI / CLI  →  Control Plane  →  Snapshot Store (Postgres)
-                                            ↑ watch / hot reload
-Clients  →  Gateway (data plane)  →  Provider adapters (OpenAI, …)
+```mermaid
+flowchart LR
+  UI[Platform UI / CLI] --> CP[Control Plane] --> SS[(Snapshot Store)]
+  Clients --> GW[Gateway] --> PA[Provider adapters]
+  SS -.->|watch / hot reload| GW
 ```
 
 See [docs/development/architecture.md](docs/development/architecture.md).

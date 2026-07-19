@@ -25,20 +25,17 @@ Responsibilities today:
 
 Implemented as a **request pipeline**, not DDD:
 
-```text
-Authenticate (virtual API key)
-↓
-Load Snapshot (in-memory current version)
-↓
-QuotaCheck (request counters)
-↓
-Routing (model → provider/model + ordered fallbacks)
-↓
-Provider (OpenAI / Anthropic chat)
-↓
-EnqueueUsage (outbox)
-↓
-Response
+```mermaid
+flowchart TD
+  A[Authenticate — virtual API key]
+  B[Load Snapshot — in-memory]
+  C[QuotaCheck — request counters]
+  D[Routing — model to provider + fallbacks]
+  E[Provider — OpenAI / Anthropic]
+  F[EnqueueUsage — outbox]
+  G[Response]
+
+  A --> B --> C --> D --> E --> F --> G
 ```
 
 Pipeline stages stay stateless aside from the in-memory snapshot pointer. Quota counters and the usage outbox use Postgres as operational stores.
@@ -56,8 +53,9 @@ Stored in Postgres (`gateway_snapshots`). The gateway watches for new versions (
 
 ## Async usage
 
-```text
-Gateway → usage_outbox → worker → usage_events
+```mermaid
+flowchart LR
+  Gateway --> usage_outbox --> worker --> usage_events
 ```
 
 The request path never waits on `usage_events` consumers. Run `make run-worker` locally to populate the Usage UI.
