@@ -11,16 +11,18 @@ import (
 	"github.com/curefatih/afi/internal/access"
 	"github.com/curefatih/afi/internal/adapters/postgres"
 	"github.com/curefatih/afi/internal/gatewayconfig"
+	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
+	"github.com/curefatih/afi/internal/tenancy"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
-	OrgRoleOwner  = "owner"
-	OrgRoleAdmin  = "admin"
-	OrgRoleMember = "member"
+	OrgRoleOwner  = tenancy.OrgRoleOwner
+	OrgRoleAdmin  = tenancy.OrgRoleAdmin
+	OrgRoleMember = tenancy.OrgRoleMember
 )
 
 type Store struct {
@@ -31,45 +33,12 @@ func NewStore(pool *pgxpool.Pool) *Store {
 	return &Store{pool: pool}
 }
 
-type User struct {
-	ID           string    `json:"id"`
-	Email        string    `json:"email"`
-	Name         string    `json:"name"`
-	Role         string    `json:"role"`
-	PasswordHash string    `json:"-"`
-	CreatedAt    time.Time `json:"created_at"`
-}
-
-type Organization struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-type Team struct {
-	ID             string    `json:"id"`
-	TeamID         string    `json:"team_id"`
-	OrganizationID string    `json:"organization_id"`
-	Name           string    `json:"name"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
-}
-
-type TeamMember struct {
-	UserID string `json:"user_id"`
-	Name   string `json:"name"`
-	Email  string `json:"email"`
-	Role   string `json:"role"`
-}
-
-type Project struct {
-	ID             string    `json:"id"`
-	OrganizationID string    `json:"organization_id"`
-	TeamID         string    `json:"team_id,omitempty"`
-	Name           string    `json:"name"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
-}
+type User = identity.User
+type Organization = tenancy.Organization
+type Team = tenancy.Team
+type TeamMember = tenancy.TeamMember
+type Project = tenancy.Project
+type OrgMember = tenancy.OrgMember
 
 // APIKey is the platform write-model key (canonical in access).
 type APIKey = access.APIKey
@@ -142,360 +111,105 @@ type ProviderHealth struct {
 	Status       string  `json:"status"` // healthy | degraded | down | unknown
 }
 
+func (s *Store) users() *postgres.Users {
+	return postgres.NewUsers(s.pool)
+}
+
+func (s *Store) organizations() *postgres.Organizations {
+	return postgres.NewOrganizations(s.pool)
+}
+
+func (s *Store) teamsRepo() *postgres.Teams {
+	return postgres.NewTeams(s.pool)
+}
+
+func (s *Store) projectsRepo() *postgres.Projects {
+	return postgres.NewProjects(s.pool)
+}
+
 func (s *Store) CountOrgs(ctx context.Context) (int64, error) {
-	var n int64
-	err := s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM organizations`).Scan(&n)
-	return n, err
+	return s.organizations().Count(ctx)
 }
 
 func (s *Store) IsOrgMember(ctx context.Context, userID, orgID string) (bool, error) {
-	var ok bool
-	err := s.pool.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1 FROM organization_members
-			WHERE user_id = $1 AND organization_id = $2
-		)
-	`, userID, orgID).Scan(&ok)
-	return ok, err
-}
-
-func (s *Store) GetUserByEmail(ctx context.Context, email string) (*User, error) {
-	u := &User{}
-	err := s.pool.QueryRow(ctx, `
-		SELECT id, email, name, role, password_hash, created_at
-		FROM users WHERE email = $1
-	`, email).Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.PasswordHash, &u.CreatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, kernel.ErrNotFound
-	}
-	return u, err
-}
-
-func (s *Store) GetUserByID(ctx context.Context, id string) (*User, error) {
-	u := &User{}
-	err := s.pool.QueryRow(ctx, `
-		SELECT id, email, name, role, password_hash, created_at
-		FROM users WHERE id = $1
-	`, id).Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.PasswordHash, &u.CreatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, kernel.ErrNotFound
-	}
-	return u, err
-}
-
-func (s *Store) ListOrganizationsForUser(ctx context.Context, userID string) ([]Organization, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT o.id, o.name, o.created_at
-		FROM organizations o
-		JOIN organization_members m ON m.organization_id = o.id
-		WHERE m.user_id = $1
-		ORDER BY o.created_at
-	`, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []Organization
-	for rows.Next() {
-		var o Organization
-		if err := rows.Scan(&o.ID, &o.Name, &o.CreatedAt); err != nil {
-			return nil, err
-		}
-		out = append(out, o)
-	}
-	return out, rows.Err()
-}
-
-type OrgMember struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
-	Name   string `json:"name"`
-	Role   string `json:"role"`
-}
-
-func (s *Store) CreateOrganization(ctx context.Context, name, creatorUserID string) (*Organization, error) {
-	o := &Organization{
-		ID: newID("org"), Name: name, CreatedAt: time.Now().UTC(),
-	}
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	_, err = tx.Exec(ctx, `
-		INSERT INTO organizations (id, name, created_at) VALUES ($1,$2,$3)
-	`, o.ID, o.Name, o.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	_, err = tx.Exec(ctx, `
-		INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1,$2,$3)
-	`, o.ID, creatorUserID, OrgRoleOwner)
-	if err != nil {
-		return nil, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-	return o, nil
-}
-
-func (s *Store) ListOrgMembers(ctx context.Context, orgID string) ([]OrgMember, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT u.id, u.email, u.name, m.role
-		FROM organization_members m
-		JOIN users u ON u.id = m.user_id
-		WHERE m.organization_id = $1
-		ORDER BY u.email
-	`, orgID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []OrgMember
-	for rows.Next() {
-		var m OrgMember
-		if err := rows.Scan(&m.UserID, &m.Email, &m.Name, &m.Role); err != nil {
-			return nil, err
-		}
-		out = append(out, m)
-	}
-	return out, rows.Err()
-}
-
-func (s *Store) AddOrgMemberByEmail(ctx context.Context, orgID, email string) (*OrgMember, error) {
-	user, err := s.GetUserByEmail(ctx, email)
-	if err != nil {
-		return nil, err
-	}
-	_, err = s.pool.Exec(ctx, `
-		INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1,$2,$3)
-		ON CONFLICT DO NOTHING
-	`, orgID, user.ID, OrgRoleMember)
-	if err != nil {
-		return nil, err
-	}
-	return &OrgMember{
-		UserID: user.ID, Email: user.Email, Name: user.Name, Role: OrgRoleMember,
-	}, nil
-}
-
-func (s *Store) GetOrgMemberRole(ctx context.Context, userID, orgID string) (string, error) {
-	var role string
-	err := s.pool.QueryRow(ctx, `
-		SELECT role FROM organization_members WHERE user_id=$1 AND organization_id=$2
-	`, userID, orgID).Scan(&role)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", kernel.ErrNotFound
-	}
-	return role, err
-}
-
-func (s *Store) IsOrgAdmin(ctx context.Context, userID, orgID string) (bool, error) {
-	role, err := s.GetOrgMemberRole(ctx, userID, orgID)
+	_, err := s.organizations().GetMemberRole(ctx, userID, orgID)
 	if errors.Is(err, kernel.ErrNotFound) {
 		return false, nil
 	}
 	if err != nil {
 		return false, err
 	}
-	return role == OrgRoleOwner || role == OrgRoleAdmin, nil
+	return true, nil
+}
+
+func (s *Store) GetUserByEmail(ctx context.Context, email string) (*User, error) {
+	return s.users().GetByEmail(ctx, email)
+}
+
+func (s *Store) GetUserByID(ctx context.Context, id string) (*User, error) {
+	return s.users().GetByID(ctx, id)
+}
+
+func (s *Store) ListOrganizationsForUser(ctx context.Context, userID string) ([]Organization, error) {
+	return s.organizations().ListForUser(ctx, userID)
+}
+
+func (s *Store) CreateOrganization(ctx context.Context, name, creatorUserID string) (*Organization, error) {
+	return tenancy.CreateOrganization(ctx, s.organizations(), newID("org"), name, creatorUserID)
+}
+
+func (s *Store) ListOrgMembers(ctx context.Context, orgID string) ([]OrgMember, error) {
+	return s.organizations().ListMembers(ctx, orgID)
+}
+
+func (s *Store) FindByEmail(ctx context.Context, email string) (userID, name, userEmail string, err error) {
+	u, err := s.GetUserByEmail(ctx, email)
+	if err != nil {
+		return "", "", "", err
+	}
+	return u.ID, u.Name, u.Email, nil
+}
+
+func (s *Store) AddOrgMemberByEmail(ctx context.Context, orgID, email string) (*OrgMember, error) {
+	return tenancy.AddOrgMemberByEmail(ctx, s.organizations(), s, orgID, email)
+}
+
+func (s *Store) GetOrgMemberRole(ctx context.Context, userID, orgID string) (string, error) {
+	return s.organizations().GetMemberRole(ctx, userID, orgID)
+}
+
+func (s *Store) IsOrgAdmin(ctx context.Context, userID, orgID string) (bool, error) {
+	return tenancy.IsOrgAdmin(ctx, s.organizations(), userID, orgID)
 }
 
 // UpdateOrgMemberRole changes a member's role. Only the org owner may call this.
 // Promoting to owner transfers ownership (actor becomes admin). Cannot demote the sole owner.
 func (s *Store) UpdateOrgMemberRole(ctx context.Context, orgID, actorUserID, targetUserID, role string) (*OrgMember, error) {
-	switch role {
-	case OrgRoleOwner, OrgRoleAdmin, OrgRoleMember:
-	default:
-		return nil, fmt.Errorf("%w: role must be owner, admin, or member", kernel.ErrInvalidRequest)
-	}
-	actorRole, err := s.GetOrgMemberRole(ctx, actorUserID, orgID)
-	if err != nil {
-		return nil, err
-	}
-	if actorRole != OrgRoleOwner {
-		return nil, kernel.ErrUnauthorized
-	}
-	targetRole, err := s.GetOrgMemberRole(ctx, targetUserID, orgID)
-	if err != nil {
-		return nil, err
-	}
-	if targetUserID == actorUserID && role != OrgRoleOwner {
-		var owners int
-		if err := s.pool.QueryRow(ctx, `
-			SELECT COUNT(*) FROM organization_members
-			WHERE organization_id=$1 AND role=$2
-		`, orgID, OrgRoleOwner).Scan(&owners); err != nil {
-			return nil, err
-		}
-		if owners <= 1 {
-			return nil, fmt.Errorf("%w: cannot demote the sole owner", kernel.ErrInvalidRequest)
-		}
-	}
-	if targetRole == OrgRoleOwner && role != OrgRoleOwner {
-		var owners int
-		if err := s.pool.QueryRow(ctx, `
-			SELECT COUNT(*) FROM organization_members
-			WHERE organization_id=$1 AND role=$2
-		`, orgID, OrgRoleOwner).Scan(&owners); err != nil {
-			return nil, err
-		}
-		if owners <= 1 && targetUserID != actorUserID {
-			return nil, fmt.Errorf("%w: cannot demote the sole owner", kernel.ErrInvalidRequest)
-		}
-	}
-
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	if role == OrgRoleOwner && targetUserID != actorUserID {
-		if _, err := tx.Exec(ctx, `
-			UPDATE organization_members SET role=$1 WHERE organization_id=$2 AND user_id=$3
-		`, OrgRoleAdmin, orgID, actorUserID); err != nil {
-			return nil, err
-		}
-	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE organization_members SET role=$1 WHERE organization_id=$2 AND user_id=$3
-	`, role, orgID, targetUserID); err != nil {
-		return nil, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-
-	var m OrgMember
-	err = s.pool.QueryRow(ctx, `
-		SELECT u.id, u.email, u.name, m.role
-		FROM organization_members m
-		JOIN users u ON u.id = m.user_id
-		WHERE m.organization_id=$1 AND m.user_id=$2
-	`, orgID, targetUserID).Scan(&m.UserID, &m.Email, &m.Name, &m.Role)
-	if err != nil {
-		return nil, err
-	}
-	return &m, nil
+	return tenancy.UpdateOrgMemberRole(ctx, s.organizations(), orgID, actorUserID, targetUserID, role)
 }
 
 func (s *Store) ListTeams(ctx context.Context, orgID string) ([]Team, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT id, organization_id, name, created_at, updated_at
-		FROM teams WHERE organization_id = $1 ORDER BY created_at
-	`, orgID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []Team
-	for rows.Next() {
-		var t Team
-		if err := rows.Scan(&t.ID, &t.OrganizationID, &t.Name, &t.CreatedAt, &t.UpdatedAt); err != nil {
-			return nil, err
-		}
-		t.TeamID = t.ID
-		out = append(out, t)
-	}
-	return out, rows.Err()
+	return s.teamsRepo().ListByOrg(ctx, orgID)
 }
 
 func (s *Store) GetTeam(ctx context.Context, teamID string) (*Team, error) {
-	t := &Team{}
-	err := s.pool.QueryRow(ctx, `
-		SELECT id, organization_id, name, created_at, updated_at
-		FROM teams WHERE id = $1
-	`, teamID).Scan(&t.ID, &t.OrganizationID, &t.Name, &t.CreatedAt, &t.UpdatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, kernel.ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	t.TeamID = t.ID
-	return t, nil
+	return s.teamsRepo().Get(ctx, teamID)
 }
 
 func (s *Store) GetTeamOrgID(ctx context.Context, teamID string) (string, error) {
-	var orgID string
-	err := s.pool.QueryRow(ctx, `SELECT organization_id FROM teams WHERE id = $1`, teamID).Scan(&orgID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", kernel.ErrNotFound
-	}
-	return orgID, err
+	return s.teamsRepo().OrgID(ctx, teamID)
 }
 
 func (s *Store) ListTeamMembers(ctx context.Context, teamID string) ([]TeamMember, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT u.id, u.name, u.email, tm.role
-		FROM team_members tm
-		JOIN users u ON u.id = tm.user_id
-		WHERE tm.team_id = $1
-		ORDER BY u.email
-	`, teamID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []TeamMember
-	for rows.Next() {
-		var m TeamMember
-		if err := rows.Scan(&m.UserID, &m.Name, &m.Email, &m.Role); err != nil {
-			return nil, err
-		}
-		out = append(out, m)
-	}
-	return out, rows.Err()
+	return s.teamsRepo().ListMembers(ctx, teamID)
 }
 
 func (s *Store) ListProjects(ctx context.Context, orgID string) ([]Project, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT id, organization_id, COALESCE(team_id, ''), name, created_at, updated_at
-		FROM projects WHERE organization_id = $1 ORDER BY created_at
-	`, orgID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []Project
-	for rows.Next() {
-		var p Project
-		if err := rows.Scan(&p.ID, &p.OrganizationID, &p.TeamID, &p.Name, &p.CreatedAt, &p.UpdatedAt); err != nil {
-			return nil, err
-		}
-		out = append(out, p)
-	}
-	return out, rows.Err()
+	return s.projectsRepo().ListByOrg(ctx, orgID)
 }
 
 func (s *Store) CreateProject(ctx context.Context, orgID, teamID, name string) (*Project, error) {
-	p := &Project{
-		ID:             newID("proj"),
-		OrganizationID: orgID,
-		TeamID:         teamID,
-		Name:           name,
-		CreatedAt:      time.Now().UTC(),
-		UpdatedAt:      time.Now().UTC(),
-	}
-	var team any
-	if teamID != "" {
-		team = teamID
-	}
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO projects (id, organization_id, team_id, name, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, p.ID, p.OrganizationID, team, p.Name, p.CreatedAt, p.UpdatedAt)
-	if err != nil {
-		return nil, err
-	}
-	return p, nil
+	return tenancy.CreateProject(ctx, s.projectsRepo(), newID("proj"), orgID, teamID, name)
 }
 
 func (s *Store) apiKeys() *postgres.APIKeys {
@@ -523,12 +237,7 @@ func (s *Store) DeleteAPIKey(ctx context.Context, keyID string) error {
 }
 
 func (s *Store) GetProjectOrgID(ctx context.Context, projectID string) (string, error) {
-	var orgID string
-	err := s.pool.QueryRow(ctx, `SELECT organization_id FROM projects WHERE id = $1`, projectID).Scan(&orgID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", kernel.ErrNotFound
-	}
-	return orgID, err
+	return s.projectsRepo().OrgID(ctx, projectID)
 }
 
 // CreateAPIKey inserts a key. kind must be personal or service_account.
