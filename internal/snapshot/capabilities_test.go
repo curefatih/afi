@@ -26,6 +26,19 @@ func TestNormalizeCapabilitiesEmpty(t *testing.T) {
 	}
 }
 
+func TestNormalizeCapabilitiesPromotesAudioForOpenAI(t *testing.T) {
+	t.Parallel()
+	// Pre-audio snapshot shape: chat+stream only.
+	got := NormalizeCapabilities("openai", ProviderCapabilities{Chat: true, Stream: true})
+	if !got.TTS || !got.STT {
+		t.Fatalf("expected tts/stt promoted: %+v", got)
+	}
+	gem := NormalizeCapabilities("gemini", ProviderCapabilities{Chat: true, Stream: true})
+	if gem.TTS || gem.STT {
+		t.Fatalf("gemini should not gain audio: %+v", gem)
+	}
+}
+
 func TestDefaultAPIKeyEnv(t *testing.T) {
 	t.Parallel()
 	if DefaultAPIKeyEnv("openai_compatible") != "OLLAMA_API_KEY" {

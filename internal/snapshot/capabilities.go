@@ -21,8 +21,15 @@ func DefaultCapabilities(typ string) ProviderCapabilities {
 
 // NormalizeCapabilities fills empty capabilities from the type catalog.
 func NormalizeCapabilities(typ string, c ProviderCapabilities) ProviderCapabilities {
+	def := DefaultCapabilities(typ)
 	if !c.Chat && !c.Stream && !c.TTS && !c.STT {
-		return DefaultCapabilities(typ)
+		return def
+	}
+	// Older snapshots only stored chat/stream. Promote TTS/STT from type defaults
+	// when both are unset so openai providers keep working after the audio cycle.
+	if !c.TTS && !c.STT && (def.TTS || def.STT) {
+		c.TTS = def.TTS
+		c.STT = def.STT
 	}
 	return c
 }

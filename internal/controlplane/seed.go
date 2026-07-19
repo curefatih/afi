@@ -22,15 +22,67 @@ func NewSeeder(pool *pgxpool.Pool, store *Store, snapStore *snapshot.Store, cfg 
 }
 
 // SeedIfEmpty inserts local-dev data when the database has no organizations.
+// When the DB already has orgs, it still ensures local audio routes exist (idempotent).
 func (s *Seeder) SeedIfEmpty(ctx context.Context) error {
 	n, err := s.store.CountOrgs(ctx)
 	if err != nil {
 		return err
 	}
-	if n > 0 {
+	if n == 0 {
+		return s.Seed(ctx)
+	}
+	return s.EnsureLocalAudioRoutes(ctx)
+}
+
+// EnsureLocalAudioRoutes upserts tts-1 / whisper-1 → prov_openai for org_local and republishes.
+func (s *Seeder) EnsureLocalAudioRoutes(ctx context.Context) error {
+	orgID := "org_local"
+	providerID := "prov_openai"
+	now := time.Now().UTC()
+	var exists bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM organizations WHERE id=$1)`, orgID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
 		return nil
 	}
-	return s.Seed(ctx)
+	err = s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM providers WHERE id=$1)`, providerID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+
+	changed := false
+	for _, audio := range []struct{ id, model string }{
+		{"route_tts", "tts-1"},
+		{"route_whisper", "whisper-1"},
+	} {
+		var had bool
+		_ = s.pool.QueryRow(ctx, `
+			SELECT EXISTS(SELECT 1 FROM routes WHERE organization_id=$1 AND model=$2)
+		`, orgID, audio.model).Scan(&had)
+		_, err := s.pool.Exec(ctx, `
+			INSERT INTO routes (id, organization_id, model, provider_id, target_model, created_at)
+			VALUES ($1, $2, $3, $4, $3, $5)
+			ON CONFLICT (organization_id, model) DO UPDATE SET
+				provider_id = EXCLUDED.provider_id,
+				target_model = EXCLUDED.target_model
+		`, audio.id, orgID, audio.model, providerID, now)
+		if err != nil {
+			return fmt.Errorf("ensure audio route %s: %w", audio.model, err)
+		}
+		if !had {
+			changed = true
+		}
+	}
+	if !changed {
+		// Still republish so capability normalize (tts/stt) reaches the gateway after upgrades.
+		return s.PublishSnapshot(ctx)
+	}
+	return s.PublishSnapshot(ctx)
 }
 
 // Seed always inserts (or upserts) the standard local-dev dataset and publishes a snapshot.
