@@ -21,7 +21,12 @@ export type Provider = {
 
 export const PROVIDER_TYPE_PRESETS: Record<
 	string,
-	{ name: string; base_url: string; api_key_env: string; caps: ProviderCapabilities }
+	{
+		name: string;
+		base_url: string;
+		api_key_env: string;
+		caps: ProviderCapabilities;
+	}
 > = {
 	openai: {
 		name: "OpenAI",
@@ -47,15 +52,19 @@ export const PROVIDER_TYPE_PRESETS: Record<
 		api_key_env: "OLLAMA_API_KEY",
 		caps: { chat: true, stream: true, tts: true, stt: true },
 	},
+	echo: {
+		name: "Echo (extension)",
+		base_url: "http://localhost/echo",
+		api_key_env: "ECHO_UNUSED",
+		caps: { chat: true, stream: false, tts: false, stt: false },
+	},
 };
 
 export const providersQueryOptions = (orgId: string) =>
 	queryOptions({
 		queryKey: ["organizations", orgId, "providers"],
 		queryFn: () =>
-			apiFetch<Provider[]>(
-				`/api/v1/platform/organizations/${orgId}/providers`,
-			),
+			apiFetch<Provider[]>(`/api/v1/platform/organizations/${orgId}/providers`),
 		enabled: !!orgId,
 	});
 
@@ -71,10 +80,10 @@ export type CreateProviderInput = {
 export const createProviderMutationOptions = () =>
 	mutationOptions({
 		mutationFn: ({ orgId, ...body }: CreateProviderInput) =>
-			apiFetch<Provider>(
-				`/api/v1/platform/organizations/${orgId}/providers`,
-				{ method: "POST", body },
-			),
+			apiFetch<Provider>(`/api/v1/platform/organizations/${orgId}/providers`, {
+				method: "POST",
+				body,
+			}),
 	});
 
 export type UpdateProviderInput = {
