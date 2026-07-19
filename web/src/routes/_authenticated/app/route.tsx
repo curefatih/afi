@@ -15,6 +15,9 @@ import {
 import { useAuthStore } from "#/state/auth-state";
 
 export const Route = createFileRoute("/_authenticated/app")({
+	head: () => ({
+		meta: [{ name: "robots", content: "noindex, nofollow" }],
+	}),
 	beforeLoad: async ({ location }) => {
 		try {
 			const user = useAuthStore.getState().user; // might throw on network error

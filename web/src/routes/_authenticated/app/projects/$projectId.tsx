@@ -32,13 +32,12 @@ import {
 	TableRow,
 } from "#/components/ui/table";
 import { useOrgBootstrap } from "#/hooks/use-org-bootstrap";
+import { pageTitle } from "#/lib/page-meta";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/projects/$projectId")(
 	{
-		staticData: {
-			getTitle: () => "Project",
-		},
+		...pageTitle("Project"),
 		component: RouteComponent,
 	},
 );
@@ -132,7 +131,8 @@ function RouteComponent() {
 					<div>
 						<CardTitle>API keys</CardTitle>
 						<CardDescription>
-							Service-account keys scoped to this project (admin only to create).
+							Service-account keys scoped to this project (admin only to
+							create).
 						</CardDescription>
 					</div>
 					<Button variant="outline" size="sm" onClick={() => setOpen(true)}>

@@ -14,11 +14,10 @@ import {
 } from "#/components/ui/select";
 import { GATEWAY_API_KEY, GATEWAY_API_URL } from "#/lib/gateway-base";
 import { type GatewayModel, isSTTModel } from "#/lib/gateway-models";
+import { pageTitle } from "#/lib/page-meta";
 
 export const Route = createFileRoute("/_authenticated/app/playground/stt")({
-	staticData: {
-		getTitle: () => "STT",
-	},
+	...pageTitle("STT"),
 	component: RouteComponent,
 });
 
@@ -103,8 +102,8 @@ function RouteComponent() {
 					) : null}
 					{models.length === 0 && !modelsError ? (
 						<p className="text-muted-foreground text-sm">
-							No STT routes. Add{" "}
-							<code className="text-xs">whisper-1</code> under{" "}
+							No STT routes. Add <code className="text-xs">whisper-1</code>{" "}
+							under{" "}
 							<Link to="/app/routing" className="underline">
 								Routing
 							</Link>{" "}

@@ -17,12 +17,11 @@ import {
 } from "#/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
+import { pageTitle } from "#/lib/page-meta";
 import { useAuthActions } from "#/state/auth-state";
 
 export const Route = createFileRoute("/_authenticated/app/account")({
-	staticData: {
-		getTitle: () => "Account",
-	},
+	...pageTitle("Account"),
 	component: RouteComponent,
 });
 

@@ -22,12 +22,11 @@ import {
 	EmptyTitle,
 } from "#/components/ui/empty";
 import { useOrgBootstrap } from "#/hooks/use-org-bootstrap";
+import { pageTitle } from "#/lib/page-meta";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/projects/")({
-	staticData: {
-		getTitle: () => "Projects",
-	},
+	...pageTitle("Projects"),
 	component: RouteComponent,
 });
 

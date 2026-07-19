@@ -17,13 +17,12 @@ import {
 	EmptyMedia,
 	EmptyTitle,
 } from "#/components/ui/empty";
+import { pageTitle } from "#/lib/page-meta";
 import { useAuthUser } from "#/state/auth-state";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/teams/")({
-	staticData: {
-		getTitle: () => "Teams",
-	},
+	...pageTitle("Teams"),
 	component: RouteComponent,
 });
 
@@ -61,9 +60,7 @@ function RouteComponent() {
 			/>
 
 			<QueryGate
-				isPending={
-					(teamsQuery.isPending && !teams.length) || members.isPending
-				}
+				isPending={(teamsQuery.isPending && !teams.length) || members.isPending}
 				isError={teamsQuery.isError}
 				error={teamsQuery.error}
 				onRetry={() => void teamsQuery.refetch()}

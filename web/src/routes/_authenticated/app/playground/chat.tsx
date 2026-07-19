@@ -62,12 +62,11 @@ import {
 } from "#/components/ui/tooltip";
 import { GATEWAY_API_KEY, GATEWAY_API_URL } from "#/lib/gateway-base";
 import { type GatewayModel, isChatModel } from "#/lib/gateway-models";
+import { pageTitle } from "#/lib/page-meta";
 import { useActiveOrg, useOrgActions } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/playground/chat")({
-	staticData: {
-		getTitle: () => "Chat",
-	},
+	...pageTitle("Chat"),
 	component: RouteComponent,
 });
 
@@ -235,14 +234,12 @@ function RouteComponent() {
 					data?: GatewayModel[];
 				};
 				if (cancelled) return;
-				const list = (data.data ?? [])
-					.filter(isChatModel)
-					.map((m) => ({
-						id: m.id,
-						mode: m.mode ?? "chat",
-						supports_streaming: m.supports_streaming !== false,
-						capabilities: m.capabilities,
-					}));
+				const list = (data.data ?? []).filter(isChatModel).map((m) => ({
+					id: m.id,
+					mode: m.mode ?? "chat",
+					supports_streaming: m.supports_streaming !== false,
+					capabilities: m.capabilities,
+				}));
 				setModels(list);
 				setModel((prev) =>
 					list.some((m) => m.id === prev) ? prev : list[0]?.id || "",
@@ -332,15 +329,15 @@ function RouteComponent() {
 				const data = (await res.json()) as {
 					choices?: Array<{ message?: { content?: string } }>;
 				};
-				const content = data?.choices?.[0]?.message?.content ?? "(empty response)";
+				const content =
+					data?.choices?.[0]?.message?.content ?? "(empty response)";
 				appendAssistant(String(content));
 			}
 		} catch (e) {
 			setError(e instanceof Error ? e.message : "Request failed");
 			setMessages((prev) =>
 				prev.filter(
-					(m) =>
-						m.id !== assistantId || (m.parts[0]?.text ?? "").length > 0,
+					(m) => m.id !== assistantId || (m.parts[0]?.text ?? "").length > 0,
 				),
 			);
 		} finally {
@@ -374,8 +371,7 @@ function RouteComponent() {
 					</h1>
 					<p className="truncate text-sm text-muted-foreground">
 						{GATEWAY_API_URL}
-						{model ? ` · ${model}` : ""} ·{" "}
-						{useStream ? "stream" : "non-stream"}
+						{model ? ` · ${model}` : ""} · {useStream ? "stream" : "non-stream"}
 					</p>
 				</div>
 				<Sheet>

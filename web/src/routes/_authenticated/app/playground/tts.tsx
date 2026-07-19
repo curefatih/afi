@@ -14,11 +14,10 @@ import {
 import { Textarea } from "#/components/ui/textarea";
 import { GATEWAY_API_KEY, GATEWAY_API_URL } from "#/lib/gateway-base";
 import { type GatewayModel, isTTSModel } from "#/lib/gateway-models";
+import { pageTitle } from "#/lib/page-meta";
 
 export const Route = createFileRoute("/_authenticated/app/playground/tts")({
-	staticData: {
-		getTitle: () => "TTS",
-	},
+	...pageTitle("TTS"),
 	component: RouteComponent,
 });
 
@@ -48,9 +47,7 @@ function RouteComponent() {
 				setModels(list);
 				setModel((prev) => {
 					if (list.some((m) => m.id === prev)) return prev;
-					return (
-						list.find((m) => m.id === "tts-1")?.id ?? list[0]?.id ?? ""
-					);
+					return list.find((m) => m.id === "tts-1")?.id ?? list[0]?.id ?? "";
 				});
 				setModelsError(null);
 			} catch (e) {
@@ -120,8 +117,7 @@ function RouteComponent() {
 					) : null}
 					{models.length === 0 && !modelsError ? (
 						<p className="text-muted-foreground text-sm">
-							No TTS routes. Add{" "}
-							<code className="text-xs">tts-1</code> under{" "}
+							No TTS routes. Add <code className="text-xs">tts-1</code> under{" "}
 							<Link to="/app/routing" className="underline">
 								Routing
 							</Link>{" "}

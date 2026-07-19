@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ShieldIcon } from "lucide-react";
 import { ComingSoonPage } from "#/components/coming-soon-page";
+import { pageTitle } from "#/lib/page-meta";
 
 export const Route = createFileRoute("/privacy")({
-	staticData: {
-		getTitle: () => "Privacy",
-	},
+	...pageTitle("Privacy", {
+		description: "How AFI handles platform data.",
+	}),
 	component: RouteComponent,
 });
 

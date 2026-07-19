@@ -47,12 +47,11 @@ import {
 	TableHeader,
 	TableRow,
 } from "#/components/ui/table";
+import { pageTitle } from "#/lib/page-meta";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/routing")({
-	staticData: {
-		getTitle: () => "Routing",
-	},
+	...pageTitle("Routing"),
 	component: RouteComponent,
 });
 

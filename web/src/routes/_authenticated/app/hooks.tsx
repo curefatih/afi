@@ -20,11 +20,10 @@ import {
 	TableRow,
 } from "#/components/ui/table";
 import { GATEWAY_API_URL } from "#/lib/gateway-base";
+import { pageTitle } from "#/lib/page-meta";
 
 export const Route = createFileRoute("/_authenticated/app/hooks")({
-	staticData: {
-		getTitle: () => "Hooks",
-	},
+	...pageTitle("Hooks"),
 	component: RouteComponent,
 });
 

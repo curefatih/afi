@@ -16,12 +16,11 @@ import {
 	CardTitle,
 } from "#/components/ui/card";
 import { useOrgBootstrap } from "#/hooks/use-org-bootstrap";
+import { pageTitle } from "#/lib/page-meta";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/dashboard")({
-	staticData: {
-		getTitle: () => "Overview",
-	},
+	...pageTitle("Overview"),
 	component: RouteComponent,
 });
 

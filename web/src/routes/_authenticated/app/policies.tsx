@@ -40,13 +40,12 @@ import {
 	TableRow,
 } from "#/components/ui/table";
 import { CEL_EXAMPLES, CEL_VARIABLES } from "#/lib/cel-policy-catalog";
+import { pageTitle } from "#/lib/page-meta";
 import { useAuthUser } from "#/state/auth-state";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/policies")({
-	staticData: {
-		getTitle: () => "Policies",
-	},
+	...pageTitle("Policies"),
 	component: RouteComponent,
 });
 

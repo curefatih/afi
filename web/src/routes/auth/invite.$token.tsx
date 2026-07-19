@@ -17,12 +17,13 @@ import {
 } from "#/components/ui/card";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
+import { pageTitle } from "#/lib/page-meta";
 import { useAuthActions } from "#/state/auth-state";
 
 export const Route = createFileRoute("/auth/invite/$token")({
-	staticData: {
-		getTitle: () => "Accept invite",
-	},
+	...pageTitle("Accept invite", {
+		description: "Accept an organization invite and join AFI.",
+	}),
 	component: RouteComponent,
 });
 
@@ -77,16 +78,12 @@ function RouteComponent() {
 										{
 											token,
 											name: preview.data.user_exists ? undefined : name,
-											password: preview.data.user_exists
-												? undefined
-												: password,
+											password: preview.data.user_exists ? undefined : password,
 										},
 										{
 											onSuccess: onAccepted,
 											onError: (err) =>
-												toast.error(
-													err.message || "Could not accept invite",
-												),
+												toast.error(err.message || "Could not accept invite"),
 										},
 									);
 								}}

@@ -7,11 +7,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "#/components/ui/card";
+import { pageTitle } from "#/lib/page-meta";
 
 export const Route = createFileRoute("/auth/reset-password")({
-	staticData: {
-		getTitle: () => "Reset password",
-	},
+	...pageTitle("Reset password", {
+		description: "Reset the password for your AFI account.",
+	}),
 	component: RouteComponent,
 });
 

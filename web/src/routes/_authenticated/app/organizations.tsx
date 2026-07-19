@@ -38,12 +38,11 @@ import {
 	TableHeader,
 	TableRow,
 } from "#/components/ui/table";
+import { pageTitle } from "#/lib/page-meta";
 import { useActiveOrg, useOrgActions } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/organizations")({
-	staticData: {
-		getTitle: () => "Organizations",
-	},
+	...pageTitle("Organizations"),
 	component: RouteComponent,
 });
 

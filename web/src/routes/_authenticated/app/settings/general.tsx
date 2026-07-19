@@ -27,13 +27,12 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "#/components/ui/select";
+import { pageTitle } from "#/lib/page-meta";
 import { useAuthUser } from "#/state/auth-state";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/settings/general")({
-	staticData: {
-		getTitle: () => "Organization settings",
-	},
+	...pageTitle("Organization settings"),
 	component: RouteComponent,
 });
 
@@ -55,8 +54,7 @@ function RouteComponent() {
 		return me?.role === "owner" || me?.role === "admin";
 	}, [members.data, user?.id]);
 
-	const selected =
-		mail.data?.selected || mail.data?.default_provider || "smtp";
+	const selected = mail.data?.selected || mail.data?.default_provider || "smtp";
 	const enabled = mail.data?.enabled_providers ?? [];
 
 	if (!activeOrg) {

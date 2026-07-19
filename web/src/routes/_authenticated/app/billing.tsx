@@ -1,11 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CreditCardIcon } from "lucide-react";
 import { ComingSoonPage } from "#/components/coming-soon-page";
+import { pageTitle } from "#/lib/page-meta";
 
 export const Route = createFileRoute("/_authenticated/app/billing")({
-	staticData: {
-		getTitle: () => "Billing",
-	},
+	...pageTitle("Billing"),
 	component: RouteComponent,
 });
 

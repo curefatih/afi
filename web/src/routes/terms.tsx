@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FileTextIcon } from "lucide-react";
 import { ComingSoonPage } from "#/components/coming-soon-page";
+import { pageTitle } from "#/lib/page-meta";
 
 export const Route = createFileRoute("/terms")({
-	staticData: {
-		getTitle: () => "Terms",
-	},
+	...pageTitle("Terms", {
+		description: "Legal terms for using AFI.",
+	}),
 	component: RouteComponent,
 });
 

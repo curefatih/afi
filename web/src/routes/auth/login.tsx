@@ -24,13 +24,14 @@ import {
 	FieldLabel,
 } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
+import { pageTitle } from "#/lib/page-meta";
 import { cn } from "#/lib/utils";
 import { loginFormSchema } from "#/schemas/login-form.schema";
 
 export const Route = createFileRoute("/auth/login")({
-	staticData: {
-		getTitle: () => "Login",
-	},
+	...pageTitle("Login", {
+		description: "Sign in to the AFI control plane.",
+	}),
 	component: RouteComponent,
 });
 

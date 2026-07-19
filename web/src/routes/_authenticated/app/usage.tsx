@@ -9,9 +9,9 @@ import {
 	GaugeIcon,
 	KeyRoundIcon,
 	LayersIcon,
+	type LucideIcon,
 	TimerIcon,
 	UserIcon,
-	type LucideIcon,
 } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import {
@@ -63,13 +63,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "#/components/ui/table";
+import { pageTitle } from "#/lib/page-meta";
 import { cn } from "#/lib/utils";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/usage")({
-	staticData: {
-		getTitle: () => "Usage",
-	},
+	...pageTitle("Usage"),
 	component: RouteComponent,
 });
 
@@ -429,62 +428,64 @@ function RouteComponent() {
 										const ownerDetail = formatUsageOwnerDetail(e);
 										const keyKind = formatUsageKeyKind(e);
 										return (
-										<TableRow key={e.id}>
-											<TableCell className="whitespace-nowrap">
-												{new Date(e.created_at).toLocaleString()}
-											</TableCell>
-											<TableCell>
-												<Badge variant="secondary">
-													{e.modality || "chat"}
-												</Badge>
-											</TableCell>
-											<TableCell>
-												<div className="flex flex-col">
-													<span>{formatUsageOwner(e)}</span>
-													{ownerDetail ? (
-														<span className="text-muted-foreground text-xs">
-															{ownerDetail}
+											<TableRow key={e.id}>
+												<TableCell className="whitespace-nowrap">
+													{new Date(e.created_at).toLocaleString()}
+												</TableCell>
+												<TableCell>
+													<Badge variant="secondary">
+														{e.modality || "chat"}
+													</Badge>
+												</TableCell>
+												<TableCell>
+													<div className="flex flex-col">
+														<span>{formatUsageOwner(e)}</span>
+														{ownerDetail ? (
+															<span className="text-muted-foreground text-xs">
+																{ownerDetail}
+															</span>
+														) : null}
+													</div>
+												</TableCell>
+												<TableCell>
+													<div className="flex flex-col gap-1">
+														<span className="font-medium">
+															{formatUsageKey(e)}
 														</span>
-													) : null}
-												</div>
-											</TableCell>
-											<TableCell>
-												<div className="flex flex-col gap-1">
-													<span className="font-medium">
-														{formatUsageKey(e)}
-													</span>
-													{keyKind ? (
-														<Badge
-															variant="outline"
-															className="w-fit text-xs font-normal"
-														>
-															{keyKind}
-														</Badge>
-													) : null}
-												</div>
-											</TableCell>
-											<TableCell>
-												<Badge
-													variant="outline"
-													className="max-w-48 truncate font-normal"
-													title={e.model}
-												>
-													{e.model}
-												</Badge>
-											</TableCell>
-											<TableCell>
-												<StatusBadge status={e.status} />
-											</TableCell>
-											<TableCell className="tabular-nums">
-												{e.latency_ms}ms
-											</TableCell>
-											<TableCell className="tabular-nums">
-												{formatUsageQuantity(e)}
-											</TableCell>
-											<TableCell className="tabular-nums">
-												{e.cost_usd == null ? "—" : `$${e.cost_usd.toFixed(6)}`}
-											</TableCell>
-										</TableRow>
+														{keyKind ? (
+															<Badge
+																variant="outline"
+																className="w-fit text-xs font-normal"
+															>
+																{keyKind}
+															</Badge>
+														) : null}
+													</div>
+												</TableCell>
+												<TableCell>
+													<Badge
+														variant="outline"
+														className="max-w-48 truncate font-normal"
+														title={e.model}
+													>
+														{e.model}
+													</Badge>
+												</TableCell>
+												<TableCell>
+													<StatusBadge status={e.status} />
+												</TableCell>
+												<TableCell className="tabular-nums">
+													{e.latency_ms}ms
+												</TableCell>
+												<TableCell className="tabular-nums">
+													{formatUsageQuantity(e)}
+												</TableCell>
+												<TableCell className="tabular-nums">
+													{e.cost_usd == null
+														? "—"
+														: `$${e.cost_usd.toFixed(6)}`}
+												</TableCell>
+											</TableRow>
 										);
 									})}
 								</TableBody>

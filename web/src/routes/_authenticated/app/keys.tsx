@@ -5,8 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
 	type ApiKey,
-	type KeyKind,
 	deleteKeyMutationOptions,
+	type KeyKind,
 	orgKeysQueryOptions,
 } from "#/api/keys";
 import { orgMembersQueryOptions } from "#/api/organization";
@@ -33,13 +33,12 @@ import {
 } from "#/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
 import { useOrgBootstrap } from "#/hooks/use-org-bootstrap";
+import { pageTitle } from "#/lib/page-meta";
 import { useAuthUser } from "#/state/auth-state";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/keys")({
-	staticData: {
-		getTitle: () => "API Keys",
-	},
+	...pageTitle("API Keys"),
 	component: RouteComponent,
 });
 
@@ -114,7 +113,13 @@ function RouteComponent() {
 			setTab("all");
 		}
 		setTabReady(true);
-	}, [tabReady, keys.isLoading, keys.isSuccess, personal.length, service.length]);
+	}, [
+		tabReady,
+		keys.isLoading,
+		keys.isSuccess,
+		personal.length,
+		service.length,
+	]);
 
 	const del = useMutation({
 		...deleteKeyMutationOptions(),
@@ -241,10 +246,7 @@ function RouteComponent() {
 					void keys.refetch();
 				}}
 			>
-				<Tabs
-					value={tab}
-					onValueChange={(v) => setTab((v as KeyTab) ?? "all")}
-				>
+				<Tabs value={tab} onValueChange={(v) => setTab((v as KeyTab) ?? "all")}>
 					<TabsList>
 						<TabsTrigger value="all">All ({allKeys.length})</TabsTrigger>
 						<TabsTrigger value="personal">

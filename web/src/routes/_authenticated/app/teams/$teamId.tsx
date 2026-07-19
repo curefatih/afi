@@ -53,13 +53,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "#/components/ui/table";
+import { pageTitle } from "#/lib/page-meta";
 import { useAuthUser } from "#/state/auth-state";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/teams/$teamId")({
-	staticData: {
-		getTitle: () => "Team",
-	},
+	...pageTitle("Team"),
 	component: RouteComponent,
 });
 
@@ -322,7 +321,9 @@ function RouteComponent() {
 							<Button
 								type="submit"
 								disabled={
-									addMember.isPending || !selectedUserId || candidates.length === 0
+									addMember.isPending ||
+									!selectedUserId ||
+									candidates.length === 0
 								}
 							>
 								{addMember.isPending ? "Adding…" : "Add member"}

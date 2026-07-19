@@ -4,9 +4,9 @@ import { PlusIcon, UsersIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
+	inviteOrgMemberMutationOptions,
 	type OrgMember,
 	type OrgRole,
-	inviteOrgMemberMutationOptions,
 	orgInvitesQueryOptions,
 	orgMembersQueryOptions,
 	resendOrgInviteMutationOptions,
@@ -50,13 +50,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "#/components/ui/table";
+import { pageTitle } from "#/lib/page-meta";
 import { useAuthUser } from "#/state/auth-state";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/users")({
-	staticData: {
-		getTitle: () => "Users",
-	},
+	...pageTitle("Users"),
 	component: RouteComponent,
 });
 

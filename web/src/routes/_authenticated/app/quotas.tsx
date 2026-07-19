@@ -46,13 +46,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "#/components/ui/table";
+import { pageTitle } from "#/lib/page-meta";
 import { useAuthUser } from "#/state/auth-state";
 import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/quotas")({
-	staticData: {
-		getTitle: () => "Quotas",
-	},
+	...pageTitle("Quotas"),
 	component: RouteComponent,
 });
 

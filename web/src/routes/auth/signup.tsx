@@ -7,11 +7,13 @@ import {
 	CardHeader,
 	CardTitle,
 } from "#/components/ui/card";
+import { pageTitle } from "#/lib/page-meta";
 
 export const Route = createFileRoute("/auth/signup")({
-	staticData: {
-		getTitle: () => "Sign up",
-	},
+	...pageTitle("Sign up", {
+		description:
+			"Create an AFI account to manage organizations, keys, and gateway policies.",
+	}),
 	component: RouteComponent,
 });
 
