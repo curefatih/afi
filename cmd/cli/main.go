@@ -118,7 +118,10 @@ func runPublish() error {
 
 func runDBReset() error {
 	fmt.Fprint(os.Stderr, "This DROPS all AFI tables. Type 'reset' to continue: ")
-	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("aborted: could not read confirmation: %w", err)
+	}
 	if strings.TrimSpace(line) != "reset" {
 		return fmt.Errorf("aborted")
 	}
