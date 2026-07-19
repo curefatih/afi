@@ -1,0 +1,30 @@
+package snapshot
+
+import "time"
+
+// Source is the control-plane view used to compile a snapshot.
+type Source struct {
+	APIKeys   []APIKey
+	Providers []Provider
+	Routes    []Route
+}
+
+// Compile builds an immutable snapshot payload (version assigned by store on Put).
+func Compile(src Source) *Snapshot {
+	s := &Snapshot{
+		CreatedAt: time.Now().UTC(),
+		APIKeys:   make(map[string]APIKey, len(src.APIKeys)),
+		Providers: make(map[string]Provider, len(src.Providers)),
+		Routes:    make(map[string]Route, len(src.Routes)),
+	}
+	for _, k := range src.APIKeys {
+		s.APIKeys[k.Key] = k
+	}
+	for _, p := range src.Providers {
+		s.Providers[p.ID] = p
+	}
+	for _, r := range src.Routes {
+		s.Routes[r.Model] = r
+	}
+	return s
+}
