@@ -62,8 +62,29 @@ if [ -n "${OPENAI_API_KEY:-}" ]; then
     -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"ping"}]}' \
     | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d.get("choices"), d'
   echo "ok"
+
+  if curl -fsS "$CP/api/v1/platform/organizations/org_local/usage?limit=1" \
+      -H "Authorization: Bearer $TOKEN" >/dev/null 2>&1; then
+    echo "==> usage worker drain (optional)"
+    found=0
+    for _ in $(seq 1 20); do
+      sleep 0.5
+      count=$(curl -fsS "$CP/api/v1/platform/organizations/org_local/usage?limit=5" \
+        -H "Authorization: Bearer $TOKEN" | python3 -c 'import sys,json; print(len(json.load(sys.stdin)))')
+      if [ "${count:-0}" -ge 1 ]; then
+        found=1
+        break
+      fi
+    done
+    if [ "$found" = "1" ]; then
+      echo "ok (usage_events populated — worker is running)"
+    else
+      echo "SKIPPED (no usage_events yet — start make run-worker to drain outbox)"
+    fi
+  fi
 else
   echo "==> live chat completion SKIPPED (OPENAI_API_KEY unset)"
+  echo "==> usage worker drain SKIPPED (needs live chat)"
 fi
 
 echo "==> platform me"

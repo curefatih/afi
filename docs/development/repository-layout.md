@@ -6,7 +6,7 @@ Matches the intended project structure from the architecture document.
 cmd/
 ├── gateway/          # Data plane binary
 ├── controlplane/     # Control plane binary
-├── worker/           # Async consumers (future)
+├── worker/           # Usage outbox consumer
 └── cli/              # Local admin CLI (afi)
 
 internal/
@@ -14,7 +14,7 @@ internal/
 ├── controlplane/     # Config persistence, platform APIs, seed, compile
 ├── dataplane/        # Request pipeline + provider adapters
 ├── snapshot/         # Snapshot types, store, watch
-├── workers/          # Future workers
+├── workers/          # Outbox processing helpers
 └── shared/           # Cross-cutting helpers
 
 extensions/           # Runtime extensions (future)
@@ -25,15 +25,17 @@ configs/              # Local/dev defaults
 docs/                 # Public MkDocs site
 ```
 
-## Ownership (current milestone)
+## Ownership (current)
 
 | Path | Responsibility |
 |------|----------------|
 | `cmd/controlplane` | HTTP admin + platform API + migrate + seed + publish |
-| `cmd/gateway` | Load/watch snapshot, serve `/v1/*` |
-| `cmd/cli` | `seed`, `snapshot publish`, `version` |
-| `internal/snapshot` | Types, compile helpers, Postgres store + watch |
+| `cmd/gateway` | Load/watch snapshot, quotas, `/v1/*`, enqueue usage |
+| `cmd/worker` | Drain `usage_outbox` → `usage_events` (+ cost) |
+| `cmd/cli` | `seed`, `snapshot publish`, `db reset`, `version` |
+| `internal/snapshot` | Types, compile, Postgres store + watch |
 | `internal/controlplane` | Schema, repositories, HTTP handlers |
-| `internal/dataplane` | Auth → route → OpenAI pipeline |
+| `internal/dataplane` | Auth → quota → route → OpenAI/Anthropic (+ failover) |
+| `internal/workers` | Outbox process loop helpers |
 | `internal/kernel` | Logging, request IDs, config loading |
 | `configs/` | `local.yaml` defaults |
