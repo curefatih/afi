@@ -2,6 +2,7 @@
 
 import {
 	BarChart3Icon,
+	Building2Icon,
 	CreditCardIcon,
 	FolderKanbanIcon,
 	GaugeIcon,
@@ -36,6 +37,11 @@ const platformNav = [
 		title: "Overview",
 		url: "/app/dashboard",
 		icon: <LayoutDashboardIcon />,
+	},
+	{
+		title: "Organizations",
+		url: "/app/organizations",
+		icon: <Building2Icon />,
 	},
 	{
 		title: "Projects",
