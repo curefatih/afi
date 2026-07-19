@@ -12,6 +12,7 @@ import (
 	"github.com/curefatih/afi/internal/dataplane"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
+	"github.com/curefatih/afi/internal/workers"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -38,8 +39,9 @@ func main() {
 	snapStore := snapshot.NewStore(pool)
 	holder := dataplane.NewHolder()
 	pipeline := dataplane.NewPipeline(holder, dataplane.NewOpenAIClient(), log)
+	pipeline.Counters = controlplane.CounterAdapter{Store: store}
 	pipeline.Usage = func(e dataplane.UsageEvent) {
-		_ = store.InsertUsage(context.Background(), controlplane.UsageEvent{
+		payload, err := workers.EncodeUsage(workers.UsagePayload{
 			OrganizationID:   e.OrganizationID,
 			ProjectID:        e.ProjectID,
 			APIKeyID:         e.APIKeyID,
@@ -49,12 +51,19 @@ func main() {
 			PromptTokens:     e.PromptTokens,
 			CompletionTokens: e.CompletionTokens,
 		})
+		if err != nil {
+			log.Error("encode usage", "err", err)
+			return
+		}
+		if err := store.EnqueueUsage(context.Background(), payload); err != nil {
+			log.Error("enqueue usage", "err", err)
+		}
 	}
 
 	go func() {
 		err := snapStore.Watch(ctx, cfg.Gateway.SnapshotPollInterval, func(s *snapshot.Snapshot) {
 			holder.Set(s)
-			log.Info("snapshot loaded", "version", s.Version, "keys", len(s.APIKeys), "routes", len(s.Routes))
+			log.Info("snapshot loaded", "version", s.Version, "keys", len(s.APIKeys), "routes", len(s.Routes), "quotas", len(s.Quotas))
 		})
 		if err != nil && ctx.Err() == nil {
 			log.Error("snapshot watch", "err", err)
