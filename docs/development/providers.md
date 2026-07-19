@@ -17,7 +17,8 @@ Capabilities (`chat`, `stream`, `tts`, `stt`) are stored on the provider in the 
 ## Adding a provider (in-tree)
 
 1. Implement `dataplane.ChatProvider` (`Type`, `Capabilities`, `Chat`).
-2. Register it in `dataplane.DefaultRegistry()` (or your gateway bootstrap).
+2. Register it in `dataplane.DefaultRegistry()` / `RegistryFromClients` (or your gateway bootstrap).
+   Outbound HTTP clients live in `internal/adapters/llm` and resolve keys via `adapters/secrets`.
 3. Prefer reusing [`internal/dataplane/openaichat`](../../internal/dataplane/openaichat) helpers for OpenAI-shaped JSON/SSE.
 4. Document the type, default `api_key_env`, and capabilities in this page.
 5. Optionally seed an inactive provider (no route) like `prov_ollama`.
