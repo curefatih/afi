@@ -6,7 +6,51 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-const Select = SelectPrimitive.Root
+type SelectRootProps = SelectPrimitive.Root.Props<any, boolean | undefined>
+
+/**
+ * Base UI's Select.Value renders the raw value unless Root is given an `items`
+ * map. Walk the element tree and collect SelectItem labels so triggers show
+ * the human-readable label by default.
+ */
+function collectSelectItems(
+  node: React.ReactNode,
+  acc: Record<string, React.ReactNode> = {},
+): Record<string, React.ReactNode> {
+  React.Children.forEach(node, (child) => {
+    if (!React.isValidElement(child)) return
+
+    if (child.type === SelectItem) {
+      const { value, children } = child.props as {
+        value?: unknown
+        children?: React.ReactNode
+      }
+      if (value != null && typeof value !== "object") {
+        acc[String(value)] = children
+      }
+      return
+    }
+
+    const nested = (child.props as { children?: React.ReactNode }).children
+    if (nested != null) {
+      collectSelectItems(nested, acc)
+    }
+  })
+  return acc
+}
+
+function Select({ items, children, ...props }: SelectRootProps) {
+  const collectedItems = React.useMemo(
+    () => (items == null ? collectSelectItems(children) : undefined),
+    [children, items],
+  )
+
+  return (
+    <SelectPrimitive.Root items={items ?? collectedItems} {...props}>
+      {children}
+    </SelectPrimitive.Root>
+  )
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
@@ -56,9 +100,29 @@ function SelectTrigger({
   )
 }
 
+function SelectEmpty({
+  className,
+  children = "No options",
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="select-empty"
+      className={cn(
+        "px-2 py-3 text-center text-sm text-muted-foreground",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
 function SelectContent({
   className,
   children,
+  empty,
   side = "bottom",
   sideOffset = 4,
   align = "center",
@@ -69,7 +133,14 @@ function SelectContent({
   Pick<
     SelectPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"
-  >) {
+  > & {
+    /** Shown when there are no SelectItems. Pass `null` to disable. */
+    empty?: React.ReactNode
+  }) {
+  const isEmpty = Object.keys(collectSelectItems(children)).length === 0
+  const emptyContent =
+    empty === undefined ? <SelectEmpty /> : empty
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Positioner
@@ -87,7 +158,9 @@ function SelectContent({
           {...props}
         >
           <SelectScrollUpButton />
-          <SelectPrimitive.List>{children}</SelectPrimitive.List>
+          <SelectPrimitive.List>
+            {isEmpty ? emptyContent : children}
+          </SelectPrimitive.List>
           <SelectScrollDownButton />
         </SelectPrimitive.Popup>
       </SelectPrimitive.Positioner>
@@ -190,6 +263,7 @@ function SelectScrollDownButton({
 export {
   Select,
   SelectContent,
+  SelectEmpty,
   SelectGroup,
   SelectItem,
   SelectLabel,
