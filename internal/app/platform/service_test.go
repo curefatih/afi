@@ -118,6 +118,35 @@ func TestServiceCreateQuotaPublishesAndEmits(t *testing.T) {
 	}
 }
 
+func TestServiceEmitsViaBus(t *testing.T) {
+	t.Parallel()
+	api := &memAPI{}
+	snap := &memSnap{}
+	bus := platform.NewBus()
+	mem := platform.NewMemoryRecorder(32)
+	bus.SubscribeAll(func(ctx context.Context, e platform.Event) { mem.Record(ctx, e) })
+
+	svc := platform.New(api, snap)
+	svc.Events = bus
+	q, err := svc.CreateQuota(context.Background(), "org", snapshot.ScopeOrganization, "org", snapshot.MetricRequests, 10, snapshot.WindowTotal)
+	if err != nil || q == nil {
+		t.Fatalf("err=%v q=%v", err, q)
+	}
+	events := mem.Snapshot()
+	if len(events) != 2 {
+		t.Fatalf("events=%+v", events)
+	}
+	if events[0].Name != platform.EventSnapshotPublish || events[1].Name != platform.EventQuotaCreated {
+		t.Fatalf("order=%v %v", events[0].Name, events[1].Name)
+	}
+	if events[1].ResourceID != "quota_1" || events[1].OrganizationID != "org" {
+		t.Fatalf("quota event=%+v", events[1])
+	}
+	if events[0].ID == "" || events[1].ID == "" || events[1].At.IsZero() {
+		t.Fatalf("missing id/at: %+v", events)
+	}
+}
+
 func TestListVisibleOrgAPIKeysFilters(t *testing.T) {
 	t.Parallel()
 	api := &memAPI{keys: []access.APIKey{

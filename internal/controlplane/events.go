@@ -1,25 +1,23 @@
 package controlplane
 
 import (
-	"context"
 	"log/slog"
 
 	"github.com/curefatih/afi/internal/app/platform"
 )
 
-// slogEventRecorder logs platform domain events at debug level.
-type slogEventRecorder struct {
-	log *slog.Logger
-}
-
-func (r slogEventRecorder) Record(_ context.Context, e platform.Event) {
-	if r.log == nil {
-		return
+// newPlatformEventBus builds the default in-process bus with slog debug logging.
+func newPlatformEventBus(log *slog.Logger) *platform.Bus {
+	bus := platform.NewBus()
+	bus.SubscribeAll(platform.SlogHandler(log))
+	if log != nil {
+		bus.OnPanic(func(recovered any, e platform.Event) {
+			log.Error("platform event subscriber panic",
+				"recovered", recovered,
+				"event_id", e.ID,
+				"name", string(e.Name),
+			)
+		})
 	}
-	r.log.Debug("platform event",
-		"name", string(e.Name),
-		"resource_id", e.ResourceID,
-		"organization_id", e.OrganizationID,
-		"at", e.At,
-	)
+	return bus
 }

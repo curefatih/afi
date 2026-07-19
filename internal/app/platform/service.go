@@ -16,16 +16,6 @@ type SnapshotPublisher interface {
 	PublishSnapshot(ctx context.Context) error
 }
 
-// EventRecorder receives domain events after successful platform commands.
-type EventRecorder interface {
-	Record(ctx context.Context, e Event)
-}
-
-// NopRecorder discards events.
-type NopRecorder struct{}
-
-func (NopRecorder) Record(context.Context, Event) {}
-
 // ConfigAPI is the persistence surface for platform reads and mutations.
 type ConfigAPI interface {
 	ListOrganizationsForUser(ctx context.Context, userID string) ([]tenancy.Organization, error)

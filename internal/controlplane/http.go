@@ -32,7 +32,7 @@ type Server struct {
 
 func NewServer(cfg *kernel.Config, store *Store, seeder *Seeder, snapStore snapshot.Store, log *slog.Logger) *Server {
 	app := platform.New(store, seeder)
-	app.Events = slogEventRecorder{log: log}
+	app.Events = newPlatformEventBus(log)
 	return &Server{
 		cfg:       cfg,
 		api:       store,
@@ -53,9 +53,7 @@ func (s *Server) ensureApp() {
 		return
 	}
 	s.app = platform.New(configAPIAdapter{s.api}, s.publisher)
-	if s.log != nil {
-		s.app.Events = slogEventRecorder{log: s.log}
-	}
+	s.app.Events = newPlatformEventBus(s.log)
 }
 
 func (s *Server) Handler() http.Handler {
