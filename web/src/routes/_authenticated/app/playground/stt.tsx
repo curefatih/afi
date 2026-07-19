@@ -47,7 +47,12 @@ function RouteComponent() {
 				if (cancelled) return;
 				const list = (data.data ?? []).filter((m) => m.supports_stt);
 				setModels(list);
-				setModel((prev) => prev || list[0]?.id || "whisper-1");
+				setModel((prev) => {
+					if (list.some((m) => m.id === prev)) return prev;
+					return (
+						list.find((m) => m.id === "whisper-1")?.id ?? list[0]?.id ?? ""
+					);
+				});
 				setModelsError(null);
 			} catch (e) {
 				if (!cancelled) {
@@ -69,8 +74,8 @@ function RouteComponent() {
 		setTranscript("");
 		try {
 			const form = new FormData();
+			form.append("file", file, file.name || "audio.webm");
 			form.append("model", model);
-			form.append("file", file);
 			const res = await fetch(`${GATEWAY_API_URL}/v1/audio/transcriptions`, {
 				method: "POST",
 				headers: { Authorization: `Bearer ${GATEWAY_API_KEY}` },
@@ -93,70 +98,89 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Speech to text"
-				description="OpenAI-compatible transcriptions via the gateway. Requires a routed model with supports_stt (seed includes whisper-1)."
+				description="OpenAI-compatible transcriptions via the gateway. Use whisper-1 (or another STT route) — not TTS models."
 			/>
-			<div className="mx-auto max-w-xl space-y-4">
-				{modelsError ? (
-					<p className="text-destructive text-sm">{modelsError}</p>
-				) : null}
-				{models.length === 0 && !modelsError ? (
-					<p className="text-muted-foreground text-sm">
-						No STT-capable routes. Add a{" "}
-						<code className="text-xs">whisper-1</code> route on an OpenAI
-						provider in{" "}
-						<Link to="/app/routing" className="underline">
-							Routing
-						</Link>
-						, or re-seed.
-					</p>
-				) : null}
-				<div className="space-y-1">
-					<Label>Model</Label>
-					<Select value={model} onValueChange={(v) => setModel(v ?? "")}>
-						<SelectTrigger className="w-full">
-							<SelectValue placeholder="Select model" />
-						</SelectTrigger>
-						<SelectContent>
-							{models.map((m) => (
-								<SelectItem key={m.id} value={m.id}>
-									{m.id}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="stt-file">Audio file</Label>
-					<Input
-						id="stt-file"
-						type="file"
-						accept="audio/*,.mp3,.wav,.m4a,.webm"
-						onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-					/>
-				</div>
-				{error ? (
-					<pre className="text-destructive max-h-32 overflow-auto text-xs whitespace-pre-wrap">
-						{error}
-					</pre>
-				) : null}
-				<Button
-					onClick={() => void transcribe()}
-					disabled={busy || !file || !model}
-				>
-					{busy ? (
-						<>
-							<Loader2Icon className="animate-spin" />
-							Transcribing…
-						</>
-					) : (
-						"Transcribe"
-					)}
-				</Button>
-				{transcript ? (
-					<div className="rounded-md border p-3 text-sm whitespace-pre-wrap">
-						{transcript}
+			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(280px,1fr)]">
+				<div className="space-y-5">
+					{modelsError ? (
+						<p className="text-destructive text-sm">{modelsError}</p>
+					) : null}
+					{models.length === 0 && !modelsError ? (
+						<p className="text-muted-foreground text-sm">
+							No STT routes. Add{" "}
+							<code className="text-xs">whisper-1</code> under{" "}
+							<Link to="/app/routing" className="underline">
+								Routing
+							</Link>{" "}
+							or run <code className="text-xs">make seed</code>.
+						</p>
+					) : null}
+					<div className="space-y-1.5">
+						<Label>Model</Label>
+						<Select value={model} onValueChange={(v) => setModel(v ?? "")}>
+							<SelectTrigger className="w-full max-w-md">
+								<SelectValue placeholder="Select model" />
+							</SelectTrigger>
+							<SelectContent>
+								{models.map((m) => (
+									<SelectItem key={m.id} value={m.id}>
+										{m.id}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
 					</div>
-				) : null}
+					<div className="space-y-1.5">
+						<Label htmlFor="stt-file">Audio file</Label>
+						<Input
+							id="stt-file"
+							type="file"
+							accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg,.flac"
+							className="max-w-md cursor-pointer"
+							onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+						/>
+						{file ? (
+							<p className="text-muted-foreground text-sm">
+								{file.name} · {(file.size / 1024).toFixed(1)} KB
+							</p>
+						) : (
+							<p className="text-muted-foreground text-sm">
+								mp3, wav, m4a, webm, and other OpenAI-supported formats.
+							</p>
+						)}
+					</div>
+					{error ? (
+						<pre className="text-destructive max-h-40 overflow-auto rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs whitespace-pre-wrap">
+							{error}
+						</pre>
+					) : null}
+					<Button
+						size="lg"
+						onClick={() => void transcribe()}
+						disabled={busy || !file || !model}
+					>
+						{busy ? (
+							<>
+								<Loader2Icon className="animate-spin" />
+								Transcribing…
+							</>
+						) : (
+							"Transcribe"
+						)}
+					</Button>
+				</div>
+				<div className="bg-muted/30 space-y-3 rounded-xl border p-5">
+					<h3 className="text-sm font-medium">Transcript</h3>
+					{transcript ? (
+						<div className="min-h-48 text-base leading-relaxed whitespace-pre-wrap">
+							{transcript}
+						</div>
+					) : (
+						<div className="text-muted-foreground flex min-h-48 items-center justify-center rounded-lg border border-dashed text-sm">
+							Transcript appears here
+						</div>
+					)}
+				</div>
 			</div>
 		</PageBody>
 	);

@@ -50,7 +50,12 @@ function RouteComponent() {
 				if (cancelled) return;
 				const list = (data.data ?? []).filter((m) => m.supports_tts);
 				setModels(list);
-				setModel((prev) => prev || list[0]?.id || "tts-1");
+				setModel((prev) => {
+					if (list.some((m) => m.id === prev)) return prev;
+					return (
+						list.find((m) => m.id === "tts-1")?.id ?? list[0]?.id ?? ""
+					);
+				});
 				setModelsError(null);
 			} catch (e) {
 				if (!cancelled) {
@@ -110,85 +115,103 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Text to speech"
-				description="OpenAI-compatible TTS via the gateway. Requires a routed model with supports_tts (seed includes tts-1)."
+				description="OpenAI-compatible TTS via the gateway. Use a TTS route such as tts-1 (seeded)."
 			/>
-			<div className="mx-auto max-w-xl space-y-4">
-				{modelsError ? (
-					<p className="text-destructive text-sm">{modelsError}</p>
-				) : null}
-				{models.length === 0 && !modelsError ? (
+			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+				<div className="space-y-5">
+					{modelsError ? (
+						<p className="text-destructive text-sm">{modelsError}</p>
+					) : null}
+					{models.length === 0 && !modelsError ? (
+						<p className="text-muted-foreground text-sm">
+							No TTS routes. Add{" "}
+							<code className="text-xs">tts-1</code> under{" "}
+							<Link to="/app/routing" className="underline">
+								Routing
+							</Link>{" "}
+							or run <code className="text-xs">make seed</code>.
+						</p>
+					) : null}
+					<div className="grid gap-4 sm:grid-cols-2">
+						<div className="space-y-1.5">
+							<Label>Model</Label>
+							<Select value={model} onValueChange={(v) => setModel(v ?? "")}>
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder="Select model" />
+								</SelectTrigger>
+								<SelectContent>
+									{models.map((m) => (
+										<SelectItem key={m.id} value={m.id}>
+											{m.id}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="space-y-1.5">
+							<Label>Voice</Label>
+							<Select
+								value={voice}
+								onValueChange={(v) => setVoice(v ?? "alloy")}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{VOICES.map((v) => (
+										<SelectItem key={v} value={v}>
+											{v}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
+					<div className="space-y-1.5">
+						<Label htmlFor="tts-text">Text</Label>
+						<Textarea
+							id="tts-text"
+							value={text}
+							onChange={(e) => setText(e.target.value)}
+							rows={10}
+							className="min-h-48 text-base"
+						/>
+					</div>
+					{error ? (
+						<pre className="text-destructive max-h-40 overflow-auto rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs whitespace-pre-wrap">
+							{error}
+						</pre>
+					) : null}
+					<Button
+						size="lg"
+						onClick={() => void generate()}
+						disabled={busy || !text.trim() || !model}
+					>
+						{busy ? (
+							<>
+								<Loader2Icon className="animate-spin" />
+								Generating…
+							</>
+						) : (
+							"Generate speech"
+						)}
+					</Button>
+				</div>
+				<div className="bg-muted/30 space-y-3 rounded-xl border p-5">
+					<h3 className="text-sm font-medium">Preview</h3>
 					<p className="text-muted-foreground text-sm">
-						No TTS-capable routes. Add a{" "}
-						<code className="text-xs">tts-1</code> route on an OpenAI provider
-						in{" "}
-						<Link to="/app/routing" className="underline">
-							Routing
-						</Link>
-						, or re-seed.
+						Audio plays here after a successful generate.
 					</p>
-				) : null}
-				<div className="space-y-1">
-					<Label>Model</Label>
-					<Select value={model} onValueChange={(v) => setModel(v ?? "")}>
-						<SelectTrigger className="w-full">
-							<SelectValue placeholder="Select model" />
-						</SelectTrigger>
-						<SelectContent>
-							{models.map((m) => (
-								<SelectItem key={m.id} value={m.id}>
-									{m.id}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-				<div className="space-y-1">
-					<Label>Voice</Label>
-					<Select value={voice} onValueChange={(v) => setVoice(v ?? "alloy")}>
-						<SelectTrigger className="w-full">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							{VOICES.map((v) => (
-								<SelectItem key={v} value={v}>
-									{v}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="tts-text">Text</Label>
-					<Textarea
-						id="tts-text"
-						value={text}
-						onChange={(e) => setText(e.target.value)}
-						rows={4}
-					/>
-				</div>
-				{error ? (
-					<pre className="text-destructive max-h-32 overflow-auto text-xs whitespace-pre-wrap">
-						{error}
-					</pre>
-				) : null}
-				<Button
-					onClick={() => void generate()}
-					disabled={busy || !text.trim() || !model}
-				>
-					{busy ? (
-						<>
-							<Loader2Icon className="animate-spin" />
-							Generating…
-						</>
+					{audioUrl ? (
+						<audio controls src={audioUrl} className="w-full">
+							<track kind="captions" />
+						</audio>
 					) : (
-						"Generate"
+						<div className="text-muted-foreground flex min-h-32 items-center justify-center rounded-lg border border-dashed text-sm">
+							No audio yet
+						</div>
 					)}
-				</Button>
-				{audioUrl ? (
-					<audio controls src={audioUrl} className="w-full">
-						<track kind="captions" />
-					</audio>
-				) : null}
+				</div>
 			</div>
 		</PageBody>
 	);
