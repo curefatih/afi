@@ -1,0 +1,21 @@
+database_url: "postgres://afi:afi@localhost:5433/afi?sslmode=disable"
+
+controlplane:
+  addr: ":8081"
+
+gateway:
+  addr: ":8080"
+  snapshot_poll_interval: "2s"
+
+auth:
+  jwt_secret: "afi-local-dev-jwt-secret-change-me"
+  token_ttl: "24h"
+
+seed:
+  virtual_api_key: "sk-project-local-dev-token-12345"
+  admin_email: "admin@afi.local"
+  admin_password: "admin"
+  admin_name: "Admin"
+  openai_base_url: "https://api.openai.com/v1"
+  openai_api_key_env: "OPENAI_API_KEY"
+  default_model: "gpt-4o-mini"
