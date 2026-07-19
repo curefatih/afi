@@ -35,6 +35,12 @@ if [ "$code" != "401" ]; then
 fi
 echo "ok"
 
+echo "==> list models"
+curl -fsS "$GW/v1/models" \
+  -H "Authorization: Bearer $VIRTUAL_KEY" \
+  | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d.get("object")=="list" and isinstance(d.get("data"), list) and any(m.get("id")=="gpt-4o-mini" for m in d["data"]), d'
+echo "ok"
+
 echo "==> snapshot publish + gateway version bump"
 before=$(curl -fsS "$GW/healthz" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("snapshot_version") or 0)')
 curl -fsS -X POST "$CP/internal/v1/snapshots/publish" \
