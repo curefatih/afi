@@ -14,18 +14,30 @@
 | `AFI_GATEWAY_ADDR` | `:8080` | gateway |
 | `AFI_SNAPSHOT_POLL_INTERVAL` | `2s` | gateway watch |
 | `AFI_JWT_SECRET` | from yaml | controlplane auth |
+| `AFI_INTERNAL_TOKEN` | from yaml (`afi-local-internal-token`) | HTTP `/internal/v1/*` |
+| `AFI_TOKEN_TTL` | `24h` | JWT lifetime |
 | `OPENAI_API_KEY` | _(required for live calls)_ | gateway → OpenAI |
 | `VITE_PLATFORM_API_URL` | `http://localhost:8081` | web UI (platform APIs) |
 | `VITE_GATEWAY_API_URL` | `http://localhost:8080` | web playground |
 | `VITE_GATEWAY_API_KEY` | seed virtual key | web playground |
 
-## Database
+## Internal admin HTTP
 
-Compose defaults ([`docker-compose.yml`](../../docker-compose.yml)):
+`POST /internal/v1/seed` and `POST /internal/v1/snapshots/publish` require header:
 
-```text
-postgres://afi:afi@localhost:5433/afi?sslmode=disable
+```http
+X-AFI-Internal-Token: <auth.internal_token>
 ```
+
+The CLI (`afi seed`, `afi snapshot publish`) and control-plane startup call seed/publish **in-process** and do not need this header.
+
+## Destructive reset
+
+```bash
+afi db reset
+```
+
+Drops all AFI tables after typing `reset`. Use only for local recovery. Schema version bumps do **not** wipe data; only legacy UUID installs or incomplete schemas are auto-wiped once.
 
 ## Seed values
 
@@ -33,7 +45,7 @@ Written on first control-plane start (or `make seed`):
 
 | Item | Value |
 |------|--------|
-| Virtual API key | `sk-project-local-dev-token-12345` |
+| Virtual API key | `sk-project-local-dev-token-12345` (stored hashed in DB/snapshot) |
 | Platform email | `admin@afi.local` |
 | Platform password | `admin` |
 | Default model route | `gpt-4o-mini` → OpenAI `gpt-4o-mini` |
@@ -49,3 +61,13 @@ Written on first control-plane start (or `make seed`):
 | 5050 | Adminer |
 | 3000 | Web UI |
 | 8000 | MkDocs (`make doc-serve`) |
+
+## Platform config APIs
+
+| Method | Path |
+|--------|------|
+| GET/POST | `/api/v1/platform/organizations/{orgID}/providers` |
+| PATCH/DELETE | `/api/v1/platform/providers/{providerID}` |
+| GET/POST | `/api/v1/platform/organizations/{orgID}/routes` |
+| PATCH/DELETE | `/api/v1/platform/routes/{routeID}` |
+| GET | `/api/v1/platform/organizations/{orgID}/usage` |

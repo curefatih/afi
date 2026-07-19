@@ -1,6 +1,10 @@
 # Verify
 
-With control plane and gateway running (`make run-controlplane`, `make run-gateway`) and `OPENAI_API_KEY` set:
+Prefer the automated path once the stack is up:
+
+```bash
+make verify
+```
 
 ## Health
 
@@ -9,7 +13,7 @@ curl -s http://localhost:8081/healthz
 curl -s http://localhost:8080/healthz
 ```
 
-Expect `{"status":"ok"}` (gateway may also report snapshot version).
+Expect `{"status":"ok"}` (gateway also reports `snapshot_version`).
 
 ## Chat completion (non-stream)
 
@@ -23,22 +27,34 @@ curl -s http://localhost:8080/v1/chat/completions \
   }'
 ```
 
-Expect a JSON response with `choices[0].message.content`.
+Expect a JSON response with `choices[0].message.content`. Requires `OPENAI_API_KEY`.
 
-## Chat completion (stream)
+## Editable route (UI or API)
+
+Create an alias route that maps `ping-model` → `gpt-4o-mini`, then call it without restarting the gateway.
 
 ```bash
-curl -N http://localhost:8080/v1/chat/completions \
+TOKEN=$(curl -s http://localhost:8081/api/v1/platform/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@afi.local","password":"admin"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["token"])')
+
+# list providers to get provider_id (seed uses prov_openai)
+curl -s http://localhost:8081/api/v1/platform/organizations/org_local/providers \
+  -H "Authorization: Bearer $TOKEN"
+
+curl -s http://localhost:8081/api/v1/platform/organizations/org_local/routes \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"ping-model","provider_id":"prov_openai","target_model":"gpt-4o-mini"}'
+
+# wait briefly for hot reload, then:
+curl -s http://localhost:8080/v1/chat/completions \
   -H "Authorization: Bearer sk-project-local-dev-token-12345" \
   -H "Content-Type: application/json" \
-  -d '{
-    "model": "gpt-4o-mini",
-    "messages": [{"role": "user", "content": "ping"}],
-    "stream": true
-  }'
+  -d '{"model":"ping-model","messages":[{"role":"user","content":"ping"}]}'
 ```
 
-Expect SSE `data:` frames ending with `[DONE]`.
+Or use **Routing** in the web UI (`pnpm --dir web dev`).
 
 ## Auth rejection
 
@@ -64,7 +80,12 @@ Expect `{"token":"..."}`.
 ## Snapshot hot reload
 
 ```bash
+# CLI (in-process, no internal header)
 make snapshot-publish
+
+# or HTTP
+curl -s -X POST http://localhost:8081/internal/v1/snapshots/publish \
+  -H "X-AFI-Internal-Token: afi-local-internal-token"
 ```
 
-Within a few seconds the gateway log should show a new snapshot version without restarting the process.
+Gateway `snapshot_version` increases without process restart.

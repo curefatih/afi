@@ -87,8 +87,12 @@ make doc-serve
 ```bash
 make seed                 # re-seed + publish
 make snapshot-publish     # compile config → new snapshot
+make verify               # automated checks (stack must be running)
 go run ./cmd/cli version
+afi db reset              # destructive local wipe (type `reset` to confirm)
 ```
+
+Internal HTTP admin (`/internal/v1/*`) requires `X-AFI-Internal-Token` (see config reference). CLI seed/publish do not.
 
 ## Config
 
