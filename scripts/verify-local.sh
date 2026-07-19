@@ -122,6 +122,23 @@ echo "==> platform me"
 curl -fsS "$CP/api/v1/platform/auth/me" -H "Authorization: Bearer $TOKEN" | grep -q admin@afi.local
 echo "ok"
 
+echo "==> personal API key"
+PERSONAL_KEY_JSON=$(curl -fsS "$CP/api/v1/platform/organizations/org_local/keys" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"verify-personal","kind":"personal"}')
+echo "$PERSONAL_KEY_JSON" | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d.get("kind")=="personal" and d.get("owner_user_id") and not d.get("project_id"), d'
+curl -fsS "$CP/api/v1/platform/organizations/org_local/keys" \
+  -H "Authorization: Bearer $TOKEN" \
+  | python3 -c 'import sys,json; keys=json.load(sys.stdin); assert any(k.get("kind")=="personal" for k in keys), keys'
+USER_ID=$(echo "$PERSONAL_KEY_JSON" | python3 -c 'import sys,json; print(json.load(sys.stdin)["owner_user_id"])')
+curl -fsS "$CP/api/v1/platform/organizations/org_local/quotas" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "{\"scope_type\":\"user\",\"scope_id\":\"$USER_ID\",\"metric\":\"tokens\",\"limit_value\":999999,\"window\":\"total\"}" \
+  | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d.get("scope_type")=="user", d'
+echo "ok"
+
 echo "==> quota limit 0 → 429 (no OpenAI required)"
 # Clean prior verify quotas for org_local if any by creating a zero request quota on org.
 curl -fsS "$CP/api/v1/platform/organizations/org_local/quotas" \
