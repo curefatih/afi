@@ -185,8 +185,13 @@ func TestChatCompletionsAnthropicProvider(t *testing.T) {
 		}},
 	}))
 
-	p := NewPipeline(holder, NewOpenAIClient(), slog.Default())
-	p.Anthropic.HTTP = upstream.Client()
+	anth := NewAnthropicClient()
+	anth.HTTP = upstream.Client()
+	reg := NewRegistry().
+		Register(newOpenAIChatProvider("openai", NewOpenAIClient(), ProviderCaps{Chat: true, Stream: true})).
+		Register(newAnthropicChatProvider(anth)).
+		Register(newGeminiChatProvider(NewGeminiClient()))
+	p := NewPipelineWithRegistry(holder, reg, slog.Default())
 
 	body := `{"model":"claude-x","messages":[{"role":"user","content":"hi"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(body))

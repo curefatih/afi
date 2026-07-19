@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/curefatih/afi/internal/dataplane/openaichat"
 	"github.com/curefatih/afi/internal/snapshot"
 )
 
@@ -119,7 +120,7 @@ func openAIChatToAnthropic(body []byte, targetModel string, stream bool) ([]byte
 	var systemParts []string
 	var messages []map[string]any
 	for _, m := range in.Messages {
-		text := contentToString(m.Content)
+		text := openaichat.ContentToString(m.Content)
 		switch m.Role {
 		case "system":
 			if text != "" {
@@ -158,18 +159,6 @@ func openAIChatToAnthropic(body []byte, targetModel string, stream bool) ([]byte
 		out["temperature"] = in.Temperature
 	}
 	return json.Marshal(out)
-}
-
-func contentToString(content any) string {
-	switch v := content.(type) {
-	case string:
-		return v
-	case nil:
-		return ""
-	default:
-		b, _ := json.Marshal(v)
-		return string(b)
-	}
 }
 
 func anthropicToOpenAIChat(raw []byte) ([]byte, error) {
@@ -257,24 +246,7 @@ func translateAnthropicSSE(r io.Reader, w io.Writer) error {
 	)
 
 	writeChunk := func(delta map[string]any, finish any) error {
-		chunk := map[string]any{
-			"id":     msgID,
-			"object": "chat.completion.chunk",
-			"model":  model,
-			"choices": []map[string]any{
-				{
-					"index":         0,
-					"delta":         delta,
-					"finish_reason": finish,
-				},
-			},
-		}
-		b, err := json.Marshal(chunk)
-		if err != nil {
-			return err
-		}
-		_, err = fmt.Fprintf(w, "data: %s\n\n", b)
-		return err
+		return openaichat.WriteSSEChunk(w, msgID, model, delta, finish)
 	}
 
 	for scanner.Scan() {
@@ -341,6 +313,5 @@ func translateAnthropicSSE(r io.Reader, w io.Writer) error {
 	if err := scanner.Err(); err != nil {
 		return err
 	}
-	_, err := io.WriteString(w, "data: [DONE]\n\n")
-	return err
+	return openaichat.WriteSSEDone(w)
 }

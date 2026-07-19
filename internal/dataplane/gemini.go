@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/curefatih/afi/internal/dataplane/openaichat"
 	"github.com/curefatih/afi/internal/snapshot"
 )
 
@@ -94,7 +95,7 @@ func openAIChatToGemini(body []byte) ([]byte, error) {
 	var systemParts []string
 	var contents []map[string]any
 	for _, m := range in.Messages {
-		text := contentToString(m.Content)
+		text := openaichat.ContentToString(m.Content)
 		switch m.Role {
 		case "system":
 			if text != "" {

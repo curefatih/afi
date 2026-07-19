@@ -11,9 +11,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/curefatih/afi/internal/dataplane/openaichat"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
 )
+
+// ErrStreamUnsupported is returned when the provider capabilities disallow streaming.
+var ErrStreamUnsupported = errors.New("streaming is not supported for this provider")
 
 type UsageEvent struct {
 	OrganizationID   string
@@ -30,22 +34,25 @@ type UsageEvent struct {
 
 type Pipeline struct {
 	Holder    *Holder
-	OpenAI    *OpenAIClient
-	Anthropic *AnthropicClient
-	Gemini    *GeminiClient
+	Providers *Registry
 	Log       *slog.Logger
 	Usage     func(UsageEvent)
 	Counters  CounterStore
 }
 
+// NewPipeline builds a pipeline. If reg is nil, DefaultRegistry is used.
+// Prefer RegistryWithOpenAI in tests that need a custom OpenAI HTTP client.
 func NewPipeline(holder *Holder, openai *OpenAIClient, log *slog.Logger) *Pipeline {
-	return &Pipeline{
-		Holder:    holder,
-		OpenAI:    openai,
-		Anthropic: NewAnthropicClient(),
-		Gemini:    NewGeminiClient(),
-		Log:       log,
+	reg := RegistryWithOpenAI(openai)
+	return &Pipeline{Holder: holder, Providers: reg, Log: log}
+}
+
+// NewPipelineWithRegistry uses an explicit provider registry.
+func NewPipelineWithRegistry(holder *Holder, reg *Registry, log *slog.Logger) *Pipeline {
+	if reg == nil {
+		reg = DefaultRegistry()
 	}
+	return &Pipeline{Holder: holder, Providers: reg, Log: log}
 }
 
 func (p *Pipeline) Handler() http.Handler {
@@ -195,6 +202,9 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		resp, lastErr = p.callProvider(ctx, attempt.Provider, attempt.TargetModel, body, reqBody.Stream)
 		if lastErr != nil {
 			log.Warn("upstream attempt failed", "provider", attempt.Provider.ID, "err", lastErr, "attempt", i)
+			if errors.Is(lastErr, ErrStreamUnsupported) {
+				break
+			}
 			if i+1 < len(attempts) && shouldFailoverError(lastErr) {
 				continue
 			}
@@ -211,6 +221,12 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 	}
 
 	if lastErr != nil && resp == nil {
+		if errors.Is(lastErr, ErrStreamUnsupported) {
+			writeJSON(w, http.StatusBadRequest, map[string]any{
+				"error": map[string]string{"message": lastErr.Error(), "type": "invalid_request_error"},
+			})
+			return
+		}
 		log.Error("upstream error", "err", lastErr)
 		p.recordUsage(UsageEvent{
 			OrganizationID: key.OrganizationID,
@@ -247,7 +263,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 			})
 			return
 		}
-		promptTokens, completionTokens = parseUsageTokens(respBody)
+		promptTokens, completionTokens = openaichat.ParseUsageTokens(respBody)
 		p.incrTokens(ctx, snap, key, promptTokens+completionTokens)
 		for k, vals := range resp.Header {
 			if strings.EqualFold(k, "Transfer-Encoding") || strings.EqualFold(k, "Connection") {
@@ -301,7 +317,7 @@ func shouldFailoverStatus(code int) bool {
 }
 
 func shouldFailoverError(err error) bool {
-	return err != nil
+	return err != nil && !errors.Is(err, ErrStreamUnsupported)
 }
 
 func (p *Pipeline) handleModels(w http.ResponseWriter, r *http.Request) {
@@ -332,10 +348,19 @@ func (p *Pipeline) handleModels(w http.ResponseWriter, r *http.Request) {
 		if route.OrganizationID != key.OrganizationID {
 			continue
 		}
+		caps := snapshot.DefaultCapabilities("openai")
+		if prov, ok := snap.Providers[route.ProviderID]; ok {
+			caps = snapshot.NormalizeCapabilities(prov.Type, prov.Capabilities)
+		}
 		data = append(data, map[string]any{
-			"id":       route.Model,
-			"object":   "model",
-			"owned_by": "afi",
+			"id":                 route.Model,
+			"object":             "model",
+			"owned_by":           "afi",
+			"supports_streaming": caps.Stream,
+			"capabilities": map[string]bool{
+				"chat":   caps.Chat,
+				"stream": caps.Stream,
+			},
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -345,28 +370,21 @@ func (p *Pipeline) handleModels(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Pipeline) callProvider(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
-	switch provider.Type {
-	case "openai":
-		if p.OpenAI == nil {
-			return nil, fmt.Errorf("openai client not configured")
-		}
-		return p.OpenAI.ChatCompletions(ctx, provider, targetModel, body, stream)
-	case "anthropic":
-		if p.Anthropic == nil {
-			return nil, fmt.Errorf("anthropic client not configured")
-		}
-		return p.Anthropic.Messages(ctx, provider, targetModel, body, stream)
-	case "gemini":
-		if stream {
-			return nil, fmt.Errorf("gemini streaming is not supported")
-		}
-		if p.Gemini == nil {
-			return nil, fmt.Errorf("gemini client not configured")
-		}
-		return p.Gemini.GenerateContent(ctx, provider, targetModel, body)
-	default:
+	if p.Providers == nil {
+		return nil, fmt.Errorf("provider registry not configured")
+	}
+	adapter, ok := p.Providers.Get(provider.Type)
+	if !ok {
 		return nil, fmt.Errorf("unsupported provider type %q", provider.Type)
 	}
+	caps := snapshot.NormalizeCapabilities(provider.Type, provider.Capabilities)
+	if stream && !caps.Stream {
+		return nil, fmt.Errorf("%w", ErrStreamUnsupported)
+	}
+	if !caps.Chat {
+		return nil, fmt.Errorf("chat is not supported for provider type %q", provider.Type)
+	}
+	return adapter.Chat(ctx, provider, targetModel, body, stream)
 }
 
 func (p *Pipeline) recordUsage(e UsageEvent) {
@@ -385,19 +403,6 @@ func (p *Pipeline) recordUsage(e UsageEvent) {
 		"prompt_tokens", e.PromptTokens,
 		"completion_tokens", e.CompletionTokens,
 	)
-}
-
-func parseUsageTokens(body []byte) (prompt, completion int64) {
-	var parsed struct {
-		Usage struct {
-			PromptTokens     int64 `json:"prompt_tokens"`
-			CompletionTokens int64 `json:"completion_tokens"`
-		} `json:"usage"`
-	}
-	if err := json.Unmarshal(body, &parsed); err != nil {
-		return 0, 0
-	}
-	return parsed.Usage.PromptTokens, parsed.Usage.CompletionTokens
 }
 
 func bearerToken(h string) (string, error) {
