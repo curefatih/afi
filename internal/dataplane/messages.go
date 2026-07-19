@@ -145,6 +145,7 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 			TargetModel:    usedTarget,
 			Status:         "error",
 			LatencyMs:      time.Since(start).Milliseconds(),
+			Modality:       ModalityMessages,
 		})
 		writeJSON(w, http.StatusBadGateway, map[string]any{
 			"error": map[string]string{"message": lastErr.Error(), "type": "server_error"},
@@ -202,6 +203,8 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 		LatencyMs:        time.Since(start).Milliseconds(),
 		PromptTokens:     promptTokens,
 		CompletionTokens: completionTokens,
+		Modality:         ModalityMessages,
+		Metrics:          tokenMetrics(promptTokens, completionTokens),
 	})
 }
 

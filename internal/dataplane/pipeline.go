@@ -19,6 +19,13 @@ import (
 // ErrStreamUnsupported is returned when the provider capabilities disallow streaming.
 var ErrStreamUnsupported = errors.New("streaming is not supported for this provider")
 
+const (
+	ModalityChat     = "chat"
+	ModalityMessages = "messages"
+	ModalityTTS      = "tts"
+	ModalitySTT      = "stt"
+)
+
 type UsageEvent struct {
 	OrganizationID   string
 	ProjectID        string
@@ -30,6 +37,8 @@ type UsageEvent struct {
 	LatencyMs        int64
 	PromptTokens     int64
 	CompletionTokens int64
+	Modality         string
+	Metrics          map[string]any
 }
 
 type Pipeline struct {
@@ -240,6 +249,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 			TargetModel:    usedTarget,
 			Status:         "error",
 			LatencyMs:      time.Since(start).Milliseconds(),
+			Modality:       ModalityChat,
 		})
 		writeJSON(w, http.StatusBadGateway, map[string]any{
 			"error": map[string]string{"message": lastErr.Error(), "type": "server_error"},
@@ -296,7 +306,19 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		LatencyMs:        time.Since(start).Milliseconds(),
 		PromptTokens:     promptTokens,
 		CompletionTokens: completionTokens,
+		Modality:         ModalityChat,
+		Metrics:          tokenMetrics(promptTokens, completionTokens),
 	})
+}
+
+func tokenMetrics(prompt, completion int64) map[string]any {
+	if prompt == 0 && completion == 0 {
+		return nil
+	}
+	return map[string]any{
+		"prompt_tokens":     prompt,
+		"completion_tokens": completion,
+	}
 }
 
 func buildAttempts(snap *snapshot.Snapshot, route snapshot.Route, primary snapshot.Provider) []routeAttempt {

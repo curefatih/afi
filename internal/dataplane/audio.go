@@ -89,12 +89,17 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 	}
 	var reqBody struct {
 		Model string `json:"model"`
+		Input string `json:"input"`
 	}
 	if err := json.Unmarshal(body, &reqBody); err != nil || reqBody.Model == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": map[string]string{"message": "model is required", "type": "invalid_request_error"},
 		})
 		return
+	}
+	ttsMetrics := map[string]any{}
+	if n := len([]rune(reqBody.Input)); n > 0 {
+		ttsMetrics["characters"] = n
 	}
 
 	denied, err := p.checkAndIncrRequests(ctx, snap, key)
@@ -152,6 +157,7 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID,
 			Model: reqBody.Model, ProviderType: provider.Type, TargetModel: route.TargetModel,
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
+			Modality: ModalityTTS, Metrics: ttsMetrics,
 		})
 		return
 	}
@@ -167,6 +173,7 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID,
 		Model: reqBody.Model, ProviderType: provider.Type, TargetModel: route.TargetModel,
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
+		Modality: ModalityTTS, Metrics: ttsMetrics,
 	})
 }
 
@@ -269,6 +276,7 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID,
 			Model: model, ProviderType: provider.Type, TargetModel: route.TargetModel,
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
+			Modality: ModalitySTT,
 		})
 		return
 	}
@@ -284,5 +292,6 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID,
 		Model: model, ProviderType: provider.Type, TargetModel: route.TargetModel,
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
+		Modality: ModalitySTT,
 	})
 }
