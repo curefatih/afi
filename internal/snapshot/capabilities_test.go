@@ -5,12 +5,16 @@ import "testing"
 func TestDefaultCapabilities(t *testing.T) {
 	t.Parallel()
 	g := DefaultCapabilities("gemini")
-	if !g.Chat || !g.Stream {
+	if !g.Chat || !g.Stream || g.TTS || g.STT {
 		t.Fatalf("gemini=%+v", g)
 	}
 	o := DefaultCapabilities("openai_compatible")
-	if !o.Chat || !o.Stream {
+	if !o.Chat || !o.Stream || !o.TTS || !o.STT {
 		t.Fatalf("compat=%+v", o)
+	}
+	oa := DefaultCapabilities("openai")
+	if !oa.TTS || !oa.STT {
+		t.Fatalf("openai=%+v", oa)
 	}
 }
 

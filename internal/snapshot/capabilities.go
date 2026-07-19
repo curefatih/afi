@@ -4,17 +4,24 @@ package snapshot
 type ProviderCapabilities struct {
 	Chat   bool `json:"chat"`
 	Stream bool `json:"stream"`
+	TTS    bool `json:"tts"`
+	STT    bool `json:"stt"`
 }
 
 // DefaultCapabilities returns catalog defaults for a provider type.
 func DefaultCapabilities(typ string) ProviderCapabilities {
-	// Built-ins all support chat+stream (Gemini via streamGenerateContent).
-	return ProviderCapabilities{Chat: true, Stream: true}
+	switch typ {
+	case "openai", "openai_compatible":
+		return ProviderCapabilities{Chat: true, Stream: true, TTS: true, STT: true}
+	default:
+		// anthropic, gemini, …
+		return ProviderCapabilities{Chat: true, Stream: true}
+	}
 }
 
 // NormalizeCapabilities fills empty capabilities from the type catalog.
 func NormalizeCapabilities(typ string, c ProviderCapabilities) ProviderCapabilities {
-	if !c.Chat && !c.Stream {
+	if !c.Chat && !c.Stream && !c.TTS && !c.STT {
 		return DefaultCapabilities(typ)
 	}
 	return c
