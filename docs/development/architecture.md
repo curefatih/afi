@@ -41,14 +41,14 @@ flowchart TD
   A --> B --> C --> D --> E --> F --> G
 ```
 
-Provider adapters (`openai`, `anthropic`, `gemini`, `openai_compatible`, …) implement `ChatProvider` and register in a registry. See [Providers](providers.md).
+Provider adapters (`openai`, `anthropic`, `gemini`, `openai_compatible`, …) implement `ChatProvider` and register in a registry. Optional modality ports (`AudioBackend`, `MessagesBackend`) are exposed by the same adapters and resolved by routed `provider.type`. See [Providers](providers.md).
 
 Also exposes:
 
 * `GET /v1/models` — virtual models from the key’s organization routes (`supports_streaming`, `supports_tts`, `supports_stt`)
-* `POST /v1/chat/completions` — OpenAI-shaped chat (adapters translate native APIs)
-* `POST /v1/messages` — Anthropic-shaped pass-through (Anthropic providers only)
-* `POST /v1/audio/speech` / `POST /v1/audio/transcriptions` — OpenAI-shaped TTS/STT (openai / openai_compatible only)
+* `POST /v1/chat/completions` — OpenAI-shaped chat via `ChatProvider` (adapters translate native APIs)
+* `POST /v1/messages` — Anthropic-shaped pass-through via `MessagesBackend`
+* `POST /v1/audio/speech` / `POST /v1/audio/transcriptions` — TTS/STT via `AudioBackend`
 
 The playground honors streaming/TTS/STT capabilities per model. Chat failover retries only before the response body is committed to the client (audio has no failover in this build).
 
