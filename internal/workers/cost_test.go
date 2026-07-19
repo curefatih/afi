@@ -9,8 +9,7 @@ func TestComputeCostUSD(t *testing.T) {
 	if got == nil || *got < 0.449 || *got > 0.451 {
 		t.Fatalf("got %v", got)
 	}
-	zero := ComputeCostUSD(0, 0, 0.15, 0.60)
-	if zero == nil || *zero != 0 {
-		t.Fatalf("zero tokens: %v", zero)
+	if zero := ComputeCostUSD(0, 0, 0.15, 0.60); zero != nil {
+		t.Fatalf("zero tokens should be unpriced, got %v", zero)
 	}
 }

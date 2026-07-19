@@ -53,6 +53,13 @@ func (c *OpenAIClient) ChatCompletions(ctx context.Context, provider snapshot.Pr
 	payload["model"] = targetModel
 	if stream {
 		payload["stream"] = true
+		// Ask upstream for a final usage chunk so the gateway can price streams.
+		opts, _ := payload["stream_options"].(map[string]any)
+		if opts == nil {
+			opts = map[string]any{}
+		}
+		opts["include_usage"] = true
+		payload["stream_options"] = opts
 	}
 	rewritten, err := json.Marshal(payload)
 	if err != nil {

@@ -13,6 +13,7 @@ import {
 	SelectValue,
 } from "#/components/ui/select";
 import { GATEWAY_API_KEY, GATEWAY_API_URL } from "#/lib/gateway-base";
+import { type GatewayModel, isSTTModel } from "#/lib/gateway-models";
 
 export const Route = createFileRoute("/_authenticated/app/playground/stt")({
 	staticData: {
@@ -20,11 +21,6 @@ export const Route = createFileRoute("/_authenticated/app/playground/stt")({
 	},
 	component: RouteComponent,
 });
-
-type GatewayModel = {
-	id: string;
-	supports_stt?: boolean;
-};
 
 function RouteComponent() {
 	const [models, setModels] = useState<GatewayModel[]>([]);
@@ -45,7 +41,7 @@ function RouteComponent() {
 				if (!res.ok) throw new Error(`models HTTP ${res.status}`);
 				const data = (await res.json()) as { data?: GatewayModel[] };
 				if (cancelled) return;
-				const list = (data.data ?? []).filter((m) => m.supports_stt);
+				const list = (data.data ?? []).filter(isSTTModel);
 				setModels(list);
 				setModel((prev) => {
 					if (list.some((m) => m.id === prev)) return prev;
@@ -98,7 +94,7 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Speech to text"
-				description="OpenAI-compatible transcriptions via the gateway. Use whisper-1 (or another STT route) — not TTS models."
+				description="OpenAI-compatible transcriptions via the gateway. Lists catalog models with mode audio_transcription (e.g. whisper-1)."
 			/>
 			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(280px,1fr)]">
 				<div className="space-y-5">

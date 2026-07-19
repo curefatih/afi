@@ -61,6 +61,7 @@ import {
 	TooltipTrigger,
 } from "#/components/ui/tooltip";
 import { GATEWAY_API_KEY, GATEWAY_API_URL } from "#/lib/gateway-base";
+import { type GatewayModel, isChatModel } from "#/lib/gateway-models";
 import { useActiveOrg, useOrgActions } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/playground/chat")({
@@ -69,8 +70,6 @@ export const Route = createFileRoute("/_authenticated/app/playground/chat")({
 	},
 	component: RouteComponent,
 });
-
-type GatewayModel = { id: string; supports_streaming?: boolean };
 
 type Message = {
 	id: string;
@@ -158,8 +157,8 @@ function SettingsFields({
 					</SelectContent>
 				</Select>
 				<p className="text-muted-foreground text-xs">
-					From gateway /v1/models. Streaming follows each model&apos;s
-					supports_streaming capability.
+					From gateway /v1/models (mode=chat). Streaming follows each
+					model&apos;s supports_streaming capability.
 				</p>
 			</div>
 
@@ -237,13 +236,17 @@ function RouteComponent() {
 				};
 				if (cancelled) return;
 				const list = (data.data ?? [])
-					.filter((m) => m.id)
+					.filter(isChatModel)
 					.map((m) => ({
 						id: m.id,
+						mode: m.mode ?? "chat",
 						supports_streaming: m.supports_streaming !== false,
+						capabilities: m.capabilities,
 					}));
 				setModels(list);
-				setModel((prev) => prev || list[0]?.id || "");
+				setModel((prev) =>
+					list.some((m) => m.id === prev) ? prev : list[0]?.id || "",
+				);
 				setModelsError(null);
 			} catch (e) {
 				if (!cancelled) {

@@ -1,9 +1,9 @@
 package dataplane
 
 import (
-	"github.com/curefatih/afi/internal/adapters/llm"
 	"bytes"
 	"encoding/json"
+	"github.com/curefatih/afi/internal/adapters/llm"
 	"io"
 	"log/slog"
 	"net/http"
@@ -107,6 +107,56 @@ func TestChatCompletionsNonStreamMockUpstream(t *testing.T) {
 		t.Fatalf("unexpected body: %s", b)
 	}
 	if got.PromptTokens != 3 || got.CompletionTokens != 1 || got.Status != "ok" {
+		t.Fatalf("usage event: %+v", got)
+	}
+}
+
+func TestChatCompletionsStreamParsesUsage(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		opts, _ := req["stream_options"].(map[string]any)
+		if opts == nil || opts["include_usage"] != true {
+			http.Error(w, "missing stream_options.include_usage", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, "data: {\"choices\":[{\"delta\":{\"content\":\"hi\"}}]}\n\n")
+		_, _ = io.WriteString(w, "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":9,\"completion_tokens\":2}}\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	defer upstream.Close()
+
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
+	holder := NewHolder()
+	holder.Set(snapshot.Compile(snapshot.Source{
+		APIKeys: []snapshot.APIKey{{
+			ID: "key1", KeyHash: snapshot.HashKey("sk-good"), ProjectID: "p1", OrganizationID: "o1",
+		}},
+		Providers: []snapshot.Provider{{
+			ID: "prov", Type: "openai", BaseURL: upstream.URL, APIKeyEnv: "OPENAI_API_KEY",
+		}},
+		Routes: []snapshot.Route{{
+			OrganizationID: "o1", Model: "gpt-4o-mini", ProviderID: "prov", TargetModel: "gpt-4o-mini",
+		}},
+	}))
+
+	client := llm.NewOpenAIClient(nil)
+	client.HTTP = upstream.Client()
+	p := NewPipeline(holder, RegistryWithOpenAI(client), slog.Default())
+	var got UsageEvent
+	p.Usage = func(e UsageEvent) { got = e }
+
+	body := `{"model":"gpt-4o-mini","stream":true,"messages":[{"role":"user","content":"hi"}]}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(body))
+	req.Header.Set("Authorization", "Bearer sk-good")
+	rr := httptest.NewRecorder()
+	p.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if got.PromptTokens != 9 || got.CompletionTokens != 2 {
 		t.Fatalf("usage event: %+v", got)
 	}
 }

@@ -13,6 +13,7 @@ import {
 } from "#/components/ui/select";
 import { Textarea } from "#/components/ui/textarea";
 import { GATEWAY_API_KEY, GATEWAY_API_URL } from "#/lib/gateway-base";
+import { type GatewayModel, isTTSModel } from "#/lib/gateway-models";
 
 export const Route = createFileRoute("/_authenticated/app/playground/tts")({
 	staticData: {
@@ -20,11 +21,6 @@ export const Route = createFileRoute("/_authenticated/app/playground/tts")({
 	},
 	component: RouteComponent,
 });
-
-type GatewayModel = {
-	id: string;
-	supports_tts?: boolean;
-};
 
 const VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"] as const;
 
@@ -48,7 +44,7 @@ function RouteComponent() {
 				if (!res.ok) throw new Error(`models HTTP ${res.status}`);
 				const data = (await res.json()) as { data?: GatewayModel[] };
 				if (cancelled) return;
-				const list = (data.data ?? []).filter((m) => m.supports_tts);
+				const list = (data.data ?? []).filter(isTTSModel);
 				setModels(list);
 				setModel((prev) => {
 					if (list.some((m) => m.id === prev)) return prev;
@@ -115,7 +111,7 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Text to speech"
-				description="OpenAI-compatible TTS via the gateway. Use a TTS route such as tts-1 (seeded)."
+				description="OpenAI-compatible TTS via the gateway. Lists catalog models with mode audio_speech (e.g. tts-1)."
 			/>
 			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
 				<div className="space-y-5">

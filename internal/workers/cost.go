@@ -7,9 +7,13 @@ import (
 	"github.com/curefatih/afi/internal/usage"
 )
 
-// ComputeCostUSD returns USD cost from per-million-token prices, or nil if prices are missing.
+// ComputeCostUSD returns USD cost from per-million-token prices, or nil if prices
+// are missing or there is no token usage to price.
 func ComputeCostUSD(promptTokens, completionTokens int64, inputPerMTok, outputPerMTok float64) *float64 {
 	if inputPerMTok < 0 || outputPerMTok < 0 {
+		return nil
+	}
+	if promptTokens == 0 && completionTokens == 0 {
 		return nil
 	}
 	cost := (float64(promptTokens)/1_000_000.0)*inputPerMTok +

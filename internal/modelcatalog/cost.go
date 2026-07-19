@@ -33,6 +33,9 @@ func EstimateCostUSD(e usage.Event) *float64 {
 		if entry.InputCostPerMTok == nil || entry.OutputCostPerMTok == nil {
 			return nil
 		}
+		if e.PromptTokens == 0 && e.CompletionTokens == 0 {
+			return nil
+		}
 		cost := (float64(e.PromptTokens)/1_000_000.0)**entry.InputCostPerMTok +
 			(float64(e.CompletionTokens)/1_000_000.0)**entry.OutputCostPerMTok
 		return &cost

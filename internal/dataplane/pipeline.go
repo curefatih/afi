@@ -306,6 +306,25 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		}
 		w.WriteHeader(resp.StatusCode)
 		_, _ = w.Write(respBody)
+	} else if reqBody.Stream && resp.StatusCode < 400 {
+		for k, vals := range resp.Header {
+			if strings.EqualFold(k, "Transfer-Encoding") || strings.EqualFold(k, "Connection") {
+				continue
+			}
+			for _, v := range vals {
+				w.Header().Add(k, v)
+			}
+		}
+		w.WriteHeader(resp.StatusCode)
+		var copyErr error
+		promptTokens, completionTokens, copyErr = openaichat.CopySSEAndParseUsage(w, resp.Body)
+		if copyErr != nil {
+			log.Error("copy stream response", "err", copyErr)
+			status = "error"
+		}
+		if promptTokens+completionTokens > 0 {
+			p.incrTokens(ctx, snap, key, promptTokens+completionTokens)
+		}
 	} else {
 		if err := CopyResponse(w, resp); err != nil {
 			log.Error("copy response", "err", err)

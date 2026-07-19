@@ -22,3 +22,25 @@ func TestWriteSSEChunkAndDone(t *testing.T) {
 		t.Fatalf("missing DONE: %s", s)
 	}
 }
+
+func TestCopySSEAndParseUsage(t *testing.T) {
+	src := strings.NewReader(strings.Join([]string{
+		`data: {"choices":[{"delta":{"content":"hi"}}]}`,
+		``,
+		`data: {"choices":[],"usage":{"prompt_tokens":12,"completion_tokens":3}}`,
+		``,
+		`data: [DONE]`,
+		``,
+	}, "\n"))
+	var dst bytes.Buffer
+	prompt, completion, err := CopySSEAndParseUsage(&dst, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prompt != 12 || completion != 3 {
+		t.Fatalf("prompt=%d completion=%d", prompt, completion)
+	}
+	if !strings.Contains(dst.String(), "data: [DONE]") {
+		t.Fatalf("dst=%s", dst.String())
+	}
+}
