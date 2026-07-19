@@ -60,6 +60,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/projects", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleCreateProject)))
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/providers", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListProviders)))
+	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/providers/health", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleProviderHealth)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/providers", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleCreateProvider)))
 	mux.HandleFunc("PATCH /api/v1/platform/providers/{providerID}", s.requireAuth(s.requireOrgMemberViaProvider(s.handleUpdateProvider)))
 	mux.HandleFunc("DELETE /api/v1/platform/providers/{providerID}", s.requireAuth(s.requireOrgMemberViaProvider(s.handleDeleteProvider)))
@@ -514,6 +515,31 @@ func (s *Server) handleListProviders(w http.ResponseWriter, r *http.Request) {
 	}
 	if list == nil {
 		list = []Provider{}
+	}
+	writeJSON(w, http.StatusOK, list)
+}
+
+func (s *Server) handleProviderHealth(w http.ResponseWriter, r *http.Request) {
+	f, err := parseUsageFilter(r)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	from := time.Time{}
+	to := time.Time{}
+	if f.From != nil {
+		from = *f.From
+	}
+	if f.To != nil {
+		to = *f.To
+	}
+	list, err := s.api.ListProviderHealth(r.Context(), r.PathValue("orgID"), from, to)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if list == nil {
+		list = []ProviderHealth{}
 	}
 	writeJSON(w, http.StatusOK, list)
 }

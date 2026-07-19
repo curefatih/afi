@@ -158,6 +158,17 @@ type ModelPrice struct {
 	OutputPerMTok float64
 }
 
+type ProviderHealth struct {
+	ProviderID   string  `json:"provider_id"`
+	Name         string  `json:"name"`
+	Type         string  `json:"type"`
+	Requests     int64   `json:"requests"`
+	Errors       int64   `json:"errors"`
+	ErrorRate    float64 `json:"error_rate"`
+	AvgLatencyMs float64 `json:"avg_latency_ms"`
+	Status       string  `json:"status"` // healthy | degraded | down | unknown
+}
+
 func (s *Store) CountOrgs(ctx context.Context) (int64, error) {
 	var n int64
 	err := s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM organizations`).Scan(&n)
@@ -695,6 +706,62 @@ func (s *Store) ListProviders(ctx context.Context, orgID string) ([]Provider, er
 		}
 		p.Capabilities = decodeCapabilities(p.Type, caps)
 		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+func classifyProviderHealth(requests, errors int64, errorRate float64) string {
+	if requests == 0 {
+		return "unknown"
+	}
+	if errorRate >= 0.9 || (requests >= 3 && errors == requests) {
+		return "down"
+	}
+	if errorRate >= 0.2 {
+		return "degraded"
+	}
+	return "healthy"
+}
+
+// ListProviderHealth aggregates usage_events for models routed to each org provider.
+func (s *Store) ListProviderHealth(ctx context.Context, orgID string, from, to time.Time) ([]ProviderHealth, error) {
+	if from.IsZero() {
+		from = time.Now().UTC().Add(-24 * time.Hour)
+	}
+	if to.IsZero() {
+		to = time.Now().UTC().Add(time.Hour)
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT p.id, p.name, p.type,
+			COUNT(e.id)::bigint AS requests,
+			COUNT(e.id) FILTER (WHERE e.status IS NOT NULL AND e.status <> 'ok')::bigint AS errors,
+			COALESCE(AVG(e.latency_ms), 0)::double precision AS avg_latency_ms
+		FROM providers p
+		LEFT JOIN routes r
+			ON r.provider_id = p.id AND r.organization_id = p.organization_id
+		LEFT JOIN usage_events e
+			ON e.organization_id = p.organization_id
+			AND e.model = r.model
+			AND e.created_at >= $2 AND e.created_at < $3
+		WHERE p.organization_id = $1
+		GROUP BY p.id, p.name, p.type
+		ORDER BY p.name
+	`, orgID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ProviderHealth
+	for rows.Next() {
+		var h ProviderHealth
+		if err := rows.Scan(&h.ProviderID, &h.Name, &h.Type, &h.Requests, &h.Errors, &h.AvgLatencyMs); err != nil {
+			return nil, err
+		}
+		if h.Requests > 0 {
+			h.ErrorRate = float64(h.Errors) / float64(h.Requests)
+		}
+		h.Status = classifyProviderHealth(h.Requests, h.Errors, h.ErrorRate)
+		out = append(out, h)
 	}
 	return out, rows.Err()
 }

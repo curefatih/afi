@@ -79,7 +79,16 @@ curl -fsS "$GW/healthz" | python3 -c '
 import sys,json
 d=json.load(sys.stdin)
 assert "echo" in d.get("provider_types",[]), d
-assert "demo_tag" in d.get("hooks",[]), d
+hooks=d.get("hooks",[])
+names=[]
+for h in hooks:
+  if isinstance(h, dict):
+    names.append(h.get("name"))
+    if h.get("name")=="demo_tag":
+      assert h.get("before_chat") and h.get("after_chat"), h
+  else:
+    names.append(h)
+assert "demo_tag" in names, d
 '
 curl -fsS "$GW/v1/chat/completions" \
   -H "Authorization: Bearer $VIRTUAL_KEY" \
@@ -195,6 +204,16 @@ fi
 
 echo "==> platform me"
 curl -fsS "$CP/api/v1/platform/auth/me" -H "Authorization: Bearer $TOKEN" | grep -q admin@afi.local
+echo "ok"
+
+echo "==> provider health"
+curl -fsS "$CP/api/v1/platform/organizations/org_local/providers/health" \
+  -H "Authorization: Bearer $TOKEN" | python3 -c '
+import sys,json
+d=json.load(sys.stdin)
+assert isinstance(d, list) and len(d)>=1, d
+assert all("status" in x and "provider_id" in x for x in d), d
+'
 echo "ok"
 
 echo "==> personal API key"

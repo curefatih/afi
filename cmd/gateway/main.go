@@ -41,11 +41,11 @@ func main() {
 	snapStore := snapshot.NewStore(pool)
 	holder := dataplane.NewHolder()
 	reg := dataplane.DefaultRegistry().RegisterSDK(echo.New())
-	hooks := dataplane.NewHookChain().Register(demohook.New())
+	hooks := dataplane.NewHookChain().RegisterHook(demohook.NewWithLog(log))
 	pipeline := dataplane.NewPipelineWithRegistry(holder, reg, log)
 	pipeline.Hooks = hooks
 	pipeline.Counters = controlplane.CounterAdapter{Store: store}
-	log.Info("extensions registered", "provider_types", reg.Types(), "hooks", hooks.Names())
+	log.Info("extensions registered", "provider_types", reg.Types(), "hooks", hooks.Infos())
 	pipeline.Usage = func(e dataplane.UsageEvent) {
 		payload, err := workers.EncodeUsage(workers.UsagePayload{
 			OrganizationID:   e.OrganizationID,

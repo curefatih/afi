@@ -133,6 +133,9 @@ func (f *fakePlatform) CreateAPIKey(context.Context, string, string, string, str
 }
 func (f *fakePlatform) DeleteAPIKey(context.Context, string) error { return kernel.ErrNotFound }
 func (f *fakePlatform) ListProviders(context.Context, string) ([]Provider, error) { return nil, nil }
+func (f *fakePlatform) ListProviderHealth(context.Context, string, time.Time, time.Time) ([]ProviderHealth, error) {
+	return nil, nil
+}
 func (f *fakePlatform) CreateProvider(context.Context, string, string, string, string, string, snapshot.ProviderCapabilities) (*Provider, error) {
 	return nil, errors.New("unused")
 }

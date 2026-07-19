@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"time"
 
 	"github.com/curefatih/afi/internal/snapshot"
 )
@@ -44,6 +45,7 @@ type platformAPI interface {
 	CreateAPIKey(ctx context.Context, orgID, kind, ownerUserID, projectID, name, rawKey string) (*APIKey, error)
 	DeleteAPIKey(ctx context.Context, keyID string) error
 	ListProviders(ctx context.Context, orgID string) ([]Provider, error)
+	ListProviderHealth(ctx context.Context, orgID string, from, to time.Time) ([]ProviderHealth, error)
 	CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities) (*Provider, error)
 	UpdateProvider(ctx context.Context, providerID, name, baseURL, apiKeyEnv string) (*Provider, error)
 	DeleteProvider(ctx context.Context, providerID string) error
