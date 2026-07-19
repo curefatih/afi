@@ -30,6 +30,7 @@ go.work.sum
 # Local build artifacts
 /bin/
 .controlplane.pid
+.worker.pid
 
 # Editor/IDE
 # .idea/

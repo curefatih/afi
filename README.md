@@ -44,7 +44,8 @@ Full checklist: [docs/getting-started/local-dev.md](docs/getting-started/local-d
 | Process | Port | Role |
 |---------|------|------|
 | `controlplane` | `:8081` | Admin, platform API, snapshot publish |
-| `gateway` | `:8080` | OpenAI-compatible inference |
+| `gateway` | `:8080` | OpenAI-compatible inference + quota enforcement |
+| `worker` | — | Drains usage outbox → `usage_events` |
 | Postgres | `:5433` | Config + snapshots (`make dev-up`) |
 | Adminer | `:5050` | DB UI |
 | `web/` | `:3000` | Platform UI (`pnpm --dir web dev`) |
