@@ -15,6 +15,7 @@ import (
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
+	"github.com/curefatih/afi/internal/usage"
 )
 
 // ErrStreamUnsupported is returned when the provider capabilities disallow streaming.
@@ -27,20 +28,8 @@ const (
 	ModalitySTT      = "stt"
 )
 
-type UsageEvent struct {
-	OrganizationID   string
-	ProjectID        string
-	APIKeyID         string
-	Model            string
-	ProviderType     string
-	TargetModel      string
-	Status           string
-	LatencyMs        int64
-	PromptTokens     int64
-	CompletionTokens int64
-	Modality         string
-	Metrics          map[string]any
-}
+// UsageEvent is an alias for the canonical usage.Event emitted on the request path.
+type UsageEvent = usage.Event
 
 type Pipeline struct {
 	Holder    *Holder
