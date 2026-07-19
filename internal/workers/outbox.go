@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"time"
+
+	"github.com/curefatih/afi/internal/usage"
 )
 
 type OutboxRow struct {
@@ -12,20 +14,8 @@ type OutboxRow struct {
 	ProcessedAt *time.Time
 }
 
-type UsagePayload struct {
-	OrganizationID   string         `json:"organization_id"`
-	ProjectID        string         `json:"project_id"`
-	APIKeyID         string         `json:"api_key_id"`
-	Model            string         `json:"model"`
-	ProviderType     string         `json:"provider_type"`
-	TargetModel      string         `json:"target_model"`
-	Status           string         `json:"status"`
-	LatencyMs        int64          `json:"latency_ms"`
-	PromptTokens     int64          `json:"prompt_tokens"`
-	CompletionTokens int64          `json:"completion_tokens"`
-	Modality         string         `json:"modality"`
-	Metrics          map[string]any `json:"metrics,omitempty"`
-}
+// UsagePayload is an alias for the canonical usage.Event carried in the outbox.
+type UsagePayload = usage.Event
 
 // UsageEnqueuer is the gateway write-side port for usage_outbox.
 type UsageEnqueuer interface {
@@ -42,7 +32,7 @@ type PriceLookup interface {
 }
 
 type UsageSink interface {
-	InsertUsage(ctx context.Context, e UsagePayload, costUSD *float64) error
+	InsertUsage(ctx context.Context, e usage.Event, costUSD *float64) error
 }
 
 // ProcessOnce claims pending outbox rows and writes usage_events.

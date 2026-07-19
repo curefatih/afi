@@ -1,7 +1,11 @@
 package workers
 
-import "encoding/json"
+import (
+	"encoding/json"
 
-func EncodeUsage(e UsagePayload) ([]byte, error) {
+	"github.com/curefatih/afi/internal/usage"
+)
+
+func EncodeUsage(e usage.Event) ([]byte, error) {
 	return json.Marshal(e)
 }
