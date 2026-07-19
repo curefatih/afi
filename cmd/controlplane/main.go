@@ -40,6 +40,10 @@ func main() {
 	}
 
 	store := controlplane.NewStore(pool)
+	if err := store.SetCredentialsMasterKey(cfg.Credentials.MasterKey); err != nil {
+		log.Error("credentials master key", "err", err)
+		os.Exit(1)
+	}
 	snapStore := postgres.NewSnapshotStore(pool)
 	seeder := controlplane.NewSeeder(pool, store, snapStore, cfg)
 

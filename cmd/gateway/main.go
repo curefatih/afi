@@ -12,6 +12,8 @@ import (
 	"github.com/curefatih/afi/extensions/echo"
 	"github.com/curefatih/afi/internal/adapters/postgres"
 	afiRedis "github.com/curefatih/afi/internal/adapters/redis"
+	"github.com/curefatih/afi/internal/adapters/secrets"
+	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/dataplane"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/policy"
@@ -46,6 +48,16 @@ func main() {
 	hooks := dataplane.NewHookChain().RegisterHook(demohook.NewWithLog(log))
 	pipeline := dataplane.NewPipelineWithRegistry(holder, reg, log)
 	pipeline.Hooks = hooks
+	var credBox *credentials.Box
+	if cfg.Credentials.MasterKey != "" {
+		box, err := credentials.ParseMasterKey(cfg.Credentials.MasterKey)
+		if err != nil {
+			log.Error("credentials master key", "err", err)
+			os.Exit(1)
+		}
+		credBox = box
+	}
+	pipeline.Credentials = secrets.NewCredentialResolver(credBox)
 
 	var timed dataplane.CounterStore
 	if cfg.RedisURL != "" {
