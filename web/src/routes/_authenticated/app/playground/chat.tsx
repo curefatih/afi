@@ -6,7 +6,7 @@ import {
 	RotateCwIcon,
 	Settings2Icon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PageBody } from "#/components/page-header";
 import { Button } from "#/components/ui/button";
 import {
@@ -25,12 +25,14 @@ import {
 	EmptyMedia,
 	EmptyTitle,
 } from "#/components/ui/empty";
+import { Input } from "#/components/ui/input";
 import {
 	InputGroup,
 	InputGroupAddon,
 	InputGroupButton,
 	InputGroupTextarea,
 } from "#/components/ui/input-group";
+import { JsonCodeEditor } from "#/components/ui/json-code-editor";
 import { Label } from "#/components/ui/label";
 import { MessageAnimated } from "#/components/ui/message-animated";
 import {
@@ -47,6 +49,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "#/components/ui/select";
+import { Separator } from "#/components/ui/separator";
 import {
 	Sheet,
 	SheetContent,
@@ -55,6 +58,9 @@ import {
 	SheetTitle,
 	SheetTrigger,
 } from "#/components/ui/sheet";
+import { Slider } from "#/components/ui/slider";
+import { Switch } from "#/components/ui/switch";
+import { Textarea } from "#/components/ui/textarea";
 import {
 	Tooltip,
 	TooltipContent,
@@ -78,6 +84,17 @@ type Message = {
 		text: string;
 	}>;
 };
+
+type ResponseFormat = "text" | "json_object" | "json_schema";
+
+const DEFAULT_JSON_SCHEMA = `{
+  "type": "object",
+  "properties": {
+    "answer": { "type": "string" }
+  },
+  "required": ["answer"],
+  "additionalProperties": false
+}`;
 
 async function readSSEContent(
 	res: Response,
@@ -113,24 +130,72 @@ async function readSSEContent(
 	}
 }
 
+function parseOptionalInt(raw: string): number | undefined {
+	const trimmed = raw.trim();
+	if (!trimmed) return undefined;
+	const n = Number(trimmed);
+	if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) return undefined;
+	return n;
+}
+
+function sliderValue(
+	value: number | readonly number[],
+	fallback: number,
+): number {
+	if (typeof value === "number") return value;
+	return value[0] ?? fallback;
+}
+
 function SettingsFields({
 	model,
 	models,
 	modelsError,
 	projectId,
 	projects,
-	apiKey,
+	systemPrompt,
+	temperature,
+	topP,
+	maxTokens,
+	responseFormat,
+	jsonSchemaName,
+	jsonSchemaStrict,
+	jsonSchemaText,
+	jsonSchemaError,
 	onModelChange,
 	onProjectChange,
+	onSystemPromptChange,
+	onTemperatureChange,
+	onTopPChange,
+	onMaxTokensChange,
+	onResponseFormatChange,
+	onJsonSchemaNameChange,
+	onJsonSchemaStrictChange,
+	onJsonSchemaTextChange,
 }: {
 	model: string;
 	models: GatewayModel[];
 	modelsError: string | null;
 	projectId: string;
 	projects: Array<{ id: string; name: string }>;
-	apiKey: string;
+	systemPrompt: string;
+	temperature: number;
+	topP: number;
+	maxTokens: string;
+	responseFormat: ResponseFormat;
+	jsonSchemaName: string;
+	jsonSchemaStrict: boolean;
+	jsonSchemaText: string;
+	jsonSchemaError: string | null;
 	onModelChange: (value: string) => void;
 	onProjectChange: (value: string) => void;
+	onSystemPromptChange: (value: string) => void;
+	onTemperatureChange: (value: number) => void;
+	onTopPChange: (value: number) => void;
+	onMaxTokensChange: (value: string) => void;
+	onResponseFormatChange: (value: ResponseFormat) => void;
+	onJsonSchemaNameChange: (value: string) => void;
+	onJsonSchemaStrictChange: (value: boolean) => void;
+	onJsonSchemaTextChange: (value: string) => void;
 }) {
 	return (
 		<div className="space-y-4">
@@ -185,12 +250,162 @@ function SettingsFields({
 				</p>
 			</div>
 
+			<Separator />
+
 			<div className="space-y-2">
-				<Label>Active key</Label>
-				<code className="block break-all rounded-md border bg-muted/40 px-2 py-1.5 text-xs">
-					{apiKey}
-				</code>
+				<Label htmlFor="chat-system">System prompt</Label>
+				<Textarea
+					id="chat-system"
+					value={systemPrompt}
+					onChange={(e) => onSystemPromptChange(e.target.value)}
+					placeholder="Optional instructions for the model…"
+					rows={3}
+					className="min-h-20 resize-y font-mono text-xs"
+				/>
 			</div>
+
+			<div className="space-y-2">
+				<div className="flex items-center justify-between gap-2">
+					<Label htmlFor="chat-temperature">Temperature</Label>
+					<span className="tabular-nums text-muted-foreground text-xs">
+						{temperature.toFixed(2)}
+					</span>
+				</div>
+				<Slider
+					id="chat-temperature"
+					min={0}
+					max={2}
+					step={0.01}
+					value={[temperature]}
+					onValueChange={(value) =>
+						onTemperatureChange(sliderValue(value, 1))
+					}
+				/>
+				<p className="text-muted-foreground text-xs">
+					0 = deterministic · 2 = more random
+				</p>
+			</div>
+
+			<div className="space-y-2">
+				<div className="flex items-center justify-between gap-2">
+					<Label htmlFor="chat-top-p">Top P</Label>
+					<span className="tabular-nums text-muted-foreground text-xs">
+						{topP.toFixed(2)}
+					</span>
+				</div>
+				<Slider
+					id="chat-top-p"
+					min={0}
+					max={1}
+					step={0.01}
+					value={[topP]}
+					onValueChange={(value) => onTopPChange(sliderValue(value, 1))}
+				/>
+				<p className="text-muted-foreground text-xs">
+					Nucleus sampling. 1 keeps the full distribution.
+				</p>
+			</div>
+
+			<div className="space-y-2">
+				<Label htmlFor="chat-max-tokens">Max tokens</Label>
+				<Input
+					id="chat-max-tokens"
+					type="number"
+					min={1}
+					step={1}
+					inputMode="numeric"
+					placeholder="Provider default"
+					value={maxTokens}
+					onChange={(e) => onMaxTokensChange(e.target.value)}
+				/>
+				<p className="text-muted-foreground text-xs">
+					Leave empty to omit max_tokens from the request.
+				</p>
+			</div>
+
+			<Separator />
+
+			<div className="space-y-2">
+				<Label htmlFor="chat-response-format">Response format</Label>
+				<Select
+					value={responseFormat}
+					onValueChange={(value) =>
+						onResponseFormatChange((value as ResponseFormat) ?? "text")
+					}
+				>
+					<SelectTrigger id="chat-response-format" className="w-full">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="text">Text</SelectItem>
+						<SelectItem value="json_object">JSON object</SelectItem>
+						<SelectItem value="json_schema">JSON schema</SelectItem>
+					</SelectContent>
+				</Select>
+				<p className="text-muted-foreground text-xs">
+					Structured outputs use OpenAI response_format. Support varies by
+					upstream provider.
+				</p>
+			</div>
+
+			{responseFormat === "json_schema" ? (
+				<div className="space-y-4">
+					<div className="space-y-2">
+						<Label htmlFor="chat-schema-name">Schema name</Label>
+						<Input
+							id="chat-schema-name"
+							value={jsonSchemaName}
+							onChange={(e) => onJsonSchemaNameChange(e.target.value)}
+							placeholder="response"
+						/>
+					</div>
+
+					<div className="flex items-center justify-between gap-3">
+						<div className="space-y-0.5">
+							<Label htmlFor="chat-schema-strict">Strict</Label>
+							<p className="text-muted-foreground text-xs">
+								Require adherence to the schema
+							</p>
+						</div>
+						<Switch
+							id="chat-schema-strict"
+							checked={jsonSchemaStrict}
+							onCheckedChange={onJsonSchemaStrictChange}
+						/>
+					</div>
+
+					<div className="space-y-2">
+						<div className="flex items-center justify-between gap-2">
+							<Label htmlFor="chat-json-schema">JSON schema</Label>
+							<span className="text-[11px] text-muted-foreground">
+								Tab indent · Shift+Tab outdent
+							</span>
+						</div>
+						<JsonCodeEditor
+							id="chat-json-schema"
+							value={jsonSchemaText}
+							onChange={onJsonSchemaTextChange}
+							minHeight="14rem"
+							invalid={Boolean(jsonSchemaError)}
+							placeholder='{ "type": "object", ... }'
+						/>
+						{jsonSchemaError ? (
+							<p className="text-destructive text-xs">{jsonSchemaError}</p>
+						) : (
+							<p className="text-muted-foreground text-xs">
+								Sent as response_format.json_schema.schema
+							</p>
+						)}
+					</div>
+				</div>
+			) : null}
+
+			{responseFormat === "json_object" ? (
+				<p className="text-muted-foreground text-xs">
+					Some providers require the word &quot;json&quot; in the prompt when
+					using JSON object mode.
+				</p>
+			) : null}
 		</div>
 	);
 }
@@ -206,13 +421,18 @@ function RouteComponent() {
 	const [error, setError] = useState<string | null>(null);
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [projectId, setProjectId] = useState<string>("seeded");
+	const [systemPrompt, setSystemPrompt] = useState("");
+	const [temperature, setTemperature] = useState(1);
+	const [topP, setTopP] = useState(1);
+	const [maxTokens, setMaxTokens] = useState("");
+	const [responseFormat, setResponseFormat] = useState<ResponseFormat>("text");
+	const [jsonSchemaName, setJsonSchemaName] = useState("response");
+	const [jsonSchemaStrict, setJsonSchemaStrict] = useState(true);
+	const [jsonSchemaText, setJsonSchemaText] = useState(DEFAULT_JSON_SCHEMA);
+	const [jsonSchemaError, setJsonSchemaError] = useState<string | null>(null);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 	const projects = activeOrg?.projects ?? [];
-
-	const apiKey = useMemo(() => {
-		return GATEWAY_API_KEY;
-	}, []);
 
 	const waitingForFirstToken =
 		isBusy &&
@@ -258,12 +478,46 @@ function RouteComponent() {
 		};
 	}, []);
 
+	useEffect(() => {
+		if (responseFormat !== "json_schema") {
+			setJsonSchemaError(null);
+			return;
+		}
+		try {
+			const parsed: unknown = JSON.parse(jsonSchemaText);
+			if (
+				parsed === null ||
+				typeof parsed !== "object" ||
+				Array.isArray(parsed)
+			) {
+				setJsonSchemaError("Schema must be a JSON object");
+				return;
+			}
+			setJsonSchemaError(null);
+		} catch {
+			setJsonSchemaError("Invalid JSON");
+		}
+	}, [responseFormat, jsonSchemaText]);
+
 	const selectedModel = models.find((m) => m.id === model);
 	const useStream = selectedModel?.supports_streaming !== false;
 
 	const send = async () => {
 		const text = input.trim();
 		if (!text || isBusy || !model) return;
+
+		if (responseFormat === "json_schema") {
+			if (jsonSchemaError) {
+				setError(jsonSchemaError);
+				return;
+			}
+			try {
+				JSON.parse(jsonSchemaText);
+			} catch {
+				setError("JSON schema is invalid");
+				return;
+			}
+		}
 
 		const userMsg: Message = {
 			id: crypto.randomUUID(),
@@ -302,25 +556,56 @@ function RouteComponent() {
 			);
 		};
 
+		const requestMessages: Array<{ role: string; content: string }> = [];
+		const system = systemPrompt.trim();
+		if (system) {
+			requestMessages.push({ role: "system", content: system });
+		}
+		for (const m of next) {
+			requestMessages.push({
+				role: m.role,
+				content: m.parts.map((c) => c.text).join("\n"),
+			});
+		}
+
+		const body: Record<string, unknown> = {
+			model,
+			stream: useStream,
+			messages: requestMessages,
+			temperature,
+			top_p: topP,
+		};
+
+		const parsedMaxTokens = parseOptionalInt(maxTokens);
+		if (parsedMaxTokens !== undefined) {
+			body.max_tokens = parsedMaxTokens;
+		}
+
+		if (responseFormat === "json_object") {
+			body.response_format = { type: "json_object" };
+		} else if (responseFormat === "json_schema") {
+			body.response_format = {
+				type: "json_schema",
+				json_schema: {
+					name: jsonSchemaName.trim() || "response",
+					strict: jsonSchemaStrict,
+					schema: JSON.parse(jsonSchemaText) as Record<string, unknown>,
+				},
+			};
+		}
+
 		try {
 			const res = await fetch(`${GATEWAY_API_URL}/v1/chat/completions`, {
 				method: "POST",
 				headers: {
-					Authorization: `Bearer ${apiKey}`,
+					Authorization: `Bearer ${GATEWAY_API_KEY}`,
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify({
-					model,
-					stream: useStream,
-					messages: next.map((m) => ({
-						role: m.role,
-						content: m.parts.map((c) => c.text).join("\n"),
-					})),
-				}),
+				body: JSON.stringify(body),
 			});
 			if (!res.ok) {
-				const body = await res.text();
-				throw new Error(body || `HTTP ${res.status}`);
+				const errBody = await res.text();
+				throw new Error(errBody || `HTTP ${res.status}`);
 			}
 
 			if (useStream) {
@@ -357,10 +642,33 @@ function RouteComponent() {
 		modelsError,
 		projectId,
 		projects,
-		apiKey,
+		systemPrompt,
+		temperature,
+		topP,
+		maxTokens,
+		responseFormat,
+		jsonSchemaName,
+		jsonSchemaStrict,
+		jsonSchemaText,
+		jsonSchemaError,
 		onModelChange: setModel,
 		onProjectChange,
+		onSystemPromptChange: setSystemPrompt,
+		onTemperatureChange: setTemperature,
+		onTopPChange: setTopP,
+		onMaxTokensChange: setMaxTokens,
+		onResponseFormatChange: setResponseFormat,
+		onJsonSchemaNameChange: setJsonSchemaName,
+		onJsonSchemaStrictChange: setJsonSchemaStrict,
+		onJsonSchemaTextChange: setJsonSchemaText,
 	};
+
+	const formatLabel =
+		responseFormat === "text"
+			? "text"
+			: responseFormat === "json_object"
+				? "json"
+				: "schema";
 
 	return (
 		<PageBody className="min-h-0 flex-1 gap-3 overflow-hidden">
@@ -371,7 +679,8 @@ function RouteComponent() {
 					</h1>
 					<p className="truncate text-sm text-muted-foreground">
 						{GATEWAY_API_URL}
-						{model ? ` · ${model}` : ""} · {useStream ? "stream" : "non-stream"}
+						{model ? ` · ${model}` : ""} · {useStream ? "stream" : "non-stream"}{" "}
+						· temp {temperature.toFixed(2)} · {formatLabel}
 					</p>
 				</div>
 				<Sheet>
@@ -387,14 +696,15 @@ function RouteComponent() {
 							</Button>
 						}
 					/>
-					<SheetContent side="right" className="w-full sm:max-w-sm">
+					<SheetContent side="right" className="w-full sm:max-w-md">
 						<SheetHeader>
 							<SheetTitle>Settings</SheetTitle>
 							<SheetDescription>
-								Model and auth context for this session.
+								Model, generation params, and structured output for this
+								session.
 							</SheetDescription>
 						</SheetHeader>
-						<div className="px-4 pb-4">
+						<div className="overflow-y-auto px-4 pb-4">
 							<SettingsFields {...settingsProps} />
 						</div>
 					</SheetContent>
@@ -518,7 +828,13 @@ function RouteComponent() {
 											type="submit"
 											variant="default"
 											size="icon-sm"
-											disabled={isBusy || !input.trim() || !model}
+											disabled={
+												isBusy ||
+												!input.trim() ||
+												!model ||
+												(responseFormat === "json_schema" &&
+													Boolean(jsonSchemaError))
+											}
 											aria-label="Send"
 										>
 											{isBusy ? (
@@ -537,10 +853,12 @@ function RouteComponent() {
 					</Card>
 				</MessageScrollerProvider>
 
-				<Card className="hidden w-72 shrink-0 overflow-y-auto lg:flex lg:flex-col">
+				<Card className="hidden w-96 shrink-0 overflow-y-auto lg:flex lg:flex-col">
 					<CardHeader className="shrink-0">
 						<CardTitle className="text-base">Settings</CardTitle>
-						<CardDescription>Model and auth context</CardDescription>
+						<CardDescription>
+							Model, generation, and structured output
+						</CardDescription>
 					</CardHeader>
 					<CardContent className="min-h-0">
 						<SettingsFields {...settingsProps} />
