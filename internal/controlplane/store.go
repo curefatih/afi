@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -79,13 +80,19 @@ type Provider struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+type RouteFallback struct {
+	ProviderID  string `json:"provider_id"`
+	TargetModel string `json:"target_model"`
+}
+
 type Route struct {
-	ID             string    `json:"id"`
-	OrganizationID string    `json:"organization_id"`
-	Model          string    `json:"model"`
-	ProviderID     string    `json:"provider_id"`
-	TargetModel    string    `json:"target_model"`
-	CreatedAt      time.Time `json:"created_at"`
+	ID             string          `json:"id"`
+	OrganizationID string          `json:"organization_id"`
+	Model          string          `json:"model"`
+	ProviderID     string          `json:"provider_id"`
+	TargetModel    string          `json:"target_model"`
+	Fallbacks      []RouteFallback `json:"fallbacks"`
+	CreatedAt      time.Time       `json:"created_at"`
 }
 
 type UsageEvent struct {
@@ -98,7 +105,15 @@ type UsageEvent struct {
 	LatencyMs        int64     `json:"latency_ms"`
 	PromptTokens     int64     `json:"prompt_tokens"`
 	CompletionTokens int64     `json:"completion_tokens"`
+	CostUSD          *float64  `json:"cost_usd,omitempty"`
 	CreatedAt        time.Time `json:"created_at"`
+}
+
+type ModelPrice struct {
+	ProviderType  string
+	Model         string
+	InputPerMTok  float64
+	OutputPerMTok float64
 }
 
 func (s *Store) CountOrgs(ctx context.Context) (int64, error) {
@@ -400,7 +415,7 @@ func (s *Store) GetProviderOrgID(ctx context.Context, providerID string) (string
 
 func (s *Store) ListRoutes(ctx context.Context, orgID string) ([]Route, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, organization_id, model, provider_id, target_model, created_at
+		SELECT id, organization_id, model, provider_id, target_model, fallbacks, created_at
 		FROM routes WHERE organization_id=$1 ORDER BY created_at
 	`, orgID)
 	if err != nil {
@@ -410,39 +425,72 @@ func (s *Store) ListRoutes(ctx context.Context, orgID string) ([]Route, error) {
 	var out []Route
 	for rows.Next() {
 		var r Route
-		if err := rows.Scan(&r.ID, &r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel, &r.CreatedAt); err != nil {
+		var fb []byte
+		if err := rows.Scan(&r.ID, &r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel, &fb, &r.CreatedAt); err != nil {
 			return nil, err
 		}
+		r.Fallbacks = decodeFallbacks(fb)
 		out = append(out, r)
 	}
 	return out, rows.Err()
 }
 
-func (s *Store) CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string) (*Route, error) {
+func (s *Store) CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []RouteFallback) (*Route, error) {
+	if fallbacks == nil {
+		fallbacks = []RouteFallback{}
+	}
 	r := &Route{
 		ID: newID("route"), OrganizationID: orgID, Model: model,
-		ProviderID: providerID, TargetModel: targetModel, CreatedAt: time.Now().UTC(),
+		ProviderID: providerID, TargetModel: targetModel, Fallbacks: fallbacks,
+		CreatedAt: time.Now().UTC(),
 	}
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO routes (id, organization_id, model, provider_id, target_model, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6)
-	`, r.ID, r.OrganizationID, r.Model, r.ProviderID, r.TargetModel, r.CreatedAt)
+	fb, err := json.Marshal(r.Fallbacks)
+	if err != nil {
+		return nil, err
+	}
+	_, err = s.pool.Exec(ctx, `
+		INSERT INTO routes (id, organization_id, model, provider_id, target_model, fallbacks, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7)
+	`, r.ID, r.OrganizationID, r.Model, r.ProviderID, r.TargetModel, fb, r.CreatedAt)
 	return r, err
 }
 
-func (s *Store) UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string) (*Route, error) {
+func (s *Store) UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []RouteFallback) (*Route, error) {
+	if fallbacks == nil {
+		fallbacks = []RouteFallback{}
+	}
+	fb, err := json.Marshal(fallbacks)
+	if err != nil {
+		return nil, err
+	}
 	r := &Route{}
-	err := s.pool.QueryRow(ctx, `
-		UPDATE routes SET model=$2, provider_id=$3, target_model=$4
+	var raw []byte
+	err = s.pool.QueryRow(ctx, `
+		UPDATE routes SET model=$2, provider_id=$3, target_model=$4, fallbacks=$5
 		WHERE id=$1
-		RETURNING id, organization_id, model, provider_id, target_model, created_at
-	`, routeID, model, providerID, targetModel).Scan(
-		&r.ID, &r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel, &r.CreatedAt,
+		RETURNING id, organization_id, model, provider_id, target_model, fallbacks, created_at
+	`, routeID, model, providerID, targetModel, fb).Scan(
+		&r.ID, &r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel, &raw, &r.CreatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, kernel.ErrNotFound
 	}
-	return r, err
+	if err != nil {
+		return nil, err
+	}
+	r.Fallbacks = decodeFallbacks(raw)
+	return r, nil
+}
+
+func decodeFallbacks(raw []byte) []RouteFallback {
+	if len(raw) == 0 {
+		return []RouteFallback{}
+	}
+	var out []RouteFallback
+	if err := json.Unmarshal(raw, &out); err != nil || out == nil {
+		return []RouteFallback{}
+	}
+	return out
 }
 
 func (s *Store) DeleteRoute(ctx context.Context, routeID string) error {
@@ -469,10 +517,10 @@ func (s *Store) InsertUsage(ctx context.Context, e UsageEvent) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO usage_events (
 			organization_id, project_id, api_key_id, model, status,
-			latency_ms, prompt_tokens, completion_tokens
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+			latency_ms, prompt_tokens, completion_tokens, cost_usd
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
 	`, e.OrganizationID, e.ProjectID, e.APIKeyID, e.Model, e.Status,
-		e.LatencyMs, e.PromptTokens, e.CompletionTokens)
+		e.LatencyMs, e.PromptTokens, e.CompletionTokens, e.CostUSD)
 	return err
 }
 
@@ -482,7 +530,7 @@ func (s *Store) ListUsage(ctx context.Context, orgID string, limit int) ([]Usage
 	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, organization_id, project_id, api_key_id, model, status,
-			latency_ms, prompt_tokens, completion_tokens, created_at
+			latency_ms, prompt_tokens, completion_tokens, cost_usd, created_at
 		FROM usage_events WHERE organization_id=$1
 		ORDER BY created_at DESC LIMIT $2
 	`, orgID, limit)
@@ -495,13 +543,28 @@ func (s *Store) ListUsage(ctx context.Context, orgID string, limit int) ([]Usage
 		var e UsageEvent
 		if err := rows.Scan(
 			&e.ID, &e.OrganizationID, &e.ProjectID, &e.APIKeyID, &e.Model, &e.Status,
-			&e.LatencyMs, &e.PromptTokens, &e.CompletionTokens, &e.CreatedAt,
+			&e.LatencyMs, &e.PromptTokens, &e.CompletionTokens, &e.CostUSD, &e.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
 		out = append(out, e)
 	}
 	return out, rows.Err()
+}
+
+func (s *Store) LookupModelPrice(ctx context.Context, providerType, model string) (ModelPrice, bool, error) {
+	var p ModelPrice
+	err := s.pool.QueryRow(ctx, `
+		SELECT provider_type, model, input_per_mtok, output_per_mtok
+		FROM model_prices WHERE provider_type=$1 AND model=$2
+	`, providerType, model).Scan(&p.ProviderType, &p.Model, &p.InputPerMTok, &p.OutputPerMTok)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ModelPrice{}, false, nil
+	}
+	if err != nil {
+		return ModelPrice{}, false, err
+	}
+	return p, true, nil
 }
 
 type Quota struct {
@@ -653,7 +716,7 @@ func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error)
 	}
 
 	routeRows, err := s.pool.Query(ctx, `
-		SELECT organization_id, model, provider_id, target_model FROM routes
+		SELECT organization_id, model, provider_id, target_model, fallbacks FROM routes
 	`)
 	if err != nil {
 		return src, err
@@ -661,8 +724,14 @@ func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error)
 	defer routeRows.Close()
 	for routeRows.Next() {
 		var r snapshot.Route
-		if err := routeRows.Scan(&r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel); err != nil {
+		var fb []byte
+		if err := routeRows.Scan(&r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel, &fb); err != nil {
 			return src, err
+		}
+		for _, f := range decodeFallbacks(fb) {
+			r.Fallbacks = append(r.Fallbacks, snapshot.RouteTarget{
+				ProviderID: f.ProviderID, TargetModel: f.TargetModel,
+			})
 		}
 		src.Routes = append(src.Routes, r)
 	}

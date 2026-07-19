@@ -10,12 +10,13 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 3
+const schemaVersion = 4
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS usage_outbox CASCADE;
 DROP TABLE IF EXISTS quota_counters CASCADE;
 DROP TABLE IF EXISTS quotas CASCADE;
+DROP TABLE IF EXISTS model_prices CASCADE;
 DROP TABLE IF EXISTS usage_events CASCADE;
 DROP TABLE IF EXISTS api_key_provider_scopes CASCADE;
 DROP TABLE IF EXISTS api_key_providers CASCADE;
@@ -110,6 +111,7 @@ CREATE TABLE IF NOT EXISTS routes (
     model TEXT NOT NULL,
     provider_id TEXT NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
     target_model TEXT NOT NULL,
+    fallbacks JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (organization_id, model)
 );
@@ -130,7 +132,16 @@ CREATE TABLE IF NOT EXISTS usage_events (
     latency_ms BIGINT NOT NULL DEFAULT 0,
     prompt_tokens BIGINT NOT NULL DEFAULT 0,
     completion_tokens BIGINT NOT NULL DEFAULT 0,
+    cost_usd DOUBLE PRECISION,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS model_prices (
+    provider_type TEXT NOT NULL,
+    model TEXT NOT NULL,
+    input_per_mtok DOUBLE PRECISION NOT NULL,
+    output_per_mtok DOUBLE PRECISION NOT NULL,
+    PRIMARY KEY (provider_type, model)
 );
 
 CREATE TABLE IF NOT EXISTS quotas (
@@ -282,6 +293,27 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		);
 	`); err != nil {
 		return fmt.Errorf("cycle3 tables: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE routes ADD COLUMN IF NOT EXISTS fallbacks JSONB NOT NULL DEFAULT '[]'::jsonb;
+		ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS cost_usd DOUBLE PRECISION;
+		CREATE TABLE IF NOT EXISTS model_prices (
+			provider_type TEXT NOT NULL,
+			model TEXT NOT NULL,
+			input_per_mtok DOUBLE PRECISION NOT NULL,
+			output_per_mtok DOUBLE PRECISION NOT NULL,
+			PRIMARY KEY (provider_type, model)
+		);
+		INSERT INTO model_prices (provider_type, model, input_per_mtok, output_per_mtok) VALUES
+			('openai', 'gpt-4o-mini', 0.15, 0.60),
+			('openai', 'gpt-4o', 2.50, 10.00),
+			('anthropic', 'claude-sonnet-4-20250514', 3.00, 15.00),
+			('anthropic', 'claude-3-5-sonnet-20241022', 3.00, 15.00),
+			('anthropic', 'claude-3-5-haiku-20241022', 0.80, 4.00)
+		ON CONFLICT (provider_type, model) DO NOTHING;
+	`); err != nil {
+		return fmt.Errorf("cycle4 migrations: %w", err)
 	}
 	return nil
 }
