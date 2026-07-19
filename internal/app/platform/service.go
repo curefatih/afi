@@ -21,10 +21,22 @@ type SnapshotPublisher interface {
 // ConfigAPI is the persistence surface for platform reads and mutations.
 type ConfigAPI interface {
 	ListOrganizationsForUser(ctx context.Context, userID string) ([]tenancy.Organization, error)
+	CreateOrganization(ctx context.Context, name, creatorUserID string) (*tenancy.Organization, error)
 	ListOrgMembers(ctx context.Context, orgID string) ([]tenancy.OrgMember, error)
+	UpdateOrgMemberRole(ctx context.Context, orgID, actorUserID, targetUserID, role string) (*tenancy.OrgMember, error)
+	InviteOrgMember(ctx context.Context, orgID, email, invitedByUserID string) (*tenancy.InviteOutcome, string, error)
+	ListOrgInvites(ctx context.Context, orgID string) ([]tenancy.OrgInvite, error)
+	RevokeOrgInvite(ctx context.Context, orgID, inviteID string) error
+	ResendOrgInvite(ctx context.Context, orgID, inviteID string) (*tenancy.OrgInvite, string, error)
+	PreviewOrgInvite(ctx context.Context, rawToken string) (*tenancy.InvitePreview, error)
+	AcceptOrgInvite(ctx context.Context, rawToken, name, passwordHash string) (*tenancy.OrgMember, *identity.User, error)
+
 	ListTeams(ctx context.Context, orgID, userID string) ([]tenancy.Team, error)
+	CreateTeam(ctx context.Context, orgID, name, creatorUserID string) (*tenancy.Team, error)
 	GetTeam(ctx context.Context, teamID string) (*tenancy.Team, error)
 	ListTeamMembers(ctx context.Context, teamID string) ([]tenancy.TeamMember, error)
+	AddTeamMember(ctx context.Context, teamID, userID string) (*tenancy.TeamMember, error)
+	RemoveTeamMember(ctx context.Context, teamID, userID string) error
 	ListProjects(ctx context.Context, orgID, userID string) ([]tenancy.Project, error)
 	CreateProject(ctx context.Context, orgID, teamID, name string) (*tenancy.Project, error)
 

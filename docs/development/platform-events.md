@@ -11,6 +11,16 @@ HTTP mutate → app/platform command → Bus
 worker → ClaimBatch → EventPublisher (log | nats | kafka | noop)
 ```
 
+## Publish vs emit-only
+
+| Command class | Snapshot publish | Domain event |
+|---------------|------------------|--------------|
+| Gateway config (keys, providers, routes, quotas, policies, credentials) | yes | yes |
+| Tenancy / invites / teams / member roles | no (not in snapshot) | yes |
+| Manual `POST /internal/v1/snapshots/publish` | yes | `snapshot.published` |
+
+Membership lifecycle never changes the compiled gateway snapshot, so those commands emit events without republishing.
+
 ## Enable
 
 In `configs/local.yaml` (or env):
@@ -60,3 +70,11 @@ JSON body matches `platform.Event`:
 
 NATS headers: `Nats-Msg-Id`, `afi-event-name`, `afi-organization-id`.  
 Kafka headers: `afi-event-id`, `afi-event-name`, `afi-organization-id`.
+
+## Event names
+
+Gateway config: `project.created`, `api_key.*`, `provider.*`, `route.*`, `quota.*`, `policy.*`, `credential.*`, `snapshot.published`.
+
+Tenancy / invites: `org.created`, `member.added`, `member.role_updated`, `invite.created`, `invite.revoked`, `invite.resent`, `invite.accepted`, `team.created`, `team.member_added`, `team.member_removed`.
+
+`InviteOrgMember` emits `member.added` when the email already belongs to a user (immediate membership), otherwise `invite.created`.

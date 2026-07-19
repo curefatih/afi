@@ -154,7 +154,7 @@ func (s *Server) handleSeed(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request) {
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
+	if err := s.app.PublishSnapshot(r.Context()); err != nil {
 		s.log.Error("publish failed", "err", err)
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -227,7 +227,7 @@ func (s *Server) handleCreateOrg(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "name required")
 		return
 	}
-	org, err := s.api.CreateOrganization(r.Context(), strings.TrimSpace(body.Name), claims.UserID)
+	org, err := s.app.CreateOrganization(r.Context(), strings.TrimSpace(body.Name), claims.UserID)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -257,7 +257,7 @@ func (s *Server) handleInviteOrgMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	orgID := r.PathValue("orgID")
-	outcome, rawToken, err := s.api.InviteOrgMember(r.Context(), orgID, strings.TrimSpace(body.Email), claims.UserID)
+	outcome, rawToken, err := s.app.InviteOrgMember(r.Context(), orgID, strings.TrimSpace(body.Email), claims.UserID)
 	if errors.Is(err, kernel.ErrInvalidRequest) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
@@ -275,7 +275,7 @@ func (s *Server) handleInviteOrgMember(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListOrgInvites(w http.ResponseWriter, r *http.Request) {
-	list, err := s.api.ListOrgInvites(r.Context(), r.PathValue("orgID"))
+	list, err := s.app.ListOrgInvites(r.Context(), r.PathValue("orgID"))
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -287,7 +287,7 @@ func (s *Server) handleListOrgInvites(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRevokeOrgInvite(w http.ResponseWriter, r *http.Request) {
-	err := s.api.RevokeOrgInvite(r.Context(), r.PathValue("orgID"), r.PathValue("inviteID"))
+	err := s.app.RevokeOrgInvite(r.Context(), r.PathValue("orgID"), r.PathValue("inviteID"))
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
@@ -305,7 +305,7 @@ func (s *Server) handleRevokeOrgInvite(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleResendOrgInvite(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgID")
-	inv, rawToken, err := s.api.ResendOrgInvite(r.Context(), orgID, r.PathValue("inviteID"))
+	inv, rawToken, err := s.app.ResendOrgInvite(r.Context(), orgID, r.PathValue("inviteID"))
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
@@ -327,7 +327,7 @@ func (s *Server) handleResendOrgInvite(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePreviewInvite(w http.ResponseWriter, r *http.Request) {
-	preview, err := s.api.PreviewOrgInvite(r.Context(), r.PathValue("token"))
+	preview, err := s.app.PreviewOrgInvite(r.Context(), r.PathValue("token"))
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "invite not found")
 		return
@@ -350,7 +350,7 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body)
 
-	preview, err := s.api.PreviewOrgInvite(r.Context(), r.PathValue("token"))
+	preview, err := s.app.PreviewOrgInvite(r.Context(), r.PathValue("token"))
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "invite not found")
 		return
@@ -382,7 +382,7 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 		passwordHash = h
 	}
 
-	member, user, err := s.api.AcceptOrgInvite(r.Context(), r.PathValue("token"), strings.TrimSpace(body.Name), passwordHash)
+	member, user, err := s.app.AcceptOrgInvite(r.Context(), r.PathValue("token"), strings.TrimSpace(body.Name), passwordHash)
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "invite not found")
 		return
@@ -541,7 +541,7 @@ func (s *Server) handleUpdateOrgMemberRole(w http.ResponseWriter, r *http.Reques
 		writeErr(w, http.StatusBadRequest, "role required")
 		return
 	}
-	member, err := s.api.UpdateOrgMemberRole(
+	member, err := s.app.UpdateOrgMemberRole(
 		r.Context(),
 		r.PathValue("orgID"),
 		claims.UserID,
@@ -589,7 +589,7 @@ func (s *Server) handleCreateTeam(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "name required")
 		return
 	}
-	team, err := s.api.CreateTeam(r.Context(), r.PathValue("orgID"), strings.TrimSpace(body.Name), claims.UserID)
+	team, err := s.app.CreateTeam(r.Context(), r.PathValue("orgID"), strings.TrimSpace(body.Name), claims.UserID)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -630,7 +630,7 @@ func (s *Server) handleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "user_id required")
 		return
 	}
-	member, err := s.api.AddTeamMember(r.Context(), r.PathValue("teamID"), strings.TrimSpace(body.UserID))
+	member, err := s.app.AddTeamMember(r.Context(), r.PathValue("teamID"), strings.TrimSpace(body.UserID))
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
@@ -676,7 +676,7 @@ func (s *Server) handleUpdateTeamMemberRole(w http.ResponseWriter, r *http.Reque
 }
 
 func (s *Server) handleRemoveTeamMember(w http.ResponseWriter, r *http.Request) {
-	err := s.api.RemoveTeamMember(r.Context(), r.PathValue("teamID"), r.PathValue("userID"))
+	err := s.app.RemoveTeamMember(r.Context(), r.PathValue("teamID"), r.PathValue("userID"))
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return

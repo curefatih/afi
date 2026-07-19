@@ -20,6 +20,14 @@ func (s *Service) ListOrgMembers(ctx context.Context, orgID string) ([]tenancy.O
 	return s.API.ListOrgMembers(ctx, orgID)
 }
 
+func (s *Service) ListOrgInvites(ctx context.Context, orgID string) ([]tenancy.OrgInvite, error) {
+	return s.API.ListOrgInvites(ctx, orgID)
+}
+
+func (s *Service) PreviewOrgInvite(ctx context.Context, rawToken string) (*tenancy.InvitePreview, error) {
+	return s.API.PreviewOrgInvite(ctx, rawToken)
+}
+
 func (s *Service) ListTeams(ctx context.Context, orgID, userID string) ([]tenancy.Team, error) {
 	return s.API.ListTeams(ctx, orgID, userID)
 }

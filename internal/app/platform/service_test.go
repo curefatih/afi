@@ -9,6 +9,7 @@ import (
 	"github.com/curefatih/afi/internal/app/platform"
 	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/gatewayconfig"
+	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
 	"github.com/curefatih/afi/internal/usage"
@@ -27,17 +28,59 @@ func (m *memEvents) Record(_ context.Context, e platform.Event) {
 type memAPI struct {
 	created int
 	keys    []access.APIKey
+	invite  *tenancy.InviteOutcome
+	team    *tenancy.Team
 }
 
 func (m *memAPI) ListOrganizationsForUser(context.Context, string) ([]tenancy.Organization, error) {
 	return nil, nil
 }
+func (m *memAPI) CreateOrganization(_ context.Context, name, _ string) (*tenancy.Organization, error) {
+	return &tenancy.Organization{ID: "org_1", Name: name}, nil
+}
 func (m *memAPI) ListOrgMembers(context.Context, string) ([]tenancy.OrgMember, error) { return nil, nil }
+func (m *memAPI) UpdateOrgMemberRole(context.Context, string, string, string, string) (*tenancy.OrgMember, error) {
+	return &tenancy.OrgMember{UserID: "u1", Role: "admin"}, nil
+}
+func (m *memAPI) InviteOrgMember(context.Context, string, string, string) (*tenancy.InviteOutcome, string, error) {
+	if m.invite != nil {
+		return m.invite, "raw-token", nil
+	}
+	return &tenancy.InviteOutcome{
+		Status: "invited",
+		Invite: &tenancy.OrgInvite{ID: "inv_1", OrganizationID: "org_1"},
+	}, "raw-token", nil
+}
+func (m *memAPI) ListOrgInvites(context.Context, string) ([]tenancy.OrgInvite, error) {
+	return nil, nil
+}
+func (m *memAPI) RevokeOrgInvite(context.Context, string, string) error { return nil }
+func (m *memAPI) ResendOrgInvite(context.Context, string, string) (*tenancy.OrgInvite, string, error) {
+	return &tenancy.OrgInvite{ID: "inv_1"}, "raw-token", nil
+}
+func (m *memAPI) PreviewOrgInvite(context.Context, string) (*tenancy.InvitePreview, error) {
+	return &tenancy.InvitePreview{OrganizationID: "org_1", Email: "a@b.com"}, nil
+}
+func (m *memAPI) AcceptOrgInvite(context.Context, string, string, string) (*tenancy.OrgMember, *identity.User, error) {
+	return &tenancy.OrgMember{UserID: "u1"}, &identity.User{ID: "u1", Email: "a@b.com"}, nil
+}
 func (m *memAPI) ListTeams(context.Context, string, string) ([]tenancy.Team, error) { return nil, nil }
-func (m *memAPI) GetTeam(context.Context, string) (*tenancy.Team, error)             { return nil, nil }
+func (m *memAPI) CreateTeam(_ context.Context, orgID, name, _ string) (*tenancy.Team, error) {
+	return &tenancy.Team{ID: "team_1", OrganizationID: orgID, Name: name}, nil
+}
+func (m *memAPI) GetTeam(_ context.Context, teamID string) (*tenancy.Team, error) {
+	if m.team != nil {
+		return m.team, nil
+	}
+	return &tenancy.Team{ID: teamID, OrganizationID: "org_1"}, nil
+}
 func (m *memAPI) ListTeamMembers(context.Context, string) ([]tenancy.TeamMember, error) {
 	return nil, nil
 }
+func (m *memAPI) AddTeamMember(context.Context, string, string) (*tenancy.TeamMember, error) {
+	return &tenancy.TeamMember{UserID: "u2", Role: "member"}, nil
+}
+func (m *memAPI) RemoveTeamMember(context.Context, string, string) error { return nil }
 func (m *memAPI) ListProjects(context.Context, string, string) ([]tenancy.Project, error) {
 	return nil, nil
 }
@@ -188,5 +231,76 @@ func TestListVisibleOrgAPIKeysFilters(t *testing.T) {
 	all, err := svc.ListVisibleOrgAPIKeys(context.Background(), "org", "u1", true)
 	if err != nil || len(all) != 3 {
 		t.Fatalf("admin got=%d err=%v", len(all), err)
+	}
+}
+
+func TestTenancyCommandsEmitWithoutPublish(t *testing.T) {
+	t.Parallel()
+	api := &memAPI{}
+	snap := &memSnap{}
+	ev := &memEvents{}
+	svc := platform.New(api, snap)
+	svc.Events = ev
+
+	org, err := svc.CreateOrganization(context.Background(), "Acme", "u1")
+	if err != nil || org.ID != "org_1" {
+		t.Fatalf("org=%+v err=%v", org, err)
+	}
+	team, err := svc.CreateTeam(context.Background(), "org_1", "Eng", "u1")
+	if err != nil || team.ID != "team_1" {
+		t.Fatalf("team=%+v err=%v", team, err)
+	}
+	outcome, _, err := svc.InviteOrgMember(context.Background(), "org_1", "a@b.com", "u1")
+	if err != nil || outcome.Status != "invited" {
+		t.Fatalf("invite=%+v err=%v", outcome, err)
+	}
+	if snap.n != 0 {
+		t.Fatalf("expected no snapshot publish, got %d", snap.n)
+	}
+	want := []platform.EventName{
+		platform.EventOrgCreated,
+		platform.EventTeamCreated,
+		platform.EventInviteCreated,
+	}
+	if len(ev.names) != len(want) {
+		t.Fatalf("events=%v want=%v", ev.names, want)
+	}
+	for i := range want {
+		if ev.names[i] != want[i] {
+			t.Fatalf("events=%v want=%v", ev.names, want)
+		}
+	}
+}
+
+func TestInviteOrgMemberEmitsMemberAdded(t *testing.T) {
+	t.Parallel()
+	api := &memAPI{invite: &tenancy.InviteOutcome{
+		Status: "added",
+		Member: &tenancy.OrgMember{UserID: "u2"},
+	}}
+	snap := &memSnap{}
+	ev := &memEvents{}
+	svc := platform.New(api, snap)
+	svc.Events = ev
+	_, _, err := svc.InviteOrgMember(context.Background(), "org_1", "a@b.com", "u1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snap.n != 0 || len(ev.names) != 1 || ev.names[0] != platform.EventMemberAdded {
+		t.Fatalf("snap=%d events=%v", snap.n, ev.names)
+	}
+}
+
+func TestPublishSnapshotEmitsEvent(t *testing.T) {
+	t.Parallel()
+	snap := &memSnap{}
+	ev := &memEvents{}
+	svc := platform.New(&memAPI{}, snap)
+	svc.Events = ev
+	if err := svc.PublishSnapshot(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if snap.n != 1 || len(ev.names) != 1 || ev.names[0] != platform.EventSnapshotPublish {
+		t.Fatalf("snap=%d events=%v", snap.n, ev.names)
 	}
 }

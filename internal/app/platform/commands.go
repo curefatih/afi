@@ -6,9 +6,120 @@ import (
 	"github.com/curefatih/afi/internal/access"
 	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/gatewayconfig"
+	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
 )
+
+// PublishSnapshot republishes the gateway snapshot and emits snapshot.published.
+func (s *Service) PublishSnapshot(ctx context.Context) error {
+	return s.publish(ctx, "published")
+}
+
+// Tenancy/invite/team commands persist then emit only — membership is not in the gateway snapshot.
+
+func (s *Service) CreateOrganization(ctx context.Context, name, creatorUserID string) (*tenancy.Organization, error) {
+	org, err := s.API.CreateOrganization(ctx, name, creatorUserID)
+	if err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventOrgCreated, org.ID, org.ID)
+	return org, nil
+}
+
+func (s *Service) UpdateOrgMemberRole(ctx context.Context, orgID, actorUserID, targetUserID, role string) (*tenancy.OrgMember, error) {
+	member, err := s.API.UpdateOrgMemberRole(ctx, orgID, actorUserID, targetUserID, role)
+	if err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventMemberRoleUpdated, targetUserID, orgID)
+	return member, nil
+}
+
+func (s *Service) InviteOrgMember(ctx context.Context, orgID, email, invitedByUserID string) (*tenancy.InviteOutcome, string, error) {
+	outcome, rawToken, err := s.API.InviteOrgMember(ctx, orgID, email, invitedByUserID)
+	if err != nil {
+		return nil, "", err
+	}
+	if outcome != nil && outcome.Status == "added" && outcome.Member != nil {
+		s.emit(ctx, EventMemberAdded, outcome.Member.UserID, orgID)
+	} else if outcome != nil && outcome.Invite != nil {
+		s.emit(ctx, EventInviteCreated, outcome.Invite.ID, orgID)
+	}
+	return outcome, rawToken, nil
+}
+
+func (s *Service) RevokeOrgInvite(ctx context.Context, orgID, inviteID string) error {
+	if err := s.API.RevokeOrgInvite(ctx, orgID, inviteID); err != nil {
+		return err
+	}
+	s.emit(ctx, EventInviteRevoked, inviteID, orgID)
+	return nil
+}
+
+func (s *Service) ResendOrgInvite(ctx context.Context, orgID, inviteID string) (*tenancy.OrgInvite, string, error) {
+	inv, rawToken, err := s.API.ResendOrgInvite(ctx, orgID, inviteID)
+	if err != nil {
+		return nil, "", err
+	}
+	s.emit(ctx, EventInviteResent, inviteID, orgID)
+	return inv, rawToken, nil
+}
+
+func (s *Service) AcceptOrgInvite(ctx context.Context, rawToken, name, passwordHash string) (*tenancy.OrgMember, *identity.User, error) {
+	preview, err := s.API.PreviewOrgInvite(ctx, rawToken)
+	if err != nil {
+		return nil, nil, err
+	}
+	member, user, err := s.API.AcceptOrgInvite(ctx, rawToken, name, passwordHash)
+	if err != nil {
+		return nil, nil, err
+	}
+	orgID := ""
+	if preview != nil {
+		orgID = preview.OrganizationID
+	}
+	resourceID := ""
+	if member != nil {
+		resourceID = member.UserID
+	}
+	s.emit(ctx, EventInviteAccepted, resourceID, orgID)
+	return member, user, nil
+}
+
+func (s *Service) CreateTeam(ctx context.Context, orgID, name, creatorUserID string) (*tenancy.Team, error) {
+	team, err := s.API.CreateTeam(ctx, orgID, name, creatorUserID)
+	if err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventTeamCreated, team.ID, orgID)
+	return team, nil
+}
+
+func (s *Service) AddTeamMember(ctx context.Context, teamID, userID string) (*tenancy.TeamMember, error) {
+	member, err := s.API.AddTeamMember(ctx, teamID, userID)
+	if err != nil {
+		return nil, err
+	}
+	orgID := ""
+	if team, tErr := s.API.GetTeam(ctx, teamID); tErr == nil && team != nil {
+		orgID = team.OrganizationID
+	}
+	s.emit(ctx, EventTeamMemberAdded, userID, orgID)
+	return member, nil
+}
+
+func (s *Service) RemoveTeamMember(ctx context.Context, teamID, userID string) error {
+	orgID := ""
+	if team, tErr := s.API.GetTeam(ctx, teamID); tErr == nil && team != nil {
+		orgID = team.OrganizationID
+	}
+	if err := s.API.RemoveTeamMember(ctx, teamID, userID); err != nil {
+		return err
+	}
+	s.emit(ctx, EventTeamMemberRemoved, userID, orgID)
+	return nil
+}
 
 func (s *Service) CreateProject(ctx context.Context, orgID, teamID, name string) (*tenancy.Project, error) {
 	p, err := s.API.CreateProject(ctx, orgID, teamID, name)
