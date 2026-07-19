@@ -8,6 +8,7 @@ type Source struct {
 	Providers []Provider
 	Routes    []Route
 	Quotas    []Quota
+	Policies  []Policy
 }
 
 // Compile builds an immutable snapshot payload (version assigned by store on Put).
@@ -18,6 +19,7 @@ func Compile(src Source) *Snapshot {
 		Providers: make(map[string]Provider, len(src.Providers)),
 		Routes:    make(map[string]Route, len(src.Routes)),
 		Quotas:    append([]Quota(nil), src.Quotas...),
+		Policies:  append([]Policy(nil), src.Policies...),
 	}
 	for _, k := range src.APIKeys {
 		if k.KeyHash == "" {

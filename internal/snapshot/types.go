@@ -12,11 +12,17 @@ const (
 	MetricRequests = "requests"
 	MetricTokens   = "tokens"
 
-	WindowTotal = "total"
+	WindowTotal  = "total"
+	WindowMinute = "minute"
+	WindowHour   = "hour"
+	WindowDay    = "day"
 
 	KeyKindPersonal       = "personal"
 	KeyKindServiceAccount = "service_account"
 )
+
+// RequestWindows are checked on every request (rate limits + lifetime).
+var RequestWindows = []string{WindowMinute, WindowHour, WindowDay, WindowTotal}
 
 type Snapshot struct {
 	Version   int64               `json:"version"`
@@ -25,6 +31,7 @@ type Snapshot struct {
 	Providers map[string]Provider `json:"providers"` // keyed by provider id
 	Routes    map[string]Route    `json:"routes"`    // keyed by orgID + "::" + model
 	Quotas    []Quota             `json:"quotas"`
+	Policies  []Policy            `json:"policies"`
 }
 
 type Quota struct {
@@ -35,6 +42,16 @@ type Quota struct {
 	Metric         string `json:"metric"`
 	LimitValue     int64  `json:"limit_value"`
 	Window         string `json:"window"`
+}
+
+// Policy is a CEL allow-expression compiled into the gateway snapshot.
+type Policy struct {
+	ID             string `json:"id"`
+	OrganizationID string `json:"organization_id"`
+	Name           string `json:"name"`
+	Expression     string `json:"expression"`
+	Enabled        bool   `json:"enabled"`
+	Priority       int    `json:"priority"`
 }
 
 type APIKey struct {
@@ -98,16 +115,29 @@ func (s *Snapshot) LookupRoute(orgID, model string) (Route, Provider, bool) {
 	return r, p, true
 }
 
-// ResolveQuota picks the most specific matching quota for the metric
+// ValidQuotaWindow reports whether window is supported.
+func ValidQuotaWindow(window string) bool {
+	switch window {
+	case WindowTotal, WindowMinute, WindowHour, WindowDay:
+		return true
+	default:
+		return false
+	}
+}
+
+// ResolveQuota picks the most specific matching quota for the metric and window
 // (api_key > user > project > organization).
-func (s *Snapshot) ResolveQuota(key APIKey, metric string) (Quota, bool) {
+func (s *Snapshot) ResolveQuota(key APIKey, metric, window string) (Quota, bool) {
 	if s == nil {
 		return Quota{}, false
+	}
+	if window == "" {
+		window = WindowTotal
 	}
 	var found Quota
 	best := 0
 	for _, q := range s.Quotas {
-		if q.Metric != metric || q.Window != WindowTotal {
+		if q.Metric != metric || q.Window != window {
 			continue
 		}
 		rank := 0

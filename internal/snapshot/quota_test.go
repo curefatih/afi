@@ -25,7 +25,7 @@ func TestResolveQuotaPrefersMostSpecific(t *testing.T) {
 		},
 	})
 	key := APIKey{ID: "k1", ProjectID: "p1", OrganizationID: "o1"}
-	q, ok := snap.ResolveQuota(key, MetricRequests)
+	q, ok := snap.ResolveQuota(key, MetricRequests, WindowTotal)
 	if !ok || q.ID != "key" || q.LimitValue != 5 {
 		t.Fatalf("want key quota, got %+v ok=%v", q, ok)
 	}
@@ -40,7 +40,7 @@ func TestResolveQuotaFallsBackToProject(t *testing.T) {
 		},
 	})
 	key := APIKey{ID: "k1", ProjectID: "p1", OrganizationID: "o1"}
-	q, ok := snap.ResolveQuota(key, MetricRequests)
+	q, ok := snap.ResolveQuota(key, MetricRequests, WindowTotal)
 	if !ok || q.ID != "proj" {
 		t.Fatalf("want project quota, got %+v ok=%v", q, ok)
 	}
@@ -49,7 +49,7 @@ func TestResolveQuotaFallsBackToProject(t *testing.T) {
 func TestResolveQuotaNone(t *testing.T) {
 	t.Parallel()
 	snap := Compile(Source{})
-	_, ok := snap.ResolveQuota(APIKey{ID: "k", ProjectID: "p", OrganizationID: "o"}, MetricRequests)
+	_, ok := snap.ResolveQuota(APIKey{ID: "k", ProjectID: "p", OrganizationID: "o"}, MetricRequests, WindowTotal)
 	if ok {
 		t.Fatal("expected no quota")
 	}
@@ -64,7 +64,7 @@ func TestResolveQuotaPrefersUserOverOrgForPersonalKey(t *testing.T) {
 		},
 	})
 	key := APIKey{ID: "k1", OrganizationID: "o1", Kind: KeyKindPersonal, OwnerUserID: "u1"}
-	q, ok := snap.ResolveQuota(key, MetricRequests)
+	q, ok := snap.ResolveQuota(key, MetricRequests, WindowTotal)
 	if !ok || q.ID != "user" {
 		t.Fatalf("want user quota, got %+v ok=%v", q, ok)
 	}
@@ -79,7 +79,7 @@ func TestResolveQuotaUserSkippedForServiceAccount(t *testing.T) {
 		},
 	})
 	key := APIKey{ID: "k1", OrganizationID: "o1", ProjectID: "p1", Kind: KeyKindServiceAccount}
-	q, ok := snap.ResolveQuota(key, MetricRequests)
+	q, ok := snap.ResolveQuota(key, MetricRequests, WindowTotal)
 	if !ok || q.ID != "org" {
 		t.Fatalf("want org quota for SA, got %+v ok=%v", q, ok)
 	}
@@ -94,7 +94,7 @@ func TestResolveQuotaAPIKeyBeatsUser(t *testing.T) {
 		},
 	})
 	key := APIKey{ID: "k1", OrganizationID: "o1", Kind: KeyKindPersonal, OwnerUserID: "u1"}
-	q, ok := snap.ResolveQuota(key, MetricRequests)
+	q, ok := snap.ResolveQuota(key, MetricRequests, WindowTotal)
 	if !ok || q.ID != "key" {
 		t.Fatalf("want api_key quota, got %+v ok=%v", q, ok)
 	}
