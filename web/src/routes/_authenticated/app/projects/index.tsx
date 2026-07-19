@@ -1,6 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { FolderKanbanIcon, PlusIcon } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { z } from "zod";
 import { CreateProjectSheet } from "#/components/create-project-sheet";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
@@ -21,25 +22,49 @@ import {
 	EmptyMedia,
 	EmptyTitle,
 } from "#/components/ui/empty";
+import { Label } from "#/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "#/components/ui/select";
 import { useOrgBootstrap } from "#/hooks/use-org-bootstrap";
 import { pageTitle } from "#/lib/page-meta";
 import { useActiveOrg } from "#/state/organization-state";
 
+const projectsSearchSchema = z.object({
+	team: z.string().optional(),
+});
+
 export const Route = createFileRoute("/_authenticated/app/projects/")({
 	...pageTitle("Projects"),
+	validateSearch: projectsSearchSchema,
 	component: RouteComponent,
 });
 
 function RouteComponent() {
 	const activeOrg = useActiveOrg();
+	const navigate = useNavigate({ from: Route.fullPath });
+	const { team: teamFilter } = Route.useSearch();
 	const { isBootstrapping, isError, error, refetch, projectsQuery } =
 		useOrgBootstrap();
 	const [open, setOpen] = useState(false);
 
+	const teams = activeOrg?.teams ?? [];
 	const projects = activeOrg?.projects ?? [];
-	const teamsById = new Map(
-		(activeOrg?.teams ?? []).map((team) => [team.id, team.name]),
+	const teamsById = useMemo(
+		() => new Map(teams.map((team) => [team.id, team.name])),
+		[teams],
 	);
+
+	const filteredProjects = useMemo(() => {
+		if (!teamFilter) return projects;
+		return projects.filter((project) => project.team_id === teamFilter);
+	}, [projects, teamFilter]);
+
+	const selectedTeamName = teamFilter ? teamsById.get(teamFilter) : undefined;
 
 	return (
 		<PageBody>
@@ -47,13 +72,46 @@ function RouteComponent() {
 				title="Projects"
 				description="Projects bind virtual API keys and configuration within a team."
 				actions={
-					<Button
-						onClick={() => setOpen(true)}
-						disabled={!activeOrg?.teams.length}
-					>
-						<PlusIcon />
-						New project
-					</Button>
+					<>
+						<div className="flex items-center gap-2">
+							<Label htmlFor="project-team-filter" className="sr-only">
+								Team
+							</Label>
+							<Select
+								value={teamFilter ?? "__all__"}
+								onValueChange={(value) => {
+									const next =
+										value === "__all__" || value == null ? undefined : value;
+									void navigate({
+										search: (prev) => ({
+											...prev,
+											team: next,
+										}),
+										replace: true,
+									});
+								}}
+							>
+								<SelectTrigger id="project-team-filter" className="w-48">
+									<SelectValue placeholder="All teams" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="__all__">All teams</SelectItem>
+									{teams.map((team) => (
+										<SelectItem key={team.id} value={team.id}>
+											{team.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<Button
+							onClick={() => setOpen(true)}
+							disabled={!activeOrg?.teams.length}
+						>
+							<PlusIcon />
+							New project
+						</Button>
+					</>
 				}
 			/>
 
@@ -84,9 +142,36 @@ function RouteComponent() {
 							</Button>
 						</EmptyContent>
 					</Empty>
+				) : filteredProjects.length === 0 ? (
+					<Empty className="border min-h-64">
+						<EmptyHeader>
+							<EmptyMedia variant="icon">
+								<FolderKanbanIcon />
+							</EmptyMedia>
+							<EmptyTitle>No projects for this team</EmptyTitle>
+							<EmptyDescription>
+								{selectedTeamName
+									? `${selectedTeamName} has no projects yet.`
+									: "No projects match the selected team."}
+							</EmptyDescription>
+						</EmptyHeader>
+						<EmptyContent>
+							<Button
+								variant="outline"
+								onClick={() =>
+									void navigate({
+										search: (prev) => ({ ...prev, team: undefined }),
+										replace: true,
+									})
+								}
+							>
+								Clear team filter
+							</Button>
+						</EmptyContent>
+					</Empty>
 				) : (
 					<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-						{projects.map((project) => (
+						{filteredProjects.map((project) => (
 							<Link
 								key={project.id}
 								to="/app/projects/$projectId"

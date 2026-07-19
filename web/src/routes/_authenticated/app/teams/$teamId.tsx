@@ -163,8 +163,19 @@ function RouteComponent() {
 						</CardHeader>
 					</Card>
 					<Card>
-						<CardHeader>
-							<CardDescription>Projects</CardDescription>
+						<CardHeader className="gap-2">
+							<div className="flex items-center justify-between gap-2">
+								<CardDescription>Projects</CardDescription>
+								{projects.length > 0 ? (
+									<Link
+										to="/app/projects"
+										search={{ team: teamId }}
+										className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+									>
+										View all
+									</Link>
+								) : null}
+							</div>
 							<CardTitle className="text-base">
 								{projects.length === 0
 									? "None"

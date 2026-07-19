@@ -43,6 +43,15 @@ function RouteComponent() {
 	}, [members.data, user?.id]);
 
 	const teams = teamsQuery.data ?? activeOrg?.teams ?? [];
+	const projectsByTeam = useMemo(() => {
+		const map = new Map<string, { id: string; name: string }[]>();
+		for (const project of activeOrg?.projects ?? []) {
+			const list = map.get(project.team_id) ?? [];
+			list.push({ id: project.id, name: project.name });
+			map.set(project.team_id, list);
+		}
+		return map;
+	}, [activeOrg?.projects]);
 
 	return (
 		<PageBody>
@@ -88,16 +97,14 @@ function RouteComponent() {
 						) : null}
 					</Empty>
 				) : (
-					<div className="flex flex-wrap gap-4">
+					<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 						{teams.map((team) => (
 							<TeamCard
 								key={team.id}
 								id={team.id}
 								name={team.name}
 								description={team.team_id}
-								previewMembers={[]}
-								memberCount={0}
-								tags={[]}
+								projects={projectsByTeam.get(team.id) ?? []}
 							/>
 						))}
 					</div>
