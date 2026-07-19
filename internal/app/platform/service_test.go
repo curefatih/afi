@@ -80,7 +80,7 @@ func (m *memAPI) ListTeamMembers(context.Context, string) ([]tenancy.TeamMember,
 func (m *memAPI) AddTeamMember(context.Context, string, string) (*tenancy.TeamMember, error) {
 	return &tenancy.TeamMember{UserID: "u2", Role: "member"}, nil
 }
-func (m *memAPI) UpdateTeamMemberRole(context.Context, string, string, string) (*tenancy.TeamMember, error) {
+func (m *memAPI) UpdateTeamMemberRole(context.Context, string, string, string, string) (*tenancy.TeamMember, error) {
 	return &tenancy.TeamMember{UserID: "u2", Role: "admin"}, nil
 }
 func (m *memAPI) RemoveTeamMember(context.Context, string, string) error { return nil }
@@ -314,7 +314,7 @@ func TestUpdateTeamMemberRoleEmitsWithoutPublish(t *testing.T) {
 	ev := &memEvents{}
 	svc := platform.New(&memAPI{}, snap)
 	svc.Events = ev
-	m, err := svc.UpdateTeamMemberRole(context.Background(), "team_1", "u2", "admin")
+	m, err := svc.UpdateTeamMemberRole(context.Background(), "team_1", "u1", "u2", "admin")
 	if err != nil || m == nil || m.Role != "admin" {
 		t.Fatalf("m=%+v err=%v", m, err)
 	}

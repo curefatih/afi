@@ -191,8 +191,9 @@ func TestCanManageTeam(t *testing.T) {
 func TestUpdateTeamMemberRoleToAdmin(t *testing.T) {
 	t.Parallel()
 	teams := newMemTeams()
+	orgs := &memOrgs{roles: map[string]string{"user_owner|org_x": OrgRoleMember}}
 	_ = teams.AddMember(context.Background(), "team_a", "user_member", TeamRoleMember)
-	m, err := UpdateTeamMemberRole(context.Background(), teams, "team_a", "user_member", TeamRoleAdmin)
+	m, err := UpdateTeamMemberRole(context.Background(), teams, orgs, "team_a", "user_owner", "user_member", TeamRoleAdmin)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +205,8 @@ func TestUpdateTeamMemberRoleToAdmin(t *testing.T) {
 func TestUpdateTeamMemberRoleRejectsSoleOwnerDemote(t *testing.T) {
 	t.Parallel()
 	teams := newMemTeams()
-	_, err := UpdateTeamMemberRole(context.Background(), teams, "team_a", "user_owner", TeamRoleAdmin)
+	orgs := &memOrgs{roles: map[string]string{"user_owner|org_x": OrgRoleMember}}
+	_, err := UpdateTeamMemberRole(context.Background(), teams, orgs, "team_a", "user_owner", "user_owner", TeamRoleAdmin)
 	if !errors.Is(err, kernel.ErrInvalidRequest) {
 		t.Fatalf("err=%v", err)
 	}
@@ -213,10 +215,45 @@ func TestUpdateTeamMemberRoleRejectsSoleOwnerDemote(t *testing.T) {
 func TestUpdateTeamMemberRoleRejectsInvalidRole(t *testing.T) {
 	t.Parallel()
 	teams := newMemTeams()
+	orgs := &memOrgs{roles: map[string]string{"user_owner|org_x": OrgRoleMember}}
 	_ = teams.AddMember(context.Background(), "team_a", "user_member", TeamRoleMember)
-	_, err := UpdateTeamMemberRole(context.Background(), teams, "team_a", "user_member", "superuser")
+	_, err := UpdateTeamMemberRole(context.Background(), teams, orgs, "team_a", "user_owner", "user_member", "superuser")
 	if !errors.Is(err, kernel.ErrInvalidRequest) {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestUpdateTeamMemberRoleForbiddenForTeamAdmin(t *testing.T) {
+	t.Parallel()
+	teams := newMemTeams()
+	teams.members["team_a"]["user_tadmin"] = TeamRoleAdmin
+	orgs := &memOrgs{roles: map[string]string{"user_tadmin|org_x": OrgRoleMember}}
+	_, err := UpdateTeamMemberRole(context.Background(), teams, orgs, "team_a", "user_tadmin", "user_tadmin", TeamRoleOwner)
+	if !errors.Is(err, kernel.ErrUnauthorized) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestCanChangeTeamRoles(t *testing.T) {
+	t.Parallel()
+	teams := newMemTeams()
+	teams.members["team_a"]["user_tadmin"] = TeamRoleAdmin
+	orgs := &memOrgs{roles: map[string]string{
+		"user_owner|org_x":  OrgRoleMember,
+		"user_admin|org_x":  OrgRoleAdmin,
+		"user_tadmin|org_x": OrgRoleMember,
+	}}
+	ok, err := CanChangeTeamRoles(context.Background(), teams, orgs, "team_a", "user_owner")
+	if err != nil || !ok {
+		t.Fatalf("owner: ok=%v err=%v", ok, err)
+	}
+	ok, err = CanChangeTeamRoles(context.Background(), teams, orgs, "team_a", "user_admin")
+	if err != nil || !ok {
+		t.Fatalf("org admin: ok=%v err=%v", ok, err)
+	}
+	ok, err = CanChangeTeamRoles(context.Background(), teams, orgs, "team_a", "user_tadmin")
+	if err != nil || ok {
+		t.Fatalf("team admin: ok=%v err=%v", ok, err)
 	}
 }
 

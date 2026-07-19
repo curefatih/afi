@@ -36,7 +36,13 @@ func ParseTeamRole(role string) (TeamRole, error) {
 
 func (r TeamRole) String() string { return string(r) }
 
-// IsManager reports whether the role may manage team members.
+// IsManager reports whether the role may manage team members (add/remove).
 func (r TeamRole) IsManager() bool {
 	return r == TeamRole(TeamRoleOwner) || r == TeamRole(TeamRoleAdmin)
+}
+
+// CanChangeRoles reports whether the team role may change other members' roles.
+// Team admins manage membership but cannot promote/demote roles.
+func (r TeamRole) CanChangeRoles() bool {
+	return r == TeamRole(TeamRoleOwner)
 }

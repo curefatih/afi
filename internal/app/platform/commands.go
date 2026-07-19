@@ -109,8 +109,8 @@ func (s *Service) AddTeamMember(ctx context.Context, teamID, userID string) (*te
 	return member, nil
 }
 
-func (s *Service) UpdateTeamMemberRole(ctx context.Context, teamID, userID, role string) (*tenancy.TeamMember, error) {
-	member, err := s.API.UpdateTeamMemberRole(ctx, teamID, userID, role)
+func (s *Service) UpdateTeamMemberRole(ctx context.Context, teamID, actorUserID, targetUserID, role string) (*tenancy.TeamMember, error) {
+	member, err := s.API.UpdateTeamMemberRole(ctx, teamID, actorUserID, targetUserID, role)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (s *Service) UpdateTeamMemberRole(ctx context.Context, teamID, userID, role
 	if team, tErr := s.API.GetTeam(ctx, teamID); tErr == nil && team != nil {
 		orgID = team.OrganizationID
 	}
-	s.emit(ctx, EventTeamMemberRoleUpdated, userID, orgID)
+	s.emit(ctx, EventTeamMemberRoleUpdated, targetUserID, orgID)
 	return member, nil
 }
 

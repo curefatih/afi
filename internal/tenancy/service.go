@@ -167,7 +167,7 @@ func CanAccessTeam(ctx context.Context, teams TeamRepository, orgs OrganizationR
 	return true, nil
 }
 
-// CanManageTeam reports whether the user may manage team members
+// CanManageTeam reports whether the user may add/remove team members
 // (org admin, or team owner/admin).
 func CanManageTeam(ctx context.Context, teams TeamRepository, orgs OrganizationRepository, teamID, userID string) (bool, error) {
 	orgID, err := teams.OrgID(ctx, teamID)
@@ -189,6 +189,30 @@ func CanManageTeam(ctx context.Context, teams TeamRepository, orgs OrganizationR
 		return false, err
 	}
 	return IsTeamManagerRole(role), nil
+}
+
+// CanChangeTeamRoles reports whether the user may change team member roles
+// (org admin or team owner — not team admin).
+func CanChangeTeamRoles(ctx context.Context, teams TeamRepository, orgs OrganizationRepository, teamID, userID string) (bool, error) {
+	orgID, err := teams.OrgID(ctx, teamID)
+	if err != nil {
+		return false, err
+	}
+	admin, err := IsOrgAdmin(ctx, orgs, userID, orgID)
+	if err != nil {
+		return false, err
+	}
+	if admin {
+		return true, nil
+	}
+	role, err := teams.GetMemberRole(ctx, teamID, userID)
+	if errors.Is(err, kernel.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return TeamRole(role).CanChangeRoles(), nil
 }
 
 // AddTeamMember adds an existing org member to the team as a member.
@@ -238,15 +262,23 @@ func RemoveTeamMember(ctx context.Context, teams TeamRepository, teamID, targetU
 	return teams.RemoveMember(ctx, teamID, targetUserID)
 }
 
-// UpdateTeamMemberRole sets a team member's role. Cannot demote the sole team owner.
-func UpdateTeamMemberRole(ctx context.Context, teams TeamRepository, teamID, targetUserID, role string) (*TeamMember, error) {
+// UpdateTeamMemberRole sets a team member's role. Only org admins and team owners
+// may change roles. Cannot demote the sole team owner.
+func UpdateTeamMemberRole(ctx context.Context, teams TeamRepository, orgs OrganizationRepository, teamID, actorUserID, targetUserID, role string) (*TeamMember, error) {
 	parsed, err := ParseTeamRole(role)
 	if err != nil {
 		return nil, err
 	}
 	role = parsed.String()
-	if targetUserID == "" {
+	if actorUserID == "" || targetUserID == "" {
 		return nil, kernel.ErrInvalidRequest
+	}
+	ok, err := CanChangeTeamRoles(ctx, teams, orgs, teamID, actorUserID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, kernel.ErrUnauthorized
 	}
 	targetRole, err := teams.GetMemberRole(ctx, teamID, targetUserID)
 	if err != nil {

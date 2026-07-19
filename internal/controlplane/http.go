@@ -114,7 +114,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/platform/teams/{teamID}", s.requireAuth(s.requireTeamAccess(s.handleGetTeam)))
 	mux.HandleFunc("GET /api/v1/platform/teams/{teamID}/members", s.requireAuth(s.requireTeamAccess(s.handleListTeamMembers)))
 	mux.HandleFunc("POST /api/v1/platform/teams/{teamID}/members", s.requireAuth(s.requireTeamManager(s.handleAddTeamMember)))
-	mux.HandleFunc("PATCH /api/v1/platform/teams/{teamID}/members/{userID}", s.requireAuth(s.requireTeamManager(s.handleUpdateTeamMemberRole)))
+	mux.HandleFunc("PATCH /api/v1/platform/teams/{teamID}/members/{userID}", s.requireAuth(s.requireTeamRoleChanger(s.handleUpdateTeamMemberRole)))
 	mux.HandleFunc("DELETE /api/v1/platform/teams/{teamID}/members/{userID}", s.requireAuth(s.requireTeamManager(s.handleRemoveTeamMember)))
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/keys", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListOrgKeys)))

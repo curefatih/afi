@@ -17,6 +17,7 @@ type membershipChecker interface {
 	GetTeamOrgID(ctx context.Context, teamID string) (string, error)
 	CanAccessTeam(ctx context.Context, teamID, userID string) (bool, error)
 	CanManageTeam(ctx context.Context, teamID, userID string) (bool, error)
+	CanChangeTeamRoles(ctx context.Context, teamID, userID string) (bool, error)
 	GetProjectOrgID(ctx context.Context, projectID string) (string, error)
 	GetProviderOrgID(ctx context.Context, providerID string) (string, error)
 	GetRouteOrgID(ctx context.Context, routeID string) (string, error)

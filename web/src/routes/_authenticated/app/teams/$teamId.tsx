@@ -97,12 +97,16 @@ function RouteComponent() {
 		return me?.role === "owner" || me?.role === "admin";
 	}, [orgMembers.data, user?.id]);
 
-	const isTeamManager = useMemo(() => {
+	const myTeamRole = useMemo(() => {
 		const me = (membersQuery.data ?? []).find((m) => m.user_id === user?.id);
-		return me?.role === "owner" || me?.role === "admin";
+		return me?.role;
 	}, [membersQuery.data, user?.id]);
 
+	const isTeamManager =
+		myTeamRole === "owner" || myTeamRole === "admin";
 	const canManage = isOrgAdmin || isTeamManager;
+	// Team admins may add/remove members but cannot change roles.
+	const canChangeRoles = isOrgAdmin || myTeamRole === "owner";
 
 	const ownerCount = useMemo(
 		() => (membersQuery.data ?? []).filter((m) => m.role === "owner").length,
@@ -320,12 +324,12 @@ function RouteComponent() {
 													</TableCell>
 													<TableCell>{member.email}</TableCell>
 													<TableCell>
-														{canManage ? (
+														{canChangeRoles ? (
 															<Select
 																value={member.role}
 																disabled={
 																	busyUserId === member.user_id ||
-																	(isSoleOwner && member.role === "owner")
+																	isSoleOwner
 																}
 																onValueChange={(v) => {
 																	const role = (v ?? member.role) as TeamRole;
@@ -340,12 +344,7 @@ function RouteComponent() {
 																		member
 																	</SelectItem>
 																	<SelectItem value="admin">admin</SelectItem>
-																	<SelectItem
-																		value="owner"
-																		disabled={isSoleOwner}
-																	>
-																		owner
-																	</SelectItem>
+																	<SelectItem value="owner">owner</SelectItem>
 																</SelectContent>
 															</Select>
 														) : (

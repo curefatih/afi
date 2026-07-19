@@ -36,7 +36,7 @@ type ConfigAPI interface {
 	GetTeam(ctx context.Context, teamID string) (*tenancy.Team, error)
 	ListTeamMembers(ctx context.Context, teamID string) ([]tenancy.TeamMember, error)
 	AddTeamMember(ctx context.Context, teamID, userID string) (*tenancy.TeamMember, error)
-	UpdateTeamMemberRole(ctx context.Context, teamID, userID, role string) (*tenancy.TeamMember, error)
+	UpdateTeamMemberRole(ctx context.Context, teamID, actorUserID, targetUserID, role string) (*tenancy.TeamMember, error)
 	RemoveTeamMember(ctx context.Context, teamID, userID string) error
 	ListProjects(ctx context.Context, orgID, userID string) ([]tenancy.Project, error)
 	CreateProject(ctx context.Context, orgID, teamID, name string) (*tenancy.Project, error)

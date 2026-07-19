@@ -16,13 +16,14 @@ import (
 )
 
 type fakeMembers struct {
-	allowed    map[string]bool
-	admins     map[string]bool
-	owners     map[string]bool
-	keyOrg     map[string]string
-	teamOrg    map[string]string
-	teamAccess map[string]bool // userID|teamID
-	teamManage map[string]bool // userID|teamID
+	allowed        map[string]bool
+	admins         map[string]bool
+	owners         map[string]bool
+	keyOrg         map[string]string
+	teamOrg        map[string]string
+	teamAccess     map[string]bool // userID|teamID
+	teamManage     map[string]bool // userID|teamID
+	teamRoleChange map[string]bool // userID|teamID — org admin / team owner only
 }
 
 func (f *fakeMembers) IsOrgMember(_ context.Context, userID, orgID string) (bool, error) {
@@ -85,6 +86,17 @@ func (f *fakeMembers) CanAccessTeam(ctx context.Context, teamID, userID string) 
 func (f *fakeMembers) CanManageTeam(ctx context.Context, teamID, userID string) (bool, error) {
 	if f.teamManage != nil {
 		return f.teamManage[userID+"|"+teamID], nil
+	}
+	orgID, err := f.GetTeamOrgID(ctx, teamID)
+	if err != nil {
+		return false, err
+	}
+	return f.IsOrgAdmin(ctx, userID, orgID)
+}
+
+func (f *fakeMembers) CanChangeTeamRoles(ctx context.Context, teamID, userID string) (bool, error) {
+	if f.teamRoleChange != nil {
+		return f.teamRoleChange[userID+"|"+teamID], nil
 	}
 	orgID, err := f.GetTeamOrgID(ctx, teamID)
 	if err != nil {
@@ -214,7 +226,7 @@ func (f *fakePlatform) AddTeamMember(context.Context, string, string) (*TeamMemb
 func (f *fakePlatform) RemoveTeamMember(context.Context, string, string) error {
 	return errors.New("unused")
 }
-func (f *fakePlatform) UpdateTeamMemberRole(context.Context, string, string, string) (*TeamMember, error) {
+func (f *fakePlatform) UpdateTeamMemberRole(context.Context, string, string, string, string) (*TeamMember, error) {
 	return nil, errors.New("unused")
 }
 func (f *fakePlatform) ListProjects(context.Context, string, string) ([]Project, error) {

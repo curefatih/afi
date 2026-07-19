@@ -253,8 +253,8 @@ func (s *Store) RemoveTeamMember(ctx context.Context, teamID, userID string) err
 	return tenancy.RemoveTeamMember(ctx, s.teamsRepo(), teamID, userID)
 }
 
-func (s *Store) UpdateTeamMemberRole(ctx context.Context, teamID, userID, role string) (*TeamMember, error) {
-	return tenancy.UpdateTeamMemberRole(ctx, s.teamsRepo(), teamID, userID, role)
+func (s *Store) UpdateTeamMemberRole(ctx context.Context, teamID, actorUserID, targetUserID, role string) (*TeamMember, error) {
+	return tenancy.UpdateTeamMemberRole(ctx, s.teamsRepo(), s.organizations(), teamID, actorUserID, targetUserID, role)
 }
 
 func (s *Store) CanAccessTeam(ctx context.Context, teamID, userID string) (bool, error) {
@@ -263,6 +263,10 @@ func (s *Store) CanAccessTeam(ctx context.Context, teamID, userID string) (bool,
 
 func (s *Store) CanManageTeam(ctx context.Context, teamID, userID string) (bool, error) {
 	return tenancy.CanManageTeam(ctx, s.teamsRepo(), s.organizations(), teamID, userID)
+}
+
+func (s *Store) CanChangeTeamRoles(ctx context.Context, teamID, userID string) (bool, error) {
+	return tenancy.CanChangeTeamRoles(ctx, s.teamsRepo(), s.organizations(), teamID, userID)
 }
 
 func (s *Store) ListProjects(ctx context.Context, orgID, userID string) ([]Project, error) {

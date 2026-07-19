@@ -274,6 +274,32 @@ func (s *Server) requireTeamManager(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func (s *Server) requireTeamRoleChanger(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		teamID := r.PathValue("teamID")
+		_, err := s.members.GetTeamOrgID(r.Context(), teamID)
+		if errors.Is(err, kernel.ErrNotFound) {
+			writeErr(w, http.StatusNotFound, "not found")
+			return
+		}
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		claims := claimsFrom(r.Context())
+		ok, err := s.members.CanChangeTeamRoles(r.Context(), teamID, claims.UserID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !ok {
+			writeErr(w, http.StatusForbidden, "only org admins and team owners can change team roles")
+			return
+		}
+		next(w, r)
+	}
+}
+
 func (s *Server) requireOrgMemberViaProject(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		orgID, err := s.members.GetProjectOrgID(r.Context(), r.PathValue("projectID"))

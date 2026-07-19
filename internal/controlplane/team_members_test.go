@@ -60,6 +60,11 @@ func newTeamMembersFake() *teamMembersFake {
 		"user_admin|team_b": true,
 		"user_owner|team_a": true,
 	}
+	f.teamRoleChange = map[string]bool{
+		"user_admin|team_a": true,
+		"user_admin|team_b": true,
+		"user_owner|team_a": true,
+	}
 	return f
 }
 
@@ -129,7 +134,14 @@ func (f *teamMembersFake) RemoveTeamMember(_ context.Context, teamID, userID str
 	return nil
 }
 
-func (f *teamMembersFake) UpdateTeamMemberRole(_ context.Context, teamID, userID, role string) (*TeamMember, error) {
+func (f *teamMembersFake) UpdateTeamMemberRole(_ context.Context, teamID, actorUserID, targetUserID, role string) (*TeamMember, error) {
+	ok, err := f.CanChangeTeamRoles(context.Background(), teamID, actorUserID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, kernel.ErrUnauthorized
+	}
 	switch role {
 	case TeamRoleOwner, TeamRoleAdmin, TeamRoleMember:
 	default:
@@ -142,7 +154,7 @@ func (f *teamMembersFake) UpdateTeamMemberRole(_ context.Context, teamID, userID
 		if m.Role == TeamRoleOwner {
 			owners++
 		}
-		if m.UserID == userID {
+		if m.UserID == targetUserID {
 			idx = i
 		}
 	}
@@ -355,7 +367,7 @@ func TestUpdateTeamMemberRoleForbiddenForPlainMember(t *testing.T) {
 	}
 }
 
-func TestUpdateTeamMemberRoleAsTeamAdmin(t *testing.T) {
+func TestUpdateTeamMemberRoleForbiddenForTeamAdmin(t *testing.T) {
 	t.Parallel()
 	api := newTeamMembersFake()
 	api.members["team_a"] = append(api.members["team_a"], TeamMember{
@@ -364,8 +376,29 @@ func TestUpdateTeamMemberRoleAsTeamAdmin(t *testing.T) {
 	api.allowed["user_tadmin|org_x"] = true
 	api.teamAccess["user_tadmin|team_a"] = true
 	api.teamManage["user_tadmin|team_a"] = true
+	// team admin can manage members but must not change roles
 	s := teamServer(api)
 	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_tadmin", "tadmin@afi.local", "member")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/platform/teams/team_a/members/user_tadmin",
+		bytes.NewBufferString(`{"role":"owner"}`))
+	req.SetPathValue("teamID", "team_a")
+	req.SetPathValue("userID", "user_tadmin")
+	req.Header.Set("Authorization", "Bearer "+tok)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestUpdateTeamMemberRoleAsTeamOwner(t *testing.T) {
+	t.Parallel()
+	api := newTeamMembersFake()
+	s := teamServer(api)
+	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_owner", "owner@afi.local", "member")
 	if err != nil {
 		t.Fatal(err)
 	}

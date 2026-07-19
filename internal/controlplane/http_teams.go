@@ -89,6 +89,11 @@ func (s *Server) handleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUpdateTeamMemberRole(w http.ResponseWriter, r *http.Request) {
+	claims := claimsFrom(r.Context())
+	if claims == nil {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
 	var body struct {
 		Role string `json:"role"`
 	}
@@ -99,9 +104,14 @@ func (s *Server) handleUpdateTeamMemberRole(w http.ResponseWriter, r *http.Reque
 	member, err := s.app.UpdateTeamMemberRole(
 		r.Context(),
 		r.PathValue("teamID"),
+		claims.UserID,
 		r.PathValue("userID"),
 		strings.TrimSpace(body.Role),
 	)
+	if errors.Is(err, kernel.ErrUnauthorized) {
+		writeErr(w, http.StatusForbidden, "only org admins and team owners can change team roles")
+		return
+	}
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "member not found")
 		return
