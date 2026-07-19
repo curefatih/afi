@@ -4,12 +4,15 @@
 	run-controlplane run-gateway run-worker run-all \
 	seed snapshot-publish \
 	deploy-init deploy-up deploy-down deploy-logs deploy-health \
-	build-release build-images
+	build-release build-images brand-assets
 
 GO ?= go
 BIN_DIR ?= bin
 DEPLOY_COMPOSE ?= deploy/docker-compose.yml
 DEPLOY_ENV ?= deploy/.env
+
+brand-assets:
+	./scripts/generate-brand-assets.sh
 
 doc-serve:
 	uvx --from mkdocs-material mkdocs serve

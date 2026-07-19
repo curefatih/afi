@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/brand/logo.png" alt="AFI — AI Gateway" width="320" />
+</p>
+
 # AFI - AI Gateway
 
 > [!WARNING]
