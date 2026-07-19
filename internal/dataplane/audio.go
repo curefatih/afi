@@ -102,6 +102,10 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 		ttsMetrics["characters"] = n
 	}
 
+	if !p.checkPolicies(w, snap, key, reqBody.Model, "/v1/audio/speech", false) {
+		return
+	}
+
 	denied, err := p.checkAndIncrRequests(ctx, snap, key)
 	if err != nil {
 		log.Error("quota check", "err", err)
@@ -218,6 +222,10 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": map[string]string{"message": "model is required (multipart)", "type": "invalid_request_error"},
 		})
+		return
+	}
+
+	if !p.checkPolicies(w, snap, key, model, "/v1/audio/transcriptions", false) {
 		return
 	}
 

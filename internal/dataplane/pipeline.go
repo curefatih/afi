@@ -13,6 +13,7 @@ import (
 
 	"github.com/curefatih/afi/internal/dataplane/openaichat"
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
 )
 
@@ -48,6 +49,7 @@ type Pipeline struct {
 	Log       *slog.Logger
 	Usage     func(UsageEvent)
 	Counters  CounterStore
+	Policies  *policy.Evaluator
 }
 
 // NewPipeline builds a pipeline. If reg is nil, DefaultRegistry is used.
@@ -159,6 +161,10 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": map[string]string{"message": "model is required", "type": "invalid_request_error"},
 		})
+		return
+	}
+
+	if !p.checkPolicies(w, snap, key, reqBody.Model, "/v1/chat/completions", reqBody.Stream) {
 		return
 	}
 

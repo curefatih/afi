@@ -16,28 +16,41 @@ func (p *Pipeline) checkAndIncrRequests(ctx context.Context, snap *snapshot.Snap
 	if p.Counters == nil {
 		return false, nil
 	}
-	q, ok := snap.ResolveQuota(key, snapshot.MetricRequests)
-	if !ok {
-		return false, nil
+	type hit struct {
+		q snapshot.Quota
 	}
-	used, err := p.Counters.Get(ctx, q.ScopeType, q.ScopeID, q.Metric, q.Window)
-	if err != nil {
-		return false, err
+	var hits []hit
+	for _, window := range snapshot.RequestWindows {
+		q, ok := snap.ResolveQuota(key, snapshot.MetricRequests, window)
+		if !ok {
+			continue
+		}
+		used, err := p.Counters.Get(ctx, q.ScopeType, q.ScopeID, q.Metric, q.Window)
+		if err != nil {
+			return false, err
+		}
+		if used >= q.LimitValue {
+			return true, nil
+		}
+		hits = append(hits, hit{q: q})
 	}
-	if used >= q.LimitValue {
-		return true, nil
+	for _, h := range hits {
+		if _, err := p.Counters.Incr(ctx, h.q.ScopeType, h.q.ScopeID, h.q.Metric, h.q.Window, 1); err != nil {
+			return false, err
+		}
 	}
-	_, err = p.Counters.Incr(ctx, q.ScopeType, q.ScopeID, q.Metric, q.Window, 1)
-	return false, err
+	return false, nil
 }
 
 func (p *Pipeline) incrTokens(ctx context.Context, snap *snapshot.Snapshot, key snapshot.APIKey, tokens int64) {
 	if p.Counters == nil || tokens <= 0 {
 		return
 	}
-	q, ok := snap.ResolveQuota(key, snapshot.MetricTokens)
-	if !ok {
-		return
+	for _, window := range snapshot.RequestWindows {
+		q, ok := snap.ResolveQuota(key, snapshot.MetricTokens, window)
+		if !ok {
+			continue
+		}
+		_, _ = p.Counters.Incr(ctx, q.ScopeType, q.ScopeID, q.Metric, q.Window, tokens)
 	}
-	_, _ = p.Counters.Incr(ctx, q.ScopeType, q.ScopeID, q.Metric, q.Window, tokens)
 }

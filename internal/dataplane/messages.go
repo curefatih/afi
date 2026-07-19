@@ -60,6 +60,10 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !p.checkPolicies(w, snap, key, reqBody.Model, "/v1/messages", reqBody.Stream) {
+		return
+	}
+
 	denied, err := p.checkAndIncrRequests(ctx, snap, key)
 	if err != nil {
 		log.Error("quota check", "err", err)
