@@ -71,6 +71,8 @@ Written on first control-plane start (or `make seed`):
 
 | Method | Path |
 |--------|------|
+| GET/POST | `/api/v1/platform/organizations` |
+| GET/POST | `/api/v1/platform/organizations/{orgID}/members` |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/providers` |
 | PATCH/DELETE | `/api/v1/platform/providers/{providerID}` |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/routes` |
@@ -78,6 +80,8 @@ Written on first control-plane start (or `make seed`):
 | GET | `/api/v1/platform/organizations/{orgID}/usage` |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/quotas` |
 | PATCH/DELETE | `/api/v1/platform/quotas/{quotaID}` |
+
+Member invite looks up an existing user by email (no SMTP). Native Anthropic inference: gateway `POST /v1/messages` (Anthropic providers only).
 
 ### Quotas
 

@@ -29,7 +29,7 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 export GEMINI_API_KEY="..."
 ```
 
-The gateway reads these env vars when calling upstream providers (see snapshot provider `api_key_env`). The chat playground loads models from `GET /v1/models` and streams via `stream: true`.
+The gateway reads these env vars when calling upstream providers (see snapshot provider `api_key_env`). The chat playground loads models from `GET /v1/models` and streams only when `supports_streaming` is true.
 
 ## 3. Run the control plane
 
@@ -86,6 +86,8 @@ pnpm --dir web dev
 ```
 
 Open http://localhost:3000 and sign in with `admin@afi.local` / `admin`.
+
+Use **Organizations** to create another org and add an existing user by email (user must already exist — no SMTP invite).
 
 The web app calls the control plane at `http://localhost:8081` (override with `VITE_PLATFORM_API_URL`).
 

@@ -18,6 +18,7 @@ Uses pragmatic domain packages (full DDD bounded contexts grow over time).
 Responsibilities today:
 
 * Persist orgs, projects, users, virtual API keys, providers, routes, quotas
+* Create organizations and invite existing users by email
 * Compile configuration into versioned snapshots (including provider capabilities)
 * Platform HTTP APIs (`/api/v1/platform/*`)
 * Internal admin (`/internal/v1/*`, `/healthz`)
@@ -43,10 +44,11 @@ Provider adapters (`openai`, `anthropic`, `gemini`, `openai_compatible`, …) im
 
 Also exposes:
 
-* `GET /v1/models` — virtual models from the key’s organization routes (with streaming capability hints)
+* `GET /v1/models` — virtual models from the key’s organization routes (with `supports_streaming`)
 * `POST /v1/chat/completions` — OpenAI-shaped chat (adapters translate native APIs)
+* `POST /v1/messages` — Anthropic-shaped pass-through (Anthropic providers only)
 
-Streaming is gated by provider capabilities (not hard-coded vendor checks). Failover retries only before the response body is committed to the client.
+The playground honors `supports_streaming` per model. Failover retries only before the response body is committed to the client.
 
 Pipeline stages stay stateless aside from the in-memory snapshot pointer. Quota counters and the usage outbox use Postgres as operational stores.
 

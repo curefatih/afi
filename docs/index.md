@@ -18,7 +18,7 @@ flowchart TB
   SS[Snapshot Store]
   DP[Data Plane]
   PA[Provider Adapters]
-  Prov[OpenAI / Anthropic / Gemini]
+  Prov[OpenAI / Anthropic / Gemini / compatible]
 
   UI --> CP
   CP -->|Builds gateway snapshot| SS
@@ -30,10 +30,11 @@ flowchart TB
 ## What works locally today
 
 * Postgres + Adminer via `make dev-up`
-* Control plane: migrate, seed, snapshot publish, platform auth APIs
-* Gateway: virtual API key auth → quotas → routes (with failover) → provider registry (`openai`, `anthropic`, `gemini`, `openai_compatible`, …)
-* OpenAI-compatible `POST /v1/chat/completions` (streaming gated by provider capabilities)
-* OpenAI-compatible `GET /v1/models` (lists org routes from the snapshot)
+* Control plane: migrate, seed, snapshot publish, platform auth, org create + member invite
+* Gateway: virtual API key auth → quotas → routes (with failover) → provider registry
+* OpenAI-compatible `POST /v1/chat/completions` and `GET /v1/models` (with `supports_streaming`)
+* Native Anthropic `POST /v1/messages` (Anthropic providers / routes)
+* Streaming for OpenAI, Anthropic, Gemini, and `openai_compatible` (capability-gated)
 * Usage outbox + worker with optional `cost_usd`
-* Web UI against the control plane (`:8081`), playground against the gateway (`:8080`)
+* Web UI (`:8081`) with capability-aware playground against the gateway (`:8080`)
 * Docs via `make doc-serve`

@@ -60,6 +60,13 @@ curl -sN http://localhost:8080/v1/chat/completions \
   -H "Authorization: Bearer sk-project-local-dev-token-12345" \
   -H "Content-Type: application/json" \
   -d '{"model":"claude-sonnet","stream":true,"messages":[{"role":"user","content":"ping"}]}'
+
+# native Anthropic Messages (same auth/quota/route)
+curl -s http://localhost:8080/v1/messages \
+  -H "Authorization: Bearer sk-project-local-dev-token-12345" \
+  -H "Content-Type: application/json" \
+  -H "anthropic-version: 2023-06-01" \
+  -d '{"model":"claude-sonnet","max_tokens":64,"messages":[{"role":"user","content":"ping"}]}'
 ```
 
 ## OpenAI-compatible (Ollama, etc.)
@@ -96,6 +103,12 @@ curl -s http://localhost:8080/v1/chat/completions \
   -H "Authorization: Bearer sk-project-local-dev-token-12345" \
   -H "Content-Type: application/json" \
   -d '{"model":"gemini-flash","messages":[{"role":"user","content":"ping"}]}'
+
+# streaming (OpenAI-shaped SSE via streamGenerateContent)
+curl -sN http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Bearer sk-project-local-dev-token-12345" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gemini-flash","stream":true,"messages":[{"role":"user","content":"ping"}]}'
 ```
 
 Failover: set `"fallbacks":[{"provider_id":"prov_anthropic","target_model":"claude-sonnet-4-20250514"}]` on an OpenAI primary route to retry on 5xx/timeout/429.

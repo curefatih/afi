@@ -8,7 +8,7 @@ Gateway chat dispatch uses a **registry** of in-process adapters. The pipeline l
 |------|------|--------|-------|
 | `openai` | yes | yes | OpenAI `/v1/chat/completions` |
 | `anthropic` | yes | yes | Messages API → OpenAI-shaped responses/SSE |
-| `gemini` | yes | no | `generateContent` → OpenAI JSON |
+| `gemini` | yes | yes | `generateContent` / `streamGenerateContent` → OpenAI JSON/SSE |
 | `openai_compatible` | yes | yes | Same wire protocol as OpenAI; any compatible base (Ollama, Groq, Azure OpenAI-compatible, etc.) |
 
 Capabilities (`chat`, `stream`) are stored on the provider in the snapshot (defaults applied per type when empty). Streaming requests against a non-streaming provider return `400`.
