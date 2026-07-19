@@ -23,6 +23,15 @@
 | `VITE_PLATFORM_API_URL` | `http://localhost:8081` | web UI (platform APIs) |
 | `VITE_GATEWAY_API_URL` | `http://localhost:8080` | web playground |
 | `VITE_GATEWAY_API_KEY` | seed virtual key | web playground |
+| `AFI_EVENTS_OUTBOX_ENABLED` | `false` | enqueue platform events to Postgres |
+| `AFI_EVENTS_PUBLISHER` | `log` | worker: `log` \| `nats` \| `kafka` \| `noop` |
+| `AFI_EVENTS_NATS_URL` | `nats://127.0.0.1:4222` | NATS JetStream |
+| `AFI_EVENTS_NATS_STREAM` | `AFI_PLATFORM` | JetStream stream name |
+| `AFI_EVENTS_NATS_SUBJECT_PREFIX` | `afi.platform` | subject prefix |
+| `AFI_EVENTS_KAFKA_BROKERS` | `127.0.0.1:9092` | Kafka brokers (CSV) |
+| `AFI_EVENTS_KAFKA_TOPIC` | `afi.platform.events` | Kafka topic |
+
+See [Platform domain events](platform-events.md) for the outbox flow.
 
 ## Internal admin HTTP
 

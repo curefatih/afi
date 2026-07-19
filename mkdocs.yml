@@ -27,6 +27,7 @@ nav:
       - Repository layout: development/repository-layout.md
       - Architecture: development/architecture.md
       - Providers: development/providers.md
+      - Platform events: development/platform-events.md
       - Config reference: development/config-reference.md
       - Testing: development/testing.md
   - Concepts:
