@@ -174,3 +174,9 @@ dmypy.json
 
 
 internal-docs
+
+# pnpm
+pnpm-lock.yaml
+.pnpm-debug.log
+node_modules/
+.pnpm-store/
