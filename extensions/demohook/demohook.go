@@ -4,16 +4,28 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+
+	"github.com/curefatih/afi/internal/dataplane"
 )
 
 // Name is the hook identifier exposed on gateway healthz.
 const Name = "demo_tag"
 
-// Hook prefixes the last user message with [hook:demo] so echo (and other
-// providers) can prove the in-process BeforeChat chain ran.
-type Hook struct{}
+// Hook prefixes the last user message with [hook:demo] (BeforeChat) and logs
+// AfterChat outcomes to the process logger.
+type Hook struct {
+	Log *slog.Logger
+}
 
-func New() *Hook { return &Hook{} }
+func New() *Hook { return &Hook{Log: slog.Default()} }
+
+func NewWithLog(log *slog.Logger) *Hook {
+	if log == nil {
+		log = slog.Default()
+	}
+	return &Hook{Log: log}
+}
 
 func (Hook) Name() string { return Name }
 
@@ -51,3 +63,23 @@ func (Hook) BeforeChat(_ context.Context, body []byte) ([]byte, error) {
 	}
 	return body, nil
 }
+
+func (h *Hook) AfterChat(_ context.Context, info dataplane.AfterChatInfo) error {
+	log := h.Log
+	if log == nil {
+		log = slog.Default()
+	}
+	log.Info("demohook.after_chat",
+		"model", info.Model,
+		"status", info.Status,
+		"latency_ms", info.LatencyMs,
+		"provider_type", info.ProviderType,
+		"target_model", info.TargetModel,
+	)
+	return nil
+}
+
+var (
+	_ dataplane.ChatHook      = (*Hook)(nil)
+	_ dataplane.AfterChatHook = (*Hook)(nil)
+)

@@ -26,3 +26,25 @@ func TestHookChainOrder(t *testing.T) {
 		t.Fatalf("%v", got)
 	}
 }
+
+type afterHook struct{ called *bool }
+
+func (afterHook) Name() string { return "after" }
+func (a afterHook) AfterChat(context.Context, AfterChatInfo) error {
+	*a.called = true
+	return nil
+}
+
+func TestHookChainAfter(t *testing.T) {
+	t.Parallel()
+	called := false
+	c := NewHookChain().RegisterHook(afterHook{called: &called})
+	c.RunAfterChat(context.Background(), AfterChatInfo{Status: "ok"})
+	if !called {
+		t.Fatal("expected AfterChat")
+	}
+	infos := c.Infos()
+	if len(infos) != 1 || !infos[0].AfterChat || infos[0].BeforeChat {
+		t.Fatalf("%+v", infos)
+	}
+}

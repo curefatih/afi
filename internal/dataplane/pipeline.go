@@ -100,10 +100,10 @@ func (p *Pipeline) handleHealth(w http.ResponseWriter, r *http.Request) {
 	if p.Providers != nil {
 		out["provider_types"] = p.Providers.Types()
 	}
-	if names := p.Hooks.Names(); len(names) > 0 {
-		out["hooks"] = names
+	if infos := p.Hooks.Infos(); len(infos) > 0 {
+		out["hooks"] = infos
 	} else {
-		out["hooks"] = []string{}
+		out["hooks"] = []HookInfo{}
 	}
 	writeJSON(w, http.StatusOK, out)
 }
@@ -269,6 +269,11 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 			LatencyMs:      time.Since(start).Milliseconds(),
 			Modality:       ModalityChat,
 		})
+		p.Hooks.RunAfterChat(ctx, AfterChatInfo{
+			Model: reqBody.Model, Status: "error",
+			LatencyMs:    time.Since(start).Milliseconds(),
+			ProviderType: usedProvider.Type, TargetModel: usedTarget,
+		})
 		writeJSON(w, http.StatusBadGateway, map[string]any{
 			"error": map[string]string{"message": lastErr.Error(), "type": "server_error"},
 		})
@@ -326,6 +331,11 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		CompletionTokens: completionTokens,
 		Modality:         ModalityChat,
 		Metrics:          tokenMetrics(promptTokens, completionTokens),
+	})
+	p.Hooks.RunAfterChat(ctx, AfterChatInfo{
+		Model: reqBody.Model, Status: status,
+		LatencyMs:    time.Since(start).Milliseconds(),
+		ProviderType: usedProvider.Type, TargetModel: usedTarget,
 	})
 }
 
