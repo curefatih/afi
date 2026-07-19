@@ -38,8 +38,33 @@ echo "ok"
 echo "==> list models"
 curl -fsS "$GW/v1/models" \
   -H "Authorization: Bearer $VIRTUAL_KEY" \
-  | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d.get("object")=="list" and isinstance(d.get("data"), list) and any(m.get("id")=="gpt-4o-mini" for m in d["data"]), d'
+  | python3 -c '
+import sys,json
+d=json.load(sys.stdin)
+assert d.get("object")=="list" and isinstance(d.get("data"), list), d
+assert any(m.get("id")=="gpt-4o-mini" for m in d["data"]), d
+assert all("supports_streaming" in m for m in d["data"]), d
+'
 echo "ok"
+
+if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+  has_claude=$(curl -fsS "$GW/v1/models" -H "Authorization: Bearer $VIRTUAL_KEY" \
+    | python3 -c 'import sys,json; d=json.load(sys.stdin); print(any(m.get("id")=="claude-sonnet" for m in d.get("data",[])))')
+  if [ "$has_claude" = "True" ]; then
+    echo "==> native /v1/messages (Anthropic)"
+    curl -fsS "$GW/v1/messages" \
+      -H "Authorization: Bearer $VIRTUAL_KEY" \
+      -H 'Content-Type: application/json' \
+      -H 'anthropic-version: 2023-06-01' \
+      -d '{"model":"claude-sonnet","max_tokens":32,"messages":[{"role":"user","content":"ping"}]}' \
+      | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d.get("type")=="message" or d.get("content"), d'
+    echo "ok"
+  else
+    echo "==> native /v1/messages SKIPPED (no claude-sonnet route in models)"
+  fi
+else
+  echo "==> native /v1/messages SKIPPED (ANTHROPIC_API_KEY unset)"
+fi
 
 echo "==> snapshot publish + gateway version bump"
 before=$(curl -fsS "$GW/healthz" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("snapshot_version") or 0)')

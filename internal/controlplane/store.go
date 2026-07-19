@@ -182,6 +182,81 @@ func (s *Store) ListOrganizationsForUser(ctx context.Context, userID string) ([]
 	return out, rows.Err()
 }
 
+type OrgMember struct {
+	UserID string `json:"user_id"`
+	Email  string `json:"email"`
+	Name   string `json:"name"`
+	Role   string `json:"role"`
+}
+
+func (s *Store) CreateOrganization(ctx context.Context, name, creatorUserID string) (*Organization, error) {
+	o := &Organization{
+		ID: newID("org"), Name: name, CreatedAt: time.Now().UTC(),
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO organizations (id, name, created_at) VALUES ($1,$2,$3)
+	`, o.ID, o.Name, o.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO organization_members (organization_id, user_id) VALUES ($1,$2)
+	`, o.ID, creatorUserID)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return o, nil
+}
+
+func (s *Store) ListOrgMembers(ctx context.Context, orgID string) ([]OrgMember, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT u.id, u.email, u.name, u.role
+		FROM organization_members m
+		JOIN users u ON u.id = m.user_id
+		WHERE m.organization_id = $1
+		ORDER BY u.email
+	`, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []OrgMember
+	for rows.Next() {
+		var m OrgMember
+		if err := rows.Scan(&m.UserID, &m.Email, &m.Name, &m.Role); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) AddOrgMemberByEmail(ctx context.Context, orgID, email string) (*OrgMember, error) {
+	user, err := s.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	_, err = s.pool.Exec(ctx, `
+		INSERT INTO organization_members (organization_id, user_id) VALUES ($1,$2)
+		ON CONFLICT DO NOTHING
+	`, orgID, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &OrgMember{
+		UserID: user.ID, Email: user.Email, Name: user.Name, Role: user.Role,
+	}, nil
+}
+
 func (s *Store) ListTeams(ctx context.Context, orgID string) ([]Team, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, organization_id, name, created_at, updated_at

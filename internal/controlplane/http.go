@@ -49,6 +49,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/platform/auth/me", s.requireAuth(s.handleMe))
 
 	mux.HandleFunc("GET /api/v1/platform/organizations", s.requireAuth(s.handleListOrgs))
+	mux.HandleFunc("POST /api/v1/platform/organizations", s.requireAuth(s.handleCreateOrg))
+	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/members", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListOrgMembers)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/members", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleAddOrgMember)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/teams", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListTeams)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/projects", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListProjects)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/projects", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleCreateProject)))
@@ -159,6 +162,55 @@ func (s *Server) handleListOrgs(w http.ResponseWriter, r *http.Request) {
 		orgs = []Organization{}
 	}
 	writeJSON(w, http.StatusOK, orgs)
+}
+
+func (s *Server) handleCreateOrg(w http.ResponseWriter, r *http.Request) {
+	claims := claimsFrom(r.Context())
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.Name) == "" {
+		writeErr(w, http.StatusBadRequest, "name required")
+		return
+	}
+	org, err := s.api.CreateOrganization(r.Context(), strings.TrimSpace(body.Name), claims.UserID)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, org)
+}
+
+func (s *Server) handleListOrgMembers(w http.ResponseWriter, r *http.Request) {
+	list, err := s.api.ListOrgMembers(r.Context(), r.PathValue("orgID"))
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if list == nil {
+		list = []OrgMember{}
+	}
+	writeJSON(w, http.StatusOK, list)
+}
+
+func (s *Server) handleAddOrgMember(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.Email) == "" {
+		writeErr(w, http.StatusBadRequest, "email required")
+		return
+	}
+	member, err := s.api.AddOrgMemberByEmail(r.Context(), r.PathValue("orgID"), strings.TrimSpace(body.Email))
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "user not found")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, member)
 }
 
 func (s *Server) handleListTeams(w http.ResponseWriter, r *http.Request) {

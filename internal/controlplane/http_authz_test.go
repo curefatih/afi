@@ -78,6 +78,13 @@ func (f *fakePlatform) GetUserByEmail(context.Context, string) (*User, error) {
 func (f *fakePlatform) GetUserByID(context.Context, string) (*User, error) {
 	return nil, kernel.ErrNotFound
 }
+func (f *fakePlatform) CreateOrganization(context.Context, string, string) (*Organization, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) ListOrgMembers(context.Context, string) ([]OrgMember, error) { return nil, nil }
+func (f *fakePlatform) AddOrgMemberByEmail(context.Context, string, string) (*OrgMember, error) {
+	return nil, errors.New("unused")
+}
 func (f *fakePlatform) ListOrganizationsForUser(context.Context, string) ([]Organization, error) {
 	return nil, nil
 }
