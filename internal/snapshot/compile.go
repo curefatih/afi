@@ -26,6 +26,7 @@ func Compile(src Source) *Snapshot {
 		s.APIKeys[k.KeyHash] = k
 	}
 	for _, p := range src.Providers {
+		p.Capabilities = NormalizeCapabilities(p.Type, p.Capabilities)
 		s.Providers[p.ID] = p
 	}
 	for _, r := range src.Routes {

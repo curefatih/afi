@@ -43,11 +43,12 @@ type APIKey struct {
 }
 
 type Provider struct {
-	ID        string `json:"id"`
-	Type      string `json:"type"` // openai | anthropic
-	BaseURL   string `json:"base_url"`
-	APIKeyEnv string `json:"api_key_env"`
-	Name      string `json:"name"`
+	ID           string               `json:"id"`
+	Type         string               `json:"type"` // openai | anthropic | gemini | openai_compatible | …
+	BaseURL      string               `json:"base_url"`
+	APIKeyEnv    string               `json:"api_key_env"`
+	Name         string               `json:"name"`
+	Capabilities ProviderCapabilities `json:"capabilities"`
 }
 
 // RouteTarget is a provider + model pair used for primary routing or failover.
