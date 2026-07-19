@@ -1,8 +1,10 @@
 package dataplane
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -18,6 +20,8 @@ type UsageEvent struct {
 	ProjectID        string
 	APIKeyID         string
 	Model            string
+	ProviderType     string
+	TargetModel      string
 	Status           string
 	LatencyMs        int64
 	PromptTokens     int64
@@ -25,15 +29,21 @@ type UsageEvent struct {
 }
 
 type Pipeline struct {
-	Holder   *Holder
-	OpenAI   *OpenAIClient
-	Log      *slog.Logger
-	Usage    func(UsageEvent)
-	Counters CounterStore
+	Holder    *Holder
+	OpenAI    *OpenAIClient
+	Anthropic *AnthropicClient
+	Log       *slog.Logger
+	Usage     func(UsageEvent)
+	Counters  CounterStore
 }
 
 func NewPipeline(holder *Holder, openai *OpenAIClient, log *slog.Logger) *Pipeline {
-	return &Pipeline{Holder: holder, OpenAI: openai, Log: log}
+	return &Pipeline{
+		Holder:    holder,
+		OpenAI:    openai,
+		Anthropic: NewAnthropicClient(),
+		Log:       log,
+	}
 }
 
 func (p *Pipeline) Handler() http.Handler {
@@ -65,6 +75,11 @@ func (p *Pipeline) handleHealth(w http.ResponseWriter, r *http.Request) {
 		out["snapshot_version"] = nil
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+type routeAttempt struct {
+	Provider    snapshot.Provider
+	TargetModel string
 }
 
 func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
@@ -143,9 +158,10 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if provider.Type != "openai" {
+	attempts := buildAttempts(snap, route, provider)
+	if len(attempts) == 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
-			"error": map[string]string{"message": "unsupported provider type", "type": "invalid_request_error"},
+			"error": map[string]string{"message": "no usable providers for route", "type": "invalid_request_error"},
 		})
 		return
 	}
@@ -155,30 +171,67 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		"model", reqBody.Model,
 		"target_model", route.TargetModel,
 		"provider", provider.ID,
+		"fallbacks", len(route.Fallbacks),
 		"stream", reqBody.Stream,
 		"snapshot_version", snap.Version,
 	)
 
-	resp, err := p.OpenAI.ChatCompletions(ctx, provider, route.TargetModel, body, reqBody.Stream)
-	if err != nil {
-		log.Error("upstream error", "err", err)
+	var (
+		resp             *http.Response
+		lastErr          error
+		usedProvider     snapshot.Provider
+		usedTarget       string
+		promptTokens     int64
+		completionTokens int64
+		status           = "ok"
+	)
+
+	for i, attempt := range attempts {
+		usedProvider = attempt.Provider
+		usedTarget = attempt.TargetModel
+		resp, lastErr = p.callProvider(ctx, attempt.Provider, attempt.TargetModel, body, reqBody.Stream)
+		if lastErr != nil {
+			log.Warn("upstream attempt failed", "provider", attempt.Provider.ID, "err", lastErr, "attempt", i)
+			if i+1 < len(attempts) && shouldFailoverError(lastErr) {
+				continue
+			}
+			break
+		}
+		if shouldFailoverStatus(resp.StatusCode) && i+1 < len(attempts) {
+			log.Warn("upstream attempt status", "provider", attempt.Provider.ID, "status", resp.StatusCode, "attempt", i)
+			_, _ = io.Copy(io.Discard, resp.Body)
+			_ = resp.Body.Close()
+			resp = nil
+			continue
+		}
+		break
+	}
+
+	if lastErr != nil && resp == nil {
+		log.Error("upstream error", "err", lastErr)
 		p.recordUsage(UsageEvent{
 			OrganizationID: key.OrganizationID,
 			ProjectID:      key.ProjectID,
 			APIKeyID:       key.ID,
 			Model:          reqBody.Model,
+			ProviderType:   usedProvider.Type,
+			TargetModel:    usedTarget,
 			Status:         "error",
 			LatencyMs:      time.Since(start).Milliseconds(),
 		})
 		writeJSON(w, http.StatusBadGateway, map[string]any{
-			"error": map[string]string{"message": err.Error(), "type": "server_error"},
+			"error": map[string]string{"message": lastErr.Error(), "type": "server_error"},
+		})
+		return
+	}
+	if resp == nil {
+		writeJSON(w, http.StatusBadGateway, map[string]any{
+			"error": map[string]string{"message": "all upstream attempts failed", "type": "server_error"},
 		})
 		return
 	}
 	defer resp.Body.Close()
 
-	var promptTokens, completionTokens int64
-	status := "ok"
 	if resp.StatusCode >= 400 {
 		status = "upstream_error"
 	}
@@ -215,11 +268,57 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		ProjectID:        key.ProjectID,
 		APIKeyID:         key.ID,
 		Model:            reqBody.Model,
+		ProviderType:     usedProvider.Type,
+		TargetModel:      usedTarget,
 		Status:           status,
 		LatencyMs:        time.Since(start).Milliseconds(),
 		PromptTokens:     promptTokens,
 		CompletionTokens: completionTokens,
 	})
+}
+
+func buildAttempts(snap *snapshot.Snapshot, route snapshot.Route, primary snapshot.Provider) []routeAttempt {
+	out := []routeAttempt{{Provider: primary, TargetModel: route.TargetModel}}
+	for _, fb := range route.Fallbacks {
+		p, ok := snap.Providers[fb.ProviderID]
+		if !ok {
+			continue
+		}
+		target := fb.TargetModel
+		if target == "" {
+			target = route.TargetModel
+		}
+		out = append(out, routeAttempt{Provider: p, TargetModel: target})
+	}
+	return out
+}
+
+func shouldFailoverStatus(code int) bool {
+	return code >= 500 || code == http.StatusTooManyRequests
+}
+
+func shouldFailoverError(err error) bool {
+	return err != nil
+}
+
+func (p *Pipeline) callProvider(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
+	switch provider.Type {
+	case "openai":
+		if p.OpenAI == nil {
+			return nil, fmt.Errorf("openai client not configured")
+		}
+		return p.OpenAI.ChatCompletions(ctx, provider, targetModel, body, stream)
+	case "anthropic":
+		if stream {
+			return nil, fmt.Errorf("anthropic streaming is not supported")
+		}
+		if p.Anthropic == nil {
+			return nil, fmt.Errorf("anthropic client not configured")
+		}
+		return p.Anthropic.Messages(ctx, provider, targetModel, body)
+	default:
+		return nil, fmt.Errorf("unsupported provider type %q", provider.Type)
+	}
 }
 
 func (p *Pipeline) recordUsage(e UsageEvent) {
@@ -231,6 +330,8 @@ func (p *Pipeline) recordUsage(e UsageEvent) {
 		"project_id", e.ProjectID,
 		"api_key_id", e.APIKeyID,
 		"model", e.Model,
+		"provider_type", e.ProviderType,
+		"target_model", e.TargetModel,
 		"status", e.Status,
 		"latency_ms", e.LatencyMs,
 		"prompt_tokens", e.PromptTokens,
