@@ -4,12 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+const (
+	OrgRoleOwner  = "owner"
+	OrgRoleAdmin  = "admin"
+	OrgRoleMember = "member"
 )
 
 type Store struct {
@@ -62,9 +69,11 @@ type Project struct {
 
 type APIKey struct {
 	ID             string    `json:"id"`
-	ProjectID      string    `json:"project_id"`
+	ProjectID      string    `json:"project_id,omitempty"`
 	OrganizationID string    `json:"organization_id"`
 	Name           string    `json:"name"`
+	Kind           string    `json:"kind"`
+	OwnerUserID    string    `json:"owner_user_id,omitempty"`
 	KeyPrefix      string    `json:"key_prefix"`
 	Key            string    `json:"key,omitempty"` // plaintext only on create
 	CreatedAt      time.Time `json:"created_at"`
@@ -206,8 +215,8 @@ func (s *Store) CreateOrganization(ctx context.Context, name, creatorUserID stri
 		return nil, err
 	}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO organization_members (organization_id, user_id) VALUES ($1,$2)
-	`, o.ID, creatorUserID)
+		INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1,$2,$3)
+	`, o.ID, creatorUserID, OrgRoleOwner)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +228,7 @@ func (s *Store) CreateOrganization(ctx context.Context, name, creatorUserID stri
 
 func (s *Store) ListOrgMembers(ctx context.Context, orgID string) ([]OrgMember, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT u.id, u.email, u.name, u.role
+		SELECT u.id, u.email, u.name, m.role
 		FROM organization_members m
 		JOIN users u ON u.id = m.user_id
 		WHERE m.organization_id = $1
@@ -246,15 +255,37 @@ func (s *Store) AddOrgMemberByEmail(ctx context.Context, orgID, email string) (*
 		return nil, err
 	}
 	_, err = s.pool.Exec(ctx, `
-		INSERT INTO organization_members (organization_id, user_id) VALUES ($1,$2)
+		INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1,$2,$3)
 		ON CONFLICT DO NOTHING
-	`, orgID, user.ID)
+	`, orgID, user.ID, OrgRoleMember)
 	if err != nil {
 		return nil, err
 	}
 	return &OrgMember{
-		UserID: user.ID, Email: user.Email, Name: user.Name, Role: user.Role,
+		UserID: user.ID, Email: user.Email, Name: user.Name, Role: OrgRoleMember,
 	}, nil
+}
+
+func (s *Store) GetOrgMemberRole(ctx context.Context, userID, orgID string) (string, error) {
+	var role string
+	err := s.pool.QueryRow(ctx, `
+		SELECT role FROM organization_members WHERE user_id=$1 AND organization_id=$2
+	`, userID, orgID).Scan(&role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", kernel.ErrNotFound
+	}
+	return role, err
+}
+
+func (s *Store) IsOrgAdmin(ctx context.Context, userID, orgID string) (bool, error) {
+	role, err := s.GetOrgMemberRole(ctx, userID, orgID)
+	if errors.Is(err, kernel.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return role == OrgRoleOwner || role == OrgRoleAdmin, nil
 }
 
 func (s *Store) ListTeams(ctx context.Context, orgID string) ([]Team, error) {

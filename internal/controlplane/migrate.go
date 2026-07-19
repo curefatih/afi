@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 5
+const schemaVersion = 6
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS usage_outbox CASCADE;
@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS organization_members (
     organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL DEFAULT 'member',
     PRIMARY KEY (organization_id, user_id)
 );
 
@@ -87,12 +88,18 @@ CREATE TABLE IF NOT EXISTS projects (
 
 CREATE TABLE IF NOT EXISTS api_keys (
     id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
     organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'service_account',
+    owner_user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     key_hash TEXT NOT NULL UNIQUE,
     key_prefix TEXT NOT NULL DEFAULT '',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT api_keys_kind_check CHECK (
+        (kind = 'personal' AND owner_user_id IS NOT NULL AND project_id IS NULL) OR
+        (kind = 'service_account' AND owner_user_id IS NULL)
+    )
 );
 
 CREATE TABLE IF NOT EXISTS providers (
@@ -324,6 +331,43 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		ALTER TABLE providers ADD COLUMN IF NOT EXISTS capabilities JSONB NOT NULL DEFAULT '{}'::jsonb;
 	`); err != nil {
 		return fmt.Errorf("cycle5 provider capabilities: %w", err)
+	}
+
+	var hasMemberRole bool
+	if err := pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns
+			WHERE table_schema = 'public' AND table_name = 'organization_members' AND column_name = 'role'
+		)
+	`).Scan(&hasMemberRole); err != nil {
+		return err
+	}
+	if !hasMemberRole {
+		// Existing memberships become owners once; new invites default to member.
+		if _, err := pool.Exec(ctx, `
+			ALTER TABLE organization_members ADD COLUMN role TEXT NOT NULL DEFAULT 'owner';
+			ALTER TABLE organization_members ALTER COLUMN role SET DEFAULT 'member';
+		`); err != nil {
+			return fmt.Errorf("cycle8 org member role: %w", err)
+		}
+	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'service_account';
+		ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS owner_user_id TEXT REFERENCES users(id) ON DELETE CASCADE;
+		ALTER TABLE api_keys ALTER COLUMN project_id DROP NOT NULL;
+	`); err != nil {
+		return fmt.Errorf("cycle8 key kinds: %w", err)
+	}
+	// Ensure CHECK exists (idempotent drop+add).
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE api_keys DROP CONSTRAINT IF EXISTS api_keys_kind_check;
+		ALTER TABLE api_keys ADD CONSTRAINT api_keys_kind_check CHECK (
+			(kind = 'personal' AND owner_user_id IS NOT NULL AND project_id IS NULL) OR
+			(kind = 'service_account' AND owner_user_id IS NULL)
+		);
+	`); err != nil {
+		return fmt.Errorf("cycle8 api_keys check: %w", err)
 	}
 	return nil
 }
