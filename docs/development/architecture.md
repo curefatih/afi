@@ -74,6 +74,11 @@ flowchart LR
 
 The request path never waits on `usage_events` consumers. Run `make run-worker` locally to populate the Usage UI (including `cost_usd` when prices match). Events carry a `modality` (`chat` / `messages` / `tts` / `stt`, …) and a `metrics` JSON object for non-token quantities; token columns remain for chat pricing.
 
-## Future extensions
+## Extensions (current)
 
-gRPC / WASM plugin runtimes, CEL policies, billing invoices, and multi-region snapshot distribution remain future work. The in-process registry is the current extensibility path.
+In-process registration is live:
+
+* **Providers** — `sdk/provider.ChatProvider` via `Registry.RegisterSDK` (example: `extensions/echo`)
+* **Hooks** — `dataplane.ChatHook.BeforeChat` (example: `extensions/demohook`)
+
+gRPC / WASM plugin runtimes, CEL policies, billing invoices, and multi-region snapshot distribution remain future work.

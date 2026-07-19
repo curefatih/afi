@@ -10,6 +10,7 @@ Gateway chat dispatch uses a **registry** of in-process adapters. The pipeline l
 | `anthropic` | yes | yes | no | no | Messages API → OpenAI-shaped responses/SSE |
 | `gemini` | yes | yes | no | no | `generateContent` / `streamGenerateContent` → OpenAI JSON/SSE |
 | `openai_compatible` | yes | yes | yes | yes | Same wire protocol as OpenAI (incl. audio if upstream supports it) |
+| `echo` | yes | no | no | no | **SDK extension** (`extensions/echo`) — no network; echoes last user message |
 
 Capabilities (`chat`, `stream`, `tts`, `stt`) are stored on the provider in the snapshot (defaults applied per type when empty). Streaming/TTS/STT requests against unsupported providers return `400`.
 
@@ -23,9 +24,27 @@ Capabilities (`chat`, `stream`, `tts`, `stt`) are stored on the provider in the 
 
 You should **not** need to edit `callProvider` or add a new `switch` case in the pipeline.
 
-## Out-of-tree / future
+## Adding an extension (SDK)
 
-See [`sdk/provider`](../../sdk/provider) for the documented contract. Full gRPC/WASM plugin runtimes are not shipped yet; the stable path today is in-process registration.
+1. Implement [`sdk/provider.ChatProvider`](../../sdk/provider) in a package under [`extensions/`](../../extensions/) (or an external module).
+2. In [`cmd/gateway`](../../cmd/gateway), call `reg.RegisterSDK(your.New())` after `DefaultRegistry()`.
+3. Create a control-plane provider with matching `type` and a route (seed does this for `echo` → model `echo-demo`).
+4. Restart the gateway so the adapter is registered.
+
+Working example: [`extensions/echo`](../../extensions/echo) — verify with:
+
+```bash
+curl -s http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Bearer sk-project-local-dev-token-12345" \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"echo-demo","messages":[{"role":"user","content":"ping"}]}'
+```
+
+Expect assistant content containing `echo:` (and `[hook:demo]` if the demo BeforeChat hook is registered).
+
+## Hooks (in-process)
+
+`ChatHook.BeforeChat` runs after quota checks and before provider dispatch. Register via `dataplane.NewHookChain().Register(...)` on the pipeline (see `extensions/demohook`). Gateway `/healthz` lists `hooks` and `provider_types`. Full gRPC/WASM plugin runtimes remain future work.
 
 ## Example: local Ollama
 
