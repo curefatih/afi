@@ -24,9 +24,11 @@ make dev-up
 
 ```bash
 export OPENAI_API_KEY="sk-..."
+# optional — for Anthropic routes (seeded as prov_anthropic)
+export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-The gateway reads this env var when calling OpenAI (see snapshot provider `api_key_env`).
+The gateway reads these env vars when calling upstream providers (see snapshot provider `api_key_env`).
 
 ## 3. Run the control plane
 

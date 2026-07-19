@@ -29,6 +29,26 @@ curl -s http://localhost:8080/v1/chat/completions \
 
 Expect a JSON response with `choices[0].message.content`. Requires `OPENAI_API_KEY`.
 
+## Anthropic route (optional)
+
+Seed includes `prov_anthropic`. Create a route (or use Routing UI), then:
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+curl -s http://localhost:8081/api/v1/platform/organizations/org_local/routes \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"claude-sonnet","provider_id":"prov_anthropic","target_model":"claude-sonnet-4-20250514"}'
+
+curl -s http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Bearer sk-project-local-dev-token-12345" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"claude-sonnet","messages":[{"role":"user","content":"ping"}]}'
+```
+
+Failover: set `"fallbacks":[{"provider_id":"prov_anthropic","target_model":"claude-sonnet-4-20250514"}]` on an OpenAI primary route to retry on 5xx/timeout/429.
+
 ## Editable route (UI or API)
 
 Create an alias route that maps `ping-model` → `gpt-4o-mini`, then call it without restarting the gateway.

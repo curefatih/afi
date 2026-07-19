@@ -23,6 +23,8 @@ make dev-up
 
 # 2. Provider key for the gateway
 export OPENAI_API_KEY="sk-..."
+# optional
+export ANTHROPIC_API_KEY="sk-ant-..."
 
 # 3. Control plane (migrate, seed, listen :8081)
 make run-controlplane
