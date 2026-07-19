@@ -52,6 +52,8 @@ func main() {
 			LatencyMs:        e.LatencyMs,
 			PromptTokens:     e.PromptTokens,
 			CompletionTokens: e.CompletionTokens,
+			Modality:         e.Modality,
+			Metrics:          e.Metrics,
 		})
 		if err != nil {
 			log.Error("encode usage", "err", err)
