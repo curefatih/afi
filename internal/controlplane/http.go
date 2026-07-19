@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/curefatih/afi/internal/app/platform"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
 )
@@ -21,6 +22,7 @@ import (
 type Server struct {
 	cfg       *kernel.Config
 	api       platformAPI
+	app       *platform.Service
 	members   membershipChecker
 	publisher snapshotPublisher
 	seeder    *Seeder
@@ -32,6 +34,7 @@ func NewServer(cfg *kernel.Config, store *Store, seeder *Seeder, snapStore snaps
 	return &Server{
 		cfg:       cfg,
 		api:       store,
+		app:       platform.New(store, seeder),
 		members:   store,
 		publisher: seeder,
 		seeder:    seeder,
@@ -40,7 +43,18 @@ func NewServer(cfg *kernel.Config, store *Store, seeder *Seeder, snapStore snaps
 	}
 }
 
+// configAPIAdapter lets platformAPI (used by tests) satisfy platform.ConfigAPI.
+type configAPIAdapter struct{ platformAPI }
+
+func (s *Server) ensureApp() {
+	if s.app != nil || s.api == nil {
+		return
+	}
+	s.app = platform.New(configAPIAdapter{s.api}, s.publisher)
+}
+
 func (s *Server) Handler() http.Handler {
+	s.ensureApp()
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealth)
 
@@ -323,13 +337,9 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "name required")
 		return
 	}
-	p, err := s.api.CreateProject(r.Context(), r.PathValue("orgID"), body.TeamID, body.Name)
+	p, err := s.app.CreateProject(r.Context(), r.PathValue("orgID"), body.TeamID, body.Name)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "created but snapshot publish failed: "+err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, p)
@@ -421,13 +431,9 @@ func (s *Server) handleCreateOrgKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	k, err := s.api.CreateAPIKey(r.Context(), orgID, body.Kind, ownerUserID, body.ProjectID, body.Name, body.Key)
+	k, err := s.app.CreateAPIKey(r.Context(), orgID, body.Kind, ownerUserID, body.ProjectID, body.Name, body.Key)
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "created but snapshot publish failed: "+err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, k)
@@ -463,15 +469,11 @@ func (s *Server) handleDeleteKey(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	if err := s.api.DeleteAPIKey(r.Context(), keyID); errors.Is(err, kernel.ErrNotFound) {
+	if err := s.app.DeleteAPIKey(r.Context(), keyID); errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
 	} else if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "deleted but snapshot publish failed: "+err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -499,13 +501,9 @@ func (s *Server) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	k, err := s.api.CreateAPIKey(r.Context(), orgID, snapshot.KeyKindServiceAccount, "", r.PathValue("projectID"), body.Name, body.Key)
+	k, err := s.app.CreateAPIKey(r.Context(), orgID, snapshot.KeyKindServiceAccount, "", r.PathValue("projectID"), body.Name, body.Key)
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "created but snapshot publish failed: "+err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, k)
@@ -566,13 +564,9 @@ func (s *Server) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 	if body.APIKeyEnv == "" {
 		body.APIKeyEnv = snapshot.DefaultAPIKeyEnv(body.Type)
 	}
-	p, err := s.api.CreateProvider(r.Context(), r.PathValue("orgID"), body.Name, body.Type, body.BaseURL, body.APIKeyEnv, body.Capabilities)
+	p, err := s.app.CreateProvider(r.Context(), r.PathValue("orgID"), body.Name, body.Type, body.BaseURL, body.APIKeyEnv, body.Capabilities)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "created but snapshot publish failed: "+err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, p)
@@ -591,7 +585,7 @@ func (s *Server) handleUpdateProvider(w http.ResponseWriter, r *http.Request) {
 	if body.APIKeyEnv == "" {
 		body.APIKeyEnv = "OPENAI_API_KEY"
 	}
-	p, err := s.api.UpdateProvider(r.Context(), r.PathValue("providerID"), body.Name, body.BaseURL, body.APIKeyEnv)
+	p, err := s.app.UpdateProvider(r.Context(), r.PathValue("providerID"), body.Name, body.BaseURL, body.APIKeyEnv)
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
@@ -600,23 +594,15 @@ func (s *Server) handleUpdateProvider(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "updated but snapshot publish failed: "+err.Error())
-		return
-	}
 	writeJSON(w, http.StatusOK, p)
 }
 
 func (s *Server) handleDeleteProvider(w http.ResponseWriter, r *http.Request) {
-	if err := s.api.DeleteProvider(r.Context(), r.PathValue("providerID")); errors.Is(err, kernel.ErrNotFound) {
+	if err := s.app.DeleteProvider(r.Context(), r.PathValue("providerID")); errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
 	} else if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "deleted but snapshot publish failed: "+err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -648,13 +634,9 @@ func (s *Server) handleCreateRoute(w http.ResponseWriter, r *http.Request) {
 	if body.TargetModel == "" {
 		body.TargetModel = body.Model
 	}
-	route, err := s.api.CreateRoute(r.Context(), r.PathValue("orgID"), body.Model, body.ProviderID, body.TargetModel, body.Fallbacks)
+	route, err := s.app.CreateRoute(r.Context(), r.PathValue("orgID"), body.Model, body.ProviderID, body.TargetModel, body.Fallbacks)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "created but snapshot publish failed: "+err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, route)
@@ -674,7 +656,7 @@ func (s *Server) handleUpdateRoute(w http.ResponseWriter, r *http.Request) {
 	if body.TargetModel == "" {
 		body.TargetModel = body.Model
 	}
-	route, err := s.api.UpdateRoute(r.Context(), r.PathValue("routeID"), body.Model, body.ProviderID, body.TargetModel, body.Fallbacks)
+	route, err := s.app.UpdateRoute(r.Context(), r.PathValue("routeID"), body.Model, body.ProviderID, body.TargetModel, body.Fallbacks)
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
@@ -683,23 +665,15 @@ func (s *Server) handleUpdateRoute(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "updated but snapshot publish failed: "+err.Error())
-		return
-	}
 	writeJSON(w, http.StatusOK, route)
 }
 
 func (s *Server) handleDeleteRoute(w http.ResponseWriter, r *http.Request) {
-	if err := s.api.DeleteRoute(r.Context(), r.PathValue("routeID")); errors.Is(err, kernel.ErrNotFound) {
+	if err := s.app.DeleteRoute(r.Context(), r.PathValue("routeID")); errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
 	} else if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "deleted but snapshot publish failed: "+err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -808,17 +782,13 @@ func (s *Server) handleCreateQuota(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "limit_value must be >= 0")
 		return
 	}
-	q, err := s.api.CreateQuota(r.Context(), r.PathValue("orgID"), body.ScopeType, body.ScopeID, body.Metric, body.LimitValue, body.Window)
+	q, err := s.app.CreateQuota(r.Context(), r.PathValue("orgID"), body.ScopeType, body.ScopeID, body.Metric, body.LimitValue, body.Window)
 	if errors.Is(err, kernel.ErrInvalidRequest) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "created but snapshot publish failed: "+err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, q)
@@ -832,7 +802,7 @@ func (s *Server) handleUpdateQuota(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "limit_value required (>= 0)")
 		return
 	}
-	q, err := s.api.UpdateQuota(r.Context(), r.PathValue("quotaID"), body.LimitValue)
+	q, err := s.app.UpdateQuota(r.Context(), r.PathValue("quotaID"), body.LimitValue)
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
@@ -841,23 +811,15 @@ func (s *Server) handleUpdateQuota(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "updated but snapshot publish failed: "+err.Error())
-		return
-	}
 	writeJSON(w, http.StatusOK, q)
 }
 
 func (s *Server) handleDeleteQuota(w http.ResponseWriter, r *http.Request) {
-	if err := s.api.DeleteQuota(r.Context(), r.PathValue("quotaID")); errors.Is(err, kernel.ErrNotFound) {
+	if err := s.app.DeleteQuota(r.Context(), r.PathValue("quotaID")); errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
 	} else if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "deleted but snapshot publish failed: "+err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -894,17 +856,13 @@ func (s *Server) handleCreatePolicy(w http.ResponseWriter, r *http.Request) {
 	if body.Priority != nil {
 		priority = *body.Priority
 	}
-	p, err := s.api.CreatePolicy(r.Context(), r.PathValue("orgID"), body.Name, body.Expression, enabled, priority)
+	p, err := s.app.CreatePolicy(r.Context(), r.PathValue("orgID"), body.Name, body.Expression, enabled, priority)
 	if errors.Is(err, kernel.ErrInvalidRequest) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "created but snapshot publish failed: "+err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, p)
@@ -925,7 +883,7 @@ func (s *Server) handleUpdatePolicy(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "at least one field required")
 		return
 	}
-	p, err := s.api.UpdatePolicy(r.Context(), r.PathValue("policyID"), body.Name, body.Expression, body.Enabled, body.Priority)
+	p, err := s.app.UpdatePolicy(r.Context(), r.PathValue("policyID"), body.Name, body.Expression, body.Enabled, body.Priority)
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
@@ -938,23 +896,15 @@ func (s *Server) handleUpdatePolicy(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "updated but snapshot publish failed: "+err.Error())
-		return
-	}
 	writeJSON(w, http.StatusOK, p)
 }
 
 func (s *Server) handleDeletePolicy(w http.ResponseWriter, r *http.Request) {
-	if err := s.api.DeletePolicy(r.Context(), r.PathValue("policyID")); errors.Is(err, kernel.ErrNotFound) {
+	if err := s.app.DeletePolicy(r.Context(), r.PathValue("policyID")); errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
 	} else if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
-		writeErr(w, http.StatusInternalServerError, "deleted but snapshot publish failed: "+err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -971,6 +921,7 @@ func claimsFrom(ctx context.Context) *Claims {
 
 func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		s.ensureApp()
 		h := r.Header.Get("Authorization")
 		if !strings.HasPrefix(h, "Bearer ") {
 			writeErr(w, http.StatusUnauthorized, "unauthorized")

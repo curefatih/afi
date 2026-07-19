@@ -48,6 +48,8 @@ type Provider = gatewayconfig.Provider
 type RouteFallback = gatewayconfig.RouteFallback
 type Route = gatewayconfig.Route
 
+// UsageEvent is the control-plane read model (persisted row + joins).
+// Emit/outbox use the canonical usage.Event.
 type UsageEvent struct {
 	ID               int64          `json:"id"`
 	OrganizationID   string         `json:"organization_id"`
