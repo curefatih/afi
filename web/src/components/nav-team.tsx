@@ -26,20 +26,22 @@ import {
 } from "lucide-react";
 
 export function NavTeam({
-  teams,
+  projects,
 }: {
-  teams: {
+  projects: {
     name: string;
     url: string;
   }[];
 }) {
+  console.log(projects);
+  
   const navigate = useNavigate();
   const { isMobile } = useSidebar();
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>Team projects</SidebarGroupLabel>
       <SidebarMenu>
-        {teams.map((item) => (
+        {projects.map((item) => (
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton render={<a href={item.url} />}>
               <FrameIcon />

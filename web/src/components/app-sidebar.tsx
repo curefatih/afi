@@ -152,7 +152,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ) : (
           <>
             <NavTeam
-              teams={activeOrg.projects.map((p) => ({
+              projects={activeOrg.projects.map((p) => ({
                 name: p.name,
                 url: `/app/projects/${p.id}`,
               }))}
