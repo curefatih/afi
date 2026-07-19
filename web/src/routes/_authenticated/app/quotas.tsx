@@ -120,6 +120,7 @@ function RouteComponent() {
 	const [scopeType, setScopeType] = useState("organization");
 	const [scopeID, setScopeID] = useState(orgId);
 	const [metric, setMetric] = useState("requests");
+	const [window, setWindow] = useState("total");
 	const [limitValue, setLimitValue] = useState("100");
 	const [error, setError] = useState<string | null>(null);
 
@@ -130,7 +131,7 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Quotas"
-				description="Lifetime and token lifetime limits. Most specific wins: api key → user → project → organization."
+				description="Request and token limits. Windows: total (Postgres lifetime) or minute/hour/day (Redis rate limits). Most specific wins per window: api key → user → project → organization."
 				actions={
 					isOrgAdmin ? (
 						<Button onClick={() => setCreateOpen(true)} disabled={!orgId}>
@@ -240,7 +241,7 @@ function RouteComponent() {
 									scope_id: effectiveScopeID,
 									metric,
 									limit_value: Number(limitValue),
-									window: "total",
+									window,
 								},
 								{
 									onError: (err) =>
@@ -354,6 +355,23 @@ function RouteComponent() {
 								<SelectContent>
 									<SelectItem value="requests">requests</SelectItem>
 									<SelectItem value="tokens">tokens</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="space-y-1">
+							<Label>Window</Label>
+							<Select
+								value={window}
+								onValueChange={(v) => setWindow(v ?? "total")}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="total">total (Postgres)</SelectItem>
+									<SelectItem value="minute">minute (Redis)</SelectItem>
+									<SelectItem value="hour">hour (Redis)</SelectItem>
+									<SelectItem value="day">day (Redis)</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>

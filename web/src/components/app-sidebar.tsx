@@ -11,6 +11,7 @@ import {
 	PlugIcon,
 	PuzzleIcon,
 	RouteIcon,
+	ScrollTextIcon,
 	Settings2Icon,
 	ShieldIcon,
 	TerminalSquareIcon,
@@ -96,6 +97,11 @@ const governanceNav = [
 		title: "Quotas",
 		url: "/app/quotas",
 		icon: <GaugeIcon />,
+	},
+	{
+		title: "Policies",
+		url: "/app/policies",
+		icon: <ScrollTextIcon />,
 	},
 	{
 		title: "Usage",

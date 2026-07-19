@@ -23,6 +23,7 @@ import { Route as AuthenticatedAppSecretsRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAppRoutingRouteImport } from './routes/_authenticated/app/routing'
 import { Route as AuthenticatedAppQuotasRouteImport } from './routes/_authenticated/app/quotas'
 import { Route as AuthenticatedAppProvidersRouteImport } from './routes/_authenticated/app/providers'
+import { Route as AuthenticatedAppPoliciesRouteImport } from './routes/_authenticated/app/policies'
 import { Route as AuthenticatedAppOrganizationsRouteImport } from './routes/_authenticated/app/organizations'
 import { Route as AuthenticatedAppKeysRouteImport } from './routes/_authenticated/app/keys'
 import { Route as AuthenticatedAppHooksRouteImport } from './routes/_authenticated/app/hooks'
@@ -109,6 +110,12 @@ const AuthenticatedAppProvidersRoute =
   AuthenticatedAppProvidersRouteImport.update({
     id: '/providers',
     path: '/providers',
+    getParentRoute: () => AuthenticatedAppRouteRoute,
+  } as any)
+const AuthenticatedAppPoliciesRoute =
+  AuthenticatedAppPoliciesRouteImport.update({
+    id: '/policies',
+    path: '/policies',
     getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
 const AuthenticatedAppOrganizationsRoute =
@@ -218,6 +225,7 @@ export interface FileRoutesByFullPath {
   '/app/hooks': typeof AuthenticatedAppHooksRoute
   '/app/keys': typeof AuthenticatedAppKeysRoute
   '/app/organizations': typeof AuthenticatedAppOrganizationsRoute
+  '/app/policies': typeof AuthenticatedAppPoliciesRoute
   '/app/providers': typeof AuthenticatedAppProvidersRoute
   '/app/quotas': typeof AuthenticatedAppQuotasRoute
   '/app/routing': typeof AuthenticatedAppRoutingRoute
@@ -249,6 +257,7 @@ export interface FileRoutesByTo {
   '/app/hooks': typeof AuthenticatedAppHooksRoute
   '/app/keys': typeof AuthenticatedAppKeysRoute
   '/app/organizations': typeof AuthenticatedAppOrganizationsRoute
+  '/app/policies': typeof AuthenticatedAppPoliciesRoute
   '/app/providers': typeof AuthenticatedAppProvidersRoute
   '/app/quotas': typeof AuthenticatedAppQuotasRoute
   '/app/routing': typeof AuthenticatedAppRoutingRoute
@@ -282,6 +291,7 @@ export interface FileRoutesById {
   '/_authenticated/app/hooks': typeof AuthenticatedAppHooksRoute
   '/_authenticated/app/keys': typeof AuthenticatedAppKeysRoute
   '/_authenticated/app/organizations': typeof AuthenticatedAppOrganizationsRoute
+  '/_authenticated/app/policies': typeof AuthenticatedAppPoliciesRoute
   '/_authenticated/app/providers': typeof AuthenticatedAppProvidersRoute
   '/_authenticated/app/quotas': typeof AuthenticatedAppQuotasRoute
   '/_authenticated/app/routing': typeof AuthenticatedAppRoutingRoute
@@ -316,6 +326,7 @@ export interface FileRouteTypes {
     | '/app/hooks'
     | '/app/keys'
     | '/app/organizations'
+    | '/app/policies'
     | '/app/providers'
     | '/app/quotas'
     | '/app/routing'
@@ -347,6 +358,7 @@ export interface FileRouteTypes {
     | '/app/hooks'
     | '/app/keys'
     | '/app/organizations'
+    | '/app/policies'
     | '/app/providers'
     | '/app/quotas'
     | '/app/routing'
@@ -379,6 +391,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/hooks'
     | '/_authenticated/app/keys'
     | '/_authenticated/app/organizations'
+    | '/_authenticated/app/policies'
     | '/_authenticated/app/providers'
     | '/_authenticated/app/quotas'
     | '/_authenticated/app/routing'
@@ -503,6 +516,13 @@ declare module '@tanstack/react-router' {
       path: '/providers'
       fullPath: '/app/providers'
       preLoaderRoute: typeof AuthenticatedAppProvidersRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/_authenticated/app/policies': {
+      id: '/_authenticated/app/policies'
+      path: '/policies'
+      fullPath: '/app/policies'
+      preLoaderRoute: typeof AuthenticatedAppPoliciesRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
     '/_authenticated/app/organizations': {
@@ -643,6 +663,7 @@ interface AuthenticatedAppRouteRouteChildren {
   AuthenticatedAppHooksRoute: typeof AuthenticatedAppHooksRoute
   AuthenticatedAppKeysRoute: typeof AuthenticatedAppKeysRoute
   AuthenticatedAppOrganizationsRoute: typeof AuthenticatedAppOrganizationsRoute
+  AuthenticatedAppPoliciesRoute: typeof AuthenticatedAppPoliciesRoute
   AuthenticatedAppProvidersRoute: typeof AuthenticatedAppProvidersRoute
   AuthenticatedAppQuotasRoute: typeof AuthenticatedAppQuotasRoute
   AuthenticatedAppRoutingRoute: typeof AuthenticatedAppRoutingRoute
@@ -669,6 +690,7 @@ const AuthenticatedAppRouteRouteChildren: AuthenticatedAppRouteRouteChildren = {
   AuthenticatedAppHooksRoute: AuthenticatedAppHooksRoute,
   AuthenticatedAppKeysRoute: AuthenticatedAppKeysRoute,
   AuthenticatedAppOrganizationsRoute: AuthenticatedAppOrganizationsRoute,
+  AuthenticatedAppPoliciesRoute: AuthenticatedAppPoliciesRoute,
   AuthenticatedAppProvidersRoute: AuthenticatedAppProvidersRoute,
   AuthenticatedAppQuotasRoute: AuthenticatedAppQuotasRoute,
   AuthenticatedAppRoutingRoute: AuthenticatedAppRoutingRoute,
