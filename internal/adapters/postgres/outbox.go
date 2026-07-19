@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/curefatih/afi/internal/usage"
 	"github.com/curefatih/afi/internal/workers"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -53,7 +54,7 @@ type UsageSink struct {
 	Pool *pgxpool.Pool
 }
 
-func (s *UsageSink) InsertUsage(ctx context.Context, e workers.UsagePayload, costUSD *float64) error {
+func (s *UsageSink) InsertUsage(ctx context.Context, e usage.Event, costUSD *float64) error {
 	modality := e.Modality
 	if modality == "" {
 		modality = "chat"
