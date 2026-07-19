@@ -45,7 +45,7 @@ Provider adapters (`openai`, `anthropic`, `gemini`, `openai_compatible`, …) im
 
 Also exposes:
 
-* `GET /v1/models` — virtual models from the key’s organization routes (`supports_streaming`, `supports_tts`, `supports_stt`)
+* `GET /v1/models` — virtual models from the key’s organization routes, enriched from the curated model catalog (`mode`, context limits, `supports_streaming` / `supports_tts` / `supports_stt`)
 * `POST /v1/chat/completions` — OpenAI-shaped chat via `ChatProvider` (adapters translate native APIs)
 * `POST /v1/messages` — Anthropic-shaped pass-through via `MessagesBackend`
 * `POST /v1/audio/speech` / `POST /v1/audio/transcriptions` — TTS/STT via `AudioBackend`
@@ -73,7 +73,7 @@ flowchart LR
   Gateway --> usage_outbox --> worker --> usage_events
 ```
 
-The request path never waits on `usage_events` consumers. Run `make run-worker` locally to populate the Usage UI (including `cost_usd` when prices match). Events carry a `modality` (`chat` / `messages` / `tts` / `stt`, …) and a `metrics` JSON object for non-token quantities; token columns remain for chat pricing.
+The request path never waits on `usage_events` consumers. Run `make run-worker` locally to populate the Usage UI (including `cost_usd` when prices match). Events carry a `modality` (`chat` / `messages` / `tts` / `stt`, …) and a `metrics` JSON object for non-token quantities; token columns remain for chat pricing. Cost uses DB `model_prices` overrides when present, otherwise the curated catalog in `internal/modelcatalog` (chat $/MTok, TTS $/character, STT $/second).
 
 ## Extensions (current)
 

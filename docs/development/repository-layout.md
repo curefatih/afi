@@ -71,6 +71,7 @@ Platform events (bus + durable outbox): [Platform domain events](platform-events
 | `internal/dataplane` | Auth → quota → route → provider registry (+ failover, `/v1/models`) |
 | `sdk/provider` | Documented adapter contract for multi-model extensibility |
 | `extensions/*` | Example SDK providers + hooks registered from `cmd/gateway` |
+| `internal/modelcatalog` | Curated model metadata (mode, context, pricing) |
 | `internal/workers` | Usage + platform-event outbox ProcessOnce |
 | `internal/kernel` | Logging, request IDs, config loading |
 | `configs/` | `local.yaml` defaults |
