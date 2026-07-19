@@ -10,9 +10,12 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 2
+const schemaVersion = 3
 
 const dropAllSQL = `
+DROP TABLE IF EXISTS usage_outbox CASCADE;
+DROP TABLE IF EXISTS quota_counters CASCADE;
+DROP TABLE IF EXISTS quotas CASCADE;
 DROP TABLE IF EXISTS usage_events CASCADE;
 DROP TABLE IF EXISTS api_key_provider_scopes CASCADE;
 DROP TABLE IF EXISTS api_key_providers CASCADE;
@@ -129,6 +132,34 @@ CREATE TABLE IF NOT EXISTS usage_events (
     completion_tokens BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS quotas (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    scope_type TEXT NOT NULL,
+    scope_id TEXT NOT NULL,
+    metric TEXT NOT NULL,
+    limit_value BIGINT NOT NULL,
+    time_window TEXT NOT NULL DEFAULT 'total',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS quota_counters (
+    scope_type TEXT NOT NULL,
+    scope_id TEXT NOT NULL,
+    metric TEXT NOT NULL,
+    time_window TEXT NOT NULL,
+    used BIGINT NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (scope_type, scope_id, metric, time_window)
+);
+
+CREATE TABLE IF NOT EXISTS usage_outbox (
+    id BIGSERIAL PRIMARY KEY,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processed_at TIMESTAMPTZ
+);
 `
 
 // Migrate applies the schema. Legacy UUID installs are wiped once.
@@ -223,9 +254,34 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			prompt_tokens BIGINT NOT NULL DEFAULT 0,
 			completion_tokens BIGINT NOT NULL DEFAULT 0,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		)
+		);
+		CREATE TABLE IF NOT EXISTS quotas (
+			id TEXT PRIMARY KEY,
+			organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+			scope_type TEXT NOT NULL,
+			scope_id TEXT NOT NULL,
+			metric TEXT NOT NULL,
+			limit_value BIGINT NOT NULL,
+			time_window TEXT NOT NULL DEFAULT 'total',
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);
+		CREATE TABLE IF NOT EXISTS quota_counters (
+			scope_type TEXT NOT NULL,
+			scope_id TEXT NOT NULL,
+			metric TEXT NOT NULL,
+			time_window TEXT NOT NULL,
+			used BIGINT NOT NULL DEFAULT 0,
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			PRIMARY KEY (scope_type, scope_id, metric, time_window)
+		);
+		CREATE TABLE IF NOT EXISTS usage_outbox (
+			id BIGSERIAL PRIMARY KEY,
+			payload JSONB NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			processed_at TIMESTAMPTZ
+		);
 	`); err != nil {
-		return fmt.Errorf("usage_events: %w", err)
+		return fmt.Errorf("cycle3 tables: %w", err)
 	}
 	return nil
 }

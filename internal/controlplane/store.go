@@ -504,6 +504,115 @@ func (s *Store) ListUsage(ctx context.Context, orgID string, limit int) ([]Usage
 	return out, rows.Err()
 }
 
+type Quota struct {
+	ID             string    `json:"id"`
+	OrganizationID string    `json:"organization_id"`
+	ScopeType      string    `json:"scope_type"`
+	ScopeID        string    `json:"scope_id"`
+	Metric         string    `json:"metric"`
+	LimitValue     int64     `json:"limit_value"`
+	Window         string    `json:"window"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func (s *Store) ListQuotas(ctx context.Context, orgID string) ([]Quota, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, organization_id, scope_type, scope_id, metric, limit_value, time_window, created_at
+		FROM quotas WHERE organization_id=$1 ORDER BY created_at
+	`, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Quota
+	for rows.Next() {
+		var q Quota
+		if err := rows.Scan(&q.ID, &q.OrganizationID, &q.ScopeType, &q.ScopeID, &q.Metric, &q.LimitValue, &q.Window, &q.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, q)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) CreateQuota(ctx context.Context, orgID, scopeType, scopeID, metric string, limitValue int64, window string) (*Quota, error) {
+	if window == "" {
+		window = snapshot.WindowTotal
+	}
+	q := &Quota{
+		ID: newID("quota"), OrganizationID: orgID, ScopeType: scopeType, ScopeID: scopeID,
+		Metric: metric, LimitValue: limitValue, Window: window, CreatedAt: time.Now().UTC(),
+	}
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO quotas (id, organization_id, scope_type, scope_id, metric, limit_value, time_window, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+	`, q.ID, q.OrganizationID, q.ScopeType, q.ScopeID, q.Metric, q.LimitValue, q.Window, q.CreatedAt)
+	return q, err
+}
+
+func (s *Store) UpdateQuota(ctx context.Context, quotaID string, limitValue int64) (*Quota, error) {
+	q := &Quota{}
+	err := s.pool.QueryRow(ctx, `
+		UPDATE quotas SET limit_value=$2 WHERE id=$1
+		RETURNING id, organization_id, scope_type, scope_id, metric, limit_value, time_window, created_at
+	`, quotaID, limitValue).Scan(
+		&q.ID, &q.OrganizationID, &q.ScopeType, &q.ScopeID, &q.Metric, &q.LimitValue, &q.Window, &q.CreatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, kernel.ErrNotFound
+	}
+	return q, err
+}
+
+func (s *Store) DeleteQuota(ctx context.Context, quotaID string) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM quotas WHERE id=$1`, quotaID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return kernel.ErrNotFound
+	}
+	return nil
+}
+
+func (s *Store) GetQuotaOrgID(ctx context.Context, quotaID string) (string, error) {
+	var orgID string
+	err := s.pool.QueryRow(ctx, `SELECT organization_id FROM quotas WHERE id=$1`, quotaID).Scan(&orgID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", kernel.ErrNotFound
+	}
+	return orgID, err
+}
+
+func (s *Store) GetCounter(ctx context.Context, scopeType, scopeID, metric, window string) (int64, error) {
+	var used int64
+	err := s.pool.QueryRow(ctx, `
+		SELECT used FROM quota_counters
+		WHERE scope_type=$1 AND scope_id=$2 AND metric=$3 AND time_window=$4
+	`, scopeType, scopeID, metric, window).Scan(&used)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil
+	}
+	return used, err
+}
+
+func (s *Store) IncrCounter(ctx context.Context, scopeType, scopeID, metric, window string, delta int64) (int64, error) {
+	var used int64
+	err := s.pool.QueryRow(ctx, `
+		INSERT INTO quota_counters (scope_type, scope_id, metric, time_window, used, updated_at)
+		VALUES ($1,$2,$3,$4,$5,NOW())
+		ON CONFLICT (scope_type, scope_id, metric, time_window)
+		DO UPDATE SET used = quota_counters.used + EXCLUDED.used, updated_at = NOW()
+		RETURNING used
+	`, scopeType, scopeID, metric, window, delta).Scan(&used)
+	return used, err
+}
+
+func (s *Store) EnqueueUsage(ctx context.Context, payload []byte) error {
+	_, err := s.pool.Exec(ctx, `INSERT INTO usage_outbox (payload) VALUES ($1)`, payload)
+	return err
+}
+
 func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error) {
 	var src snapshot.Source
 
@@ -557,5 +666,23 @@ func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error)
 		}
 		src.Routes = append(src.Routes, r)
 	}
-	return src, routeRows.Err()
+	if err := routeRows.Err(); err != nil {
+		return src, err
+	}
+
+	quotaRows, err := s.pool.Query(ctx, `
+		SELECT id, organization_id, scope_type, scope_id, metric, limit_value, time_window FROM quotas
+	`)
+	if err != nil {
+		return src, err
+	}
+	defer quotaRows.Close()
+	for quotaRows.Next() {
+		var q snapshot.Quota
+		if err := quotaRows.Scan(&q.ID, &q.OrganizationID, &q.ScopeType, &q.ScopeID, &q.Metric, &q.LimitValue, &q.Window); err != nil {
+			return src, err
+		}
+		src.Quotas = append(src.Quotas, q)
+	}
+	return src, quotaRows.Err()
 }
