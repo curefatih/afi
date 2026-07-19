@@ -108,18 +108,18 @@ const governanceNav = [
 		url: "/app/usage",
 		icon: <BarChart3Icon />,
 	},
-	{
-		title: "Billing",
-		url: "/app/billing",
-		icon: <CreditCardIcon />,
-		badge: "Soon",
-	},
-	{
-		title: "Secrets",
-		url: "/app/secrets",
-		icon: <ShieldIcon />,
-		badge: "Soon",
-	},
+	// {
+	// 	title: "Billing",
+	// 	url: "/app/billing",
+	// 	icon: <CreditCardIcon />,
+	// 	badge: "Soon",
+	// },
+	// {
+	// 	title: "Secrets",
+	// 	url: "/app/secrets",
+	// 	icon: <ShieldIcon />,
+	// 	badge: "Soon",
+	// },
 	{
 		title: "Hooks",
 		url: "/app/hooks",
