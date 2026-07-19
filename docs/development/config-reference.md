@@ -1,10 +1,14 @@
 # Config reference
 
+Development-oriented summary of ports, seed values, and platform APIs. For a complete operator customization list (every env var, YAML key, and deploy knob), see **[Customization reference](../deployment/customization.md)**. For self-hosting, see **[Deployment](../deployment.md)**.
+
 ## File
 
 [`configs/local.yaml`](../../configs/local.yaml) — defaults for local development.
 
 ## Environment variables
+
+Full operator table (defaults, required vs optional, which process): [Customization reference](../deployment/customization.md).
 
 | Variable | Default | Used by |
 |----------|---------|---------|

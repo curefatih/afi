@@ -115,3 +115,5 @@ Internal HTTP admin (`/internal/v1/*`) requires `X-AFI-Internal-Token` (see conf
 ## Config
 
 Defaults live in [`configs/local.yaml`](../../configs/local.yaml). Override with env vars (see [Config reference](../development/config-reference.md)).
+
+For self-hosted / production-style deployments (Docker Compose or binaries), see [Deployment](../deployment.md) and the full [Customization reference](../deployment/customization.md).

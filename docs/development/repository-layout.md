@@ -38,7 +38,11 @@ sdk/provider/         # Documented ChatProvider contract
 api/                  # Public API contracts (future)
 web/                  # Platform UI (TanStack / Vite)
 configs/              # Local/dev defaults
+deploy/               # Compose stack, example env/YAML, nginx for web
 docs/                 # Public MkDocs site
+Dockerfile            # Multi-stage Go service image (AFI_SERVICE=…)
+Dockerfile.web        # Vite build + nginx
+scripts/              # verify-local, deploy-*, build-release
 ```
 
 Platform events (bus + durable outbox): [Platform domain events](platform-events.md).

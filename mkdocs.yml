@@ -32,4 +32,8 @@ nav:
       - Testing: development/testing.md
   - Concepts:
       - Plugins (hooks): hooks/usage.md
-  - Deployment: deployment.md
+  - Deployment:
+      - Overview: deployment.md
+      - Customization: deployment/customization.md
+      - Docker Compose: deployment/docker.md
+      - Binaries: deployment/binary.md
