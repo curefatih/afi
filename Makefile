@@ -80,10 +80,9 @@ run-worker:
 run-all:
 	@echo "Starting control plane on :8081..."
 	@$(GO) run ./cmd/controlplane & echo $$! > .controlplane.pid
-	@sleep 1
+	@bash scripts/wait-for-health.sh "$${AFI_CONTROLPLANE_URL:-http://localhost:8081}/healthz"
 	@echo "Starting worker..."
 	@$(GO) run ./cmd/worker & echo $$! > .worker.pid
-	@sleep 1
 	@echo "Starting gateway on :8080 (Ctrl+C stops gateway; make stop-all cleans up)..."
 	@$(GO) run ./cmd/gateway; \
 		ec=$$?; \
