@@ -65,6 +65,11 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/usage", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListUsage)))
 
+	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/quotas", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListQuotas)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/quotas", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleCreateQuota)))
+	mux.HandleFunc("PATCH /api/v1/platform/quotas/{quotaID}", s.requireAuth(s.requireOrgMemberViaQuota(s.handleUpdateQuota)))
+	mux.HandleFunc("DELETE /api/v1/platform/quotas/{quotaID}", s.requireAuth(s.requireOrgMemberViaQuota(s.handleDeleteQuota)))
+
 	mux.HandleFunc("GET /api/v1/platform/teams/{teamID}", s.requireAuth(s.requireOrgMemberViaTeam(s.handleGetTeam)))
 	mux.HandleFunc("GET /api/v1/platform/teams/{teamID}/members", s.requireAuth(s.requireOrgMemberViaTeam(s.handleListTeamMembers)))
 
@@ -451,6 +456,85 @@ func (s *Server) handleListUsage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, list)
 }
 
+func (s *Server) handleListQuotas(w http.ResponseWriter, r *http.Request) {
+	list, err := s.api.ListQuotas(r.Context(), r.PathValue("orgID"))
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if list == nil {
+		list = []Quota{}
+	}
+	writeJSON(w, http.StatusOK, list)
+}
+
+func (s *Server) handleCreateQuota(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		ScopeType  string `json:"scope_type"`
+		ScopeID    string `json:"scope_id"`
+		Metric     string `json:"metric"`
+		LimitValue int64  `json:"limit_value"`
+		Window     string `json:"window"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ScopeType == "" || body.ScopeID == "" || body.Metric == "" {
+		writeErr(w, http.StatusBadRequest, "scope_type, scope_id, metric required")
+		return
+	}
+	if body.LimitValue < 0 {
+		writeErr(w, http.StatusBadRequest, "limit_value must be >= 0")
+		return
+	}
+	q, err := s.api.CreateQuota(r.Context(), r.PathValue("orgID"), body.ScopeType, body.ScopeID, body.Metric, body.LimitValue, body.Window)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
+		writeErr(w, http.StatusInternalServerError, "created but snapshot publish failed: "+err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, q)
+}
+
+func (s *Server) handleUpdateQuota(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		LimitValue int64 `json:"limit_value"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.LimitValue < 0 {
+		writeErr(w, http.StatusBadRequest, "limit_value required (>= 0)")
+		return
+	}
+	q, err := s.api.UpdateQuota(r.Context(), r.PathValue("quotaID"), body.LimitValue)
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
+		writeErr(w, http.StatusInternalServerError, "updated but snapshot publish failed: "+err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, q)
+}
+
+func (s *Server) handleDeleteQuota(w http.ResponseWriter, r *http.Request) {
+	if err := s.api.DeleteQuota(r.Context(), r.PathValue("quotaID")); errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	} else if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := s.publisher.PublishSnapshot(r.Context()); err != nil {
+		writeErr(w, http.StatusInternalServerError, "deleted but snapshot publish failed: "+err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 type ctxClaimsKey int
 
 const claimsKey ctxClaimsKey = 1
@@ -581,6 +665,31 @@ func (s *Server) requireOrgMemberViaProvider(next http.HandlerFunc) http.Handler
 func (s *Server) requireOrgMemberViaRoute(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		orgID, err := s.members.GetRouteOrgID(r.Context(), r.PathValue("routeID"))
+		if errors.Is(err, kernel.ErrNotFound) {
+			writeErr(w, http.StatusNotFound, "not found")
+			return
+		}
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		claims := claimsFrom(r.Context())
+		ok, err := s.members.IsOrgMember(r.Context(), claims.UserID, orgID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !ok {
+			writeErr(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next(w, r)
+	}
+}
+
+func (s *Server) requireOrgMemberViaQuota(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := s.members.GetQuotaOrgID(r.Context(), r.PathValue("quotaID"))
 		if errors.Is(err, kernel.ErrNotFound) {
 			writeErr(w, http.StatusNotFound, "not found")
 			return

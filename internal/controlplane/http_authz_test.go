@@ -49,6 +49,13 @@ func (f *fakeMembers) GetRouteOrgID(_ context.Context, routeID string) (string, 
 	return "", kernel.ErrNotFound
 }
 
+func (f *fakeMembers) GetQuotaOrgID(_ context.Context, quotaID string) (string, error) {
+	if quotaID == "quota_ok" {
+		return "org_a", nil
+	}
+	return "", kernel.ErrNotFound
+}
+
 type fakePublisher struct {
 	err   error
 	calls int
@@ -106,6 +113,14 @@ func (f *fakePlatform) UpdateRoute(context.Context, string, string, string, stri
 }
 func (f *fakePlatform) DeleteRoute(context.Context, string) error { return nil }
 func (f *fakePlatform) ListUsage(context.Context, string, int) ([]UsageEvent, error) { return nil, nil }
+func (f *fakePlatform) ListQuotas(context.Context, string) ([]Quota, error)           { return nil, nil }
+func (f *fakePlatform) CreateQuota(context.Context, string, string, string, string, int64, string) (*Quota, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) UpdateQuota(context.Context, string, int64) (*Quota, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) DeleteQuota(context.Context, string) error { return nil }
 
 func testCfg() *kernel.Config {
 	cfg := &kernel.Config{}
