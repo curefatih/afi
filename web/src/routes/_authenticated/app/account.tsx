@@ -1,245 +1,116 @@
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { InfoIcon, LogOutIcon } from "lucide-react";
 import { meQueryOptions } from "#/api/auth";
-import { Alert, AlertDescription } from "#/components/ui/alert";
-import { Avatar, AvatarFallback, AvatarImage } from "#/components/ui/avatar";
+import { PageBody, PageHeader } from "#/components/page-header";
+import { QueryGate } from "#/components/query-state";
+import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert";
+import { Avatar, AvatarFallback } from "#/components/ui/avatar";
+import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
 } from "#/components/ui/card";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from "#/components/ui/combobox";
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldSeparator,
-} from "#/components/ui/field";
+import { Field, FieldGroup, FieldLabel } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
-import { useForm } from "@tanstack/react-form";
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { InfoIcon, Upload } from "lucide-react";
-import { useEffect } from "react";
+import { useAuthActions } from "#/state/auth-state";
 
 export const Route = createFileRoute("/_authenticated/app/account")({
-  component: RouteComponent,
+	staticData: {
+		getTitle: () => "Account",
+	},
+	component: RouteComponent,
 });
 
-const timezones = [
-  { label: "(UTC-12:00) International Date Line West", value: "Etc/GMT+12" },
-  { label: "(UTC-11:00) American Samoa", value: "Pacific/Pago_Pago" },
-  { label: "(UTC-10:00) Hawaii", value: "Pacific/Honolulu" },
-  { label: "(UTC-09:00) Alaska", value: "America/Anchorage" },
-  {
-    label: "(UTC-08:00) Pacific Time (US & Canada)",
-    value: "America/Los_Angeles",
-  },
-  { label: "(UTC-07:00) Mountain Time (US & Canada)", value: "America/Denver" },
-  { label: "(UTC-07:00) Arizona", value: "America/Phoenix" },
-  { label: "(UTC-06:00) Central Time (US & Canada)", value: "America/Chicago" },
-  {
-    label: "(UTC-05:00) Eastern Time (US & Canada)",
-    value: "America/New_York",
-  },
-  { label: "(UTC-05:00) Bogotá, Lima", value: "America/Bogota" },
-  { label: "(UTC-04:00) Atlantic Time (Canada)", value: "America/Halifax" },
-  { label: "(UTC-04:00) Santiago", value: "America/Santiago" },
-  {
-    label: "(UTC-03:00) Buenos Aires",
-    value: "America/Argentina/Buenos_Aires",
-  },
-  { label: "(UTC-03:00) São Paulo", value: "America/Sao_Paulo" },
-  { label: "(UTC-02:00) Mid-Atlantic", value: "Etc/GMT+2" },
-  { label: "(UTC-01:00) Azores", value: "Atlantic/Azores" },
-  { label: "(UTC±00:00) UTC", value: "UTC" },
-  { label: "(UTC±00:00) London", value: "Europe/London" },
-  { label: "(UTC+01:00) Berlin", value: "Europe/Berlin" },
-  { label: "(UTC+01:00) Paris", value: "Europe/Paris" },
-  { label: "(UTC+01:00) Madrid", value: "Europe/Madrid" },
-  { label: "(UTC+01:00) Rome", value: "Europe/Rome" },
-  { label: "(UTC+02:00) Athens", value: "Europe/Athens" },
-  { label: "(UTC+02:00) Cairo", value: "Africa/Cairo" },
-  { label: "(UTC+02:00) Helsinki", value: "Europe/Helsinki" },
-  { label: "(UTC+03:00) Istanbul", value: "Europe/Istanbul" },
-  { label: "(UTC+03:00) Moscow", value: "Europe/Moscow" },
-  { label: "(UTC+03:00) Riyadh", value: "Asia/Riyadh" },
-  { label: "(UTC+03:30) Tehran", value: "Asia/Tehran" },
-  { label: "(UTC+04:00) Dubai", value: "Asia/Dubai" },
-  { label: "(UTC+04:00) Baku", value: "Asia/Baku" },
-  { label: "(UTC+04:30) Kabul", value: "Asia/Kabul" },
-  { label: "(UTC+05:00) Karachi", value: "Asia/Karachi" },
-  { label: "(UTC+05:30) India Standard Time", value: "Asia/Kolkata" },
-  { label: "(UTC+05:45) Kathmandu", value: "Asia/Kathmandu" },
-  { label: "(UTC+06:00) Dhaka", value: "Asia/Dhaka" },
-  { label: "(UTC+06:30) Yangon", value: "Asia/Yangon" },
-  { label: "(UTC+07:00) Bangkok", value: "Asia/Bangkok" },
-  { label: "(UTC+07:00) Jakarta", value: "Asia/Jakarta" },
-  { label: "(UTC+08:00) Singapore", value: "Asia/Singapore" },
-  { label: "(UTC+08:00) Hong Kong", value: "Asia/Hong_Kong" },
-  { label: "(UTC+08:00) Beijing", value: "Asia/Shanghai" },
-  { label: "(UTC+08:00) Perth", value: "Australia/Perth" },
-  { label: "(UTC+09:00) Tokyo", value: "Asia/Tokyo" },
-  { label: "(UTC+09:00) Seoul", value: "Asia/Seoul" },
-  { label: "(UTC+09:30) Adelaide", value: "Australia/Adelaide" },
-  { label: "(UTC+09:30) Darwin", value: "Australia/Darwin" },
-  { label: "(UTC+10:00) Sydney", value: "Australia/Sydney" },
-  { label: "(UTC+10:00) Melbourne", value: "Australia/Melbourne" },
-  { label: "(UTC+10:00) Brisbane", value: "Australia/Brisbane" },
-  { label: "(UTC+11:00) Solomon Islands", value: "Pacific/Guadalcanal" },
-  { label: "(UTC+12:00) Auckland", value: "Pacific/Auckland" },
-  { label: "(UTC+12:00) Fiji", value: "Pacific/Fiji" },
-  { label: "(UTC+13:00) Samoa", value: "Pacific/Apia" },
-];
+function initials(name?: string, email?: string) {
+	const source = name?.trim() || email || "?";
+	return source
+		.split(/\s+/)
+		.slice(0, 2)
+		.map((part) => part[0]?.toUpperCase() ?? "")
+		.join("");
+}
 
 function RouteComponent() {
-  const meQuery = useQuery({
-    ...meQueryOptions(),
-  });
+	const navigate = useNavigate();
+	const { logout } = useAuthActions();
+	const meQuery = useQuery(meQueryOptions());
 
-  const form = useForm({
-    defaultValues: {
-      name: "",
-      email: "",
-      timezone: "",
-    },
-    onSubmit: async (values) => {},
-  });
+	return (
+		<PageBody className="max-w-2xl">
+			<PageHeader
+				title="Account"
+				description="Your identity on the AFI control plane."
+				actions={
+					<Button
+						variant="outline"
+						onClick={() => {
+							logout();
+							navigate({ to: "/auth/login" });
+						}}
+					>
+						<LogOutIcon />
+						Log out
+					</Button>
+				}
+			/>
 
-  useEffect(() => {
-    if (!meQuery.data) return;
+			<QueryGate
+				isPending={meQuery.isPending}
+				isError={meQuery.isError}
+				error={meQuery.error}
+				onRetry={() => void meQuery.refetch()}
+			>
+				<Alert>
+					<InfoIcon />
+					<AlertTitle>Read-only profile</AlertTitle>
+					<AlertDescription>
+						Profile updates are not available in this build. Contact an admin to
+						change identity details.
+					</AlertDescription>
+				</Alert>
 
-    form.reset({
-      name: meQuery.data.name,
-      email: meQuery.data.email,
-      timezone: meQuery.data.timezone,
-    });
-  }, [meQuery.data, form]);
-
-  return (
-    <div className="w-full h-full flex justify-center items-center">
-      <Card className="w-160">
-        <CardHeader className="flex flex-col gap-2">
-          <h1 className="font-bold text-xl">Your profile</h1>
-          <Alert>
-            <InfoIcon />
-            <AlertDescription>Any change will be reflected</AlertDescription>
-          </Alert>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 border-t">
-            <div className="border-r p-4 flex flex-col gap-4">
-              <Avatar className="rounded-md size-30">
-                <AvatarImage alt={"Fatih"} />
-                <AvatarFallback>FC</AvatarFallback>
-              </Avatar>
-
-              <div className="avatar-actions flex gap-2">
-                <Button>
-                  <Upload />
-                  Choose new
-                </Button>
-                <Button variant={"outline"}>Remove</Button>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  Accepted formats: PNG, JPG, JPEG. Max size: 10MB.
-                </p>
-              </div>
-            </div>
-            <div className="user-profile-settings w-full pt-4">
-              <form
-              // onSubmit={(e) => {
-              //   e.preventDefault();
-              //   form.handleSubmit(e);
-              // }}
-              >
-                <FieldGroup>
-                  <form.Field name="name">
-                    {(field) => (
-                      <>
-                        <Field id="name">
-                          <FieldLabel htmlFor="name">Full name</FieldLabel>
-                          <Input
-                            id="name"
-                            type="text"
-                            placeholder="Fatih Cure"
-                            value={field.state.value}
-                            onChange={(e) => field.handleChange(e.target.value)}
-                            onBlur={field.handleBlur}
-                          />
-                          {!field.state.meta.isValid && (
-                            <FieldError errors={field.state.meta.errors} />
-                          )}
-                        </Field>
-                      </>
-                    )}
-                  </form.Field>
-                  <form.Field name="email">
-                    {(field) => (
-                      <>
-                        <Field id="email">
-                          <FieldLabel htmlFor="email">Email</FieldLabel>
-                          <Input
-                            disabled
-                            id="email"
-                            type="email"
-                            placeholder="m@example.com"
-                            value={field.state.value}
-                            onChange={(e) => field.handleChange(e.target.value)}
-                            onBlur={field.handleBlur}
-                          />
-                          {!field.state.meta.isValid && (
-                            <FieldError errors={field.state.meta.errors} />
-                          )}
-                        </Field>
-                      </>
-                    )}
-                  </form.Field>
-                  <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card"></FieldSeparator>
-                  <form.Field name="timezone">
-                    {(field) => (
-                      <>
-                        <Field id="email">
-                          <FieldLabel htmlFor="email">Timezone</FieldLabel>
-                          <Combobox items={timezones} autoHighlight>
-                            <ComboboxInput
-                              placeholder="Select a timezone"
-                              showClear
-                            />
-                            <ComboboxContent>
-                              <ComboboxEmpty>No items found.</ComboboxEmpty>
-                              <ComboboxList>
-                                {(item) => (
-                                  <ComboboxItem key={item} value={item.value}>
-                                    {item.label}
-                                  </ComboboxItem>
-                                )}
-                              </ComboboxList>
-                            </ComboboxContent>
-                          </Combobox>
-                          {!field.state.meta.isValid && (
-                            <FieldError errors={field.state.meta.errors} />
-                          )}
-                        </Field>
-                      </>
-                    )}
-                  </form.Field>
-                </FieldGroup>
-              </form>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="justify-end"></CardFooter>
-      </Card>
-    </div>
-  );
+				<Card>
+					<CardHeader className="flex flex-row items-center gap-4">
+						<Avatar className="size-14 rounded-lg">
+							<AvatarFallback className="rounded-lg">
+								{initials(meQuery.data?.name, meQuery.data?.email)}
+							</AvatarFallback>
+						</Avatar>
+						<div className="space-y-1">
+							<CardTitle>{meQuery.data?.name || "User"}</CardTitle>
+							<CardDescription>{meQuery.data?.email}</CardDescription>
+							{meQuery.data?.role ? (
+								<Badge variant="secondary">{meQuery.data.role}</Badge>
+							) : null}
+						</div>
+					</CardHeader>
+					<CardContent>
+						<FieldGroup>
+							<Field>
+								<FieldLabel>Full name</FieldLabel>
+								<Input readOnly value={meQuery.data?.name ?? ""} />
+							</Field>
+							<Field>
+								<FieldLabel>Email</FieldLabel>
+								<Input readOnly value={meQuery.data?.email ?? ""} />
+							</Field>
+							<Field>
+								<FieldLabel>User ID</FieldLabel>
+								<Input
+									readOnly
+									value={meQuery.data?.id ?? ""}
+									className="font-mono text-xs"
+								/>
+							</Field>
+						</FieldGroup>
+					</CardContent>
+				</Card>
+			</QueryGate>
+		</PageBody>
+	);
 }

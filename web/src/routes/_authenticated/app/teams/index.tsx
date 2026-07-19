@@ -1,66 +1,77 @@
-import { teamsQueryOptions } from "#/api/team";
-import TeamCard from "#/components/team-card";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { Users2Icon } from "lucide-react";
+import { teamsQueryOptions } from "#/api/team";
+import { PageBody, PageHeader } from "#/components/page-header";
+import { QueryGate } from "#/components/query-state";
+import TeamCard from "#/components/team-card";
+import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from "#/components/ui/empty";
+import { useActiveOrg } from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/teams/")({
-  staticData: {
-    getTitle: () => "Team",
-  },
-  component: RouteComponent,
+	staticData: {
+		getTitle: () => "Teams",
+	},
+	component: RouteComponent,
 });
 
-type Team = {
-  id: string;
-  name: string;
-  description: string;
-  previewMembers: {
-    name: string;
-    avatarUrl: string;
-  }[];
-  tags: string[];
-  memberCount: number;
-};
-
 function RouteComponent() {
-  const [teams, setTeams] = useState<Team[]>([]);
+	const activeOrg = useActiveOrg();
+	const orgId = activeOrg?.id ?? "";
 
-  const teamsMutation = useMutation({
-    ...teamsQueryOptions(),
-  });
+	const teamsQuery = useQuery({
+		...teamsQueryOptions(orgId),
+	});
 
-  useEffect(() => {
-    teamsMutation.mutate(undefined, {
-      onSuccess(data, variables, onMutateResult, context) {
-        setTeams(data);
-      },
-    });
-  }, []);
+	const teams = teamsQuery.data ?? activeOrg?.teams ?? [];
 
-  return (
-    <div>
-      <h1 className="scroll-m-20 text-2xl font-extrabold tracking-tight text-balance">
-        Teams Directory
-      </h1>
-      <span className="mb-2 text-sm font-normal text-muted-foreground">
-        Monitor velocity, managed projects, and core contributors across the
-        organization.
-      </span>
+	return (
+		<PageBody>
+			<PageHeader
+				title="Teams"
+				description="Teams group members and own projects within the organization."
+			/>
 
-      <div className="teams flex flex-wrap gap-4 mt-2">
-        {teams.map((team) => (
-          <TeamCard
-            key={team.id}
-            id={team.id}
-            name={team.name}
-            description={team.description}
-            previewMembers={team.previewMembers}
-            memberCount={team.memberCount}
-            tags={team.tags}
-          />
-        ))}
-      </div>
-    </div>
-  );
+			<QueryGate
+				isPending={teamsQuery.isPending && !teams.length}
+				isError={teamsQuery.isError}
+				error={teamsQuery.error}
+				onRetry={() => void teamsQuery.refetch()}
+			>
+				{teams.length === 0 ? (
+					<Empty className="border min-h-64">
+						<EmptyHeader>
+							<EmptyMedia variant="icon">
+								<Users2Icon />
+							</EmptyMedia>
+							<EmptyTitle>No teams</EmptyTitle>
+							<EmptyDescription>
+								This organization has no teams yet.
+							</EmptyDescription>
+						</EmptyHeader>
+					</Empty>
+				) : (
+					<div className="flex flex-wrap gap-4">
+						{teams.map((team) => (
+							<TeamCard
+								key={team.id}
+								id={team.id}
+								name={team.name}
+								description={team.team_id}
+								previewMembers={[]}
+								memberCount={0}
+								tags={[]}
+							/>
+						))}
+					</div>
+				)}
+			</QueryGate>
+		</PageBody>
+	);
 }

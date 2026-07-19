@@ -16,18 +16,26 @@ import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthenticatedAppRouteRouteImport } from './routes/_authenticated/app/route'
+import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app/index'
 import { Route as AuthenticatedAppUsersRouteImport } from './routes/_authenticated/app/users'
-import { Route as AuthenticatedAppProjectsRouteImport } from './routes/_authenticated/app/projects'
+import { Route as AuthenticatedAppUsageRouteImport } from './routes/_authenticated/app/usage'
+import { Route as AuthenticatedAppSecretsRouteImport } from './routes/_authenticated/app/secrets'
+import { Route as AuthenticatedAppRoutingRouteImport } from './routes/_authenticated/app/routing'
+import { Route as AuthenticatedAppQuotasRouteImport } from './routes/_authenticated/app/quotas'
+import { Route as AuthenticatedAppProvidersRouteImport } from './routes/_authenticated/app/providers'
 import { Route as AuthenticatedAppOrganizationsRouteImport } from './routes/_authenticated/app/organizations'
 import { Route as AuthenticatedAppKeysRouteImport } from './routes/_authenticated/app/keys'
 import { Route as AuthenticatedAppHooksRouteImport } from './routes/_authenticated/app/hooks'
 import { Route as AuthenticatedAppDashboardRouteImport } from './routes/_authenticated/app/dashboard'
+import { Route as AuthenticatedAppBillingRouteImport } from './routes/_authenticated/app/billing'
 import { Route as AuthenticatedAppAccountRouteImport } from './routes/_authenticated/app/account'
 import { Route as AuthenticatedAppTeamsIndexRouteImport } from './routes/_authenticated/app/teams/index'
+import { Route as AuthenticatedAppProjectsIndexRouteImport } from './routes/_authenticated/app/projects/index'
 import { Route as AuthenticatedAppTeamsTeamIdRouteImport } from './routes/_authenticated/app/teams/$teamId'
 import { Route as AuthenticatedAppSettingsTeamsRouteImport } from './routes/_authenticated/app/settings/teams'
 import { Route as AuthenticatedAppSettingsLimitsRouteImport } from './routes/_authenticated/app/settings/limits'
 import { Route as AuthenticatedAppSettingsGeneralRouteImport } from './routes/_authenticated/app/settings/general'
+import { Route as AuthenticatedAppProjectsProjectIdRouteImport } from './routes/_authenticated/app/projects/$projectId'
 import { Route as AuthenticatedAppPlaygroundTtsRouteImport } from './routes/_authenticated/app/playground/tts'
 import { Route as AuthenticatedAppPlaygroundSttRouteImport } from './routes/_authenticated/app/playground/stt'
 import { Route as AuthenticatedAppPlaygroundChatRouteImport } from './routes/_authenticated/app/playground/chat'
@@ -67,15 +75,40 @@ const AuthenticatedAppRouteRoute = AuthenticatedAppRouteRouteImport.update({
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAppRouteRoute,
+} as any)
 const AuthenticatedAppUsersRoute = AuthenticatedAppUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AuthenticatedAppRouteRoute,
 } as any)
-const AuthenticatedAppProjectsRoute =
-  AuthenticatedAppProjectsRouteImport.update({
-    id: '/projects',
-    path: '/projects',
+const AuthenticatedAppUsageRoute = AuthenticatedAppUsageRouteImport.update({
+  id: '/usage',
+  path: '/usage',
+  getParentRoute: () => AuthenticatedAppRouteRoute,
+} as any)
+const AuthenticatedAppSecretsRoute = AuthenticatedAppSecretsRouteImport.update({
+  id: '/secrets',
+  path: '/secrets',
+  getParentRoute: () => AuthenticatedAppRouteRoute,
+} as any)
+const AuthenticatedAppRoutingRoute = AuthenticatedAppRoutingRouteImport.update({
+  id: '/routing',
+  path: '/routing',
+  getParentRoute: () => AuthenticatedAppRouteRoute,
+} as any)
+const AuthenticatedAppQuotasRoute = AuthenticatedAppQuotasRouteImport.update({
+  id: '/quotas',
+  path: '/quotas',
+  getParentRoute: () => AuthenticatedAppRouteRoute,
+} as any)
+const AuthenticatedAppProvidersRoute =
+  AuthenticatedAppProvidersRouteImport.update({
+    id: '/providers',
+    path: '/providers',
     getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
 const AuthenticatedAppOrganizationsRoute =
@@ -100,6 +133,11 @@ const AuthenticatedAppDashboardRoute =
     path: '/dashboard',
     getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
+const AuthenticatedAppBillingRoute = AuthenticatedAppBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AuthenticatedAppRouteRoute,
+} as any)
 const AuthenticatedAppAccountRoute = AuthenticatedAppAccountRouteImport.update({
   id: '/account',
   path: '/account',
@@ -109,6 +147,12 @@ const AuthenticatedAppTeamsIndexRoute =
   AuthenticatedAppTeamsIndexRouteImport.update({
     id: '/teams/',
     path: '/teams/',
+    getParentRoute: () => AuthenticatedAppRouteRoute,
+  } as any)
+const AuthenticatedAppProjectsIndexRoute =
+  AuthenticatedAppProjectsIndexRouteImport.update({
+    id: '/projects/',
+    path: '/projects/',
     getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
 const AuthenticatedAppTeamsTeamIdRoute =
@@ -133,6 +177,12 @@ const AuthenticatedAppSettingsGeneralRoute =
   AuthenticatedAppSettingsGeneralRouteImport.update({
     id: '/settings/general',
     path: '/settings/general',
+    getParentRoute: () => AuthenticatedAppRouteRoute,
+  } as any)
+const AuthenticatedAppProjectsProjectIdRoute =
+  AuthenticatedAppProjectsProjectIdRouteImport.update({
+    id: '/projects/$projectId',
+    path: '/projects/$projectId',
     getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
 const AuthenticatedAppPlaygroundTtsRoute =
@@ -163,43 +213,58 @@ export interface FileRoutesByFullPath {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/account': typeof AuthenticatedAppAccountRoute
+  '/app/billing': typeof AuthenticatedAppBillingRoute
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/app/hooks': typeof AuthenticatedAppHooksRoute
   '/app/keys': typeof AuthenticatedAppKeysRoute
   '/app/organizations': typeof AuthenticatedAppOrganizationsRoute
-  '/app/projects': typeof AuthenticatedAppProjectsRoute
+  '/app/providers': typeof AuthenticatedAppProvidersRoute
+  '/app/quotas': typeof AuthenticatedAppQuotasRoute
+  '/app/routing': typeof AuthenticatedAppRoutingRoute
+  '/app/secrets': typeof AuthenticatedAppSecretsRoute
+  '/app/usage': typeof AuthenticatedAppUsageRoute
   '/app/users': typeof AuthenticatedAppUsersRoute
+  '/app/': typeof AuthenticatedAppIndexRoute
   '/app/playground/chat': typeof AuthenticatedAppPlaygroundChatRoute
   '/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
   '/app/playground/tts': typeof AuthenticatedAppPlaygroundTtsRoute
+  '/app/projects/$projectId': typeof AuthenticatedAppProjectsProjectIdRoute
   '/app/settings/general': typeof AuthenticatedAppSettingsGeneralRoute
   '/app/settings/limits': typeof AuthenticatedAppSettingsLimitsRoute
   '/app/settings/teams': typeof AuthenticatedAppSettingsTeamsRoute
   '/app/teams/$teamId': typeof AuthenticatedAppTeamsTeamIdRoute
+  '/app/projects/': typeof AuthenticatedAppProjectsIndexRoute
   '/app/teams/': typeof AuthenticatedAppTeamsIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRouteRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
-  '/app': typeof AuthenticatedAppRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/account': typeof AuthenticatedAppAccountRoute
+  '/app/billing': typeof AuthenticatedAppBillingRoute
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/app/hooks': typeof AuthenticatedAppHooksRoute
   '/app/keys': typeof AuthenticatedAppKeysRoute
   '/app/organizations': typeof AuthenticatedAppOrganizationsRoute
-  '/app/projects': typeof AuthenticatedAppProjectsRoute
+  '/app/providers': typeof AuthenticatedAppProvidersRoute
+  '/app/quotas': typeof AuthenticatedAppQuotasRoute
+  '/app/routing': typeof AuthenticatedAppRoutingRoute
+  '/app/secrets': typeof AuthenticatedAppSecretsRoute
+  '/app/usage': typeof AuthenticatedAppUsageRoute
   '/app/users': typeof AuthenticatedAppUsersRoute
+  '/app': typeof AuthenticatedAppIndexRoute
   '/app/playground/chat': typeof AuthenticatedAppPlaygroundChatRoute
   '/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
   '/app/playground/tts': typeof AuthenticatedAppPlaygroundTtsRoute
+  '/app/projects/$projectId': typeof AuthenticatedAppProjectsProjectIdRoute
   '/app/settings/general': typeof AuthenticatedAppSettingsGeneralRoute
   '/app/settings/limits': typeof AuthenticatedAppSettingsLimitsRoute
   '/app/settings/teams': typeof AuthenticatedAppSettingsTeamsRoute
   '/app/teams/$teamId': typeof AuthenticatedAppTeamsTeamIdRoute
+  '/app/projects': typeof AuthenticatedAppProjectsIndexRoute
   '/app/teams': typeof AuthenticatedAppTeamsIndexRoute
 }
 export interface FileRoutesById {
@@ -212,19 +277,27 @@ export interface FileRoutesById {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/_authenticated/app/account': typeof AuthenticatedAppAccountRoute
+  '/_authenticated/app/billing': typeof AuthenticatedAppBillingRoute
   '/_authenticated/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/_authenticated/app/hooks': typeof AuthenticatedAppHooksRoute
   '/_authenticated/app/keys': typeof AuthenticatedAppKeysRoute
   '/_authenticated/app/organizations': typeof AuthenticatedAppOrganizationsRoute
-  '/_authenticated/app/projects': typeof AuthenticatedAppProjectsRoute
+  '/_authenticated/app/providers': typeof AuthenticatedAppProvidersRoute
+  '/_authenticated/app/quotas': typeof AuthenticatedAppQuotasRoute
+  '/_authenticated/app/routing': typeof AuthenticatedAppRoutingRoute
+  '/_authenticated/app/secrets': typeof AuthenticatedAppSecretsRoute
+  '/_authenticated/app/usage': typeof AuthenticatedAppUsageRoute
   '/_authenticated/app/users': typeof AuthenticatedAppUsersRoute
+  '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/playground/chat': typeof AuthenticatedAppPlaygroundChatRoute
   '/_authenticated/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
   '/_authenticated/app/playground/tts': typeof AuthenticatedAppPlaygroundTtsRoute
+  '/_authenticated/app/projects/$projectId': typeof AuthenticatedAppProjectsProjectIdRoute
   '/_authenticated/app/settings/general': typeof AuthenticatedAppSettingsGeneralRoute
   '/_authenticated/app/settings/limits': typeof AuthenticatedAppSettingsLimitsRoute
   '/_authenticated/app/settings/teams': typeof AuthenticatedAppSettingsTeamsRoute
   '/_authenticated/app/teams/$teamId': typeof AuthenticatedAppTeamsTeamIdRoute
+  '/_authenticated/app/projects/': typeof AuthenticatedAppProjectsIndexRoute
   '/_authenticated/app/teams/': typeof AuthenticatedAppTeamsIndexRoute
 }
 export interface FileRouteTypes {
@@ -238,43 +311,58 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/app/account'
+    | '/app/billing'
     | '/app/dashboard'
     | '/app/hooks'
     | '/app/keys'
     | '/app/organizations'
-    | '/app/projects'
+    | '/app/providers'
+    | '/app/quotas'
+    | '/app/routing'
+    | '/app/secrets'
+    | '/app/usage'
     | '/app/users'
+    | '/app/'
     | '/app/playground/chat'
     | '/app/playground/stt'
     | '/app/playground/tts'
+    | '/app/projects/$projectId'
     | '/app/settings/general'
     | '/app/settings/limits'
     | '/app/settings/teams'
     | '/app/teams/$teamId'
+    | '/app/projects/'
     | '/app/teams/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
     | '/privacy'
     | '/terms'
-    | '/app'
     | '/auth/login'
     | '/auth/reset-password'
     | '/auth/signup'
     | '/app/account'
+    | '/app/billing'
     | '/app/dashboard'
     | '/app/hooks'
     | '/app/keys'
     | '/app/organizations'
-    | '/app/projects'
+    | '/app/providers'
+    | '/app/quotas'
+    | '/app/routing'
+    | '/app/secrets'
+    | '/app/usage'
     | '/app/users'
+    | '/app'
     | '/app/playground/chat'
     | '/app/playground/stt'
     | '/app/playground/tts'
+    | '/app/projects/$projectId'
     | '/app/settings/general'
     | '/app/settings/limits'
     | '/app/settings/teams'
     | '/app/teams/$teamId'
+    | '/app/projects'
     | '/app/teams'
   id:
     | '__root__'
@@ -286,19 +374,27 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/_authenticated/app/account'
+    | '/_authenticated/app/billing'
     | '/_authenticated/app/dashboard'
     | '/_authenticated/app/hooks'
     | '/_authenticated/app/keys'
     | '/_authenticated/app/organizations'
-    | '/_authenticated/app/projects'
+    | '/_authenticated/app/providers'
+    | '/_authenticated/app/quotas'
+    | '/_authenticated/app/routing'
+    | '/_authenticated/app/secrets'
+    | '/_authenticated/app/usage'
     | '/_authenticated/app/users'
+    | '/_authenticated/app/'
     | '/_authenticated/app/playground/chat'
     | '/_authenticated/app/playground/stt'
     | '/_authenticated/app/playground/tts'
+    | '/_authenticated/app/projects/$projectId'
     | '/_authenticated/app/settings/general'
     | '/_authenticated/app/settings/limits'
     | '/_authenticated/app/settings/teams'
     | '/_authenticated/app/teams/$teamId'
+    | '/_authenticated/app/projects/'
     | '/_authenticated/app/teams/'
   fileRoutesById: FileRoutesById
 }
@@ -360,6 +456,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/app/': {
+      id: '/_authenticated/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
     '/_authenticated/app/users': {
       id: '/_authenticated/app/users'
       path: '/users'
@@ -367,11 +470,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppUsersRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
-    '/_authenticated/app/projects': {
-      id: '/_authenticated/app/projects'
-      path: '/projects'
-      fullPath: '/app/projects'
-      preLoaderRoute: typeof AuthenticatedAppProjectsRouteImport
+    '/_authenticated/app/usage': {
+      id: '/_authenticated/app/usage'
+      path: '/usage'
+      fullPath: '/app/usage'
+      preLoaderRoute: typeof AuthenticatedAppUsageRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/_authenticated/app/secrets': {
+      id: '/_authenticated/app/secrets'
+      path: '/secrets'
+      fullPath: '/app/secrets'
+      preLoaderRoute: typeof AuthenticatedAppSecretsRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/_authenticated/app/routing': {
+      id: '/_authenticated/app/routing'
+      path: '/routing'
+      fullPath: '/app/routing'
+      preLoaderRoute: typeof AuthenticatedAppRoutingRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/_authenticated/app/quotas': {
+      id: '/_authenticated/app/quotas'
+      path: '/quotas'
+      fullPath: '/app/quotas'
+      preLoaderRoute: typeof AuthenticatedAppQuotasRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/_authenticated/app/providers': {
+      id: '/_authenticated/app/providers'
+      path: '/providers'
+      fullPath: '/app/providers'
+      preLoaderRoute: typeof AuthenticatedAppProvidersRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
     '/_authenticated/app/organizations': {
@@ -402,6 +533,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppDashboardRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
+    '/_authenticated/app/billing': {
+      id: '/_authenticated/app/billing'
+      path: '/billing'
+      fullPath: '/app/billing'
+      preLoaderRoute: typeof AuthenticatedAppBillingRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
     '/_authenticated/app/account': {
       id: '/_authenticated/app/account'
       path: '/account'
@@ -414,6 +552,13 @@ declare module '@tanstack/react-router' {
       path: '/teams'
       fullPath: '/app/teams/'
       preLoaderRoute: typeof AuthenticatedAppTeamsIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/_authenticated/app/projects/': {
+      id: '/_authenticated/app/projects/'
+      path: '/projects'
+      fullPath: '/app/projects/'
+      preLoaderRoute: typeof AuthenticatedAppProjectsIndexRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
     '/_authenticated/app/teams/$teamId': {
@@ -442,6 +587,13 @@ declare module '@tanstack/react-router' {
       path: '/settings/general'
       fullPath: '/app/settings/general'
       preLoaderRoute: typeof AuthenticatedAppSettingsGeneralRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/_authenticated/app/projects/$projectId': {
+      id: '/_authenticated/app/projects/$projectId'
+      path: '/projects/$projectId'
+      fullPath: '/app/projects/$projectId'
+      preLoaderRoute: typeof AuthenticatedAppProjectsProjectIdRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
     '/_authenticated/app/playground/tts': {
@@ -486,37 +638,54 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
 
 interface AuthenticatedAppRouteRouteChildren {
   AuthenticatedAppAccountRoute: typeof AuthenticatedAppAccountRoute
+  AuthenticatedAppBillingRoute: typeof AuthenticatedAppBillingRoute
   AuthenticatedAppDashboardRoute: typeof AuthenticatedAppDashboardRoute
   AuthenticatedAppHooksRoute: typeof AuthenticatedAppHooksRoute
   AuthenticatedAppKeysRoute: typeof AuthenticatedAppKeysRoute
   AuthenticatedAppOrganizationsRoute: typeof AuthenticatedAppOrganizationsRoute
-  AuthenticatedAppProjectsRoute: typeof AuthenticatedAppProjectsRoute
+  AuthenticatedAppProvidersRoute: typeof AuthenticatedAppProvidersRoute
+  AuthenticatedAppQuotasRoute: typeof AuthenticatedAppQuotasRoute
+  AuthenticatedAppRoutingRoute: typeof AuthenticatedAppRoutingRoute
+  AuthenticatedAppSecretsRoute: typeof AuthenticatedAppSecretsRoute
+  AuthenticatedAppUsageRoute: typeof AuthenticatedAppUsageRoute
   AuthenticatedAppUsersRoute: typeof AuthenticatedAppUsersRoute
+  AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
   AuthenticatedAppPlaygroundChatRoute: typeof AuthenticatedAppPlaygroundChatRoute
   AuthenticatedAppPlaygroundSttRoute: typeof AuthenticatedAppPlaygroundSttRoute
   AuthenticatedAppPlaygroundTtsRoute: typeof AuthenticatedAppPlaygroundTtsRoute
+  AuthenticatedAppProjectsProjectIdRoute: typeof AuthenticatedAppProjectsProjectIdRoute
   AuthenticatedAppSettingsGeneralRoute: typeof AuthenticatedAppSettingsGeneralRoute
   AuthenticatedAppSettingsLimitsRoute: typeof AuthenticatedAppSettingsLimitsRoute
   AuthenticatedAppSettingsTeamsRoute: typeof AuthenticatedAppSettingsTeamsRoute
   AuthenticatedAppTeamsTeamIdRoute: typeof AuthenticatedAppTeamsTeamIdRoute
+  AuthenticatedAppProjectsIndexRoute: typeof AuthenticatedAppProjectsIndexRoute
   AuthenticatedAppTeamsIndexRoute: typeof AuthenticatedAppTeamsIndexRoute
 }
 
 const AuthenticatedAppRouteRouteChildren: AuthenticatedAppRouteRouteChildren = {
   AuthenticatedAppAccountRoute: AuthenticatedAppAccountRoute,
+  AuthenticatedAppBillingRoute: AuthenticatedAppBillingRoute,
   AuthenticatedAppDashboardRoute: AuthenticatedAppDashboardRoute,
   AuthenticatedAppHooksRoute: AuthenticatedAppHooksRoute,
   AuthenticatedAppKeysRoute: AuthenticatedAppKeysRoute,
   AuthenticatedAppOrganizationsRoute: AuthenticatedAppOrganizationsRoute,
-  AuthenticatedAppProjectsRoute: AuthenticatedAppProjectsRoute,
+  AuthenticatedAppProvidersRoute: AuthenticatedAppProvidersRoute,
+  AuthenticatedAppQuotasRoute: AuthenticatedAppQuotasRoute,
+  AuthenticatedAppRoutingRoute: AuthenticatedAppRoutingRoute,
+  AuthenticatedAppSecretsRoute: AuthenticatedAppSecretsRoute,
+  AuthenticatedAppUsageRoute: AuthenticatedAppUsageRoute,
   AuthenticatedAppUsersRoute: AuthenticatedAppUsersRoute,
+  AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
   AuthenticatedAppPlaygroundChatRoute: AuthenticatedAppPlaygroundChatRoute,
   AuthenticatedAppPlaygroundSttRoute: AuthenticatedAppPlaygroundSttRoute,
   AuthenticatedAppPlaygroundTtsRoute: AuthenticatedAppPlaygroundTtsRoute,
+  AuthenticatedAppProjectsProjectIdRoute:
+    AuthenticatedAppProjectsProjectIdRoute,
   AuthenticatedAppSettingsGeneralRoute: AuthenticatedAppSettingsGeneralRoute,
   AuthenticatedAppSettingsLimitsRoute: AuthenticatedAppSettingsLimitsRoute,
   AuthenticatedAppSettingsTeamsRoute: AuthenticatedAppSettingsTeamsRoute,
   AuthenticatedAppTeamsTeamIdRoute: AuthenticatedAppTeamsTeamIdRoute,
+  AuthenticatedAppProjectsIndexRoute: AuthenticatedAppProjectsIndexRoute,
   AuthenticatedAppTeamsIndexRoute: AuthenticatedAppTeamsIndexRoute,
 }
 

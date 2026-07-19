@@ -1,8 +1,8 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/_authenticated/app/settings/limits")({
+export const Route = createFileRoute("/_authenticated/app/")({
 	beforeLoad: () => {
-		throw redirect({ to: "/app/quotas" });
+		throw redirect({ to: "/app/dashboard" });
 	},
 	component: () => null,
 });

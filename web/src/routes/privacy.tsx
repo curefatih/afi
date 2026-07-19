@@ -1,9 +1,23 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
+import { ShieldIcon } from "lucide-react";
+import { ComingSoonPage } from "#/components/coming-soon-page";
 
-export const Route = createFileRoute('/privacy')({
-  component: RouteComponent,
-})
+export const Route = createFileRoute("/privacy")({
+	staticData: {
+		getTitle: () => "Privacy",
+	},
+	component: RouteComponent,
+});
 
 function RouteComponent() {
-  return <div>Hello "/privacy"!</div>
+	return (
+		<div className="mx-auto flex min-h-svh max-w-3xl items-center p-6">
+			<ComingSoonPage
+				title="Privacy Policy"
+				description="How AFI handles platform data."
+				icon={ShieldIcon}
+				context="Privacy content has not been published for this deployment."
+			/>
+		</div>
+	);
 }
