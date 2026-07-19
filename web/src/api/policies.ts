@@ -1,5 +1,5 @@
-import { queryOptions, useMutation } from "@tanstack/react-query";
-import { apiFetch } from "./client";
+import { queryOptions } from "@tanstack/react-query";
+import { apiFetch } from "#/lib/api-client";
 
 export type RequestPolicy = {
 	id: string;
