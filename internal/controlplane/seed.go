@@ -136,11 +136,13 @@ func (s *Seeder) Seed(ctx context.Context) error {
 		return fmt.Errorf("route: %w", err)
 	}
 
+	keyHash := HashAPIKey(cfg.VirtualAPIKey)
+	keyPrefix := KeyPrefix(cfg.VirtualAPIKey)
 	_, err = tx.Exec(ctx, `
-		INSERT INTO api_keys (id, project_id, organization_id, name, key_value, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT (key_value) DO UPDATE SET name = EXCLUDED.name
-	`, keyID, projectID, orgID, "Local Dev Key", cfg.VirtualAPIKey, now)
+		INSERT INTO api_keys (id, project_id, organization_id, name, key_hash, key_prefix, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (key_hash) DO UPDATE SET name = EXCLUDED.name, key_prefix = EXCLUDED.key_prefix
+	`, keyID, projectID, orgID, "Local Dev Key", keyHash, keyPrefix, now)
 	if err != nil {
 		return fmt.Errorf("api key: %w", err)
 	}
