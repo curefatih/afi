@@ -10,6 +10,7 @@ gateway:
 auth:
   jwt_secret: "afi-local-dev-jwt-secret-change-me"
   token_ttl: "24h"
+  internal_token: "afi-local-internal-token"
 
 seed:
   virtual_api_key: "sk-project-local-dev-token-12345"
