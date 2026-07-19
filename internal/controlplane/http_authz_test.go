@@ -103,6 +103,9 @@ func (f *fakePlatform) ListOrgMembers(context.Context, string) ([]OrgMember, err
 func (f *fakePlatform) AddOrgMemberByEmail(context.Context, string, string) (*OrgMember, error) {
 	return nil, errors.New("unused")
 }
+func (f *fakePlatform) UpdateOrgMemberRole(context.Context, string, string, string, string) (*OrgMember, error) {
+	return nil, errors.New("unused")
+}
 func (f *fakePlatform) ListOrganizationsForUser(context.Context, string) ([]Organization, error) {
 	return nil, nil
 }
@@ -145,7 +148,12 @@ func (f *fakePlatform) UpdateRoute(context.Context, string, string, string, stri
 	return nil, errors.New("unused")
 }
 func (f *fakePlatform) DeleteRoute(context.Context, string) error { return nil }
-func (f *fakePlatform) ListUsage(context.Context, string, int) ([]UsageEvent, error) { return nil, nil }
+func (f *fakePlatform) ListUsage(context.Context, string, UsageFilter) ([]UsageEvent, error) {
+	return nil, nil
+}
+func (f *fakePlatform) SummarizeUsage(context.Context, string, UsageFilter) ([]UsageSummaryBucket, error) {
+	return nil, nil
+}
 func (f *fakePlatform) ListQuotas(context.Context, string) ([]Quota, error)           { return nil, nil }
 func (f *fakePlatform) CreateQuota(context.Context, string, string, string, string, int64, string) (*Quota, error) {
 	return nil, errors.New("unused")

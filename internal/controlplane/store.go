@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/curefatih/afi/internal/kernel"
@@ -106,17 +107,48 @@ type Route struct {
 }
 
 type UsageEvent struct {
-	ID               int64     `json:"id"`
-	OrganizationID   string    `json:"organization_id"`
-	ProjectID        string    `json:"project_id"`
-	APIKeyID         string    `json:"api_key_id"`
-	Model            string    `json:"model"`
-	Status           string    `json:"status"`
-	LatencyMs        int64     `json:"latency_ms"`
-	PromptTokens     int64     `json:"prompt_tokens"`
-	CompletionTokens int64     `json:"completion_tokens"`
-	CostUSD          *float64  `json:"cost_usd,omitempty"`
-	CreatedAt        time.Time `json:"created_at"`
+	ID               int64          `json:"id"`
+	OrganizationID   string         `json:"organization_id"`
+	ProjectID        string         `json:"project_id"`
+	APIKeyID         string         `json:"api_key_id"`
+	Model            string         `json:"model"`
+	Status           string         `json:"status"`
+	LatencyMs        int64          `json:"latency_ms"`
+	PromptTokens     int64          `json:"prompt_tokens"`
+	CompletionTokens int64          `json:"completion_tokens"`
+	Modality         string         `json:"modality"`
+	Metrics          map[string]any `json:"metrics,omitempty"`
+	CostUSD          *float64       `json:"cost_usd,omitempty"`
+	CreatedAt        time.Time      `json:"created_at"`
+	KeyName          string         `json:"key_name,omitempty"`
+	KeyKind          string         `json:"key_kind,omitempty"`
+	OwnerUserID      string         `json:"owner_user_id,omitempty"`
+	OwnerEmail       string         `json:"owner_email,omitempty"`
+	OwnerName        string         `json:"owner_name,omitempty"`
+}
+
+type UsageFilter struct {
+	Limit     int
+	ProjectID string
+	APIKeyID  string
+	Model     string
+	Modality  string
+	From      *time.Time
+	To        *time.Time
+	GroupBy   string // day | model | key | modality (summary only)
+}
+
+type UsageSummaryBucket struct {
+	Bucket           string             `json:"bucket"`
+	Label            string             `json:"label"`
+	Requests         int64              `json:"requests"`
+	CostUSD          float64            `json:"cost_usd"`
+	PromptTokens     int64              `json:"prompt_tokens"`
+	CompletionTokens int64              `json:"completion_tokens"`
+	MetricsTotals    map[string]float64 `json:"metrics_totals,omitempty"`
+	KeyKind          string             `json:"key_kind,omitempty"`
+	OwnerEmail       string             `json:"owner_email,omitempty"`
+	OwnerName        string             `json:"owner_name,omitempty"`
 }
 
 type ModelPrice struct {
@@ -286,6 +318,85 @@ func (s *Store) IsOrgAdmin(ctx context.Context, userID, orgID string) (bool, err
 		return false, err
 	}
 	return role == OrgRoleOwner || role == OrgRoleAdmin, nil
+}
+
+// UpdateOrgMemberRole changes a member's role. Only the org owner may call this.
+// Promoting to owner transfers ownership (actor becomes admin). Cannot demote the sole owner.
+func (s *Store) UpdateOrgMemberRole(ctx context.Context, orgID, actorUserID, targetUserID, role string) (*OrgMember, error) {
+	switch role {
+	case OrgRoleOwner, OrgRoleAdmin, OrgRoleMember:
+	default:
+		return nil, fmt.Errorf("%w: role must be owner, admin, or member", kernel.ErrInvalidRequest)
+	}
+	actorRole, err := s.GetOrgMemberRole(ctx, actorUserID, orgID)
+	if err != nil {
+		return nil, err
+	}
+	if actorRole != OrgRoleOwner {
+		return nil, kernel.ErrUnauthorized
+	}
+	targetRole, err := s.GetOrgMemberRole(ctx, targetUserID, orgID)
+	if err != nil {
+		return nil, err
+	}
+	if targetUserID == actorUserID && role != OrgRoleOwner {
+		var owners int
+		if err := s.pool.QueryRow(ctx, `
+			SELECT COUNT(*) FROM organization_members
+			WHERE organization_id=$1 AND role=$2
+		`, orgID, OrgRoleOwner).Scan(&owners); err != nil {
+			return nil, err
+		}
+		if owners <= 1 {
+			return nil, fmt.Errorf("%w: cannot demote the sole owner", kernel.ErrInvalidRequest)
+		}
+	}
+	if targetRole == OrgRoleOwner && role != OrgRoleOwner {
+		var owners int
+		if err := s.pool.QueryRow(ctx, `
+			SELECT COUNT(*) FROM organization_members
+			WHERE organization_id=$1 AND role=$2
+		`, orgID, OrgRoleOwner).Scan(&owners); err != nil {
+			return nil, err
+		}
+		if owners <= 1 && targetUserID != actorUserID {
+			return nil, fmt.Errorf("%w: cannot demote the sole owner", kernel.ErrInvalidRequest)
+		}
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	if role == OrgRoleOwner && targetUserID != actorUserID {
+		if _, err := tx.Exec(ctx, `
+			UPDATE organization_members SET role=$1 WHERE organization_id=$2 AND user_id=$3
+		`, OrgRoleAdmin, orgID, actorUserID); err != nil {
+			return nil, err
+		}
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE organization_members SET role=$1 WHERE organization_id=$2 AND user_id=$3
+	`, role, orgID, targetUserID); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	var m OrgMember
+	err = s.pool.QueryRow(ctx, `
+		SELECT u.id, u.email, u.name, m.role
+		FROM organization_members m
+		JOIN users u ON u.id = m.user_id
+		WHERE m.organization_id=$1 AND m.user_id=$2
+	`, orgID, targetUserID).Scan(&m.UserID, &m.Email, &m.Name, &m.Role)
+	if err != nil {
+		return nil, err
+	}
+	return &m, nil
 }
 
 func (s *Store) ListTeams(ctx context.Context, orgID string) ([]Team, error) {
@@ -754,26 +865,86 @@ func (s *Store) GetRouteOrgID(ctx context.Context, routeID string) (string, erro
 }
 
 func (s *Store) InsertUsage(ctx context.Context, e UsageEvent) error {
-	_, err := s.pool.Exec(ctx, `
+	modality := e.Modality
+	if modality == "" {
+		modality = "chat"
+	}
+	metrics := e.Metrics
+	if metrics == nil {
+		metrics = map[string]any{}
+	}
+	metricsJSON, err := json.Marshal(metrics)
+	if err != nil {
+		return err
+	}
+	_, err = s.pool.Exec(ctx, `
 		INSERT INTO usage_events (
 			organization_id, project_id, api_key_id, model, status,
-			latency_ms, prompt_tokens, completion_tokens, cost_usd
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+			latency_ms, prompt_tokens, completion_tokens, cost_usd, modality, metrics
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 	`, e.OrganizationID, e.ProjectID, e.APIKeyID, e.Model, e.Status,
-		e.LatencyMs, e.PromptTokens, e.CompletionTokens, e.CostUSD)
+		e.LatencyMs, e.PromptTokens, e.CompletionTokens, e.CostUSD, modality, metricsJSON)
 	return err
 }
 
-func (s *Store) ListUsage(ctx context.Context, orgID string, limit int) ([]UsageEvent, error) {
+func usageWhere(orgID string, f UsageFilter) (string, []any) {
+	args := []any{orgID}
+	var b strings.Builder
+	b.WriteString("e.organization_id=$1")
+	n := 2
+	if f.ProjectID != "" {
+		b.WriteString(fmt.Sprintf(" AND e.project_id=$%d", n))
+		args = append(args, f.ProjectID)
+		n++
+	}
+	if f.APIKeyID != "" {
+		b.WriteString(fmt.Sprintf(" AND e.api_key_id=$%d", n))
+		args = append(args, f.APIKeyID)
+		n++
+	}
+	if f.Model != "" {
+		b.WriteString(fmt.Sprintf(" AND e.model=$%d", n))
+		args = append(args, f.Model)
+		n++
+	}
+	if f.Modality != "" {
+		b.WriteString(fmt.Sprintf(" AND e.modality=$%d", n))
+		args = append(args, f.Modality)
+		n++
+	}
+	if f.From != nil {
+		b.WriteString(fmt.Sprintf(" AND e.created_at >= $%d", n))
+		args = append(args, *f.From)
+		n++
+	}
+	if f.To != nil {
+		b.WriteString(fmt.Sprintf(" AND e.created_at < $%d", n))
+		args = append(args, *f.To)
+	}
+	return b.String(), args
+}
+
+func (s *Store) ListUsage(ctx context.Context, orgID string, f UsageFilter) ([]UsageEvent, error) {
+	limit := f.Limit
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
-	rows, err := s.pool.Query(ctx, `
-		SELECT id, organization_id, project_id, api_key_id, model, status,
-			latency_ms, prompt_tokens, completion_tokens, cost_usd, created_at
-		FROM usage_events WHERE organization_id=$1
-		ORDER BY created_at DESC LIMIT $2
-	`, orgID, limit)
+	where, args := usageWhere(orgID, f)
+	args = append(args, limit)
+	limitArg := len(args)
+	rows, err := s.pool.Query(ctx, fmt.Sprintf(`
+		SELECT e.id, e.organization_id, e.project_id, e.api_key_id, e.model, e.status,
+			e.latency_ms, e.prompt_tokens, e.completion_tokens, e.cost_usd, e.created_at,
+			e.modality, e.metrics,
+			COALESCE(k.name, ''), COALESCE(k.kind, ''),
+			COALESCE(k.owner_user_id, ''), COALESCE(u.email, ''), COALESCE(u.name, '')
+		FROM usage_events e
+		LEFT JOIN api_keys k ON k.id = e.api_key_id
+		LEFT JOIN users u ON u.id = k.owner_user_id
+		WHERE %s
+		ORDER BY e.created_at DESC
+		LIMIT $%d
+	`, where, limitArg), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -781,13 +952,150 @@ func (s *Store) ListUsage(ctx context.Context, orgID string, limit int) ([]Usage
 	var out []UsageEvent
 	for rows.Next() {
 		var e UsageEvent
+		var metricsJSON []byte
 		if err := rows.Scan(
 			&e.ID, &e.OrganizationID, &e.ProjectID, &e.APIKeyID, &e.Model, &e.Status,
 			&e.LatencyMs, &e.PromptTokens, &e.CompletionTokens, &e.CostUSD, &e.CreatedAt,
+			&e.Modality, &metricsJSON,
+			&e.KeyName, &e.KeyKind, &e.OwnerUserID, &e.OwnerEmail, &e.OwnerName,
 		); err != nil {
 			return nil, err
 		}
+		if len(metricsJSON) > 0 {
+			_ = json.Unmarshal(metricsJSON, &e.Metrics)
+		}
+		if e.Metrics == nil {
+			e.Metrics = map[string]any{}
+		}
 		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
+func metricSumExpr(key string) string {
+	return fmt.Sprintf(`COALESCE(SUM(CASE WHEN jsonb_typeof(e.metrics->'%s') = 'number'
+		THEN (e.metrics->>'%s')::double precision ELSE 0 END), 0)`, key, key)
+}
+
+func (s *Store) SummarizeUsage(ctx context.Context, orgID string, f UsageFilter) ([]UsageSummaryBucket, error) {
+	groupBy := f.GroupBy
+	if groupBy == "" {
+		groupBy = "day"
+	}
+	ff := f
+	if ff.From == nil && ff.To == nil && groupBy == "day" {
+		from := time.Now().UTC().AddDate(0, 0, -30)
+		ff.From = &from
+	}
+	where, args := usageWhere(orgID, ff)
+
+	var selectBucket, groupSQL, orderSQL, joinSQL string
+	switch groupBy {
+	case "day":
+		selectBucket = `to_char(date_trunc('day', e.created_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD')`
+		groupSQL = `1`
+		orderSQL = `1 ASC`
+		joinSQL = ""
+	case "model":
+		selectBucket = `e.model`
+		groupSQL = `1`
+		orderSQL = `requests DESC`
+		joinSQL = ""
+	case "modality":
+		selectBucket = `e.modality`
+		groupSQL = `1`
+		orderSQL = `requests DESC`
+		joinSQL = ""
+	case "key":
+		selectBucket = `e.api_key_id`
+		groupSQL = `1, COALESCE(k.name,''), COALESCE(k.kind,''), COALESCE(u.email,''), COALESCE(u.name,'')`
+		orderSQL = `requests DESC`
+		joinSQL = `
+			LEFT JOIN api_keys k ON k.id = e.api_key_id
+			LEFT JOIN users u ON u.id = k.owner_user_id`
+	default:
+		return nil, fmt.Errorf("%w: group_by must be day, model, key, or modality", kernel.ErrInvalidRequest)
+	}
+
+	q := fmt.Sprintf(`
+		SELECT %s AS bucket,
+			COUNT(*)::bigint AS requests,
+			COALESCE(SUM(e.cost_usd), 0)::double precision AS cost_usd,
+			COALESCE(SUM(e.prompt_tokens), 0)::bigint AS prompt_tokens,
+			COALESCE(SUM(e.completion_tokens), 0)::bigint AS completion_tokens,
+			%s AS characters,
+			%s AS audio_seconds,
+			%s AS images,
+			%s AS tokens
+			%s
+		FROM usage_events e
+		%s
+		WHERE %s
+		GROUP BY %s
+		ORDER BY %s
+	`, selectBucket,
+		metricSumExpr("characters"),
+		metricSumExpr("audio_seconds"),
+		metricSumExpr("images"),
+		metricSumExpr("tokens"),
+		func() string {
+			if groupBy == "key" {
+				return `, COALESCE(k.name,'') AS key_name, COALESCE(k.kind,'') AS key_kind,
+					COALESCE(u.email,'') AS owner_email, COALESCE(u.name,'') AS owner_name`
+			}
+			return ``
+		}(),
+		joinSQL, where, groupSQL, orderSQL)
+
+	rows, err := s.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []UsageSummaryBucket
+	for rows.Next() {
+		var b UsageSummaryBucket
+		var characters, audioSeconds, images, tokens float64
+		if groupBy == "key" {
+			var keyName string
+			if err := rows.Scan(
+				&b.Bucket, &b.Requests, &b.CostUSD, &b.PromptTokens, &b.CompletionTokens,
+				&characters, &audioSeconds, &images, &tokens,
+				&keyName, &b.KeyKind, &b.OwnerEmail, &b.OwnerName,
+			); err != nil {
+				return nil, err
+			}
+			b.Label = keyName
+			if b.Label == "" {
+				b.Label = b.Bucket
+			}
+		} else {
+			if err := rows.Scan(
+				&b.Bucket, &b.Requests, &b.CostUSD, &b.PromptTokens, &b.CompletionTokens,
+				&characters, &audioSeconds, &images, &tokens,
+			); err != nil {
+				return nil, err
+			}
+			b.Label = b.Bucket
+		}
+		totals := map[string]float64{}
+		if characters != 0 {
+			totals["characters"] = characters
+		}
+		if audioSeconds != 0 {
+			totals["audio_seconds"] = audioSeconds
+		}
+		if images != 0 {
+			totals["images"] = images
+		}
+		if tokens != 0 {
+			totals["tokens"] = tokens
+		}
+		if len(totals) > 0 {
+			b.MetricsTotals = totals
+		}
+		out = append(out, b)
 	}
 	return out, rows.Err()
 }

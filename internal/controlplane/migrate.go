@@ -369,6 +369,15 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	`); err != nil {
 		return fmt.Errorf("cycle8 api_keys check: %w", err)
 	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS modality TEXT NOT NULL DEFAULT 'chat';
+		ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS metrics JSONB NOT NULL DEFAULT '{}'::jsonb;
+		CREATE INDEX IF NOT EXISTS usage_events_org_modality_created
+			ON usage_events (organization_id, modality, created_at DESC);
+	`); err != nil {
+		return fmt.Errorf("cycle10 usage modality: %w", err)
+	}
 	return nil
 }
 

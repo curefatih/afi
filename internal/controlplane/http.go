@@ -6,11 +6,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
@@ -52,6 +54,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/platform/organizations", s.requireAuth(s.handleCreateOrg))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/members", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListOrgMembers)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/members", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleAddOrgMember)))
+	mux.HandleFunc("PATCH /api/v1/platform/organizations/{orgID}/members/{userID}", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleUpdateOrgMemberRole)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/teams", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListTeams)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/projects", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListProjects)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/projects", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleCreateProject)))
@@ -67,6 +70,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /api/v1/platform/routes/{routeID}", s.requireAuth(s.requireOrgMemberViaRoute(s.handleDeleteRoute)))
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/usage", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListUsage)))
+	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/usage/summary", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleUsageSummary)))
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/quotas", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListQuotas)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/quotas", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateQuota)))
@@ -215,6 +219,45 @@ func (s *Server) handleAddOrgMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, member)
+}
+
+func (s *Server) handleUpdateOrgMemberRole(w http.ResponseWriter, r *http.Request) {
+	claims := claimsFrom(r.Context())
+	if claims == nil {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	var body struct {
+		Role string `json:"role"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.Role) == "" {
+		writeErr(w, http.StatusBadRequest, "role required")
+		return
+	}
+	member, err := s.api.UpdateOrgMemberRole(
+		r.Context(),
+		r.PathValue("orgID"),
+		claims.UserID,
+		r.PathValue("userID"),
+		strings.TrimSpace(body.Role),
+	)
+	if errors.Is(err, kernel.ErrUnauthorized) {
+		writeErr(w, http.StatusForbidden, "only the org owner can change roles")
+		return
+	}
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "member not found")
+		return
+	}
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, member)
 }
 
 func (s *Server) handleListTeams(w http.ResponseWriter, r *http.Request) {
@@ -632,15 +675,77 @@ func (s *Server) handleDeleteRoute(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func parseUsageFilter(r *http.Request) (UsageFilter, error) {
+	q := r.URL.Query()
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	f := UsageFilter{
+		Limit:     limit,
+		ProjectID: q.Get("project_id"),
+		APIKeyID:  q.Get("api_key_id"),
+		Model:     q.Get("model"),
+		Modality:  q.Get("modality"),
+		GroupBy:   q.Get("group_by"),
+	}
+	if v := q.Get("from"); v != "" {
+		t, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			t, err = time.Parse("2006-01-02", v)
+			if err != nil {
+				return f, fmt.Errorf("%w: invalid from", kernel.ErrInvalidRequest)
+			}
+		}
+		f.From = &t
+	}
+	if v := q.Get("to"); v != "" {
+		t, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			t, err = time.Parse("2006-01-02", v)
+			if err != nil {
+				return f, fmt.Errorf("%w: invalid to", kernel.ErrInvalidRequest)
+			}
+		}
+		f.To = &t
+	}
+	return f, nil
+}
+
 func (s *Server) handleListUsage(w http.ResponseWriter, r *http.Request) {
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	list, err := s.api.ListUsage(r.Context(), r.PathValue("orgID"), limit)
+	f, err := parseUsageFilter(r)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	list, err := s.api.ListUsage(r.Context(), r.PathValue("orgID"), f)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if list == nil {
 		list = []UsageEvent{}
+	}
+	writeJSON(w, http.StatusOK, list)
+}
+
+func (s *Server) handleUsageSummary(w http.ResponseWriter, r *http.Request) {
+	f, err := parseUsageFilter(r)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if f.GroupBy == "" {
+		f.GroupBy = "day"
+	}
+	list, err := s.api.SummarizeUsage(r.Context(), r.PathValue("orgID"), f)
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if list == nil {
+		list = []UsageSummaryBucket{}
 	}
 	writeJSON(w, http.StatusOK, list)
 }
