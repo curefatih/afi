@@ -1,8 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { UsersIcon } from "lucide-react";
-import { useMemo } from "react";
-import { orgMembersQueryOptions } from "#/api/organization";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import {
+	type OrgMember,
+	type OrgRole,
+	orgMembersQueryOptions,
+	updateOrgMemberRoleMutationOptions,
+} from "#/api/organization";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
 import { Badge } from "#/components/ui/badge";
@@ -14,6 +20,13 @@ import {
 	EmptyMedia,
 	EmptyTitle,
 } from "#/components/ui/empty";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "#/components/ui/select";
 import {
 	Table,
 	TableBody,
@@ -36,18 +49,47 @@ function RouteComponent() {
 	const org = useActiveOrg();
 	const orgId = org?.id ?? "";
 	const user = useAuthUser();
+	const qc = useQueryClient();
 	const members = useQuery(orgMembersQueryOptions(orgId));
+	const updateRole = useMutation(updateOrgMemberRoleMutationOptions());
+	const [busyUserId, setBusyUserId] = useState<string | null>(null);
 
-	const isOrgAdmin = useMemo(() => {
-		const me = (members.data ?? []).find((m) => m.user_id === user?.id);
-		return me?.role === "owner" || me?.role === "admin";
-	}, [members.data, user?.id]);
+	const me = useMemo(
+		() => (members.data ?? []).find((m) => m.user_id === user?.id),
+		[members.data, user?.id],
+	);
+	const isOwner = me?.role === "owner";
+	const isOrgAdmin = isOwner || me?.role === "admin";
+
+	async function applyRole(m: OrgMember, role: OrgRole) {
+		if (role === m.role) return;
+		if (role === "owner") {
+			const ok = window.confirm(
+				`Transfer ownership to ${m.email}? You will become an admin.`,
+			);
+			if (!ok) return;
+		}
+		setBusyUserId(m.user_id);
+		try {
+			await updateRole.mutateAsync({ orgId, userId: m.user_id, role });
+			await qc.invalidateQueries({
+				queryKey: ["organizations", orgId, "members"],
+			});
+			toast.success(
+				role === "owner" ? "Ownership transferred" : `Role set to ${role}`,
+			);
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : "Failed to update role");
+		} finally {
+			setBusyUserId(null);
+		}
+	}
 
 	return (
 		<PageBody>
 			<PageHeader
 				title="Users"
-				description="Organization members. Admins can set per-user quotas from Quotas."
+				description="Organization members. Owners and admins manage service-account keys and quotas; members manage their personal keys. Only the owner can change roles."
 				actions={
 					isOrgAdmin ? (
 						<Button nativeButton={false} render={<Link to="/app/quotas" />}>
@@ -81,7 +123,7 @@ function RouteComponent() {
 								<TableHead>Name</TableHead>
 								<TableHead>Email</TableHead>
 								<TableHead>Org role</TableHead>
-								<TableHead className="w-40" />
+								<TableHead className="w-44" />
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -90,7 +132,29 @@ function RouteComponent() {
 									<TableCell className="font-medium">{m.name}</TableCell>
 									<TableCell>{m.email}</TableCell>
 									<TableCell>
-										<Badge variant="secondary">{m.role}</Badge>
+										{isOwner ? (
+											<Select
+												value={m.role}
+												disabled={busyUserId === m.user_id}
+												onValueChange={(v) => {
+													const role = (v ?? m.role) as OrgRole;
+													void applyRole(m, role);
+												}}
+											>
+												<SelectTrigger className="w-40">
+													<SelectValue />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="member">member</SelectItem>
+													<SelectItem value="admin">admin</SelectItem>
+													<SelectItem value="owner">
+														owner (transfer)
+													</SelectItem>
+												</SelectContent>
+											</Select>
+										) : (
+											<Badge variant="secondary">{m.role}</Badge>
+										)}
 									</TableCell>
 									<TableCell>
 										{isOrgAdmin ? (

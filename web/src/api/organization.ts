@@ -25,9 +25,7 @@ export const orgMembersQueryOptions = (orgId: string) =>
 	queryOptions({
 		queryKey: ["organizations", orgId, "members"],
 		queryFn: () =>
-			apiFetch<OrgMember[]>(
-				`/api/v1/platform/organizations/${orgId}/members`,
-			),
+			apiFetch<OrgMember[]>(`/api/v1/platform/organizations/${orgId}/members`),
 		enabled: !!orgId,
 	});
 
@@ -43,9 +41,28 @@ export const createOrganizationMutationOptions = () =>
 export const addOrgMemberMutationOptions = () =>
 	mutationOptions({
 		mutationFn: ({ orgId, email }: { orgId: string; email: string }) =>
+			apiFetch<OrgMember>(`/api/v1/platform/organizations/${orgId}/members`, {
+				method: "POST",
+				body: { email },
+			}),
+	});
+
+export type OrgRole = "owner" | "admin" | "member";
+
+export const updateOrgMemberRoleMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({
+			orgId,
+			userId,
+			role,
+		}: {
+			orgId: string;
+			userId: string;
+			role: OrgRole;
+		}) =>
 			apiFetch<OrgMember>(
-				`/api/v1/platform/organizations/${orgId}/members`,
-				{ method: "POST", body: { email } },
+				`/api/v1/platform/organizations/${orgId}/members/${userId}`,
+				{ method: "PATCH", body: { role } },
 			),
 	});
 
