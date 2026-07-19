@@ -2,10 +2,14 @@
 	dev-up dev-down dev-build dev-restart \
 	build test fmt tidy verify \
 	run-controlplane run-gateway run-worker run-all \
-	seed snapshot-publish
+	seed snapshot-publish \
+	deploy-init deploy-up deploy-down deploy-logs deploy-health \
+	build-release build-images
 
 GO ?= go
 BIN_DIR ?= bin
+DEPLOY_COMPOSE ?= deploy/docker-compose.yml
+DEPLOY_ENV ?= deploy/.env
 
 doc-serve:
 	uvx --from mkdocs-material mkdocs serve
@@ -40,6 +44,13 @@ build:
 	$(GO) build -o $(BIN_DIR)/gateway ./cmd/gateway
 	$(GO) build -o $(BIN_DIR)/worker ./cmd/worker
 	$(GO) build -o $(BIN_DIR)/afi ./cmd/cli
+
+build-release:
+	bash scripts/build-release.sh
+
+build-images:
+	@test -f $(DEPLOY_ENV) || (echo "missing $(DEPLOY_ENV) — run make deploy-init" >&2; exit 1)
+	docker compose -f $(DEPLOY_COMPOSE) --env-file $(DEPLOY_ENV) build
 
 test:
 	$(GO) test ./...
@@ -82,3 +93,25 @@ seed:
 
 snapshot-publish:
 	$(GO) run ./cmd/cli snapshot publish
+
+# --- Self-hosted deploy (Docker Compose) ---
+# See docs/deployment.md and docs/deployment/customization.md
+
+deploy-init:
+	@test -f deploy/.env || cp deploy/env.example deploy/.env
+	@test -f deploy/afi.yaml || cp deploy/afi.example.yaml deploy/afi.yaml
+	@echo "Wrote deploy/.env and/or deploy/afi.yaml if missing."
+	@echo "Replace every CHANGE_ME value, then run: make deploy-up"
+
+deploy-up:
+	bash scripts/deploy-up.sh
+
+deploy-down:
+	bash scripts/deploy-down.sh
+
+deploy-logs:
+	@test -f $(DEPLOY_ENV) || (echo "missing $(DEPLOY_ENV) — run make deploy-init" >&2; exit 1)
+	docker compose -f $(DEPLOY_COMPOSE) --env-file $(DEPLOY_ENV) logs -f
+
+deploy-health:
+	bash scripts/deploy-health.sh
