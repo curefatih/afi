@@ -53,6 +53,8 @@ func (p *PGUsageSink) InsertUsage(ctx context.Context, e UsagePayload, costUSD *
 		LatencyMs:        e.LatencyMs,
 		PromptTokens:     e.PromptTokens,
 		CompletionTokens: e.CompletionTokens,
+		Modality:         e.Modality,
+		Metrics:          e.Metrics,
 		CostUSD:          costUSD,
 	})
 }
