@@ -22,8 +22,6 @@ import {
 	Bar,
 	BarChart,
 	CartesianGrid,
-	ResponsiveContainer,
-	Tooltip,
 	XAxis,
 	YAxis,
 } from "recharts";
@@ -36,6 +34,7 @@ import {
 	formatUsageOwnerDetail,
 	formatUsageQuantity,
 	type UsageFilters,
+	type UsageSummaryBucket,
 	usageQueryOptions,
 	usageSummaryQueryOptions,
 } from "#/api/usage";
@@ -47,6 +46,12 @@ import {
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
 import { Badge } from "#/components/ui/badge";
+import {
+	type ChartConfig,
+	ChartContainer,
+	ChartTooltip,
+	ChartTooltipContent,
+} from "#/components/ui/chart";
 import {
 	Empty,
 	EmptyDescription,
@@ -73,6 +78,34 @@ import {
 import { pageTitle } from "#/lib/page-meta";
 import { cn } from "#/lib/utils";
 import { useActiveOrg } from "#/state/organization-state";
+
+const costByDayConfig = {
+	cost_usd: {
+		label: "Cost USD",
+		color: "var(--chart-1)",
+	},
+} satisfies ChartConfig;
+
+const requestsByModalityConfig = {
+	requests: {
+		label: "Requests",
+		color: "var(--chart-2)",
+	},
+} satisfies ChartConfig;
+
+const costByModelConfig = {
+	cost_usd: {
+		label: "Cost USD",
+		color: "var(--chart-3)",
+	},
+} satisfies ChartConfig;
+
+const costByKeyConfig = {
+	cost_usd: {
+		label: "Cost USD",
+		color: "var(--chart-4)",
+	},
+} satisfies ChartConfig;
 
 export const Route = createFileRoute("/_authenticated/app/usage")({
 	...pageTitle("Usage"),
@@ -336,94 +369,174 @@ function RouteComponent() {
 
 						<div className="grid gap-6 lg:grid-cols-2">
 							<ChartCard title="Cost by day">
-								<ResponsiveContainer width="100%" height={220}>
-									<AreaChart data={byDay.data ?? []}>
-										<CartesianGrid
-											strokeDasharray="3 3"
-											className="stroke-border"
+								<ChartContainer
+									config={costByDayConfig}
+									className="aspect-auto h-[220px] w-full"
+								>
+									<AreaChart
+										accessibilityLayer
+										data={byDay.data ?? []}
+										margin={{ left: 0, right: 8 }}
+									>
+										<CartesianGrid vertical={false} />
+										<XAxis
+											dataKey="bucket"
+											tickLine={false}
+											axisLine={false}
+											tickMargin={8}
+											tick={{ fontSize: 11 }}
 										/>
-										<XAxis dataKey="bucket" tick={{ fontSize: 11 }} />
-										<YAxis tick={{ fontSize: 11 }} width={48} />
-										<Tooltip />
+										<YAxis
+											tickLine={false}
+											axisLine={false}
+											width={48}
+											tick={{ fontSize: 11 }}
+										/>
+										<ChartTooltip
+											content={
+												<ChartTooltipContent
+													indicator="line"
+													formatter={formatCostTooltip}
+												/>
+											}
+										/>
 										<Area
 											type="monotone"
 											dataKey="cost_usd"
-											name="Cost USD"
-											stroke="var(--chart-1)"
-											fill="var(--chart-2)"
+											stroke="var(--color-cost_usd)"
+											fill="var(--color-cost_usd)"
+											fillOpacity={0.2}
 										/>
 									</AreaChart>
-								</ResponsiveContainer>
+								</ChartContainer>
 							</ChartCard>
 							<ChartCard title="Requests by modality">
-								<ResponsiveContainer width="100%" height={220}>
-									<BarChart data={byModality.data ?? []}>
-										<CartesianGrid
-											strokeDasharray="3 3"
-											className="stroke-border"
+								<ChartContainer
+									config={requestsByModalityConfig}
+									className="aspect-auto h-[220px] w-full"
+								>
+									<BarChart
+										accessibilityLayer
+										data={byModality.data ?? []}
+										margin={{ left: 0, right: 8 }}
+									>
+										<CartesianGrid vertical={false} />
+										<XAxis
+											dataKey="label"
+											tickLine={false}
+											axisLine={false}
+											tickMargin={8}
+											tick={{ fontSize: 11 }}
 										/>
-										<XAxis dataKey="label" tick={{ fontSize: 11 }} />
-										<YAxis tick={{ fontSize: 11 }} width={40} />
-										<Tooltip />
+										<YAxis
+											tickLine={false}
+											axisLine={false}
+											width={40}
+											tick={{ fontSize: 11 }}
+										/>
+										<ChartTooltip
+											content={<ChartTooltipContent indicator="dot" />}
+										/>
 										<Bar
 											dataKey="requests"
-											name="Requests"
-											fill="var(--chart-2)"
+											fill="var(--color-requests)"
+											radius={4}
 										/>
 									</BarChart>
-								</ResponsiveContainer>
+								</ChartContainer>
 							</ChartCard>
 							<ChartCard title="Cost by model">
-								<ResponsiveContainer width="100%" height={220}>
-									<BarChart data={byModel.data ?? []}>
-										<CartesianGrid
-											strokeDasharray="3 3"
-											className="stroke-border"
+								<ChartContainer
+									config={costByModelConfig}
+									className="aspect-auto h-[220px] w-full"
+								>
+									<BarChart
+										accessibilityLayer
+										data={byModel.data ?? []}
+										margin={{ left: 0, right: 8 }}
+									>
+										<CartesianGrid vertical={false} />
+										<XAxis
+											dataKey="label"
+											tickLine={false}
+											axisLine={false}
+											tickMargin={8}
+											tick={{ fontSize: 11 }}
 										/>
-										<XAxis dataKey="label" tick={{ fontSize: 11 }} />
-										<YAxis tick={{ fontSize: 11 }} width={48} />
-										<Tooltip />
+										<YAxis
+											tickLine={false}
+											axisLine={false}
+											width={48}
+											tick={{ fontSize: 11 }}
+										/>
+										<ChartTooltip
+											content={
+												<ChartTooltipContent
+													indicator="dot"
+													formatter={formatCostTooltip}
+												/>
+											}
+										/>
 										<Bar
 											dataKey="cost_usd"
-											name="Cost USD"
-											fill="var(--chart-3)"
+											fill="var(--color-cost_usd)"
+											radius={4}
 										/>
 									</BarChart>
-								</ResponsiveContainer>
+								</ChartContainer>
 							</ChartCard>
 							<ChartCard title="Cost by key">
-								<ResponsiveContainer width="100%" height={220}>
-									<BarChart data={byKey.data ?? []}>
-										<CartesianGrid
-											strokeDasharray="3 3"
-											className="stroke-border"
+								<ChartContainer
+									config={costByKeyConfig}
+									className="aspect-auto h-[220px] w-full"
+								>
+									<BarChart
+										accessibilityLayer
+										data={byKey.data ?? []}
+										margin={{ left: 0, right: 8 }}
+									>
+										<CartesianGrid vertical={false} />
+										<XAxis
+											dataKey="label"
+											tickLine={false}
+											axisLine={false}
+											tickMargin={8}
+											tick={{ fontSize: 11 }}
 										/>
-										<XAxis dataKey="label" tick={{ fontSize: 11 }} />
-										<YAxis tick={{ fontSize: 11 }} width={48} />
-										<Tooltip
-											formatter={(value, _name, item) => {
-												const p = item?.payload as
-													| { owner_email?: string; key_kind?: string }
-													| undefined;
-												const owner =
-													p?.key_kind === "service_account"
-														? "Service account"
-														: p?.owner_email || "";
-												return [
-													typeof value === "number"
-														? `$${value.toFixed(6)}`
-														: String(value),
-													owner ? `Cost (${owner})` : "Cost USD",
-												];
-											}}
+										<YAxis
+											tickLine={false}
+											axisLine={false}
+											width={48}
+											tick={{ fontSize: 11 }}
+										/>
+										<ChartTooltip
+											content={
+												<ChartTooltipContent
+													indicator="dot"
+													labelFormatter={(_, payload) => {
+														const item = payload?.[0]?.payload as
+															| UsageSummaryBucket
+															| undefined;
+														if (!item) return "";
+														const owner =
+															item.key_kind === "service_account"
+																? "Service account"
+																: item.owner_email;
+														return owner
+															? `${item.label} · ${owner}`
+															: item.label;
+													}}
+													formatter={formatCostTooltip}
+												/>
+											}
 										/>
 										<Bar
 											dataKey="cost_usd"
-											name="Cost USD"
-											fill="var(--chart-4)"
+											fill="var(--color-cost_usd)"
+											radius={4}
 										/>
 									</BarChart>
-								</ResponsiveContainer>
+								</ChartContainer>
 							</ChartCard>
 						</div>
 
@@ -514,6 +627,34 @@ function RouteComponent() {
 				)}
 			</QueryGate>
 		</PageBody>
+	);
+}
+
+function formatCostTooltip(
+	value: unknown,
+	_name: unknown,
+	item: { color?: string; payload?: { fill?: string } },
+) {
+	const amount =
+		typeof value === "number"
+			? value
+			: typeof value === "string"
+				? Number(value)
+				: Number.NaN;
+	const indicatorColor = item.payload?.fill ?? item.color;
+	return (
+		<>
+			<div
+				className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+				style={{ backgroundColor: indicatorColor }}
+			/>
+			<div className="flex flex-1 items-center justify-between leading-none">
+				<span className="text-muted-foreground">Cost USD</span>
+				<span className="font-mono font-medium text-foreground tabular-nums">
+					{Number.isFinite(amount) ? `$${amount.toFixed(6)}` : String(value)}
+				</span>
+			</div>
+		</>
 	);
 }
 
