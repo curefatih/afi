@@ -9,10 +9,11 @@ The gateway runs an in-process hook chain on every modality (chat, messages, TTS
 3. **AfterCall** — after the upstream attempt finishes (all modalities).
 4. **AfterChat** — chat only; logging/side effects after AfterCall.
 
-Built-in gates always run in the request path before user BeforeCall hooks (not registered on `pipeline.Hooks`, so replacing the chain cannot bypass them):
+Built-in gates always run in the request path (not registered on `pipeline.Hooks`, so replacing the chain cannot bypass them). Order:
 
-* **cel_policy** — org CEL allow-policies → 403 `policy_violation`
-* **quota** — request quotas → 429 `insufficient_quota`
+1. **cel_policy** — org CEL allow-policies → 403 `policy_violation`
+2. user **BeforeCall** hooks
+3. **quota** — request quotas → 429 `insufficient_quota` (last so denied/errored hooks do not consume quota)
 
 Token quotas still increment after the response (`incrTokens`).
 

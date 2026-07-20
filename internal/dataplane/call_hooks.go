@@ -34,22 +34,18 @@ func newCallContext(key snapshot.APIKey, model, path, modality string, stream bo
 	}
 }
 
-// gateCall runs built-in CEL + quota gates, then user BeforeCall hooks.
+// gateCall runs CEL policy, then user BeforeCall hooks, then request quota.
 // Built-ins are invoked here (not via p.Hooks) so reassigning Hooks cannot bypass them.
+// Quota runs last among BeforeCall gates so a later deny does not consume request quota.
 // ok=false means the response was already written. call.Body may be mutated.
 func (p *Pipeline) gateCall(ctx context.Context, w http.ResponseWriter, snap *snapshot.Snapshot, call *CallContext) bool {
 	if call.Metadata == nil {
 		call.Metadata = map[string]any{}
 	}
 
-	// Policy → quota → user hooks.
-	for _, h := range []BeforeCallHook{
-		&policyCallHook{p: p, snap: snap},
-		&quotaCallHook{p: p, snap: snap},
-	} {
-		if !p.applyBeforeCall(ctx, w, h, call) {
-			return false
-		}
+	// Policy → user hooks → quota (quota last: checkAndIncr has side effects).
+	if !p.applyBeforeCall(ctx, w, &policyCallHook{p: p, snap: snap}, call) {
+		return false
 	}
 	d, err := p.Hooks.RunBeforeCall(ctx, call)
 	if err != nil {
@@ -65,7 +61,7 @@ func (p *Pipeline) gateCall(ctx context.Context, w http.ResponseWriter, snap *sn
 		writeCallDeny(w, d)
 		return false
 	}
-	return true
+	return p.applyBeforeCall(ctx, w, &quotaCallHook{p: p, snap: snap}, call)
 }
 
 func (p *Pipeline) applyBeforeCall(ctx context.Context, w http.ResponseWriter, h BeforeCallHook, call *CallContext) bool {
