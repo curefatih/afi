@@ -3,13 +3,14 @@ package dataplane
 import (
 	"bytes"
 	"context"
-	"github.com/curefatih/afi/internal/adapters/llm"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/curefatih/afi/internal/adapters/llm"
 	"github.com/curefatih/afi/internal/snapshot"
+	sdkhook "github.com/curefatih/afi/sdk/hook"
 )
 
 type memCounters struct {
@@ -80,6 +81,34 @@ func TestQuotaAllowsWhenUnderLimit(t *testing.T) {
 	}
 	if counters.used["api_key|k1|requests|total"] != 1 {
 		t.Fatalf("expected request counter incr, got %+v", counters.used)
+	}
+}
+
+type denyBeforeCall struct{}
+
+func (denyBeforeCall) Name() string { return "deny" }
+func (denyBeforeCall) BeforeCall(context.Context, *CallContext) (CallDecision, error) {
+	return sdkhook.Deny(http.StatusForbidden, "hook_denied", "denied by test hook"), nil
+}
+
+func TestQuotaNotConsumedWhenUserHookDenies(t *testing.T) {
+	holder := NewHolder()
+	holder.Set(testSnapWithRequestQuota(10))
+	counters := &memCounters{used: map[string]int64{}}
+	p := NewPipeline(holder, RegistryWithOpenAI(llm.NewOpenAIClient(nil)), slog.Default())
+	p.Counters = counters
+	p.Hooks = NewHookChain().RegisterBeforeCall(denyBeforeCall{})
+
+	body := `{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hi"}]}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(body))
+	req.Header.Set("Authorization", "Bearer sk-good")
+	rr := httptest.NewRecorder()
+	p.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if got := counters.used["api_key|k1|requests|total"]; got != 0 {
+		t.Fatalf("quota should not be consumed on hook deny, got %d", got)
 	}
 }
 

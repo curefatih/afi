@@ -64,13 +64,21 @@ func (s *UsageSink) InsertUsage(ctx context.Context, e usage.Event, costUSD *flo
 	if err != nil {
 		return err
 	}
+	tags := e.Tags
+	if tags == nil {
+		tags = map[string]string{}
+	}
+	tagsJSON, err := json.Marshal(tags)
+	if err != nil {
+		return err
+	}
 	_, err = s.Pool.Exec(ctx, `
 		INSERT INTO usage_events (
 			organization_id, project_id, api_key_id, model, status,
-			latency_ms, prompt_tokens, completion_tokens, cost_usd, modality, metrics
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+			latency_ms, prompt_tokens, completion_tokens, cost_usd, modality, metrics, tags
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 	`, e.OrganizationID, e.ProjectID, e.APIKeyID, e.Model, e.Status,
-		e.LatencyMs, e.PromptTokens, e.CompletionTokens, costUSD, modality, metricsJSON)
+		e.LatencyMs, e.PromptTokens, e.CompletionTokens, costUSD, modality, metricsJSON, tagsJSON)
 	return err
 }
 

@@ -44,7 +44,7 @@ func TestHookChainAfter(t *testing.T) {
 		t.Fatal("expected AfterChat")
 	}
 	infos := c.Infos()
-	if len(infos) != 1 || !infos[0].AfterChat || infos[0].BeforeChat {
+	if len(infos) != 1 || !infos[0].AfterChat || infos[0].BeforeChat || infos[0].BeforeCall {
 		t.Fatalf("%+v", infos)
 	}
 }

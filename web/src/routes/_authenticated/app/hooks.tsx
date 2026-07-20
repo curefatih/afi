@@ -29,6 +29,8 @@ export const Route = createFileRoute("/_authenticated/app/hooks")({
 
 type HookInfo = {
 	name: string;
+	before_call?: boolean;
+	after_call?: boolean;
 	before_chat?: boolean;
 	after_chat?: boolean;
 };
@@ -71,7 +73,7 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Hooks"
-				description="In-process BeforeChat / AfterChat hooks registered in cmd/gateway at startup. gRPC/WASM runtimes are not shipped yet."
+				description="In-process BeforeCall / AfterCall / BeforeChat / AfterChat hooks registered in cmd/gateway at startup. gRPC/WASM runtimes are not shipped yet."
 			/>
 			<QueryGate
 				isPending={health.isPending}
@@ -87,9 +89,11 @@ function RouteComponent() {
 							</EmptyMedia>
 							<EmptyTitle>No hooks registered</EmptyTitle>
 							<EmptyDescription>
-								Register ChatHook / AfterChatHook in cmd/gateway (see
-								extensions/demohook). Provider SDK adapters live under
-								extensions/ and register via Registry.RegisterSDK.
+								Register BeforeCall / AfterCall / ChatHook in cmd/gateway (see
+								extensions/demohook). For a sample per-tag rate limit, see
+								extensions/tagquota (example only — not registered by default).
+								Provider SDK adapters live under extensions/ and register via
+								Registry.RegisterSDK.
 							</EmptyDescription>
 						</EmptyHeader>
 					</Empty>
@@ -110,6 +114,12 @@ function RouteComponent() {
 											<TableCell className="font-medium">{h.name}</TableCell>
 											<TableCell>
 												<div className="flex flex-wrap gap-1">
+													{h.before_call ? (
+														<Badge variant="secondary">BeforeCall</Badge>
+													) : null}
+													{h.after_call ? (
+														<Badge variant="outline">AfterCall</Badge>
+													) : null}
 													{h.before_chat ? (
 														<Badge variant="secondary">BeforeChat</Badge>
 													) : null}

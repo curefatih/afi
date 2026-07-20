@@ -72,7 +72,7 @@ func (p *Pipeline) Handler() http.Handler {
 func withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-AFI-Tags")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -93,11 +93,11 @@ func (p *Pipeline) handleHealth(w http.ResponseWriter, r *http.Request) {
 	if p.Providers != nil {
 		out["provider_types"] = p.Providers.Types()
 	}
-	if infos := p.Hooks.Infos(); len(infos) > 0 {
-		out["hooks"] = infos
-	} else {
-		out["hooks"] = []HookInfo{}
+	infos := append([]HookInfo(nil), builtinHookInfos()...)
+	if p.Hooks != nil {
+		infos = append(infos, p.Hooks.Infos()...)
 	}
+	out["hooks"] = infos
 	writeJSON(w, http.StatusOK, out)
 }
 
@@ -155,28 +155,11 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if !p.checkPolicies(w, snap, key, reqBody.Model, "/v1/chat/completions", reqBody.Stream) {
+	call := newCallContext(key, reqBody.Model, "/v1/chat/completions", ModalityChat, reqBody.Stream, body, TagsFromRequest(r))
+	if !p.gateCall(ctx, w, snap, call) {
 		return
 	}
-
-	denied, err := p.checkAndIncrRequests(ctx, snap, key)
-	if err != nil {
-		log.Error("quota check", "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]any{
-			"error": map[string]string{"message": "quota check failed", "type": "server_error"},
-		})
-		return
-	}
-	if denied {
-		writeJSON(w, http.StatusTooManyRequests, map[string]any{
-			"error": map[string]string{
-				"message": "quota exceeded",
-				"type":    "insufficient_quota",
-				"code":    "insufficient_quota",
-			},
-		})
-		return
-	}
+	body = call.Body
 
 	route, provider, ok := snap.LookupRoute(key.OrganizationID, reqBody.Model)
 	if !ok {
@@ -202,6 +185,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		})
 		return
 	}
+	call.Body = body
 
 	log.Info("chat.completions",
 		"project_id", key.ProjectID,
@@ -277,7 +261,13 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 			Status:         "error",
 			LatencyMs:      time.Since(start).Milliseconds(),
 			Modality:       ModalityChat,
+			Tags:           cloneTags(call.Tags),
 		})
+		afterInfo := AfterCallInfo{
+			Status: "error", LatencyMs: time.Since(start).Milliseconds(),
+			ProviderType: usedProvider.Type, TargetModel: usedTarget,
+		}
+		p.Hooks.RunAfterCall(ctx, call, afterInfo)
 		p.Hooks.RunAfterChat(ctx, AfterChatInfo{
 			Model: reqBody.Model, Status: "error",
 			LatencyMs:    time.Since(start).Milliseconds(),
@@ -360,7 +350,14 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		CompletionTokens: completionTokens,
 		Modality:         ModalityChat,
 		Metrics:          tokenMetrics(promptTokens, completionTokens),
+		Tags:             cloneTags(call.Tags),
 	})
+	afterInfo := AfterCallInfo{
+		Status: status, LatencyMs: time.Since(start).Milliseconds(),
+		ProviderType: usedProvider.Type, TargetModel: usedTarget,
+		PromptTokens: promptTokens, CompletionTokens: completionTokens,
+	}
+	p.Hooks.RunAfterCall(ctx, call, afterInfo)
 	p.Hooks.RunAfterChat(ctx, AfterChatInfo{
 		Model: reqBody.Model, Status: status,
 		LatencyMs:    time.Since(start).Milliseconds(),

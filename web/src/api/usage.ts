@@ -14,6 +14,7 @@ export type UsageEvent = {
 	completion_tokens: number;
 	modality: string;
 	metrics?: Record<string, unknown>;
+	tags?: Record<string, string>;
 	cost_usd?: number | null;
 	created_at: string;
 	key_name?: string;

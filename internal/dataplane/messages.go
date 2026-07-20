@@ -60,28 +60,11 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !p.checkPolicies(w, snap, key, reqBody.Model, "/v1/messages", reqBody.Stream) {
+	call := newCallContext(key, reqBody.Model, "/v1/messages", ModalityMessages, reqBody.Stream, body, TagsFromRequest(r))
+	if !p.gateCall(ctx, w, snap, call) {
 		return
 	}
-
-	denied, err := p.checkAndIncrRequests(ctx, snap, key)
-	if err != nil {
-		log.Error("quota check", "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]any{
-			"error": map[string]string{"message": "quota check failed", "type": "server_error"},
-		})
-		return
-	}
-	if denied {
-		writeJSON(w, http.StatusTooManyRequests, map[string]any{
-			"error": map[string]string{
-				"message": "quota exceeded",
-				"type":    "insufficient_quota",
-				"code":    "insufficient_quota",
-			},
-		})
-		return
-	}
+	body = call.Body
 
 	route, provider, ok := snap.LookupRoute(key.OrganizationID, reqBody.Model)
 	if !ok {
@@ -170,6 +153,11 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 			Status:         "error",
 			LatencyMs:      time.Since(start).Milliseconds(),
 			Modality:       ModalityMessages,
+			Tags:           cloneTags(call.Tags),
+		})
+		p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+			Status: "error", LatencyMs: time.Since(start).Milliseconds(),
+			ProviderType: usedProvider.Type, TargetModel: usedTarget,
 		})
 		writeJSON(w, http.StatusBadGateway, map[string]any{
 			"error": map[string]string{"message": lastErr.Error(), "type": "server_error"},
@@ -230,6 +218,12 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 		CompletionTokens: completionTokens,
 		Modality:         ModalityMessages,
 		Metrics:          tokenMetrics(promptTokens, completionTokens),
+		Tags:             cloneTags(call.Tags),
+	})
+	p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+		Status: status, LatencyMs: time.Since(start).Milliseconds(),
+		ProviderType: usedProvider.Type, TargetModel: usedTarget,
+		PromptTokens: promptTokens, CompletionTokens: completionTokens,
 	})
 }
 
