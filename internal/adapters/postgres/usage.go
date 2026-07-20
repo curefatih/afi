@@ -33,13 +33,21 @@ func (q *UsageQueries) InsertRecord(ctx context.Context, e usage.Record) error {
 	if err != nil {
 		return err
 	}
+	tags := e.Tags
+	if tags == nil {
+		tags = map[string]string{}
+	}
+	tagsJSON, err := json.Marshal(tags)
+	if err != nil {
+		return err
+	}
 	_, err = q.Pool.Exec(ctx, `
 		INSERT INTO usage_events (
 			organization_id, project_id, api_key_id, model, status,
-			latency_ms, prompt_tokens, completion_tokens, cost_usd, modality, metrics
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+			latency_ms, prompt_tokens, completion_tokens, cost_usd, modality, metrics, tags
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 	`, e.OrganizationID, e.ProjectID, e.APIKeyID, e.Model, e.Status,
-		e.LatencyMs, e.PromptTokens, e.CompletionTokens, e.CostUSD, modality, metricsJSON)
+		e.LatencyMs, e.PromptTokens, e.CompletionTokens, e.CostUSD, modality, metricsJSON, tagsJSON)
 	return err
 }
 
@@ -91,7 +99,7 @@ func (q *UsageQueries) List(ctx context.Context, orgID string, f usage.Filter) (
 	rows, err := q.Pool.Query(ctx, fmt.Sprintf(`
 		SELECT e.id, e.organization_id, e.project_id, e.api_key_id, e.model, e.status,
 			e.latency_ms, e.prompt_tokens, e.completion_tokens, e.cost_usd, e.created_at,
-			e.modality, e.metrics,
+			e.modality, e.metrics, e.tags,
 			COALESCE(k.name, ''), COALESCE(k.kind, ''),
 			COALESCE(k.owner_user_id, ''), COALESCE(u.email, ''), COALESCE(u.name, ''),
 			COALESCE(proj.name, '')
@@ -110,11 +118,11 @@ func (q *UsageQueries) List(ctx context.Context, orgID string, f usage.Filter) (
 	var out []usage.Record
 	for rows.Next() {
 		var e usage.Record
-		var metricsJSON []byte
+		var metricsJSON, tagsJSON []byte
 		if err := rows.Scan(
 			&e.ID, &e.OrganizationID, &e.ProjectID, &e.APIKeyID, &e.Model, &e.Status,
 			&e.LatencyMs, &e.PromptTokens, &e.CompletionTokens, &e.CostUSD, &e.CreatedAt,
-			&e.Modality, &metricsJSON,
+			&e.Modality, &metricsJSON, &tagsJSON,
 			&e.KeyName, &e.KeyKind, &e.OwnerUserID, &e.OwnerEmail, &e.OwnerName,
 			&e.ProjectName,
 		); err != nil {
@@ -125,6 +133,9 @@ func (q *UsageQueries) List(ctx context.Context, orgID string, f usage.Filter) (
 		}
 		if e.Metrics == nil {
 			e.Metrics = map[string]any{}
+		}
+		if len(tagsJSON) > 0 {
+			_ = json.Unmarshal(tagsJSON, &e.Tags)
 		}
 		out = append(out, e)
 	}

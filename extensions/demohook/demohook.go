@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/curefatih/afi/internal/dataplane"
+	sdkhook "github.com/curefatih/afi/sdk/hook"
 )
 
 // Name is the hook identifier exposed on gateway healthz.
@@ -64,7 +64,7 @@ func (Hook) BeforeChat(_ context.Context, body []byte) ([]byte, error) {
 	return body, nil
 }
 
-func (h *Hook) AfterChat(_ context.Context, info dataplane.AfterChatInfo) error {
+func (h *Hook) AfterChat(_ context.Context, info sdkhook.AfterChatInfo) error {
 	log := h.Log
 	if log == nil {
 		log = slog.Default()
@@ -80,6 +80,6 @@ func (h *Hook) AfterChat(_ context.Context, info dataplane.AfterChatInfo) error 
 }
 
 var (
-	_ dataplane.ChatHook      = (*Hook)(nil)
-	_ dataplane.AfterChatHook = (*Hook)(nil)
+	_ sdkhook.ChatHook      = (*Hook)(nil)
+	_ sdkhook.AfterChatHook = (*Hook)(nil)
 )

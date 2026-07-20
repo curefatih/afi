@@ -91,24 +91,11 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 		ttsMetrics["characters"] = n
 	}
 
-	if !p.checkPolicies(w, snap, key, reqBody.Model, "/v1/audio/speech", false) {
+	call := newCallContext(key, reqBody.Model, "/v1/audio/speech", ModalityTTS, false, body, TagsFromRequest(r))
+	if !p.gateCall(ctx, w, snap, call) {
 		return
 	}
-
-	denied, err := p.checkAndIncrRequests(ctx, snap, key)
-	if err != nil {
-		log.Error("quota check", "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]any{
-			"error": map[string]string{"message": "quota check failed", "type": "server_error"},
-		})
-		return
-	}
-	if denied {
-		writeJSON(w, http.StatusTooManyRequests, map[string]any{
-			"error": map[string]string{"message": "quota exceeded", "type": "insufficient_quota", "code": "insufficient_quota"},
-		})
-		return
-	}
+	body = call.Body
 
 	route, provider, ok := snap.LookupRoute(key.OrganizationID, reqBody.Model)
 	if !ok {
@@ -164,7 +151,11 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID, CredentialID: credID,
 			Model: reqBody.Model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
-			Modality: ModalityTTS, Metrics: ttsMetrics,
+			Modality: ModalityTTS, Metrics: ttsMetrics, Tags: cloneTags(call.Tags),
+		})
+		p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+			Status: status, LatencyMs: time.Since(start).Milliseconds(),
+			ProviderType: bound.Type, TargetModel: route.TargetModel,
 		})
 		return
 	}
@@ -180,7 +171,11 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID, CredentialID: credID,
 		Model: reqBody.Model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
-		Modality: ModalityTTS, Metrics: ttsMetrics,
+		Modality: ModalityTTS, Metrics: ttsMetrics, Tags: cloneTags(call.Tags),
+	})
+	p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+		Status: status, LatencyMs: time.Since(start).Milliseconds(),
+		ProviderType: bound.Type, TargetModel: route.TargetModel,
 	})
 }
 
@@ -228,24 +223,11 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if !p.checkPolicies(w, snap, key, model, "/v1/audio/transcriptions", false) {
+	call := newCallContext(key, model, "/v1/audio/transcriptions", ModalitySTT, false, body, TagsFromRequest(r))
+	if !p.gateCall(ctx, w, snap, call) {
 		return
 	}
-
-	denied, err := p.checkAndIncrRequests(ctx, snap, key)
-	if err != nil {
-		log.Error("quota check", "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]any{
-			"error": map[string]string{"message": "quota check failed", "type": "server_error"},
-		})
-		return
-	}
-	if denied {
-		writeJSON(w, http.StatusTooManyRequests, map[string]any{
-			"error": map[string]string{"message": "quota exceeded", "type": "insufficient_quota", "code": "insufficient_quota"},
-		})
-		return
-	}
+	body = call.Body
 
 	route, provider, ok := snap.LookupRoute(key.OrganizationID, model)
 	if !ok {
@@ -301,7 +283,11 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID, CredentialID: credID,
 			Model: model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
-			Modality: ModalitySTT,
+			Modality: ModalitySTT, Tags: cloneTags(call.Tags),
+		})
+		p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+			Status: status, LatencyMs: time.Since(start).Milliseconds(),
+			ProviderType: bound.Type, TargetModel: route.TargetModel,
 		})
 		return
 	}
@@ -317,6 +303,10 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID, CredentialID: credID,
 		Model: model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
-		Modality: ModalitySTT,
+		Modality: ModalitySTT, Tags: cloneTags(call.Tags),
+	})
+	p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+		Status: status, LatencyMs: time.Since(start).Milliseconds(),
+		ProviderType: bound.Type, TargetModel: route.TargetModel,
 	})
 }

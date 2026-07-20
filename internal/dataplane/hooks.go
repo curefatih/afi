@@ -2,39 +2,70 @@ package dataplane
 
 import (
 	"context"
+	"net/http"
 	"sync"
+
+	sdkhook "github.com/curefatih/afi/sdk/hook"
 )
 
-// ChatHook mutates the OpenAI chat request body before provider dispatch.
-type ChatHook interface {
-	Name() string
-	BeforeChat(ctx context.Context, body []byte) ([]byte, error)
-}
+// Re-export SDK hook types so existing extensions can keep importing dataplane.
+type (
+	CallContext   = sdkhook.CallContext
+	CallDecision  = sdkhook.CallDecision
+	Principal     = sdkhook.Principal
+	RouteContext  = sdkhook.RouteContext
+	AfterCallInfo = sdkhook.AfterCallInfo
+	AfterChatInfo = sdkhook.AfterChatInfo
+	BeforeCallHook = sdkhook.BeforeCallHook
+	AfterCallHook  = sdkhook.AfterCallHook
+	ChatHook       = sdkhook.ChatHook
+	AfterChatHook  = sdkhook.AfterChatHook
+)
 
-// AfterChatInfo is passed to AfterChatHook after a chat attempt finishes.
-type AfterChatInfo struct {
-	Model        string
-	Status       string
-	LatencyMs    int64
-	ProviderType string
-	TargetModel  string
-}
-
-// AfterChatHook runs after the chat attempt completes (success or error).
-type AfterChatHook interface {
-	Name() string
-	AfterChat(ctx context.Context, info AfterChatInfo) error
-}
-
-// HookChain runs BeforeChat / AfterChat hooks in registration order.
+// HookChain runs BeforeCall / AfterCall / BeforeChat / AfterChat hooks in registration order.
 type HookChain struct {
-	mu     sync.RWMutex
-	before []ChatHook
-	after  []AfterChatHook
+	mu         sync.RWMutex
+	beforeCall []BeforeCallHook
+	afterCall  []AfterCallHook
+	before     []ChatHook
+	after      []AfterChatHook
 }
 
 func NewHookChain() *HookChain {
 	return &HookChain{}
+}
+
+// RegisterBeforeCall adds a BeforeCall hook (appended; runs after earlier entries).
+func (c *HookChain) RegisterBeforeCall(h BeforeCallHook) *HookChain {
+	if h == nil {
+		return c
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.beforeCall = append(c.beforeCall, h)
+	return c
+}
+
+// PrependBeforeCall inserts a BeforeCall hook at the front of the chain.
+func (c *HookChain) PrependBeforeCall(h BeforeCallHook) *HookChain {
+	if h == nil {
+		return c
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.beforeCall = append([]BeforeCallHook{h}, c.beforeCall...)
+	return c
+}
+
+// RegisterAfterCall adds an AfterCall hook.
+func (c *HookChain) RegisterAfterCall(h AfterCallHook) *HookChain {
+	if h == nil {
+		return c
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.afterCall = append(c.afterCall, h)
+	return c
 }
 
 // Register adds a BeforeChat hook.
@@ -59,10 +90,16 @@ func (c *HookChain) RegisterAfter(h AfterChatHook) *HookChain {
 	return c
 }
 
-// RegisterHook registers a value that may implement ChatHook and/or AfterChatHook.
+// RegisterHook registers a value that may implement any of the hook interfaces.
 func (c *HookChain) RegisterHook(h any) *HookChain {
 	if h == nil {
 		return c
+	}
+	if bc, ok := h.(BeforeCallHook); ok {
+		c.RegisterBeforeCall(bc)
+	}
+	if ac, ok := h.(AfterCallHook); ok {
+		c.RegisterAfterCall(ac)
 	}
 	if b, ok := h.(ChatHook); ok {
 		c.Register(b)
@@ -76,6 +113,8 @@ func (c *HookChain) RegisterHook(h any) *HookChain {
 // HookInfo describes a registered hook for healthz / UI.
 type HookInfo struct {
 	Name       string `json:"name"`
+	BeforeCall bool   `json:"before_call"`
+	AfterCall  bool   `json:"after_call"`
 	BeforeChat bool   `json:"before_chat"`
 	AfterChat  bool   `json:"after_chat"`
 }
@@ -88,21 +127,24 @@ func (c *HookChain) Infos() []HookInfo {
 	defer c.mu.RUnlock()
 	byName := map[string]*HookInfo{}
 	order := make([]string, 0)
-	for _, h := range c.before {
-		n := h.Name()
-		if _, ok := byName[n]; !ok {
-			byName[n] = &HookInfo{Name: n}
-			order = append(order, n)
+	add := func(name string) *HookInfo {
+		if _, ok := byName[name]; !ok {
+			byName[name] = &HookInfo{Name: name}
+			order = append(order, name)
 		}
-		byName[n].BeforeChat = true
+		return byName[name]
+	}
+	for _, h := range c.beforeCall {
+		add(h.Name()).BeforeCall = true
+	}
+	for _, h := range c.afterCall {
+		add(h.Name()).AfterCall = true
+	}
+	for _, h := range c.before {
+		add(h.Name()).BeforeChat = true
 	}
 	for _, h := range c.after {
-		n := h.Name()
-		if _, ok := byName[n]; !ok {
-			byName[n] = &HookInfo{Name: n}
-			order = append(order, n)
-		}
-		byName[n].AfterChat = true
+		add(h.Name()).AfterChat = true
 	}
 	out := make([]HookInfo, 0, len(order))
 	for _, n := range order {
@@ -118,6 +160,39 @@ func (c *HookChain) Names() []string {
 		out = append(out, i.Name)
 	}
 	return out
+}
+
+// RunBeforeCall runs BeforeCall hooks. First deny wins. Mutates call in place.
+func (c *HookChain) RunBeforeCall(ctx context.Context, call *CallContext) (CallDecision, error) {
+	if c == nil || call == nil {
+		return sdkhook.Allow(), nil
+	}
+	c.mu.RLock()
+	hooks := append([]BeforeCallHook(nil), c.beforeCall...)
+	c.mu.RUnlock()
+	for _, h := range hooks {
+		d, err := h.BeforeCall(ctx, call)
+		if err != nil {
+			return CallDecision{}, err
+		}
+		if !d.Allow {
+			return d, nil
+		}
+	}
+	return sdkhook.Allow(), nil
+}
+
+// RunAfterCall runs AfterCall hooks (errors ignored).
+func (c *HookChain) RunAfterCall(ctx context.Context, call *CallContext, info AfterCallInfo) {
+	if c == nil {
+		return
+	}
+	c.mu.RLock()
+	hooks := append([]AfterCallHook(nil), c.afterCall...)
+	c.mu.RUnlock()
+	for _, h := range hooks {
+		_ = h.AfterCall(ctx, call, info)
+	}
 }
 
 func (c *HookChain) RunBeforeChat(ctx context.Context, body []byte) ([]byte, error) {
@@ -147,4 +222,29 @@ func (c *HookChain) RunAfterChat(ctx context.Context, info AfterChatInfo) {
 	for _, h := range hooks {
 		_ = h.AfterChat(ctx, info)
 	}
+}
+
+func writeCallDeny(w http.ResponseWriter, d CallDecision) {
+	status := d.Status
+	if status == 0 {
+		status = http.StatusForbidden
+	}
+	for k, v := range d.Headers {
+		w.Header().Set(k, v)
+	}
+	reason := d.Reason
+	if reason == "" {
+		reason = "policy_violation"
+	}
+	msg := d.Message
+	if msg == "" {
+		msg = reason
+	}
+	writeJSON(w, status, map[string]any{
+		"error": map[string]string{
+			"message": msg,
+			"type":    reason,
+			"code":    reason,
+		},
+	})
 }
