@@ -202,6 +202,10 @@ func sanitizeReturnTo(returnTo string) string {
 	if !strings.HasPrefix(returnTo, "/") || strings.HasPrefix(returnTo, "//") {
 		return ""
 	}
+	// Reject backslashes: some browsers normalize /\evil.com to //evil.com (open redirect).
+	if strings.Contains(returnTo, `\`) {
+		return ""
+	}
 	return returnTo
 }
 
