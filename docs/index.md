@@ -11,7 +11,7 @@ It has two major parts:
 * **Control plane** — configuration, identities, policies, quotas, routing, and platform APIs. Owns business rules and compiles **immutable snapshots**.
 * **Data plane (gateway)** — processes inference with a request pipeline. Loads snapshots and never queries the configuration database during a request.
 
-Start here: [Local development](getting-started/local-dev.md). Platform console: [Web UI](getting-started/web-ui.md). Self-hosting: [Deployment](deployment.md).
+Start here: [Local development](getting-started/local-dev.md). Platform console: [Web UI](getting-started/web-ui.md). Platform SSO: [Single sign-on](getting-started/sso.md). Self-hosting: [Deployment](deployment.md).
 
 ## High-level flow
 

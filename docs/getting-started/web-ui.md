@@ -23,4 +23,4 @@ pnpm --dir web install
 pnpm --dir web dev
 ```
 
-Open http://localhost:3000 and sign in with the seed user (`admin@afi.local` / `admin`). Full stack steps: [Local development](local-dev.md).
+Open http://localhost:3000 and sign in with the seed user (`admin@afi.local` / `admin`), or with a configured [SSO](sso.md) provider. Full stack steps: [Local development](local-dev.md).

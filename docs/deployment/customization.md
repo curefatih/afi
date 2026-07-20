@@ -24,17 +24,21 @@ export AFI_JWT_SECRET="..."   # overrides auth.jwt_secret in the file
 |---------|----------|---------|---------|-------|
 | `AFI_CONFIG` | — | `configs/local.yaml` | All | Config file path |
 | `AFI_DATABASE_URL` | `database_url` | `postgres://afi:afi@localhost:5433/afi?sslmode=disable` | CP, GW, worker, CLI | **Required** in production |
-| `AFI_REDIS_URL` | `redis_url` | `redis://localhost:6379/0` | Gateway | Required for `minute`/`hour`/`day` quotas |
+| `AFI_REDIS_URL` | `redis_url` | `redis://localhost:6379/0` | Gateway, control plane | Gateway timed quotas; SSO CSRF state when `auth.sso.state_store=redis` |
 | `AFI_CONTROLPLANE_ADDR` | `controlplane.addr` | `:8081` | Control plane | Listen address |
 | `AFI_GATEWAY_ADDR` | `gateway.addr` | `:8080` | Gateway | Listen address |
 | `AFI_SNAPSHOT_POLL_INTERVAL` | `gateway.snapshot_poll_interval` | `2s` | Gateway | Poll period (also uses Postgres `LISTEN`) |
 | `AFI_JWT_SECRET` | `auth.jwt_secret` | `afi-local-dev-jwt-secret-change-me` | Control plane | **Change in prod** — HS256 signing |
 | `AFI_TOKEN_TTL` | `auth.token_ttl` | `24h` | Control plane | Platform session JWT lifetime |
 | `AFI_INTERNAL_TOKEN` | `auth.internal_token` | `afi-local-internal-token` | Control plane | Header `X-AFI-Internal-Token` for `/internal/v1/*` |
+| `AFI_AUTH_PUBLIC_BASE_URL` | `auth.public_base_url` | `http://localhost:8081` | Control plane | Public control-plane URL (SSO callbacks) |
+| `AFI_SSO_ENABLED` | `auth.sso.enabled` | `false` | Control plane | Enable platform OAuth2/OIDC SSO |
+| `AFI_SSO_STATE_STORE` | `auth.sso.state_store` | `redis` | Control plane | `redis` (multi-node) or `memory` (single-node) |
 
 ### Auth behavior
 
 * Platform login: `POST /api/v1/platform/auth/login` → JWT signed with `jwt_secret`.
+* Platform SSO (OAuth2/OIDC): see **[Single sign-on (SSO)](../getting-started/sso.md)**. Providers are configured under `auth.sso.providers` (YAML). Prefer `state_store: redis` when running multiple control-plane replicas.
 * Empty `internal_token` fails closed for HTTP internal admin routes.
 * CLI `afi seed` / `afi snapshot publish` run in-process and do not need the header.
 
@@ -202,6 +206,11 @@ auth:
   jwt_secret: "long-random-string"
   token_ttl: "12h"
   internal_token: "another-long-random-string"
+  public_base_url: "https://afi-control.example.com"
+  sso:
+    enabled: false
+    state_store: redis
+    # providers: see getting-started/sso.md
 
 seed:
   virtual_api_key: "sk-live-initial-only"
