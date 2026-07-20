@@ -66,7 +66,7 @@ func (s *Server) handleSSOStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	returnTo := r.URL.Query().Get("redirect")
-	authURL, err := s.auth.BeginSSO(providerID, returnTo)
+	authURL, err := s.auth.BeginSSO(r.Context(), providerID, returnTo)
 	if err != nil {
 		status, msg := mapSSOError(err)
 		writeErr(w, status, msg)

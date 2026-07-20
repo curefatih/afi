@@ -5,14 +5,17 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/curefatih/afi/internal/adapters/postgres"
 	"github.com/curefatih/afi/internal/app/platform"
 	"github.com/curefatih/afi/internal/controlplane"
+	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -66,7 +69,17 @@ func main() {
 		log.Info("platform event outbox enabled")
 	}
 
-	srv := controlplane.NewServer(cfg, store, seeder, snapStore, log, eventOutbox)
+	ssoStates, redisCloser, err := openSSOStateStore(cfg)
+	if err != nil {
+		log.Error("sso state store", "err", err)
+		os.Exit(1)
+	}
+	if redisCloser != nil {
+		defer redisCloser()
+	}
+	log.Info("sso state store", "backend", cfg.Auth.SSO.StateStore)
+
+	srv := controlplane.NewServer(cfg, store, seeder, snapStore, log, eventOutbox, ssoStates)
 	httpServer := &http.Server{
 		Addr:              cfg.ControlPlane.Addr,
 		Handler:           srv.Handler(),
@@ -88,4 +101,29 @@ func main() {
 		log.Error("http server shutdown failed", "err", err)
 	}
 	log.Info("stopped")
+}
+
+func openSSOStateStore(cfg *kernel.Config) (identity.SSOStateStore, func(), error) {
+	backend := strings.ToLower(strings.TrimSpace(cfg.Auth.SSO.StateStore))
+	if backend == "" {
+		backend = "redis"
+	}
+	var rdb *redis.Client
+	var closer func()
+	if backend == "redis" {
+		opt, err := redis.ParseURL(cfg.RedisURL)
+		if err != nil {
+			return nil, nil, err
+		}
+		rdb = redis.NewClient(opt)
+		closer = func() { _ = rdb.Close() }
+	}
+	store, err := controlplane.NewSSOStateStore(cfg, rdb)
+	if err != nil {
+		if closer != nil {
+			closer()
+		}
+		return nil, nil, err
+	}
+	return store, closer, nil
 }

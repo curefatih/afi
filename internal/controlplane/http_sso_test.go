@@ -125,7 +125,7 @@ func TestSSOStartAndCallback(t *testing.T) {
 		t.Fatalf("location %s", loc)
 	}
 
-	_ = states.Put("cbstate", identity.SSOState{
+	_ = states.Put(context.Background(), "cbstate", identity.SSOState{
 		Provider: "google", ReturnTo: "/app/dashboard", ExpiresAt: time.Now().Add(time.Minute),
 	})
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/platform/auth/sso/google/callback?code=abc&state=cbstate", nil)

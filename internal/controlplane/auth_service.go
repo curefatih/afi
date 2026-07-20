@@ -3,19 +3,48 @@ package controlplane
 import (
 	"fmt"
 	"log/slog"
+	"strings"
+	"time"
 
 	adapterauth "github.com/curefatih/afi/internal/adapters/auth"
 	"github.com/curefatih/afi/internal/adapters/memory"
 	"github.com/curefatih/afi/internal/adapters/oauthoidc"
 	"github.com/curefatih/afi/internal/adapters/postgres"
+	afiredis "github.com/curefatih/afi/internal/adapters/redis"
 	"github.com/curefatih/afi/internal/app/platform"
 	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/kernel"
+	goredis "github.com/redis/go-redis/v9"
 )
 
-func newAuthService(cfg *kernel.Config, store *Store) *platform.AuthService {
+const defaultSSOStateTTL = 10 * time.Minute
+
+// NewSSOStateStore builds the CSRF state backend for SSO.
+// Prefer redis for horizontally scaled control planes; memory is for local/tests only.
+func NewSSOStateStore(cfg *kernel.Config, rdb *goredis.Client) (identity.SSOStateStore, error) {
+	backend := "redis"
+	if cfg != nil && cfg.Auth.SSO.StateStore != "" {
+		backend = strings.ToLower(strings.TrimSpace(cfg.Auth.SSO.StateStore))
+	}
+	switch backend {
+	case "memory":
+		return memory.NewSSOStateStore(defaultSSOStateTTL), nil
+	case "redis":
+		if rdb == nil {
+			return nil, fmt.Errorf("auth.sso.state_store=redis requires a redis client (check redis_url)")
+		}
+		return afiredis.NewSSOStateStore(rdb, defaultSSOStateTTL), nil
+	default:
+		return nil, fmt.Errorf("unknown auth.sso.state_store %q", backend)
+	}
+}
+
+func newAuthService(cfg *kernel.Config, store *Store, states identity.SSOStateStore) *platform.AuthService {
 	if cfg == nil || store == nil {
 		return nil
+	}
+	if states == nil {
+		states = memory.NewSSOStateStore(defaultSSOStateTTL)
 	}
 	authAdapter := adapterauth.NewService(cfg.Auth.JWTSecret, cfg.Auth.TokenTTL)
 	svc := &platform.AuthService{
@@ -23,7 +52,7 @@ func newAuthService(cfg *kernel.Config, store *Store) *platform.AuthService {
 		Identities:    postgres.NewExternalIdentities(store.pool),
 		Tokens:        authAdapter,
 		Passwords:     authAdapter,
-		States:        memory.NewSSOStateStore(0),
+		States:        states,
 		Providers:     map[string]identity.FederationProvider{},
 		SSOEnabled:    cfg.Auth.SSO.Enabled,
 		PublicBaseURL: cfg.Auth.PublicBaseURL,
