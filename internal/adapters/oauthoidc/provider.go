@@ -98,6 +98,11 @@ func (p *Provider) Exchange(ctx context.Context, code, redirectURI string) (iden
 	if err := p.ensureEndpoints(ctx); err != nil {
 		return identity.FederatedClaims{}, err
 	}
+	// oauth2.Config.Exchange reads the client from context; without this it uses
+	// http.DefaultClient and ignores timeouts/proxy/TLS on p.cfg.HTTPClient.
+	if p.cfg.HTTPClient != nil {
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, p.cfg.HTTPClient)
+	}
 	tok, err := p.oauth2Config(redirectURI).Exchange(ctx, code)
 	if err != nil {
 		return identity.FederatedClaims{}, fmt.Errorf("token exchange: %w", err)
