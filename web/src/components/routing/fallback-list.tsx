@@ -110,7 +110,7 @@ export function FallbackList({
 						onChange([
 							...fallbacks,
 							{
-								key: crypto.randomUUID(),
+								key: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
 								provider_id: providers[0]?.id ?? "",
 								target_model: defaultTargetModel,
 							},
