@@ -146,7 +146,7 @@ export function SortablePolicyTable({
 							onReorder(
 								next.map((p, i) => ({
 									...p,
-									priority: priorities[i] ?? (next.length - i) * 10,
+									priority: priorities[i],
 								})),
 							);
 						}}
