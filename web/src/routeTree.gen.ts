@@ -17,6 +17,7 @@ import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-passw
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthenticatedAppRouteRouteImport } from './routes/_authenticated/app/route'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app/index'
+import { Route as AuthSsoCallbackRouteImport } from './routes/auth/sso.callback'
 import { Route as AuthInviteTokenRouteImport } from './routes/auth/invite.$token'
 import { Route as AuthenticatedAppUsersRouteImport } from './routes/_authenticated/app/users'
 import { Route as AuthenticatedAppUsageRouteImport } from './routes/_authenticated/app/usage'
@@ -81,6 +82,11 @@ const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedAppRouteRoute,
+} as any)
+const AuthSsoCallbackRoute = AuthSsoCallbackRouteImport.update({
+  id: '/sso/callback',
+  path: '/sso/callback',
+  getParentRoute: () => AuthRouteRoute,
 } as any)
 const AuthInviteTokenRoute = AuthInviteTokenRouteImport.update({
   id: '/invite/$token',
@@ -239,6 +245,7 @@ export interface FileRoutesByFullPath {
   '/app/usage': typeof AuthenticatedAppUsageRoute
   '/app/users': typeof AuthenticatedAppUsersRoute
   '/auth/invite/$token': typeof AuthInviteTokenRoute
+  '/auth/sso/callback': typeof AuthSsoCallbackRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/app/playground/chat': typeof AuthenticatedAppPlaygroundChatRoute
   '/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
@@ -272,6 +279,7 @@ export interface FileRoutesByTo {
   '/app/usage': typeof AuthenticatedAppUsageRoute
   '/app/users': typeof AuthenticatedAppUsersRoute
   '/auth/invite/$token': typeof AuthInviteTokenRoute
+  '/auth/sso/callback': typeof AuthSsoCallbackRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/app/playground/chat': typeof AuthenticatedAppPlaygroundChatRoute
   '/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
@@ -307,6 +315,7 @@ export interface FileRoutesById {
   '/_authenticated/app/usage': typeof AuthenticatedAppUsageRoute
   '/_authenticated/app/users': typeof AuthenticatedAppUsersRoute
   '/auth/invite/$token': typeof AuthInviteTokenRoute
+  '/auth/sso/callback': typeof AuthSsoCallbackRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/playground/chat': typeof AuthenticatedAppPlaygroundChatRoute
   '/_authenticated/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
@@ -343,6 +352,7 @@ export interface FileRouteTypes {
     | '/app/usage'
     | '/app/users'
     | '/auth/invite/$token'
+    | '/auth/sso/callback'
     | '/app/'
     | '/app/playground/chat'
     | '/app/playground/stt'
@@ -376,6 +386,7 @@ export interface FileRouteTypes {
     | '/app/usage'
     | '/app/users'
     | '/auth/invite/$token'
+    | '/auth/sso/callback'
     | '/app'
     | '/app/playground/chat'
     | '/app/playground/stt'
@@ -410,6 +421,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/usage'
     | '/_authenticated/app/users'
     | '/auth/invite/$token'
+    | '/auth/sso/callback'
     | '/_authenticated/app/'
     | '/_authenticated/app/playground/chat'
     | '/_authenticated/app/playground/stt'
@@ -487,6 +499,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/'
       preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/auth/sso/callback': {
+      id: '/auth/sso/callback'
+      path: '/sso/callback'
+      fullPath: '/auth/sso/callback'
+      preLoaderRoute: typeof AuthSsoCallbackRouteImport
+      parentRoute: typeof AuthRouteRoute
     }
     '/auth/invite/$token': {
       id: '/auth/invite/$token'
@@ -664,6 +683,7 @@ interface AuthRouteRouteChildren {
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   AuthSignupRoute: typeof AuthSignupRoute
   AuthInviteTokenRoute: typeof AuthInviteTokenRoute
+  AuthSsoCallbackRoute: typeof AuthSsoCallbackRoute
 }
 
 const AuthRouteRouteChildren: AuthRouteRouteChildren = {
@@ -671,6 +691,7 @@ const AuthRouteRouteChildren: AuthRouteRouteChildren = {
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   AuthSignupRoute: AuthSignupRoute,
   AuthInviteTokenRoute: AuthInviteTokenRoute,
+  AuthSsoCallbackRoute: AuthSsoCallbackRoute,
 }
 
 const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
