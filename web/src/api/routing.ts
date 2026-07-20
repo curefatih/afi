@@ -43,6 +43,23 @@ export const createRouteMutationOptions = () =>
 			),
 	});
 
+export type UpdateRouteInput = {
+	routeId: string;
+	model: string;
+	provider_id: string;
+	target_model?: string;
+	fallbacks?: RouteFallback[];
+};
+
+export const updateRouteMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ routeId, ...body }: UpdateRouteInput) =>
+			apiFetch<RouteConfig>(`/api/v1/platform/routes/${routeId}`, {
+				method: "PATCH",
+				body,
+			}),
+	});
+
 export const deleteRouteMutationOptions = () =>
 	mutationOptions({
 		mutationFn: (routeId: string) =>

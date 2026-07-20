@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "#/lib/api-client";
 
 export type RequestPolicy = {
@@ -21,35 +21,52 @@ export const policiesQueryOptions = (orgId: string) =>
 		enabled: Boolean(orgId),
 	});
 
-export function createPolicyMutationOptions() {
-	return {
-		mutationFn: (input: {
-			orgId: string;
-			name: string;
-			expression: string;
-			enabled?: boolean;
-			priority?: number;
-		}) =>
+export type CreatePolicyInput = {
+	orgId: string;
+	name: string;
+	expression: string;
+	enabled?: boolean;
+	priority?: number;
+};
+
+export const createPolicyMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ orgId, ...body }: CreatePolicyInput) =>
 			apiFetch<RequestPolicy>(
-				`/api/v1/platform/organizations/${input.orgId}/policies`,
+				`/api/v1/platform/organizations/${orgId}/policies`,
 				{
 					method: "POST",
 					body: {
-						name: input.name,
-						expression: input.expression,
-						enabled: input.enabled ?? true,
-						priority: input.priority ?? 100,
+						name: body.name,
+						expression: body.expression,
+						enabled: body.enabled ?? true,
+						priority: body.priority ?? 100,
 					},
 				},
 			),
-	};
-}
+	});
 
-export function deletePolicyMutationOptions() {
-	return {
+export type UpdatePolicyInput = {
+	policyId: string;
+	name?: string;
+	expression?: string;
+	enabled?: boolean;
+	priority?: number;
+};
+
+export const updatePolicyMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ policyId, ...body }: UpdatePolicyInput) =>
+			apiFetch<RequestPolicy>(`/api/v1/platform/policies/${policyId}`, {
+				method: "PATCH",
+				body,
+			}),
+	});
+
+export const deletePolicyMutationOptions = () =>
+	mutationOptions({
 		mutationFn: (policyId: string) =>
 			apiFetch<void>(`/api/v1/platform/policies/${policyId}`, {
 				method: "DELETE",
 			}),
-	};
-}
+	});
