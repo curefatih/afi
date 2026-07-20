@@ -1,6 +1,6 @@
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
-import { apiFetch } from "#/lib/api-client";
 import { PLATFORM_API_URL } from "#/lib/api-base";
+import { apiFetch } from "#/lib/api-client";
 import { useAuthStore } from "#/state/auth-state";
 
 export type MeResponse = {

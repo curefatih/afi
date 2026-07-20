@@ -20,9 +20,7 @@ export const routesQueryOptions = (orgId: string) =>
 	queryOptions({
 		queryKey: ["organizations", orgId, "routes"],
 		queryFn: () =>
-			apiFetch<RouteConfig[]>(
-				`/api/v1/platform/organizations/${orgId}/routes`,
-			),
+			apiFetch<RouteConfig[]>(`/api/v1/platform/organizations/${orgId}/routes`),
 		enabled: !!orgId,
 	});
 
@@ -37,10 +35,10 @@ export type CreateRouteInput = {
 export const createRouteMutationOptions = () =>
 	mutationOptions({
 		mutationFn: ({ orgId, ...body }: CreateRouteInput) =>
-			apiFetch<RouteConfig>(
-				`/api/v1/platform/organizations/${orgId}/routes`,
-				{ method: "POST", body },
-			),
+			apiFetch<RouteConfig>(`/api/v1/platform/organizations/${orgId}/routes`, {
+				method: "POST",
+				body,
+			}),
 	});
 
 export type UpdateRouteInput = {

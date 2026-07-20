@@ -1,0 +1,102 @@
+# CI runs only when a pull request has the run-ci label.
+#
+# Who can add labels: Triage, Write, Maintain, or Admin
+# (repo owner / maintainers). Outside collaborators on fork PRs cannot.
+#
+# Add run-ci to opt a PR in; remove it to stop further runs.
+# New commits re-run CI while the label remains.
+#
+# Jobs also skip when their related paths did not change in the PR.
+
+name: Test
+
+on:
+  pull_request:
+    types: [synchronize, reopened, labeled, unlabeled]
+
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect changes
+    if: contains(github.event.pull_request.labels.*.name, 'run-ci')
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.filter.outputs.go }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            go:
+              - 'go.mod'
+              - 'go.sum'
+              - 'Makefile'
+              - '**/*.go'
+              - 'cmd/**'
+              - 'internal/**'
+              - 'extensions/**'
+              - 'sdk/**'
+              - 'api/**'
+              - 'configs/**'
+              - 'scripts/**'
+              - 'Dockerfile'
+              - '.github/workflows/test.yml'
+            web:
+              - 'web/**'
+              - 'Dockerfile.web'
+              - '.github/workflows/test.yml'
+
+  go:
+    name: Go
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: make build
+
+      - name: Test
+        run: make test
+
+  web:
+    name: Web
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Check
+        run: pnpm check
+
+      - name: Test
+        run: pnpm test

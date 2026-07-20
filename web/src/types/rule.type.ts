@@ -1,47 +1,34 @@
 export type LimitRule = {
-  id: string;
+	id: string;
 
-  type:
-      | "requests"
-      | "input_tokens"
-      | "output_tokens"
-      | "total_tokens"
-      | "spend"
-      | "concurrency";
+	type:
+		| "requests"
+		| "input_tokens"
+		| "output_tokens"
+		| "total_tokens"
+		| "spend"
+		| "concurrency";
 
-  operator:
-      | ">"
-      | ">="
-      | "=";
+	operator: ">" | ">=" | "=";
 
-  value: number;
+	value: number;
 
-  interval:
-      | "second"
-      | "minute"
-      | "hour"
-      | "day"
-      | "month";
+	interval: "second" | "minute" | "hour" | "day" | "month";
 };
 
 export type Condition = {
-  id: string;
+	id: string;
 
-  field:
-    | "provider"
-    | "model"
-    | "api_key"
-    | "region"
-    | "environment"
-    | "tag"
-    | "metadata";
+	field:
+		| "provider"
+		| "model"
+		| "api_key"
+		| "region"
+		| "environment"
+		| "tag"
+		| "metadata";
 
-  operator:
-    | "equals"
-    | "not_equals"
-    | "contains"
-    | "starts_with"
-    | "in";
+	operator: "equals" | "not_equals" | "contains" | "starts_with" | "in";
 
-  value: string;
+	value: string;
 };

@@ -109,21 +109,13 @@ export const orgMailQueryOptions = (orgId: string) =>
 	queryOptions({
 		queryKey: ["organizations", orgId, "mail"],
 		queryFn: () =>
-			apiFetch<OrgMailSettings>(
-				`/api/v1/platform/organizations/${orgId}/mail`,
-			),
+			apiFetch<OrgMailSettings>(`/api/v1/platform/organizations/${orgId}/mail`),
 		enabled: !!orgId,
 	});
 
 export const updateOrgMailMutationOptions = () =>
 	mutationOptions({
-		mutationFn: ({
-			orgId,
-			provider,
-		}: {
-			orgId: string;
-			provider: string;
-		}) =>
+		mutationFn: ({ orgId, provider }: { orgId: string; provider: string }) =>
 			apiFetch<OrgMailSettings>(
 				`/api/v1/platform/organizations/${orgId}/mail`,
 				{ method: "PATCH", body: { provider } },

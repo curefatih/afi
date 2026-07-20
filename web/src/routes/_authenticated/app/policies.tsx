@@ -7,8 +7,8 @@ import { orgMembersQueryOptions } from "#/api/organization";
 import {
 	createPolicyMutationOptions,
 	deletePolicyMutationOptions,
-	type RequestPolicy,
 	policiesQueryOptions,
+	type RequestPolicy,
 	updatePolicyMutationOptions,
 } from "#/api/policies";
 import { PageBody, PageHeader } from "#/components/page-header";
@@ -211,8 +211,7 @@ function RouteComponent() {
 					<>
 						{!isOrgAdmin ? (
 							<p className="text-muted-foreground text-sm">
-								Only organization owners and admins can create or edit
-								policies.
+								Only organization owners and admins can create or edit policies.
 							</p>
 						) : null}
 						<Table>
@@ -363,7 +362,11 @@ function RouteComponent() {
 										policyId: edit.id,
 										name: editName,
 										expression: editExpression,
-										priority: editPriority.trim() === "" || isNaN(Number(editPriority)) ? 100 : Number(editPriority),
+										priority:
+											editPriority.trim() === "" ||
+											Number.isNaN(Number(editPriority))
+												? 100
+												: Number(editPriority),
 										enabled: editEnabled,
 									},
 									{

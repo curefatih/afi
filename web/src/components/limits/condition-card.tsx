@@ -1,139 +1,86 @@
+import { Trash2 } from "lucide-react";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent } from "#/components/ui/card";
 import { Input } from "#/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "#/components/ui/select";
 import { Label } from "../ui/label";
 
-import { Trash2 } from "lucide-react";
-
 type Props = {
-  onDelete(): void;
+	onDelete(): void;
 };
 
-export function ConditionCard({
-  onDelete,
-}: Props) {
-  return (
-    <Card>
+export function ConditionCard({ onDelete }: Props) {
+	return (
+		<Card>
+			<CardContent className="space-y-6 p-6">
+				<div className="flex items-center justify-between">
+					<h4 className="font-medium">Condition</h4>
 
-      <CardContent className="space-y-6 p-6">
+					<Button size="icon" variant="ghost" onClick={onDelete}>
+						<Trash2 className="h-4 w-4" />
+					</Button>
+				</div>
 
-        <div className="flex items-center justify-between">
+				<div className="grid grid-cols-3 gap-4">
+					<div className="space-y-2">
+						<Label>Field</Label>
 
-          <h4 className="font-medium">
-            Condition
-          </h4>
+						<Select>
+							<SelectTrigger>
+								<SelectValue />
+							</SelectTrigger>
 
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={onDelete}
-          >
-            <Trash2 className="h-4 w-4"/>
-          </Button>
+							<SelectContent>
+								<SelectItem value="provider">Provider</SelectItem>
 
-        </div>
+								<SelectItem value="model">Model</SelectItem>
 
-        <div className="grid grid-cols-3 gap-4">
+								<SelectItem value="region">Region</SelectItem>
 
-          <div className="space-y-2">
+								<SelectItem value="environment">Environment</SelectItem>
 
-            <Label>Field</Label>
+								<SelectItem value="api_key">API Key</SelectItem>
 
-            <Select>
+								<SelectItem value="tag">Tag</SelectItem>
 
-              <SelectTrigger>
-                <SelectValue/>
-              </SelectTrigger>
+								<SelectItem value="metadata">Metadata</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
 
-              <SelectContent>
+					<div className="space-y-2">
+						<Label>Operator</Label>
 
-                <SelectItem value="provider">
-                  Provider
-                </SelectItem>
+						<Select>
+							<SelectTrigger>
+								<SelectValue />
+							</SelectTrigger>
 
-                <SelectItem value="model">
-                  Model
-                </SelectItem>
+							<SelectContent>
+								<SelectItem value="equals">Equals</SelectItem>
 
-                <SelectItem value="region">
-                  Region
-                </SelectItem>
+								<SelectItem value="contains">Contains</SelectItem>
 
-                <SelectItem value="environment">
-                  Environment
-                </SelectItem>
+								<SelectItem value="in">In</SelectItem>
 
-                <SelectItem value="api_key">
-                  API Key
-                </SelectItem>
+								<SelectItem value="starts_with">Starts With</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
 
-                <SelectItem value="tag">
-                  Tag
-                </SelectItem>
+					<div className="space-y-2">
+						<Label>Value</Label>
 
-                <SelectItem value="metadata">
-                  Metadata
-                </SelectItem>
-
-              </SelectContent>
-
-            </Select>
-
-          </div>
-
-          <div className="space-y-2">
-
-            <Label>Operator</Label>
-
-            <Select>
-
-              <SelectTrigger>
-                <SelectValue/>
-              </SelectTrigger>
-
-              <SelectContent>
-
-                <SelectItem value="equals">
-                  Equals
-                </SelectItem>
-
-                <SelectItem value="contains">
-                  Contains
-                </SelectItem>
-
-                <SelectItem value="in">
-                  In
-                </SelectItem>
-
-                <SelectItem value="starts_with">
-                  Starts With
-                </SelectItem>
-
-              </SelectContent>
-
-            </Select>
-
-          </div>
-
-          <div className="space-y-2">
-
-            <Label>Value</Label>
-
-            <Input placeholder="production"/>
-
-          </div>
-
-        </div>
-
-      </CardContent>
-
-    </Card>
-  )
+						<Input placeholder="production" />
+					</div>
+				</div>
+			</CardContent>
+		</Card>
+	);
 }

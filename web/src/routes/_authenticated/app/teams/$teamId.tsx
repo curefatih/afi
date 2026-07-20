@@ -102,8 +102,7 @@ function RouteComponent() {
 		return me?.role;
 	}, [membersQuery.data, user?.id]);
 
-	const isTeamManager =
-		myTeamRole === "owner" || myTeamRole === "admin";
+	const isTeamManager = myTeamRole === "owner" || myTeamRole === "admin";
 	const canManage = isOrgAdmin || isTeamManager;
 	// Team admins may add/remove members but cannot change roles.
 	const canChangeRoles = isOrgAdmin || myTeamRole === "owner";
@@ -328,8 +327,7 @@ function RouteComponent() {
 															<Select
 																value={member.role}
 																disabled={
-																	busyUserId === member.user_id ||
-																	isSoleOwner
+																	busyUserId === member.user_id || isSoleOwner
 																}
 																onValueChange={(v) => {
 																	const role = (v ?? member.role) as TeamRole;
@@ -340,17 +338,13 @@ function RouteComponent() {
 																	<SelectValue />
 																</SelectTrigger>
 																<SelectContent>
-																	<SelectItem value="member">
-																		member
-																	</SelectItem>
+																	<SelectItem value="member">member</SelectItem>
 																	<SelectItem value="admin">admin</SelectItem>
 																	<SelectItem value="owner">owner</SelectItem>
 																</SelectContent>
 															</Select>
 														) : (
-															<Badge variant="secondary">
-																{member.role}
-															</Badge>
+															<Badge variant="secondary">{member.role}</Badge>
 														)}
 													</TableCell>
 													{canManage ? (
