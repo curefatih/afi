@@ -81,7 +81,7 @@ The request path never waits on `usage_events` consumers. Run `make run-worker` 
 In-process registration is live:
 
 * **Providers** — `sdk/provider.ChatProvider` via `Registry.RegisterSDK` (example: `extensions/echo`)
-* **Hooks** — `BeforeChat` / `AfterChat` (example: `extensions/demohook`)
+* **Hooks** — `BeforeCall` / `AfterCall` (all modalities) plus `BeforeChat` / `AfterChat`; tags via `X-AFI-Tags` (`extensions/demohook`; example-only tag limits in `extensions/tagquota`)
 * **Provider health** — control-plane rollup from `usage_events` for Providers UI
 
 gRPC / WASM plugin runtimes, billing invoices, external HashiCorp Vault, and multi-region snapshot distribution remain future work.

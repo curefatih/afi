@@ -2,27 +2,52 @@
 
 ## Today (in-process)
 
-The gateway runs an in-process hook chain on the chat path:
+The gateway runs an in-process hook chain on every modality (chat, messages, TTS, STT):
 
-1. **BeforeChat** — after auth/quota, before provider dispatch (`ChatHook`)
-2. **AfterChat** — after the attempt finishes, success or error (`AfterChatHook`)
+1. **BeforeCall** — after auth, before routing/provider. Receives a mutable `CallContext` (principal, route, tags from `X-AFI-Tags`, metadata, body). May **allow**, **enrich**, or **deny** (`Allow=false` + status/reason).
+2. **BeforeChat** — chat only; mutates the OpenAI chat body after BeforeCall allows (existing `ChatHook`).
+3. **AfterCall** — after the upstream attempt finishes (all modalities).
+4. **AfterChat** — chat only; logging/side effects after AfterCall.
+
+Built-in gates at the BeforeCall stage (auto-installed):
+
+* **cel_policy** — org CEL allow-policies → 403 `policy_violation`
+* **quota** — request quotas → 429 `insufficient_quota`
+
+Token quotas still increment after the response (`incrTokens`).
 
 Register in `cmd/gateway`:
 
 ```go
-hooks := dataplane.NewHookChain().RegisterHook(demohook.NewWithLog(log))
+hooks := dataplane.NewHookChain().
+    RegisterHook(demohook.NewWithLog(log)).
+    RegisterBeforeCall(myBeforeCall)
 pipeline.Hooks = hooks
 ```
 
-Inspect active hooks on `GET /healthz` (`hooks` array of `{name, before_chat, after_chat}`) or the platform **Hooks** page.
+Inspect active hooks on `GET /healthz` (`hooks` array of `{name, before_call, after_call, before_chat, after_chat}`) or the platform **Hooks** page.
 
-Seeded demo: [`extensions/demohook`](../../extensions/demohook) prefixes the last user message with `[hook:demo]` and logs AfterChat to the gateway logger.
+### Request tags
 
-Provider adapters use the same in-process path via [`sdk/provider`](../../sdk/provider) + `Registry.RegisterSDK` (see [`extensions/echo`](../../extensions/echo)).
+Clients may send:
+
+```http
+X-AFI-Tags: end-user-id:fatihcure,tenant:acme
+```
+
+Parsed into `CallContext.Tags` and persisted on usage events (`tags` JSONB).
+
+### Example: per-tag request limits
+
+[`extensions/tagquota`](../../extensions/tagquota) is a **reference implementation** of `BeforeCall` with independent counters per tag value (e.g. each `end-user-id`). It is **not** registered by the default gateway — copy or register it yourself if you need that behavior. See the package [README](../../extensions/tagquota/README.md).
+
+Seeded demo: [`extensions/demohook`](../../extensions/demohook) prefixes the last user message with `[hook:demo]` and logs AfterChat.
+
+Provider adapters use [`sdk/provider`](../../sdk/provider) + `Registry.RegisterSDK` (see [`extensions/echo`](../../extensions/echo)). Lifecycle types live in [`sdk/hook`](../../sdk/hook).
 
 ## Future
 
-* gRPC extensions — providers, auth, secrets, notifications
+* gRPC extensions — providers, auth, secrets, notifications, remote BeforeCall
 * WASM extensions — prompt/header mutation, PII masking, enrichment
 
-Redis rate limits and CEL request policies are shipped (see Quotas / Policies in the platform UI).
+Redis rate limits and CEL request policies remain available via the built-in BeforeCall hooks (see Quotas / Policies in the platform UI).
