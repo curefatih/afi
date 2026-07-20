@@ -1,6 +1,6 @@
 .PHONY: doc-serve doc-build doc-deploy \
 	dev-up dev-down dev-build dev-restart \
-	build test test-web test-all fmt tidy verify \
+	build test test-web test-all format format-web format-go tidy tidy-go verify \
 	run-controlplane run-gateway run-worker run-all \
 	seed snapshot-publish \
 	deploy-init deploy-up deploy-down deploy-logs deploy-health \
@@ -63,6 +63,18 @@ test-web:
 
 # Go unit/integration tests plus web vitest suite.
 test-all: test test-web
+
+format-web:
+	cd web && pnpm format --write
+
+format-go:
+	$(GO) fmt ./...
+
+tidy-go:
+	$(GO) mod tidy
+
+format: format-web format-go
+tidy: tidy-go
 
 verify:
 	bash scripts/verify-local.sh
