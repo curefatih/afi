@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/kernel"
 )
 
@@ -80,6 +81,36 @@ func (s *Server) handleUpdatePolicy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, p)
+}
+
+func (s *Server) handleReorderPolicies(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Items []gatewayconfig.PolicyPriorityUpdate `json:"items"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	orgID := r.PathValue("orgID")
+	if err := s.app.ReorderPolicies(r.Context(), orgID, body.Items); errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	} else if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	} else if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	list, err := s.app.ListPolicies(r.Context(), orgID)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if list == nil {
+		list = []RequestPolicy{}
+	}
+	writeJSON(w, http.StatusOK, list)
 }
 
 func (s *Server) handleDeletePolicy(w http.ResponseWriter, r *http.Request) {

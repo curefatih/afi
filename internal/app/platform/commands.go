@@ -298,6 +298,17 @@ func (s *Service) UpdatePolicy(ctx context.Context, policyID string, name, expre
 	return p, nil
 }
 
+func (s *Service) ReorderPolicies(ctx context.Context, orgID string, items []gatewayconfig.PolicyPriorityUpdate) error {
+	if err := s.API.ReorderPolicies(ctx, orgID, items); err != nil {
+		return err
+	}
+	if err := s.publish(ctx, "reordered"); err != nil {
+		return err
+	}
+	s.emit(ctx, EventPolicyUpdated, orgID, orgID)
+	return nil
+}
+
 func (s *Service) DeletePolicy(ctx context.Context, policyID string) error {
 	if err := s.API.DeletePolicy(ctx, policyID); err != nil {
 		return err

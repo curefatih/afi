@@ -120,7 +120,8 @@ function RouteComponent() {
 				err instanceof Error ? err.message : "Failed to reorder policies",
 			);
 		},
-		onSuccess: () => {
+		onSuccess: (list) => {
+			qc.setQueryData(["organizations", orgId, "policies"], list);
 			toast.success("Policy order updated");
 		},
 		onSettled: () => {
@@ -169,8 +170,8 @@ function RouteComponent() {
 			);
 		if (sameOrder) return;
 		reorder.mutate({
+			orgId,
 			policies: next.map((p) => ({ id: p.id, priority: p.priority })),
-			previous: list.map((p) => ({ id: p.id, priority: p.priority })),
 		});
 	};
 	return (

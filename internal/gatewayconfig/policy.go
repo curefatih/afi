@@ -31,8 +31,15 @@ type PolicyRepository interface {
 	Insert(ctx context.Context, p RequestPolicy) error
 	Get(ctx context.Context, policyID string) (*RequestPolicy, error)
 	Update(ctx context.Context, p RequestPolicy) (*RequestPolicy, error)
+	UpdatePriorities(ctx context.Context, orgID string, items []PolicyPriorityUpdate) error
 	Delete(ctx context.Context, policyID string) error
 	OrgID(ctx context.Context, policyID string) (string, error)
+}
+
+// PolicyPriorityUpdate is one policy's new priority in a batch reorder.
+type PolicyPriorityUpdate struct {
+	ID       string `json:"id"`
+	Priority int    `json:"priority"`
 }
 
 // NewRequestPolicy builds a validated policy entity.

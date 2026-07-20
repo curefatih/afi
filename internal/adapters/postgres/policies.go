@@ -80,6 +80,31 @@ func (p *Policies) Update(ctx context.Context, item gatewayconfig.RequestPolicy)
 	return out, err
 }
 
+func (p *Policies) UpdatePriorities(ctx context.Context, orgID string, items []gatewayconfig.PolicyPriorityUpdate) error {
+	if len(items) == 0 {
+		return nil
+	}
+	tx, err := p.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	for _, item := range items {
+		tag, err := tx.Exec(ctx, `
+			UPDATE request_policies SET priority=$2
+			WHERE id=$1 AND organization_id=$3
+		`, item.ID, item.Priority, orgID)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return kernel.ErrNotFound
+		}
+	}
+	return tx.Commit(ctx)
+}
+
 func (p *Policies) Delete(ctx context.Context, policyID string) error {
 	tag, err := p.Pool.Exec(ctx, `DELETE FROM request_policies WHERE id=$1`, policyID)
 	if err != nil {

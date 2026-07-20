@@ -146,6 +146,9 @@ func (m *memAPI) CreatePolicy(context.Context, string, string, string, bool, int
 func (m *memAPI) UpdatePolicy(context.Context, string, *string, *string, *bool, *int) (*gatewayconfig.RequestPolicy, error) {
 	panic("unused")
 }
+func (m *memAPI) ReorderPolicies(context.Context, string, []gatewayconfig.PolicyPriorityUpdate) error {
+	panic("unused")
+}
 func (m *memAPI) DeletePolicy(context.Context, string) error { panic("unused") }
 func (m *memAPI) ListCredentials(context.Context, string) ([]credentials.Credential, error) {
 	return nil, nil
