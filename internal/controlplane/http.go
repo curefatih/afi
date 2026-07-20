@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/curefatih/afi/internal/app/platform"
+	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
 )
@@ -17,6 +18,7 @@ type Server struct {
 	api         platformAPI
 	config      platform.ConfigAPI // app persistence; used by ensureApp when app is nil
 	app         *platform.Service
+	auth        *platform.AuthService
 	members     membershipChecker
 	publisher   snapshotPublisher
 	seeder      *Seeder
@@ -25,7 +27,7 @@ type Server struct {
 	eventOutbox platform.EventEnqueuer
 }
 
-func NewServer(cfg *kernel.Config, store *Store, seeder *Seeder, snapStore snapshot.Store, log *slog.Logger, eventOutbox platform.EventEnqueuer) *Server {
+func NewServer(cfg *kernel.Config, store *Store, seeder *Seeder, snapStore snapshot.Store, log *slog.Logger, eventOutbox platform.EventEnqueuer, ssoStates identity.SSOStateStore) *Server {
 	app := platform.New(store, seeder)
 	app.Events = newPlatformEventBus(log, eventOutbox)
 	return &Server{
@@ -33,6 +35,7 @@ func NewServer(cfg *kernel.Config, store *Store, seeder *Seeder, snapStore snaps
 		api:         store,
 		config:      store,
 		app:         app,
+		auth:        newAuthService(cfg, store, ssoStates),
 		members:     store,
 		publisher:   seeder,
 		seeder:      seeder,
@@ -60,6 +63,9 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("POST /api/v1/platform/auth/login", s.handleLogin)
 	mux.HandleFunc("GET /api/v1/platform/auth/me", s.requireAuth(s.handleMe))
+	mux.HandleFunc("GET /api/v1/platform/auth/sso/providers", s.handleListSSOProviders)
+	mux.HandleFunc("GET /api/v1/platform/auth/sso/{provider}/start", s.handleSSOStart)
+	mux.HandleFunc("GET /api/v1/platform/auth/sso/{provider}/callback", s.handleSSOCallback)
 	mux.HandleFunc("GET /api/v1/platform/auth/invites/{token}", s.handlePreviewInvite)
 	mux.HandleFunc("POST /api/v1/platform/auth/invites/{token}/accept", s.handleAcceptInvite)
 

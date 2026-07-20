@@ -22,33 +22,51 @@ func NewUsers(pool *pgxpool.Pool) *Users {
 
 func (u *Users) GetByEmail(ctx context.Context, email string) (*identity.User, error) {
 	user := &identity.User{}
+	var passwordHash *string
 	err := u.Pool.QueryRow(ctx, `
 		SELECT id, email, name, role, password_hash, created_at
 		FROM users WHERE email = $1
-	`, email).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &user.PasswordHash, &user.CreatedAt)
+	`, email).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &passwordHash, &user.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, kernel.ErrNotFound
 	}
-	return user, err
+	if err != nil {
+		return nil, err
+	}
+	if passwordHash != nil {
+		user.PasswordHash = *passwordHash
+	}
+	return user, nil
 }
 
 func (u *Users) GetByID(ctx context.Context, id string) (*identity.User, error) {
 	user := &identity.User{}
+	var passwordHash *string
 	err := u.Pool.QueryRow(ctx, `
 		SELECT id, email, name, role, password_hash, created_at
 		FROM users WHERE id = $1
-	`, id).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &user.PasswordHash, &user.CreatedAt)
+	`, id).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &passwordHash, &user.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, kernel.ErrNotFound
 	}
-	return user, err
+	if err != nil {
+		return nil, err
+	}
+	if passwordHash != nil {
+		user.PasswordHash = *passwordHash
+	}
+	return user, nil
 }
 
 func (u *Users) Create(ctx context.Context, user identity.User) error {
+	var passwordHash any
+	if user.PasswordHash != "" {
+		passwordHash = user.PasswordHash
+	}
 	_, err := u.Pool.Exec(ctx, `
 		INSERT INTO users (id, email, name, role, password_hash, created_at)
 		VALUES ($1,$2,$3,$4,$5,$6)
-	`, user.ID, user.Email, user.Name, user.Role, user.PasswordHash, user.CreatedAt)
+	`, user.ID, user.Email, user.Name, user.Role, passwordHash, user.CreatedAt)
 	return err
 }
 

@@ -25,6 +25,7 @@ nav:
   - Getting started:
       - Local development: getting-started/local-dev.md
       - Web UI: getting-started/web-ui.md
+      - Single sign-on (SSO): getting-started/sso.md
       - Verify: getting-started/verify.md
   - Development:
       - Repository layout: development/repository-layout.md

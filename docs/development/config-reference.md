@@ -14,13 +14,16 @@ Full operator table (defaults, required vs optional, which process): [Customizat
 |----------|---------|---------|
 | `AFI_CONFIG` | `configs/local.yaml` | controlplane, gateway, cli |
 | `AFI_DATABASE_URL` | from yaml / compose DSN | all DB clients |
-| `AFI_REDIS_URL` | `redis://localhost:6379/0` | gateway timed quotas |
+| `AFI_REDIS_URL` | `redis://localhost:6379/0` | Gateway timed quotas; control plane SSO state when `auth.sso.state_store=redis` |
 | `AFI_CONTROLPLANE_ADDR` | `:8081` | controlplane |
 | `AFI_GATEWAY_ADDR` | `:8080` | gateway |
 | `AFI_SNAPSHOT_POLL_INTERVAL` | `2s` | gateway watch |
 | `AFI_JWT_SECRET` | from yaml | controlplane auth |
 | `AFI_INTERNAL_TOKEN` | from yaml (`afi-local-internal-token`) | HTTP `/internal/v1/*` |
 | `AFI_TOKEN_TTL` | `24h` | JWT lifetime |
+| `AFI_AUTH_PUBLIC_BASE_URL` | `http://localhost:8081` | SSO OAuth callback base URL |
+| `AFI_SSO_ENABLED` | `false` | Enable platform SSO |
+| `AFI_SSO_STATE_STORE` | `redis` | `redis` \| `memory` |
 | `AFI_CREDENTIALS_MASTER_KEY` | from yaml (`credentials.master_key`) | controlplane + gateway (encrypted_db credentials) |
 | `OPENAI_API_KEY` | _(required for OpenAI live calls)_ | gateway → OpenAI |
 | `ANTHROPIC_API_KEY` | _(required for Anthropic routes)_ | gateway → Anthropic |
@@ -104,6 +107,9 @@ Written on first control-plane start (or `make seed`):
 | GET/PATCH | `/api/v1/platform/organizations/{orgID}/mail` (org admin) |
 | POST | `/api/v1/platform/organizations/{orgID}/mail/test` (org admin) |
 | GET/POST | `/api/v1/platform/auth/invites/{token}` / `…/accept` (public) |
+| GET | `/api/v1/platform/auth/sso/providers` (public) |
+| GET | `/api/v1/platform/auth/sso/{provider}/start` (public; redirects to IdP) |
+| GET | `/api/v1/platform/auth/sso/{provider}/callback` (public; redirects to web UI) |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/keys` (personal = member; service_account = org admin) |
 | DELETE | `/api/v1/platform/keys/{keyID}` (admin or personal key owner) |
 | GET/POST | `/api/v1/platform/projects/{projectID}/keys` (POST = org admin) |

@@ -57,11 +57,12 @@ Before exposing AFI beyond localhost:
 
 1. Replace all `CHANGE_ME` values in `deploy/.env` and `deploy/afi.yaml` (or your own config).
 2. Set strong `AFI_JWT_SECRET` and `AFI_INTERNAL_TOKEN` (never use the local-dev defaults).
-3. Use a strong Postgres password and restrict network access to the database.
-4. Inject upstream provider API keys only into the **gateway** process environment.
-5. Change seed admin password and virtual API key (or delete the seed key after creating your own).
-6. Put TLS termination (reverse proxy / load balancer) in front of control plane, gateway, and web.
-7. Prefer private networking between services; only publish the ports clients need.
+3. If enabling platform SSO, set `auth.public_base_url` / `mail.public_app_url` to public HTTPS URLs, use `auth.sso.state_store: redis`, and keep IdP client secrets out of git ([SSO guide](getting-started/sso.md)).
+4. Use a strong Postgres password and restrict network access to the database.
+5. Inject upstream provider API keys only into the **gateway** process environment.
+6. Change seed admin password and virtual API key (or delete the seed key after creating your own).
+7. Put TLS termination (reverse proxy / load balancer) in front of control plane, gateway, and web.
+8. Prefer private networking between services; only publish the ports clients need.
 
 ## Health checks
 
@@ -81,6 +82,7 @@ AFI_CONTROLPLANE_URL=https://cp.example AFI_GATEWAY_URL=https://gw.example \
 
 ## Related
 
+* [Single sign-on (SSO)](getting-started/sso.md)
 * [Platform domain events](development/platform-events.md)
 * [Providers](development/providers.md)
 * [Architecture](development/architecture.md)

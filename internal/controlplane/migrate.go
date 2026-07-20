@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 10
+const schemaVersion = 11
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS platform_event_outbox CASCADE;
@@ -35,6 +35,7 @@ DROP TABLE IF EXISTS team_members CASCADE;
 DROP TABLE IF EXISTS teams CASCADE;
 DROP TABLE IF EXISTS organization_invites CASCADE;
 DROP TABLE IF EXISTS organization_members CASCADE;
+DROP TABLE IF EXISTS external_identities CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS organizations CASCADE;
 DROP TABLE IF EXISTS afi_schema_meta CASCADE;
@@ -57,9 +58,22 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'admin',
-    password_hash TEXT NOT NULL,
+    password_hash TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS external_identities (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL,
+    issuer TEXT NOT NULL DEFAULT '',
+    subject TEXT NOT NULL,
+    email TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (provider, subject)
+);
+CREATE INDEX IF NOT EXISTS external_identities_user_idx
+    ON external_identities (user_id);
 
 CREATE TABLE IF NOT EXISTS organization_members (
     organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -536,6 +550,25 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			ON credential_assignments (organization_id);
 	`); err != nil {
 		return fmt.Errorf("cycle16 provider credentials: %w", err)
+	}
+
+	// Cycle 17: SSO external identities + nullable password for federated-only users.
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+		CREATE TABLE IF NOT EXISTS external_identities (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			provider TEXT NOT NULL,
+			issuer TEXT NOT NULL DEFAULT '',
+			subject TEXT NOT NULL,
+			email TEXT NOT NULL DEFAULT '',
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			UNIQUE (provider, subject)
+		);
+		CREATE INDEX IF NOT EXISTS external_identities_user_idx
+			ON external_identities (user_id);
+	`); err != nil {
+		return fmt.Errorf("cycle17 external identities: %w", err)
 	}
 	return nil
 }

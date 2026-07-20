@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
 	createFileRoute,
 	Link,
@@ -7,7 +7,11 @@ import {
 	useSearch,
 } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { loginMutationOptions } from "#/api/auth";
+import {
+	loginMutationOptions,
+	ssoProvidersQueryOptions,
+	startSSO,
+} from "#/api/auth";
 import { Button } from "#/components/ui/button";
 import {
 	Card,
@@ -42,6 +46,7 @@ function RouteComponent() {
 	const loginMutation = useMutation({
 		...loginMutationOptions(),
 	});
+	const ssoProviders = useQuery(ssoProvidersQueryOptions());
 
 	const form = useForm({
 		validators: {
@@ -71,6 +76,8 @@ function RouteComponent() {
 			);
 		},
 	});
+
+	const providers = ssoProviders.data ?? [];
 
 	return (
 		<div className={cn("flex flex-col gap-6")}>
@@ -136,6 +143,30 @@ function RouteComponent() {
 								<Button type="submit" disabled={loginMutation.isPending}>
 									{loginMutation.isPending ? "Signing in…" : "Sign in"}
 								</Button>
+								{providers.length > 0 ? (
+									<>
+										<div className="relative my-2">
+											<div className="absolute inset-0 flex items-center">
+												<span className="w-full border-t" />
+											</div>
+											<div className="relative flex justify-center text-xs uppercase">
+												<span className="bg-card px-2 text-muted-foreground">
+													Or continue with
+												</span>
+											</div>
+										</div>
+										{providers.map((p) => (
+											<Button
+												key={p.id}
+												type="button"
+												variant="outline"
+												onClick={() => startSSO(p.id, search.redirect)}
+											>
+												{p.display_name}
+											</Button>
+										))}
+									</>
+								) : null}
 								<FieldDescription className="text-center">
 									Self-serve signup is not enabled yet.{" "}
 									<Link
