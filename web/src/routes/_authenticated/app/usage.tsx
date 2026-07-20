@@ -22,6 +22,8 @@ import {
 	Bar,
 	BarChart,
 	CartesianGrid,
+	ComposedChart,
+	Line,
 	XAxis,
 	YAxis,
 } from "recharts";
@@ -78,6 +80,17 @@ import {
 import { pageTitle } from "#/lib/page-meta";
 import { cn } from "#/lib/utils";
 import { useActiveOrg } from "#/state/organization-state";
+
+const usageByDayConfig = {
+	requests: {
+		label: "Requests",
+		color: "var(--chart-2)",
+	},
+	trend: {
+		label: "Trend",
+		color: "oklch(0.72 0.18 55)",
+	},
+} satisfies ChartConfig;
 
 const costByDayConfig = {
 	cost_usd: {
@@ -205,6 +218,11 @@ function RouteComponent() {
 	}, [modelOptions.data]);
 
 	const hasAny = (byDay.data?.length ?? 0) > 0 || (usage.data?.length ?? 0) > 0;
+
+	const usageByDay = useMemo(
+		() => withPaddedUsageDays(byDay.data ?? [], dateRange.from, dateRange.to),
+		[byDay.data, dateRange.from, dateRange.to],
+	);
 
 	return (
 		<PageBody>
@@ -367,6 +385,76 @@ function RouteComponent() {
 							/>
 						</div>
 
+						<ChartCard title="Usage by day">
+							<ChartContainer
+								config={usageByDayConfig}
+								className="aspect-auto h-[260px] w-full"
+							>
+								<ComposedChart
+									accessibilityLayer
+									data={usageByDay}
+									margin={{ left: 0, right: 8 }}
+									barCategoryGap="18%"
+								>
+									<CartesianGrid vertical={false} />
+									<XAxis
+										dataKey="bucket"
+										tickLine={false}
+										axisLine={false}
+										tickMargin={8}
+										tick={{ fontSize: 11 }}
+										tickFormatter={formatDayTick}
+										minTickGap={24}
+										padding={{ left: 8, right: 8 }}
+									/>
+									<YAxis
+										tickLine={false}
+										axisLine={false}
+										width={40}
+										tick={{ fontSize: 11 }}
+										allowDecimals={false}
+									/>
+									<ChartTooltip
+										content={
+											<ChartTooltipContent
+												indicator="dot"
+												labelFormatter={(_, payload) => {
+													const item = payload?.[0]?.payload as
+														| { bucket?: string }
+														| undefined;
+													return item?.bucket
+														? formatDayLabel(item.bucket)
+														: "";
+												}}
+											/>
+										}
+									/>
+									<Bar
+										dataKey="requests"
+										fill="var(--color-requests)"
+										fillOpacity={0.55}
+										radius={4}
+										maxBarSize={40}
+									/>
+									<Line
+										type="monotone"
+										dataKey="trend"
+										stroke="var(--color-trend)"
+										strokeWidth={1.5}
+										strokeLinecap="round"
+										dot={false}
+										connectNulls={false}
+										activeDot={{
+											r: 4,
+											strokeWidth: 2,
+											stroke: "var(--background)",
+											fill: "var(--color-trend)",
+										}}
+									/>
+								</ComposedChart>
+							</ChartContainer>
+						</ChartCard>
+
 						<div className="grid gap-6 lg:grid-cols-2">
 							<ChartCard title="Cost by day">
 								<ChartContainer
@@ -385,6 +473,8 @@ function RouteComponent() {
 											axisLine={false}
 											tickMargin={8}
 											tick={{ fontSize: 11 }}
+											tickFormatter={formatDayTick}
+											minTickGap={24}
 										/>
 										<YAxis
 											tickLine={false}
@@ -397,6 +487,14 @@ function RouteComponent() {
 												<ChartTooltipContent
 													indicator="line"
 													formatter={formatCostTooltip}
+													labelFormatter={(_, payload) => {
+														const item = payload?.[0]?.payload as
+															| { bucket?: string }
+															| undefined;
+														return item?.bucket
+															? formatDayLabel(item.bucket)
+															: "";
+													}}
 												/>
 											}
 										/>
@@ -628,6 +726,161 @@ function RouteComponent() {
 			</QueryGate>
 		</PageBody>
 	);
+}
+
+/**
+ * Fill every UTC day in the selected range (empty days pad left/right of real data).
+ * Trend is computed only across the span that has real buckets so the line
+ * does not stretch through the padding.
+ */
+function withPaddedUsageDays(
+	data: UsageSummaryBucket[],
+	from: Date,
+	to: Date,
+): Array<UsageSummaryBucket & { trend: number | null }> {
+	const byBucket = new Map(data.map((d) => [d.bucket, d]));
+	const days = eachUTCDay(from, to).map(
+		(bucket) => byBucket.get(bucket) ?? emptyDayBucket(bucket),
+	);
+	if (days.length === 0) return [];
+
+	const dataBuckets = new Set(data.map((d) => d.bucket));
+	const coreStart = days.findIndex((d) => dataBuckets.has(d.bucket));
+	let coreEnd = -1;
+	for (let i = days.length - 1; i >= 0; i--) {
+		if (dataBuckets.has(days[i].bucket)) {
+			coreEnd = i;
+			break;
+		}
+	}
+
+	// Data outside the selected range: fall back to the data span only.
+	if (coreStart < 0 || coreEnd < 0) {
+		const fallback = eachUTCDaySpan(data).map(
+			(bucket) => byBucket.get(bucket) ?? emptyDayBucket(bucket),
+		);
+		return withLinearTrend(fallback, "requests").map((d) => ({
+			...d,
+			trend: d.trend,
+		}));
+	}
+
+	const core = days.slice(coreStart, coreEnd + 1);
+	const trended = withLinearTrend(core, "requests");
+
+	return days.map((d, i) => {
+		if (i < coreStart || i > coreEnd) {
+			return { ...d, trend: null };
+		}
+		return { ...d, trend: trended[i - coreStart].trend };
+	});
+}
+
+function emptyDayBucket(bucket: string): UsageSummaryBucket {
+	return {
+		bucket,
+		label: bucket,
+		requests: 0,
+		cost_usd: 0,
+		prompt_tokens: 0,
+		completion_tokens: 0,
+	};
+}
+
+function eachUTCDay(from: Date, to: Date): string[] {
+	const start = Date.UTC(
+		from.getUTCFullYear(),
+		from.getUTCMonth(),
+		from.getUTCDate(),
+	);
+	const end = Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate());
+	if (end < start) return [];
+	const out: string[] = [];
+	for (let t = start; t <= end; t += 86_400_000) {
+		out.push(formatUTCDay(t));
+	}
+	return out;
+}
+
+function eachUTCDaySpan(data: UsageSummaryBucket[]): string[] {
+	if (data.length === 0) return [];
+	const buckets = data.map((d) => d.bucket).sort();
+	const start = parseDayBucket(buckets[0]);
+	const end = parseDayBucket(buckets[buckets.length - 1]);
+	if (!start || !end) return buckets;
+	return eachUTCDay(start, end);
+}
+
+function formatUTCDay(ms: number): string {
+	const d = new Date(ms);
+	const y = d.getUTCFullYear();
+	const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+	const day = String(d.getUTCDate()).padStart(2, "0");
+	return `${y}-${m}-${day}`;
+}
+
+function withLinearTrend<T extends Record<string, unknown>>(
+	data: T[],
+	key: keyof T & string,
+): Array<T & { trend: number }> {
+	const n = data.length;
+	if (n === 0) return [];
+	if (n === 1) {
+		const y = Number(data[0][key]);
+		return [{ ...data[0], trend: Number.isFinite(y) ? y : 0 }];
+	}
+
+	let sumX = 0;
+	let sumY = 0;
+	let sumXY = 0;
+	let sumXX = 0;
+	for (let i = 0; i < n; i++) {
+		const y = Number(data[i][key]);
+		const value = Number.isFinite(y) ? y : 0;
+		sumX += i;
+		sumY += value;
+		sumXY += i * value;
+		sumXX += i * i;
+	}
+	const denom = n * sumXX - sumX * sumX;
+	const slope = denom === 0 ? 0 : (n * sumXY - sumX * sumY) / denom;
+	const intercept = (sumY - slope * sumX) / n;
+
+	return data.map((d, i) => ({
+		...d,
+		trend: Math.round((intercept + slope * i) * 100) / 100,
+	}));
+}
+
+function formatDayTick(value: string) {
+	const d = parseDayBucket(value);
+	if (!d) return value;
+	return d.toLocaleDateString(undefined, {
+		month: "short",
+		day: "numeric",
+		timeZone: "UTC",
+	});
+}
+
+function formatDayLabel(value: string) {
+	const d = parseDayBucket(value);
+	if (!d) return value;
+	return d.toLocaleDateString(undefined, {
+		weekday: "short",
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+		timeZone: "UTC",
+	});
+}
+
+function parseDayBucket(value: string): Date | null {
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+	if (!match) return null;
+	const d = new Date(
+		Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])),
+	);
+	return Number.isNaN(d.getTime()) ? null : d;
 }
 
 function formatCostTooltip(
