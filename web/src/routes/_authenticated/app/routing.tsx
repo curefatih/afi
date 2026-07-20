@@ -9,12 +9,15 @@ import {
 	createRouteMutationOptions,
 	deleteRouteMutationOptions,
 	type RouteConfig,
-	type RouteFallback,
 	routesQueryOptions,
 	updateRouteMutationOptions,
 } from "#/api/routing";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
+import {
+	FallbackList,
+	type FallbackRow,
+} from "#/components/routing/fallback-list";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import {
@@ -108,17 +111,13 @@ function RouteComponent() {
 	const [model, setModel] = useState("ping-model");
 	const [targetModel, setTargetModel] = useState("gpt-4o-mini");
 	const [providerId, setProviderId] = useState("");
-	const [fallbacks, setFallbacks] = useState<
-		Array<RouteFallback & { key: string }>
-	>([]);
+	const [fallbacks, setFallbacks] = useState<FallbackRow[]>([]);
 	const [error, setError] = useState<string | null>(null);
 
 	const [editModel, setEditModel] = useState("");
 	const [editTargetModel, setEditTargetModel] = useState("");
 	const [editProviderId, setEditProviderId] = useState("");
-	const [editFallbacks, setEditFallbacks] = useState<
-		Array<RouteFallback & { key: string }>
-	>([]);
+	const [editFallbacks, setEditFallbacks] = useState<FallbackRow[]>([]);
 	const [editError, setEditError] = useState<string | null>(null);
 
 	const openEdit = (r: RouteConfig) => {
@@ -365,86 +364,12 @@ function RouteComponent() {
 								</SelectContent>
 							</Select>
 						</div>
-						<div className="space-y-2">
-							<div className="flex items-center justify-between">
-								<Label>Fallbacks</Label>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={() =>
-										setFallbacks((prev) => [
-											...prev,
-											{
-												key: crypto.randomUUID(),
-												provider_id: providerList[0]?.id ?? "",
-												target_model: targetModel || model,
-											},
-										])
-									}
-								>
-									<PlusIcon />
-									Add
-								</Button>
-							</div>
-							{fallbacks.map((fb) => (
-								<div
-									key={fb.key}
-									className="grid gap-2 rounded-md border p-2 sm:grid-cols-[1fr_1fr_auto]"
-								>
-									<Select
-										value={fb.provider_id}
-										onValueChange={(v) => {
-											const next = v ?? "";
-											setFallbacks((prev) =>
-												prev.map((row) =>
-													row.key === fb.key
-														? { ...row, provider_id: next }
-														: row,
-												),
-											);
-										}}
-									>
-										<SelectTrigger className="w-full">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											{providerList.map((p) => (
-												<SelectItem key={p.id} value={p.id}>
-													{p.name}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-									<Input
-										placeholder="target model"
-										value={fb.target_model}
-										onChange={(e) => {
-											const v = e.target.value;
-											setFallbacks((prev) =>
-												prev.map((row) =>
-													row.key === fb.key
-														? { ...row, target_model: v }
-														: row,
-												),
-											);
-										}}
-									/>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={() =>
-											setFallbacks((prev) =>
-												prev.filter((row) => row.key !== fb.key),
-											)
-										}
-									>
-										Remove
-									</Button>
-								</div>
-							))}
-						</div>
+						<FallbackList
+							fallbacks={fallbacks}
+							onChange={setFallbacks}
+							providers={providerList}
+							defaultTargetModel={targetModel || model}
+						/>
 						{error ? <p className="text-destructive text-xs">{error}</p> : null}
 						<SheetFooter>
 							<Button
@@ -544,86 +469,12 @@ function RouteComponent() {
 									</SelectContent>
 								</Select>
 							</div>
-							<div className="space-y-2">
-								<div className="flex items-center justify-between">
-									<Label>Fallbacks</Label>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={() =>
-											setEditFallbacks((prev) => [
-												...prev,
-												{
-													key: crypto.randomUUID(),
-													provider_id: providerList[0]?.id ?? "",
-													target_model: editTargetModel || editModel,
-												},
-											])
-										}
-									>
-										<PlusIcon />
-										Add
-									</Button>
-								</div>
-								{editFallbacks.map((fb) => (
-									<div
-										key={fb.key}
-										className="grid gap-2 rounded-md border p-2 sm:grid-cols-[1fr_1fr_auto]"
-									>
-										<Select
-											value={fb.provider_id}
-											onValueChange={(v) => {
-												const next = v ?? "";
-												setEditFallbacks((prev) =>
-													prev.map((row) =>
-														row.key === fb.key
-															? { ...row, provider_id: next }
-															: row,
-													),
-												);
-											}}
-										>
-											<SelectTrigger className="w-full">
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												{providerList.map((p) => (
-													<SelectItem key={p.id} value={p.id}>
-														{p.name}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<Input
-											placeholder="target model"
-											value={fb.target_model}
-											onChange={(e) => {
-												const v = e.target.value;
-												setEditFallbacks((prev) =>
-													prev.map((row) =>
-														row.key === fb.key
-															? { ...row, target_model: v }
-															: row,
-													),
-												);
-											}}
-										/>
-										<Button
-											type="button"
-											variant="outline"
-											size="sm"
-											onClick={() =>
-												setEditFallbacks((prev) =>
-													prev.filter((row) => row.key !== fb.key),
-												)
-											}
-										>
-											Remove
-										</Button>
-									</div>
-								))}
-							</div>
+							<FallbackList
+								fallbacks={editFallbacks}
+								onChange={setEditFallbacks}
+								providers={providerList}
+								defaultTargetModel={editTargetModel || editModel}
+							/>
 							{editError ? (
 								<p className="text-destructive text-xs">{editError}</p>
 							) : null}

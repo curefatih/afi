@@ -9,10 +9,12 @@ import {
 	deletePolicyMutationOptions,
 	policiesQueryOptions,
 	type RequestPolicy,
+	reorderPoliciesMutationOptions,
 	updatePolicyMutationOptions,
 } from "#/api/policies";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { CelExpressionEditor } from "#/components/policies/cel-expression-editor";
+import { SortablePolicyTable } from "#/components/policies/sortable-policy-table";
 import { QueryGate } from "#/components/query-state";
 import { Button } from "#/components/ui/button";
 import {
@@ -34,14 +36,6 @@ import {
 	SheetTitle,
 } from "#/components/ui/sheet";
 import { Switch } from "#/components/ui/switch";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "#/components/ui/table";
 import { CEL_EXAMPLES, CEL_VARIABLES } from "#/lib/cel-policy-catalog";
 import { pageTitle } from "#/lib/page-meta";
 import { useAuthUser } from "#/state/auth-state";
@@ -100,6 +94,41 @@ function RouteComponent() {
 			toast.success("Policy deleted");
 		},
 	});
+	const reorder = useMutation({
+		...reorderPoliciesMutationOptions(),
+		onMutate: async (vars) => {
+			const queryKey = ["organizations", orgId, "policies"] as const;
+			await qc.cancelQueries({ queryKey });
+			const previous = qc.getQueryData<RequestPolicy[]>(queryKey);
+			if (previous) {
+				const byId = new Map(previous.map((p) => [p.id, p]));
+				qc.setQueryData<RequestPolicy[]>(
+					queryKey,
+					vars.policies.flatMap((p) => {
+						const cur = byId.get(p.id);
+						return cur ? [{ ...cur, priority: p.priority }] : [];
+					}),
+				);
+			}
+			return { previous };
+		},
+		onError: (err, _vars, ctx) => {
+			if (ctx?.previous) {
+				qc.setQueryData(["organizations", orgId, "policies"], ctx.previous);
+			}
+			toast.error(
+				err instanceof Error ? err.message : "Failed to reorder policies",
+			);
+		},
+		onSuccess: () => {
+			toast.success("Policy order updated");
+		},
+		onSettled: () => {
+			void qc.invalidateQueries({
+				queryKey: ["organizations", orgId, "policies"],
+			});
+		},
+	});
 
 	const [name, setName] = useState("");
 	const [expression, setExpression] = useState(
@@ -123,8 +152,27 @@ function RouteComponent() {
 		setEditError(null);
 	};
 
-	const list = policies.data ?? [];
+	const list = useMemo(() => {
+		const rows = [...(policies.data ?? [])];
+		rows.sort((a, b) => {
+			if (a.priority !== b.priority) return b.priority - a.priority;
+			return a.name.localeCompare(b.name);
+		});
+		return rows;
+	}, [policies.data]);
 
+	const handleReorder = (next: RequestPolicy[]) => {
+		const sameOrder =
+			next.length === list.length &&
+			next.every(
+				(p, i) => p.id === list[i]?.id && p.priority === list[i]?.priority,
+			);
+		if (sameOrder) return;
+		reorder.mutate({
+			policies: next.map((p) => ({ id: p.id, priority: p.priority })),
+			previous: list.map((p) => ({ id: p.id, priority: p.priority })),
+		});
+	};
 	return (
 		<PageBody>
 			<PageHeader
@@ -214,48 +262,15 @@ function RouteComponent() {
 								Only organization owners and admins can create or edit policies.
 							</p>
 						) : null}
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Name</TableHead>
-									<TableHead>Priority</TableHead>
-									<TableHead>Enabled</TableHead>
-									<TableHead>Expression</TableHead>
-									{isOrgAdmin ? <TableHead className="w-40" /> : null}
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{list.map((p) => (
-									<TableRow key={p.id}>
-										<TableCell className="font-medium">{p.name}</TableCell>
-										<TableCell>{p.priority}</TableCell>
-										<TableCell>{p.enabled ? "yes" : "no"}</TableCell>
-										<TableCell className="font-mono text-xs max-w-md truncate">
-											{p.expression}
-										</TableCell>
-										{isOrgAdmin ? (
-											<TableCell className="space-x-2">
-												<Button
-													variant="outline"
-													size="sm"
-													onClick={() => openEdit(p)}
-												>
-													Edit
-												</Button>
-												<Button
-													variant="outline"
-													size="sm"
-													disabled={del.isPending}
-													onClick={() => del.mutate(p.id)}
-												>
-													Delete
-												</Button>
-											</TableCell>
-										) : null}
-									</TableRow>
-								))}
-							</TableBody>
-						</Table>
+						<SortablePolicyTable
+							policies={list}
+							canEdit={isOrgAdmin}
+							disabled={reorder.isPending}
+							onReorder={handleReorder}
+							onEdit={openEdit}
+							onDelete={(id) => del.mutate(id)}
+							deletePending={del.isPending}
+						/>
 					</>
 				)}
 			</QueryGate>
@@ -309,7 +324,8 @@ function RouteComponent() {
 								onChange={(e) => setPriority(e.target.value)}
 							/>
 							<p className="text-[11px] text-muted-foreground">
-								Higher priority runs first when multiple policies apply.
+								Higher priority runs first. You can also drag rows in the table
+								to set order.
 							</p>
 						</div>
 						<CelExpressionEditor
@@ -396,7 +412,8 @@ function RouteComponent() {
 									onChange={(e) => setEditPriority(e.target.value)}
 								/>
 								<p className="text-[11px] text-muted-foreground">
-									Higher priority runs first when multiple policies apply.
+									Higher priority runs first. You can also drag rows in the
+									table to set order.
 								</p>
 							</div>
 							<div className="flex items-center justify-between gap-2">

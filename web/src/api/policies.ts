@@ -70,3 +70,24 @@ export const deletePolicyMutationOptions = () =>
 				method: "DELETE",
 			}),
 	});
+
+export type ReorderPoliciesInput = {
+	policies: Array<Pick<RequestPolicy, "id" | "priority">>;
+	previous: Array<Pick<RequestPolicy, "id" | "priority">>;
+};
+
+/** Persist priority changes sequentially (each update publishes a snapshot). */
+export const reorderPoliciesMutationOptions = () =>
+	mutationOptions({
+		mutationFn: async ({ policies, previous }: ReorderPoliciesInput) => {
+			const prevById = new Map(previous.map((p) => [p.id, p.priority]));
+			for (const p of policies) {
+				if (prevById.get(p.id) === p.priority) continue;
+				await apiFetch<RequestPolicy>(`/api/v1/platform/policies/${p.id}`, {
+					method: "PATCH",
+					body: { priority: p.priority },
+				});
+			}
+			return policies;
+		},
+	});
