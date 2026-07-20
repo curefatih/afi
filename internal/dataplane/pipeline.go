@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/curefatih/afi/internal/adapters/secrets"
@@ -43,8 +42,6 @@ type Pipeline struct {
 	Counters    CounterStore
 	Policies    *policy.Evaluator
 	Credentials secrets.CredentialOpener
-
-	builtinHooksOnce sync.Once
 }
 
 // NewPipeline builds a pipeline with an explicit provider registry.
@@ -62,7 +59,6 @@ func NewPipelineWithRegistry(holder *Holder, reg *Registry, log *slog.Logger) *P
 }
 
 func (p *Pipeline) Handler() http.Handler {
-	p.installBuiltinCallHooksOnce()
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", p.handleHealth)
 	mux.HandleFunc("GET /v1/models", p.handleModels)
@@ -97,11 +93,11 @@ func (p *Pipeline) handleHealth(w http.ResponseWriter, r *http.Request) {
 	if p.Providers != nil {
 		out["provider_types"] = p.Providers.Types()
 	}
-	if infos := p.Hooks.Infos(); len(infos) > 0 {
-		out["hooks"] = infos
-	} else {
-		out["hooks"] = []HookInfo{}
+	infos := append([]HookInfo(nil), builtinHookInfos()...)
+	if p.Hooks != nil {
+		infos = append(infos, p.Hooks.Infos()...)
 	}
+	out["hooks"] = infos
 	writeJSON(w, http.StatusOK, out)
 }
 

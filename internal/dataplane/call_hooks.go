@@ -34,15 +34,23 @@ func newCallContext(key snapshot.APIKey, model, path, modality string, stream bo
 	}
 }
 
-// gateCall runs built-in CEL + quota BeforeCall hooks (installed once) then user BeforeCall hooks.
+// gateCall runs built-in CEL + quota gates, then user BeforeCall hooks.
+// Built-ins are invoked here (not via p.Hooks) so reassigning Hooks cannot bypass them.
 // ok=false means the response was already written. call.Body may be mutated.
 func (p *Pipeline) gateCall(ctx context.Context, w http.ResponseWriter, snap *snapshot.Snapshot, call *CallContext) bool {
-	p.installBuiltinCallHooksOnce()
 	if call.Metadata == nil {
 		call.Metadata = map[string]any{}
 	}
-	call.Metadata["__snapshot"] = snap
 
+	// Policy → quota → user hooks.
+	for _, h := range []BeforeCallHook{
+		&policyCallHook{p: p, snap: snap},
+		&quotaCallHook{p: p, snap: snap},
+	} {
+		if !p.applyBeforeCall(ctx, w, h, call) {
+			return false
+		}
+	}
 	d, err := p.Hooks.RunBeforeCall(ctx, call)
 	if err != nil {
 		if p.Log != nil {
@@ -60,18 +68,36 @@ func (p *Pipeline) gateCall(ctx context.Context, w http.ResponseWriter, snap *sn
 	return true
 }
 
-func (p *Pipeline) installBuiltinCallHooksOnce() {
-	p.builtinHooksOnce.Do(func() {
-		if p.Hooks == nil {
-			p.Hooks = NewHookChain()
+func (p *Pipeline) applyBeforeCall(ctx context.Context, w http.ResponseWriter, h BeforeCallHook, call *CallContext) bool {
+	d, err := h.BeforeCall(ctx, call)
+	if err != nil {
+		if p.Log != nil {
+			p.Log.Error("before_call hook", "err", err, "hook", h.Name())
 		}
-		// Prepend so policy → quota → user hooks.
-		p.Hooks.PrependBeforeCall(&quotaCallHook{p: p})
-		p.Hooks.PrependBeforeCall(&policyCallHook{p: p})
-	})
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"error": map[string]string{"message": "call hook failed", "type": "server_error"},
+		})
+		return false
+	}
+	if !d.Allow {
+		writeCallDeny(w, d)
+		return false
+	}
+	return true
 }
 
-type policyCallHook struct{ p *Pipeline }
+// builtinHookInfos returns healthz entries for gates that always run in gateCall.
+func builtinHookInfos() []HookInfo {
+	return []HookInfo{
+		{Name: "cel_policy", BeforeCall: true},
+		{Name: "quota", BeforeCall: true},
+	}
+}
+
+type policyCallHook struct {
+	p    *Pipeline
+	snap *snapshot.Snapshot
+}
 
 func (h *policyCallHook) Name() string { return "cel_policy" }
 
@@ -80,7 +106,7 @@ func (h *policyCallHook) BeforeCall(_ context.Context, call *CallContext) (CallD
 	if p == nil || p.Policies == nil {
 		return sdkhook.Allow(), nil
 	}
-	snap, _ := call.Metadata["__snapshot"].(*snapshot.Snapshot)
+	snap := h.snap
 	if snap == nil || len(snap.Policies) == 0 {
 		return sdkhook.Allow(), nil
 	}
@@ -110,7 +136,10 @@ func (h *policyCallHook) BeforeCall(_ context.Context, call *CallContext) (CallD
 	return sdkhook.Allow(), nil
 }
 
-type quotaCallHook struct{ p *Pipeline }
+type quotaCallHook struct {
+	p    *Pipeline
+	snap *snapshot.Snapshot
+}
 
 func (h *quotaCallHook) Name() string { return "quota" }
 
@@ -119,7 +148,7 @@ func (h *quotaCallHook) BeforeCall(ctx context.Context, call *CallContext) (Call
 	if p == nil || p.Counters == nil {
 		return sdkhook.Allow(), nil
 	}
-	snap, _ := call.Metadata["__snapshot"].(*snapshot.Snapshot)
+	snap := h.snap
 	if snap == nil {
 		return sdkhook.Allow(), nil
 	}

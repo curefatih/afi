@@ -9,7 +9,7 @@ The gateway runs an in-process hook chain on every modality (chat, messages, TTS
 3. **AfterCall** — after the upstream attempt finishes (all modalities).
 4. **AfterChat** — chat only; logging/side effects after AfterCall.
 
-Built-in gates at the BeforeCall stage (auto-installed):
+Built-in gates always run in the request path before user BeforeCall hooks (not registered on `pipeline.Hooks`, so replacing the chain cannot bypass them):
 
 * **cel_policy** — org CEL allow-policies → 403 `policy_violation`
 * **quota** — request quotas → 429 `insufficient_quota`
@@ -50,4 +50,4 @@ Provider adapters use [`sdk/provider`](../../sdk/provider) + `Registry.RegisterS
 * gRPC extensions — providers, auth, secrets, notifications, remote BeforeCall
 * WASM extensions — prompt/header mutation, PII masking, enrichment
 
-Redis rate limits and CEL request policies remain available via the built-in BeforeCall hooks (see Quotas / Policies in the platform UI).
+Redis rate limits and CEL request policies remain available via the built-in BeforeCall gates (see Quotas / Policies in the platform UI).
