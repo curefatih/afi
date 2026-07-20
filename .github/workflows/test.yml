@@ -1,0 +1,65 @@
+# CI runs only when a pull request has the run-ci label.
+#
+# Who can add labels: Triage, Write, Maintain, or Admin
+# (repo owner / maintainers). Outside collaborators on fork PRs cannot.
+#
+# Add run-ci to opt a PR in; remove it to stop further runs.
+# New commits re-run CI while the label remains.
+
+name: Test
+
+on:
+  pull_request:
+    types: [synchronize, reopened, labeled, unlabeled]
+
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: Go
+    if: contains(github.event.pull_request.labels.*.name, 'run-ci')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: make build
+
+      - name: Test
+        run: make test
+
+  web:
+    name: Web
+    if: contains(github.event.pull_request.labels.*.name, 'run-ci')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Check
+        run: pnpm check
+
+      - name: Test
+        run: pnpm test
