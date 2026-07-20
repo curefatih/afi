@@ -855,17 +855,18 @@ function withLinearTrend<T extends Record<string, unknown>>(
 function formatDayTick(value: string) {
 	const d = parseDayBucket(value);
 	if (!d) return value;
-	return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+	return d.toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 function formatDayLabel(value: string) {
 	const d = parseDayBucket(value);
 	if (!d) return value;
-	return d.toLocaleDateString(undefined, {
+	return d.toLocaleDateString(undefined, { 
 		weekday: "short",
 		month: "short",
 		day: "numeric",
 		year: "numeric",
+		timeZone: "UTC",
 	});
 }
 
