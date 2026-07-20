@@ -570,6 +570,12 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	`); err != nil {
 		return fmt.Errorf("cycle17 external identities: %w", err)
 	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS tags JSONB NOT NULL DEFAULT '{}'::jsonb;
+	`); err != nil {
+		return fmt.Errorf("cycle18 usage tags: %w", err)
+	}
 	return nil
 }
 
