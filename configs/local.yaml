@@ -12,6 +12,22 @@ auth:
   jwt_secret: "afi-local-dev-jwt-secret-change-me"
   token_ttl: "24h"
   internal_token: "afi-local-internal-token"
+  public_base_url: "http://localhost:8081"
+  # Platform-wide SSO (OAuth2 / OIDC). Leave enabled:false until providers are configured.
+  sso:
+    enabled: false
+    providers: []
+    # Example:
+    # providers:
+    #   - id: google
+    #     type: oidc
+    #     display_name: Google
+    #     issuer: https://accounts.google.com
+    #     client_id: "..."
+    #     client_secret: "..."
+    #     scopes: ["openid", "email", "profile"]
+    #     require_email_verified: true
+
 
 # Required for Secrets → storage_kind=encrypted_db (controlplane + gateway).
 # Any string is SHA-256-derived; or use base64:<32-byte-key>.

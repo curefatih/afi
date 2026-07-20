@@ -3,10 +3,26 @@ package kernel
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )
+
+// SSOProvider is a platform-wide federated IdP configuration entry.
+type SSOProvider struct {
+	ID                   string   `yaml:"id"`
+	Type                 string   `yaml:"type"` // oidc | oauth2 (saml reserved)
+	DisplayName          string   `yaml:"display_name"`
+	Issuer               string   `yaml:"issuer"`
+	ClientID             string   `yaml:"client_id"`
+	ClientSecret         string   `yaml:"client_secret"`
+	Scopes               []string `yaml:"scopes"`
+	AuthURL              string   `yaml:"auth_url"`
+	TokenURL             string   `yaml:"token_url"`
+	UserInfoURL          string   `yaml:"userinfo_url"`
+	RequireEmailVerified *bool    `yaml:"require_email_verified"`
+}
 
 type Config struct {
 	DatabaseURL string `yaml:"database_url" env:"AFI_DATABASE_URL"`
@@ -27,6 +43,12 @@ type Config struct {
 		TokenTTLRaw   string        `yaml:"token_ttl" env:"AFI_TOKEN_TTL" env-default:"24h"`
 		TokenTTL      time.Duration `yaml:"-"`
 		InternalToken string        `yaml:"internal_token" env:"AFI_INTERNAL_TOKEN"`
+		// PublicBaseURL is the externally reachable control-plane URL (SSO callbacks).
+		PublicBaseURL string `yaml:"public_base_url" env:"AFI_AUTH_PUBLIC_BASE_URL"`
+		SSO           struct {
+			Enabled   bool          `yaml:"enabled" env:"AFI_SSO_ENABLED"`
+			Providers []SSOProvider `yaml:"providers"`
+		} `yaml:"sso"`
 	} `yaml:"auth"`
 
 	// Credentials configures encryption for storage_kind=encrypted_db provider credentials.
@@ -138,6 +160,27 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("token_ttl: %w", err)
 	}
 	cfg.Auth.TokenTTL = ttl
+
+	if cfg.Auth.PublicBaseURL == "" {
+		cfg.Auth.PublicBaseURL = "http://localhost:8081"
+	}
+	for i := range cfg.Auth.SSO.Providers {
+		p := &cfg.Auth.SSO.Providers[i]
+		if p.Type == "" {
+			if p.Issuer != "" {
+				p.Type = "oidc"
+			} else {
+				p.Type = "oauth2"
+			}
+		}
+		if p.RequireEmailVerified == nil {
+			v := strings.EqualFold(p.Type, "oidc")
+			p.RequireEmailVerified = &v
+		}
+		if p.DisplayName == "" {
+			p.DisplayName = p.ID
+		}
+	}
 
 	if cfg.Seed.VirtualAPIKey == "" {
 		cfg.Seed.VirtualAPIKey = "sk-project-local-dev-token-12345"
