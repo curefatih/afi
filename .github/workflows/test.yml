@@ -5,6 +5,8 @@
 #
 # Add run-ci to opt a PR in; remove it to stop further runs.
 # New commits re-run CI while the label remains.
+#
+# Jobs also skip when their related paths did not change in the PR.
 
 name: Test
 
@@ -17,9 +19,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changes
+    if: contains(github.event.pull_request.labels.*.name, 'run-ci')
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.filter.outputs.go }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            go:
+              - 'go.mod'
+              - 'go.sum'
+              - 'Makefile'
+              - '**/*.go'
+              - 'cmd/**'
+              - 'internal/**'
+              - 'extensions/**'
+              - 'sdk/**'
+              - 'api/**'
+              - 'configs/**'
+              - 'scripts/**'
+              - 'Dockerfile'
+              - '.github/workflows/test.yml'
+            web:
+              - 'web/**'
+              - 'Dockerfile.web'
+              - '.github/workflows/test.yml'
+
   go:
     name: Go
-    if: contains(github.event.pull_request.labels.*.name, 'run-ci')
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +73,8 @@ jobs:
 
   web:
     name: Web
-    if: contains(github.event.pull_request.labels.*.name, 'run-ci')
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
