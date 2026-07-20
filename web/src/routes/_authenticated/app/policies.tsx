@@ -7,7 +7,9 @@ import { orgMembersQueryOptions } from "#/api/organization";
 import {
 	createPolicyMutationOptions,
 	deletePolicyMutationOptions,
+	type RequestPolicy,
 	policiesQueryOptions,
+	updatePolicyMutationOptions,
 } from "#/api/policies";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { CelExpressionEditor } from "#/components/policies/cel-expression-editor";
@@ -31,6 +33,7 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "#/components/ui/sheet";
+import { Switch } from "#/components/ui/switch";
 import {
 	Table,
 	TableBody,
@@ -57,6 +60,7 @@ function RouteComponent() {
 	const policies = useQuery(policiesQueryOptions(orgId));
 	const members = useQuery(orgMembersQueryOptions(orgId));
 	const [createOpen, setCreateOpen] = useState(false);
+	const [edit, setEdit] = useState<RequestPolicy | null>(null);
 
 	const isOrgAdmin = useMemo(() => {
 		const me = (members.data ?? []).find((m) => m.user_id === user?.id);
@@ -77,6 +81,16 @@ function RouteComponent() {
 			setError(null);
 		},
 	});
+	const update = useMutation({
+		...updatePolicyMutationOptions(),
+		onSuccess: () => {
+			void qc.invalidateQueries({
+				queryKey: ["organizations", orgId, "policies"],
+			});
+			toast.success("Policy updated");
+			setEdit(null);
+		},
+	});
 	const del = useMutation({
 		...deletePolicyMutationOptions(),
 		onSuccess: () => {
@@ -93,6 +107,22 @@ function RouteComponent() {
 	);
 	const [priority, setPriority] = useState("100");
 	const [error, setError] = useState<string | null>(null);
+
+	const [editName, setEditName] = useState("");
+	const [editExpression, setEditExpression] = useState("");
+	const [editPriority, setEditPriority] = useState("100");
+	const [editEnabled, setEditEnabled] = useState(true);
+	const [editError, setEditError] = useState<string | null>(null);
+
+	const openEdit = (p: RequestPolicy) => {
+		setEdit(p);
+		setEditName(p.name);
+		setEditExpression(p.expression);
+		setEditPriority(String(p.priority));
+		setEditEnabled(p.enabled);
+		setEditError(null);
+	};
+
 	const list = policies.data ?? [];
 
 	return (
@@ -181,7 +211,7 @@ function RouteComponent() {
 					<>
 						{!isOrgAdmin ? (
 							<p className="text-muted-foreground text-sm">
-								Only organization owners and admins can create or delete
+								Only organization owners and admins can create or edit
 								policies.
 							</p>
 						) : null}
@@ -192,7 +222,7 @@ function RouteComponent() {
 									<TableHead>Priority</TableHead>
 									<TableHead>Enabled</TableHead>
 									<TableHead>Expression</TableHead>
-									{isOrgAdmin ? <TableHead className="w-24" /> : null}
+									{isOrgAdmin ? <TableHead className="w-40" /> : null}
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -205,7 +235,14 @@ function RouteComponent() {
 											{p.expression}
 										</TableCell>
 										{isOrgAdmin ? (
-											<TableCell>
+											<TableCell className="space-x-2">
+												<Button
+													variant="outline"
+													size="sm"
+													onClick={() => openEdit(p)}
+												>
+													Edit
+												</Button>
 												<Button
 													variant="outline"
 													size="sm"
@@ -298,6 +335,105 @@ function RouteComponent() {
 							</Button>
 						</SheetFooter>
 					</form>
+				</SheetContent>
+			</Sheet>
+
+			<Sheet
+				open={!!edit}
+				onOpenChange={(o) => {
+					if (!o) setEdit(null);
+				}}
+			>
+				<SheetContent className="w-full overflow-y-auto sm:max-w-2xl data-[side=right]:sm:max-w-2xl data-[side=left]:sm:max-w-2xl">
+					<SheetHeader>
+						<SheetTitle>Edit CEL policy</SheetTitle>
+						<SheetDescription>
+							Update name, priority, expression, or enable/disable. Denial
+							returns HTTP 403 policy_violation.
+						</SheetDescription>
+					</SheetHeader>
+					{edit ? (
+						<form
+							className="flex flex-1 flex-col gap-4 px-4 pb-4"
+							onSubmit={(e) => {
+								e.preventDefault();
+								setEditError(null);
+								update.mutate(
+									{
+										policyId: edit.id,
+										name: editName,
+										expression: editExpression,
+										priority: editPriority.trim() === "" || isNaN(Number(editPriority)) ? 100 : Number(editPriority),
+										enabled: editEnabled,
+									},
+									{
+										onError: (err) =>
+											setEditError(
+												err instanceof Error ? err.message : "Update failed",
+											),
+									},
+								);
+							}}
+						>
+							<div className="space-y-1">
+								<Label htmlFor="edit-pol-name">Name</Label>
+								<Input
+									id="edit-pol-name"
+									value={editName}
+									onChange={(e) => setEditName(e.target.value)}
+									required
+								/>
+							</div>
+							<div className="space-y-1">
+								<Label htmlFor="edit-pol-priority">Priority</Label>
+								<Input
+									id="edit-pol-priority"
+									type="number"
+									value={editPriority}
+									onChange={(e) => setEditPriority(e.target.value)}
+								/>
+								<p className="text-[11px] text-muted-foreground">
+									Higher priority runs first when multiple policies apply.
+								</p>
+							</div>
+							<div className="flex items-center justify-between gap-2">
+								<div>
+									<Label htmlFor="edit-pol-enabled">Enabled</Label>
+									<p className="text-[11px] text-muted-foreground">
+										Disabled policies are skipped at evaluation time.
+									</p>
+								</div>
+								<Switch
+									id="edit-pol-enabled"
+									checked={editEnabled}
+									onCheckedChange={setEditEnabled}
+								/>
+							</div>
+							<CelExpressionEditor
+								id="edit-pol-expr"
+								value={editExpression}
+								onChange={setEditExpression}
+							/>
+							{editError ? (
+								<p className="text-destructive text-xs">{editError}</p>
+							) : null}
+							<SheetFooter>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => setEdit(null)}
+								>
+									Cancel
+								</Button>
+								<Button
+									type="submit"
+									disabled={update.isPending || !editName.trim()}
+								>
+									{update.isPending ? "Saving…" : "Save & publish"}
+								</Button>
+							</SheetFooter>
+						</form>
+					) : null}
 				</SheetContent>
 			</Sheet>
 		</PageBody>

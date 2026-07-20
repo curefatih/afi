@@ -38,6 +38,20 @@ export const createQuotaMutationOptions = () =>
 			}),
 	});
 
+export type UpdateQuotaInput = {
+	quotaId: string;
+	limit_value: number;
+};
+
+export const updateQuotaMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ quotaId, ...body }: UpdateQuotaInput) =>
+			apiFetch<Quota>(`/api/v1/platform/quotas/${quotaId}`, {
+				method: "PATCH",
+				body,
+			}),
+	});
+
 export const deleteQuotaMutationOptions = () =>
 	mutationOptions({
 		mutationFn: (quotaId: string) =>

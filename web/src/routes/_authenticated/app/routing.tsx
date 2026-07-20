@@ -8,8 +8,10 @@ import { providersQueryOptions } from "#/api/provider";
 import {
 	createRouteMutationOptions,
 	deleteRouteMutationOptions,
+	type RouteConfig,
 	type RouteFallback,
 	routesQueryOptions,
+	updateRouteMutationOptions,
 } from "#/api/routing";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
@@ -66,6 +68,7 @@ function RouteComponent() {
 	const providers = useQuery(providersQueryOptions(orgId));
 	const members = useQuery(orgMembersQueryOptions(orgId));
 	const [createOpen, setCreateOpen] = useState(false);
+	const [edit, setEdit] = useState<RouteConfig | null>(null);
 
 	const isOrgAdmin = useMemo(() => {
 		const me = (members.data ?? []).find((m) => m.user_id === user?.id);
@@ -80,6 +83,16 @@ function RouteComponent() {
 			});
 			toast.success("Route created");
 			setCreateOpen(false);
+		},
+	});
+	const update = useMutation({
+		...updateRouteMutationOptions(),
+		onSuccess: () => {
+			void qc.invalidateQueries({
+				queryKey: ["organizations", orgId, "routes"],
+			});
+			toast.success("Route updated");
+			setEdit(null);
 		},
 	});
 	const del = useMutation({
@@ -99,6 +112,28 @@ function RouteComponent() {
 		Array<RouteFallback & { key: string }>
 	>([]);
 	const [error, setError] = useState<string | null>(null);
+
+	const [editModel, setEditModel] = useState("");
+	const [editTargetModel, setEditTargetModel] = useState("");
+	const [editProviderId, setEditProviderId] = useState("");
+	const [editFallbacks, setEditFallbacks] = useState<
+		Array<RouteFallback & { key: string }>
+	>([]);
+	const [editError, setEditError] = useState<string | null>(null);
+
+	const openEdit = (r: RouteConfig) => {
+		setEdit(r);
+		setEditModel(r.model);
+		setEditTargetModel(r.target_model);
+		setEditProviderId(r.provider_id);
+		setEditFallbacks(
+			(r.fallbacks ?? []).map((f) => ({
+				...f,
+				key: crypto.randomUUID(),
+			})),
+		);
+		setEditError(null);
+	};
 
 	const providerList = providers.data ?? [];
 	const routeList = routes.data ?? [];
@@ -185,7 +220,7 @@ function RouteComponent() {
 					<>
 						{!isOrgAdmin ? (
 							<p className="text-muted-foreground text-sm">
-								Only organization owners and admins can create or delete routes.
+								Only organization owners and admins can create or edit routes.
 							</p>
 						) : null}
 						<Table>
@@ -195,7 +230,7 @@ function RouteComponent() {
 									<TableHead>Target</TableHead>
 									<TableHead>Provider</TableHead>
 									<TableHead>Fallbacks</TableHead>
-									{isOrgAdmin ? <TableHead className="w-24" /> : null}
+									{isOrgAdmin ? <TableHead className="w-40" /> : null}
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -234,7 +269,14 @@ function RouteComponent() {
 											)}
 										</TableCell>
 										{isOrgAdmin ? (
-											<TableCell>
+											<TableCell className="space-x-2">
+												<Button
+													variant="outline"
+													size="sm"
+													onClick={() => openEdit(r)}
+												>
+													Edit
+												</Button>
 												<Button
 													variant="outline"
 													size="sm"
@@ -422,6 +464,188 @@ function RouteComponent() {
 							</Button>
 						</SheetFooter>
 					</form>
+				</SheetContent>
+			</Sheet>
+
+			<Sheet
+				open={!!edit}
+				onOpenChange={(o) => {
+					if (!o) setEdit(null);
+				}}
+			>
+				<SheetContent>
+					<SheetHeader>
+						<SheetTitle>Edit route</SheetTitle>
+						<SheetDescription>
+							Update model mapping and fallbacks. Publishes a new gateway
+							snapshot.
+						</SheetDescription>
+					</SheetHeader>
+					{edit ? (
+						<form
+							className="flex flex-1 flex-col gap-4 px-4"
+							onSubmit={(e) => {
+								e.preventDefault();
+								if (!editProviderId) return;
+								setEditError(null);
+								update.mutate(
+									{
+										routeId: edit.id,
+										model: editModel,
+										provider_id: editProviderId,
+										target_model: editTargetModel || editModel,
+										fallbacks: editFallbacks
+											.filter((f) => f.provider_id)
+											.map(({ provider_id, target_model }) => ({
+												provider_id,
+												target_model,
+											})),
+									},
+									{
+										onError: (err) =>
+											setEditError(
+												err instanceof Error ? err.message : "Update failed",
+											),
+									},
+								);
+							}}
+						>
+							<div className="space-y-1">
+								<Label htmlFor="edit-route-model">Requested model</Label>
+								<Input
+									id="edit-route-model"
+									value={editModel}
+									onChange={(e) => setEditModel(e.target.value)}
+									required
+								/>
+							</div>
+							<div className="space-y-1">
+								<Label htmlFor="edit-route-target">Target model</Label>
+								<Input
+									id="edit-route-target"
+									value={editTargetModel}
+									onChange={(e) => setEditTargetModel(e.target.value)}
+									placeholder={editModel}
+								/>
+							</div>
+							<div className="space-y-1">
+								<Label>Provider</Label>
+								<Select
+									value={editProviderId}
+									onValueChange={(v) => setEditProviderId(v ?? "")}
+								>
+									<SelectTrigger className="w-full">
+										<SelectValue placeholder="Select provider" />
+									</SelectTrigger>
+									<SelectContent>
+										{providerList.map((p) => (
+											<SelectItem key={p.id} value={p.id}>
+												{p.name} ({p.type})
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+							<div className="space-y-2">
+								<div className="flex items-center justify-between">
+									<Label>Fallbacks</Label>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={() =>
+											setEditFallbacks((prev) => [
+												...prev,
+												{
+													key: crypto.randomUUID(),
+													provider_id: providerList[0]?.id ?? "",
+													target_model: editTargetModel || editModel,
+												},
+											])
+										}
+									>
+										<PlusIcon />
+										Add
+									</Button>
+								</div>
+								{editFallbacks.map((fb) => (
+									<div
+										key={fb.key}
+										className="grid gap-2 rounded-md border p-2 sm:grid-cols-[1fr_1fr_auto]"
+									>
+										<Select
+											value={fb.provider_id}
+											onValueChange={(v) => {
+												const next = v ?? "";
+												setEditFallbacks((prev) =>
+													prev.map((row) =>
+														row.key === fb.key
+															? { ...row, provider_id: next }
+															: row,
+													),
+												);
+											}}
+										>
+											<SelectTrigger className="w-full">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												{providerList.map((p) => (
+													<SelectItem key={p.id} value={p.id}>
+														{p.name}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<Input
+											placeholder="target model"
+											value={fb.target_model}
+											onChange={(e) => {
+												const v = e.target.value;
+												setEditFallbacks((prev) =>
+													prev.map((row) =>
+														row.key === fb.key
+															? { ...row, target_model: v }
+															: row,
+													),
+												);
+											}}
+										/>
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											onClick={() =>
+												setEditFallbacks((prev) =>
+													prev.filter((row) => row.key !== fb.key),
+												)
+											}
+										>
+											Remove
+										</Button>
+									</div>
+								))}
+							</div>
+							{editError ? (
+								<p className="text-destructive text-xs">{editError}</p>
+							) : null}
+							<SheetFooter>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => setEdit(null)}
+								>
+									Cancel
+								</Button>
+								<Button
+									type="submit"
+									disabled={update.isPending || !editProviderId}
+								>
+									{update.isPending ? "Saving…" : "Save & publish"}
+								</Button>
+							</SheetFooter>
+						</form>
+					) : null}
 				</SheetContent>
 			</Sheet>
 		</PageBody>

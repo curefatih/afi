@@ -8,7 +8,9 @@ import { orgMembersQueryOptions } from "#/api/organization";
 import {
 	createQuotaMutationOptions,
 	deleteQuotaMutationOptions,
+	type Quota,
 	quotasQueryOptions,
+	updateQuotaMutationOptions,
 } from "#/api/quota";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
@@ -64,6 +66,7 @@ function RouteComponent() {
 	const members = useQuery(orgMembersQueryOptions(orgId));
 	const keys = useQuery(orgKeysQueryOptions(orgId));
 	const [createOpen, setCreateOpen] = useState(false);
+	const [edit, setEdit] = useState<Quota | null>(null);
 
 	const isOrgAdmin = useMemo(() => {
 		const me = (members.data ?? []).find((m) => m.user_id === user?.id);
@@ -106,6 +109,16 @@ function RouteComponent() {
 			setCreateOpen(false);
 		},
 	});
+	const update = useMutation({
+		...updateQuotaMutationOptions(),
+		onSuccess: () => {
+			void qc.invalidateQueries({
+				queryKey: ["organizations", orgId, "quotas"],
+			});
+			toast.success("Quota updated");
+			setEdit(null);
+		},
+	});
 	const del = useMutation({
 		...deleteQuotaMutationOptions(),
 		onSuccess: () => {
@@ -122,6 +135,15 @@ function RouteComponent() {
 	const [window, setWindow] = useState("total");
 	const [limitValue, setLimitValue] = useState("100");
 	const [error, setError] = useState<string | null>(null);
+
+	const [editLimit, setEditLimit] = useState("100");
+	const [editError, setEditError] = useState<string | null>(null);
+
+	const openEdit = (q: Quota) => {
+		setEdit(q);
+		setEditLimit(String(q.limit_value));
+		setEditError(null);
+	};
 
 	const effectiveScopeID = scopeType === "organization" ? orgId : scopeID;
 	const quotaList = quotas.data ?? [];
@@ -173,7 +195,7 @@ function RouteComponent() {
 					<>
 						{!isOrgAdmin ? (
 							<p className="text-muted-foreground text-sm">
-								Only organization owners and admins can create or delete quotas.
+								Only organization owners and admins can create or edit quotas.
 							</p>
 						) : null}
 						<Table>
@@ -183,7 +205,7 @@ function RouteComponent() {
 									<TableHead>Limit</TableHead>
 									<TableHead>Scope</TableHead>
 									<TableHead>Scope ID</TableHead>
-									{isOrgAdmin ? <TableHead className="w-24" /> : null}
+									{isOrgAdmin ? <TableHead className="w-40" /> : null}
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -200,7 +222,14 @@ function RouteComponent() {
 											{q.scope_id}
 										</TableCell>
 										{isOrgAdmin ? (
-											<TableCell>
+											<TableCell className="space-x-2">
+												<Button
+													variant="outline"
+													size="sm"
+													onClick={() => openEdit(q)}
+												>
+													Edit
+												</Button>
 												<Button
 													variant="outline"
 													size="sm"
@@ -402,6 +431,87 @@ function RouteComponent() {
 							</Button>
 						</SheetFooter>
 					</form>
+				</SheetContent>
+			</Sheet>
+
+			<Sheet
+				open={!!edit}
+				onOpenChange={(o) => {
+					if (!o) setEdit(null);
+				}}
+			>
+				<SheetContent>
+					<SheetHeader>
+						<SheetTitle>Edit quota</SheetTitle>
+						<SheetDescription>
+							Scope, metric, and window are fixed after create. Update the
+							limit value.
+						</SheetDescription>
+					</SheetHeader>
+					{edit ? (
+						<form
+							className="flex flex-1 flex-col gap-4 px-4"
+							onSubmit={(e) => {
+								e.preventDefault();
+								setEditError(null);
+								update.mutate(
+									{
+										quotaId: edit.id,
+										limit_value: Number(editLimit),
+									},
+									{
+										onError: (err) =>
+											setEditError(
+												err instanceof Error ? err.message : "Update failed",
+											),
+									},
+								);
+							}}
+						>
+							<div className="space-y-1">
+								<Label>Scope</Label>
+								<Input
+									readOnly
+									value={`${edit.scope_type}: ${labels(edit.scope_type, edit.scope_id)}`}
+									className="bg-muted"
+								/>
+							</div>
+							<div className="space-y-1">
+								<Label>Metric</Label>
+								<Input readOnly value={edit.metric} className="bg-muted" />
+							</div>
+							<div className="space-y-1">
+								<Label>Window</Label>
+								<Input readOnly value={edit.window} className="bg-muted" />
+							</div>
+							<div className="space-y-1">
+								<Label htmlFor="edit-q-limit">Limit</Label>
+								<Input
+									id="edit-q-limit"
+									type="number"
+									min={0}
+									value={editLimit}
+									onChange={(e) => setEditLimit(e.target.value)}
+									required
+								/>
+							</div>
+							{editError ? (
+								<p className="text-destructive text-xs">{editError}</p>
+							) : null}
+							<SheetFooter>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => setEdit(null)}
+								>
+									Cancel
+								</Button>
+								<Button type="submit" disabled={update.isPending}>
+									{update.isPending ? "Saving…" : "Save & publish"}
+								</Button>
+							</SheetFooter>
+						</form>
+					) : null}
 				</SheetContent>
 			</Sheet>
 		</PageBody>
