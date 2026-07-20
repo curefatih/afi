@@ -14,9 +14,10 @@ type Record struct {
 	LatencyMs        int64          `json:"latency_ms"`
 	PromptTokens     int64          `json:"prompt_tokens"`
 	CompletionTokens int64          `json:"completion_tokens"`
-	Modality         string         `json:"modality"`
-	Metrics          map[string]any `json:"metrics"`
-	CostUSD          *float64       `json:"cost_usd,omitempty"`
+	Modality         string            `json:"modality"`
+	Metrics          map[string]any    `json:"metrics"`
+	Tags             map[string]string `json:"tags,omitempty"`
+	CostUSD          *float64          `json:"cost_usd,omitempty"`
 	CreatedAt        time.Time      `json:"created_at"`
 	KeyName          string         `json:"key_name,omitempty"`
 	KeyKind          string         `json:"key_kind,omitempty"`
