@@ -1,5 +1,7 @@
 import { GripVerticalIcon, PlusIcon } from "lucide-react";
 import { Reorder, useDragControls } from "motion/react";
+import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 import type { RouteFallback } from "#/api/routing";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
@@ -40,6 +42,19 @@ function FallbackRowItem({
 	onRemove: () => void;
 }) {
 	const controls = useDragControls();
+	const [targetModel, setTargetModel] = useState(fb.target_model);
+
+	useEffect(() => {
+		setTargetModel(fb.target_model);
+	}, [fb.target_model]);
+
+	const commitTargetModel = () => {
+		if (targetModel === fb.target_model) return;
+		// flushSync so a following submit click sees the committed value
+		flushSync(() => {
+			onUpdate({ target_model: targetModel });
+		});
+	};
 
 	return (
 		<Reorder.Item
@@ -74,8 +89,9 @@ function FallbackRowItem({
 			</Select>
 			<Input
 				placeholder="target model"
-				value={fb.target_model}
-				onChange={(e) => onUpdate({ target_model: e.target.value })}
+				value={targetModel}
+				onChange={(e) => setTargetModel(e.target.value)}
+				onBlur={commitTargetModel}
 			/>
 			<Button type="button" variant="outline" size="sm" onClick={onRemove}>
 				Remove
