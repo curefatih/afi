@@ -1,99 +1,80 @@
-import {
-  createContext,
-  useContext,
-  type PropsWithChildren,
-} from "react";
-import {
-  useForm,
-  type AnyFormApi,
-} from "@tanstack/react-form";
+import { type AnyFormApi, useForm } from "@tanstack/react-form";
+import { createContext, type PropsWithChildren, useContext } from "react";
 
 export type PolicyFormValues = {
-  name: string;
+	name: string;
 
-  enabled: boolean;
+	enabled: boolean;
 
-  scope:
-    | "organization"
-    | "team"
-    | "project"
-    | "user";
+	scope: "organization" | "team" | "project" | "user";
 
-  targetId: string;
+	targetId: string;
 
-  priority: number;
+	priority: number;
 
-  providers: string[];
+	providers: string[];
 
-  models: string[];
+	models: string[];
 
-  modalities: string[];
+	modalities: string[];
 
-  conditions: unknown[];
+	conditions: unknown[];
 
-  limits: unknown[];
+	limits: unknown[];
 
-  action:
-    | "reject"
-    | "queue"
-    | "fallback";
+	action: "reject" | "queue" | "fallback";
 
-  fallbackModel: string;
+	fallbackModel: string;
 };
 
-const PolicyFormContext =
-  createContext<AnyFormApi | null>(null);
+const PolicyFormContext = createContext<AnyFormApi | null>(null);
 
-export function PolicyFormProvider({
-  children,
-}: PropsWithChildren) {
-  const form = useForm({
-    defaultValues: {
-      name: "",
+export function PolicyFormProvider({ children }: PropsWithChildren) {
+	const form = useForm({
+		defaultValues: {
+			name: "",
 
-      enabled: true,
+			enabled: true,
 
-      scope: "organization",
+			scope: "organization",
 
-      targetId: "",
+			targetId: "",
 
-      priority: 100,
+			priority: 100,
 
-      providers: [],
+			providers: [],
 
-      models: [],
+			models: [],
 
-      modalities: ["chat"],
+			modalities: ["chat"],
 
-      conditions: [],
+			conditions: [],
 
-      limits: [],
+			limits: [],
 
-      action: "reject",
+			action: "reject",
 
-      fallbackModel: "",
-    } satisfies PolicyFormValues,
+			fallbackModel: "",
+		} satisfies PolicyFormValues,
 
-    onSubmit: async ({ value }) => {
-      console.log(value);
-    },
-  });
+		onSubmit: async ({ value }) => {
+			console.log(value);
+		},
+	});
 
-  return (
-    <PolicyFormContext.Provider value={form}>
-      {children}
-    </PolicyFormContext.Provider>
-  );
+	return (
+		<PolicyFormContext.Provider value={form}>
+			{children}
+		</PolicyFormContext.Provider>
+	);
 }
 
 export function usePolicyForm() {
-  const form = useContext(PolicyFormContext);
+	const form = useContext(PolicyFormContext);
 
-  if (!form) {
-    throw new Error(
-      "usePolicyForm must be used inside PolicyFormProvider",
-    );
-  }
+	if (!form) {
+		throw new Error("usePolicyForm must be used inside PolicyFormProvider");
+	}
 
-  return form;
+	return form;
 }

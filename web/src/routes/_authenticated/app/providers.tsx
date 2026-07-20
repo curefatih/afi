@@ -207,9 +207,7 @@ function RouteComponent() {
 				}
 			/>
 			<QueryGate
-				isPending={
-					!!orgId && (providers.isLoading || members.isPending)
-				}
+				isPending={!!orgId && (providers.isLoading || members.isPending)}
 				isError={providers.isError}
 				error={providers.error}
 				onRetry={() => {

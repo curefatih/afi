@@ -8,9 +8,9 @@ import { toast } from "sonner";
 import { z } from "zod";
 import {
 	type ApiKey,
-	type KeyKind,
 	createKeyMutationOptions,
 	createOrgKeyMutationOptions,
+	type KeyKind,
 } from "#/api/keys";
 import { Button } from "#/components/ui/button";
 import {
@@ -146,7 +146,14 @@ export function CreateKeySheet({
 			"projectId",
 			defaultProjectId ?? activeOrg?.projects[0]?.id ?? "",
 		);
-	}, [open, defaultKind, defaultProjectId, projectOnly, activeOrg?.projects, form]);
+	}, [
+		open,
+		defaultKind,
+		defaultProjectId,
+		projectOnly,
+		activeOrg?.projects,
+		form,
+	]);
 
 	const handleClose = (next: boolean) => {
 		if (!next) {

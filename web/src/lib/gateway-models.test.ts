@@ -15,28 +15,26 @@ describe("gateway model classifiers", () => {
 		expect(isChatModel({ id: "tts-1", supports_tts: true })).toBe(false);
 		expect(isChatModel({ id: "whisper", supports_stt: true })).toBe(false);
 		expect(isChatModel({ id: "tts-1", mode: "audio_speech" })).toBe(false);
-		expect(
-			isChatModel({ id: "blocked", capabilities: { chat: false } }),
-		).toBe(false);
+		expect(isChatModel({ id: "blocked", capabilities: { chat: false } })).toBe(
+			false,
+		);
 	});
 
 	it("detects TTS models", () => {
 		expect(isTTSModel({ id: "tts-1", mode: "audio_speech" })).toBe(true);
 		expect(isTTSModel({ id: "tts-1", supports_tts: true })).toBe(true);
-		expect(isTTSModel({ id: "tts-1", capabilities: { tts: true } })).toBe(
-			true,
-		);
+		expect(isTTSModel({ id: "tts-1", capabilities: { tts: true } })).toBe(true);
 		expect(isTTSModel({ id: "gpt-4o" })).toBe(false);
 	});
 
 	it("detects STT models", () => {
-		expect(
-			isSTTModel({ id: "whisper-1", mode: "audio_transcription" }),
-		).toBe(true);
+		expect(isSTTModel({ id: "whisper-1", mode: "audio_transcription" })).toBe(
+			true,
+		);
 		expect(isSTTModel({ id: "whisper-1", supports_stt: true })).toBe(true);
-		expect(
-			isSTTModel({ id: "whisper-1", capabilities: { stt: true } }),
-		).toBe(true);
+		expect(isSTTModel({ id: "whisper-1", capabilities: { stt: true } })).toBe(
+			true,
+		);
 		expect(isSTTModel({ id: "gpt-4o" })).toBe(false);
 	});
 });

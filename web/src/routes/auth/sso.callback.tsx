@@ -66,7 +66,10 @@ function RouteComponent() {
 	return (
 		<div className={cn("flex flex-col items-center gap-2 py-12 text-center")}>
 			<p className="text-sm text-muted-foreground">{message}</p>
-			<Link to="/auth/login" className="text-sm underline-offset-4 hover:underline">
+			<Link
+				to="/auth/login"
+				className="text-sm underline-offset-4 hover:underline"
+			>
 				Back to login
 			</Link>
 		</div>

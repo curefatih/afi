@@ -277,9 +277,7 @@ function SettingsFields({
 					max={2}
 					step={0.01}
 					value={[temperature]}
-					onValueChange={(value) =>
-						onTemperatureChange(sliderValue(value, 1))
-					}
+					onValueChange={(value) => onTemperatureChange(sliderValue(value, 1))}
 				/>
 				<p className="text-muted-foreground text-xs">
 					0 = deterministic · 2 = more random

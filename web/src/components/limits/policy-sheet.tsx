@@ -1,84 +1,81 @@
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { BehaviorSection } from "./behaviour-section";
+import { ConditionsSection } from "./conditions-section";
 import { LimitsSection } from "./limits-section";
 import { MatchSection } from "./match-section";
+import { PolicyFormProvider } from "./policy-form-provider";
 import type { Policy } from "./policy-list";
 import { PolicySection } from "./policy-section";
 import { PresetSelector } from "./preset-selector";
 import { SummaryPanel } from "./summary-panel";
-import { useForm } from "@tanstack/react-form";
-import { PolicyFormProvider } from "./policy-form-provider";
-import { ConditionsSection } from "./conditions-section";
-import { Separator } from "@base-ui/react";
 
 type PolicySheetProps = {
-  open: boolean;
-  policy: Policy | null;
-  onOpenChange(open: boolean): void;
+	open: boolean;
+	policy: Policy | null;
+	onOpenChange(open: boolean): void;
 };
 
 export function PolicySheet({ open, policy, onOpenChange }: PolicySheetProps) {
-  const isEditing = policy !== null;
+	const _isEditing = policy !== null;
 
-  // const form = useForm({
-  //   defaultValues: {
-  //     name: "",
-  //     enabled: true,
+	// const form = useForm({
+	//   defaultValues: {
+	//     name: "",
+	//     enabled: true,
 
-  //     scope: "organization",
+	//     scope: "organization",
 
-  //     targetId: "",
+	//     targetId: "",
 
-  //     priority: 100,
+	//     priority: 100,
 
-  //     models: [] as string[],
+	//     models: [] as string[],
 
-  //     modalities: ["text"],
+	//     modalities: ["text"],
 
-  //     requestLimit: "",
+	//     requestLimit: "",
 
-  //     requestInterval: "minute",
+	//     requestInterval: "minute",
 
-  //     inputTokens: "",
+	//     inputTokens: "",
 
-  //     outputTokens: "",
+	//     outputTokens: "",
 
-  //     tokenInterval: "day",
+	//     tokenInterval: "day",
 
-  //     action: "reject",
+	//     action: "reject",
 
-  //     fallbackModel: "",
-  //   },
+	//     fallbackModel: "",
+	//   },
 
-  //   onSubmit: async ({ value }) => {
-  //     console.log(value);
-  //   },
-  // });
+	//   onSubmit: async ({ value }) => {
+	//     console.log(value);
+	//   },
+	// });
 
-  return (
-    <PolicyFormProvider>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="!min-w-[50vw] max-w-[1600px] overflow-y-auto">
-          <div className="flex flex-col">
-            <div className="space-y-10">
-              <PolicySection />
+	return (
+		<PolicyFormProvider>
+			<Sheet open={open} onOpenChange={onOpenChange}>
+				<SheetContent className="!min-w-[50vw] max-w-[1600px] overflow-y-auto">
+					<div className="flex flex-col">
+						<div className="space-y-10">
+							<PolicySection />
 
-              <MatchSection />
+							<MatchSection />
 
-              <ConditionsSection />
+							<ConditionsSection />
 
-              <PresetSelector />
+							<PresetSelector />
 
-              <LimitsSection />
+							<LimitsSection />
 
-              <BehaviorSection />
-              
-            </div>
+							<BehaviorSection />
+						</div>
 
-            <SummaryPanel />
-          </div>
-        </SheetContent>
-      </Sheet>
-    </PolicyFormProvider>
-  );
+						<SummaryPanel />
+					</div>
+				</SheetContent>
+			</Sheet>
+		</PolicyFormProvider>
+	);
 }

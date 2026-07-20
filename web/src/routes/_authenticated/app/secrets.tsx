@@ -158,7 +158,9 @@ function RouteComponent() {
 			/>
 			<PageBody>
 				<QueryGate
-					isPending={!!orgId && (credentials.isLoading || assignments.isLoading)}
+					isPending={
+						!!orgId && (credentials.isLoading || assignments.isLoading)
+					}
 					isError={credentials.isError || assignments.isError}
 					error={credentials.error || assignments.error}
 					onRetry={() => {

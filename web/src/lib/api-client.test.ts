@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiFetch } from "./api-client";
 import { useAuthStore } from "#/state/auth-state";
+import { type ApiError, apiFetch } from "./api-client";
 
 describe("apiFetch", () => {
 	beforeEach(() => {

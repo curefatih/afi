@@ -444,8 +444,8 @@ function RouteComponent() {
 					<SheetHeader>
 						<SheetTitle>Edit quota</SheetTitle>
 						<SheetDescription>
-							Scope, metric, and window are fixed after create. Update the
-							limit value.
+							Scope, metric, and window are fixed after create. Update the limit
+							value.
 						</SheetDescription>
 					</SheetHeader>
 					{edit ? (

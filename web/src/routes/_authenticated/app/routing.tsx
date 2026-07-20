@@ -250,9 +250,7 @@ function RouteComponent() {
 										</TableCell>
 										<TableCell>
 											{(r.fallbacks ?? []).length === 0 ? (
-												<span className="text-muted-foreground text-xs">
-													—
-												</span>
+												<span className="text-muted-foreground text-xs">—</span>
 											) : (
 												<div className="flex flex-wrap gap-1">
 													{(r.fallbacks ?? []).map((f) => (
