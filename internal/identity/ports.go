@@ -53,7 +53,9 @@ type SSOState struct {
 }
 
 // SSOStateStore stores CSRF state between begin and complete SSO.
+// Implementations must be safe for multi-instance control planes (shared backend).
 type SSOStateStore interface {
-	Put(state string, value SSOState) error
-	Take(state string) (SSOState, bool)
+	Put(ctx context.Context, state string, value SSOState) error
+	// Take atomically loads and deletes state. Returns kernel.ErrNotFound when missing/expired.
+	Take(ctx context.Context, state string) (SSOState, error)
 }

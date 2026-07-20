@@ -46,8 +46,11 @@ type Config struct {
 		// PublicBaseURL is the externally reachable control-plane URL (SSO callbacks).
 		PublicBaseURL string `yaml:"public_base_url" env:"AFI_AUTH_PUBLIC_BASE_URL"`
 		SSO           struct {
-			Enabled   bool          `yaml:"enabled" env:"AFI_SSO_ENABLED"`
-			Providers []SSOProvider `yaml:"providers"`
+			Enabled bool `yaml:"enabled" env:"AFI_SSO_ENABLED"`
+			// StateStore is redis (shared, multi-node) or memory (single-node / tests).
+			// Default redis — control plane is expected to scale horizontally.
+			StateStore string        `yaml:"state_store" env:"AFI_SSO_STATE_STORE" env-default:"redis"`
+			Providers  []SSOProvider `yaml:"providers"`
 		} `yaml:"sso"`
 	} `yaml:"auth"`
 
@@ -163,6 +166,15 @@ func LoadConfig() (*Config, error) {
 
 	if cfg.Auth.PublicBaseURL == "" {
 		cfg.Auth.PublicBaseURL = "http://localhost:8081"
+	}
+	if cfg.Auth.SSO.StateStore == "" {
+		cfg.Auth.SSO.StateStore = "redis"
+	}
+	switch strings.ToLower(strings.TrimSpace(cfg.Auth.SSO.StateStore)) {
+	case "redis", "memory":
+		cfg.Auth.SSO.StateStore = strings.ToLower(strings.TrimSpace(cfg.Auth.SSO.StateStore))
+	default:
+		return nil, fmt.Errorf("auth.sso.state_store: must be redis or memory, got %q", cfg.Auth.SSO.StateStore)
 	}
 	for i := range cfg.Auth.SSO.Providers {
 		p := &cfg.Auth.SSO.Providers[i]
