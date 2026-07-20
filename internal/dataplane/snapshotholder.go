@@ -9,7 +9,7 @@ import (
 
 // Holder keeps the current immutable snapshot for the request path.
 type Holder struct {
-	v atomic.Pointer[snapshot.Snapshot]
+	v  atomic.Pointer[snapshot.Snapshot]
 	mu sync.Mutex
 }
 

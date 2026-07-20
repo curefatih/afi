@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/app/platform"
+	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
 )
@@ -289,6 +290,9 @@ func (f *fakePlatform) CreatePolicy(context.Context, string, string, string, boo
 func (f *fakePlatform) UpdatePolicy(context.Context, string, *string, *string, *bool, *int) (*RequestPolicy, error) {
 	return nil, nil
 }
+func (f *fakePlatform) ReorderPolicies(context.Context, string, []gatewayconfig.PolicyPriorityUpdate) error {
+	return nil
+}
 func (f *fakePlatform) DeletePolicy(context.Context, string) error { return nil }
 func (f *fakePlatform) ListCredentials(context.Context, string) ([]Credential, error) {
 	return nil, nil
@@ -456,8 +460,8 @@ func TestCreateProjectSurfacesPublishError(t *testing.T) {
 		cfg:       testCfg(),
 		members:   api,
 		publisher: pub,
-		api: api, config: api,
-		log:       slog.Default(),
+		api:       api, config: api,
+		log: slog.Default(),
 	}
 	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_1", "a@b.c", "admin")
 	if err != nil {

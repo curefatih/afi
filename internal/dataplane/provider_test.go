@@ -1,9 +1,9 @@
 package dataplane
 
 import (
-	"github.com/curefatih/afi/internal/adapters/llm"
 	"bytes"
 	"encoding/json"
+	"github.com/curefatih/afi/internal/adapters/llm"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"

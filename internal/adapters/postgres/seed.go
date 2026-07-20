@@ -87,22 +87,22 @@ func (w *SeedWriter) EnsureAudioRoutes(ctx context.Context, orgID, providerID st
 
 // LocalDevSeed holds values for the standard local-dev dataset.
 type LocalDevSeed struct {
-	OrgID          string
-	TeamID         string
-	ProjectID      string
-	ProviderID     string
-	UserID         string
-	RouteID        string
-	KeyID          string
-	AdminEmail     string
-	AdminName      string
-	PasswordHash   string
-	OpenAIBaseURL  string
+	OrgID           string
+	TeamID          string
+	ProjectID       string
+	ProviderID      string
+	UserID          string
+	RouteID         string
+	KeyID           string
+	AdminEmail      string
+	AdminName       string
+	PasswordHash    string
+	OpenAIBaseURL   string
 	OpenAIAPIKeyEnv string
-	DefaultModel   string
-	APIKeyHash     string
-	APIKeyPrefix   string
-	Now            time.Time
+	DefaultModel    string
+	APIKeyHash      string
+	APIKeyPrefix    string
+	Now             time.Time
 }
 
 // SeedLocalDev upserts the standard local-dev dataset in a transaction.

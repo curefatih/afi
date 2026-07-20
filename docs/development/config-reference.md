@@ -123,6 +123,7 @@ Written on first control-plane start (or `make seed`):
 | GET/POST | `/api/v1/platform/organizations/{orgID}/quotas` (POST = org admin) |
 | PATCH/DELETE | `/api/v1/platform/quotas/{quotaID}` (org admin) |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/policies` (POST = org admin) |
+| POST | `/api/v1/platform/organizations/{orgID}/policies/reorder` (org admin; batch priority update) |
 | PATCH/DELETE | `/api/v1/platform/policies/{policyID}` (org admin) |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/credentials` (POST = org admin) |
 | PATCH/DELETE | `/api/v1/platform/credentials/{credentialID}` (org admin) |
@@ -167,7 +168,7 @@ Most specific scope wins **per window**: api_key → user → project → organi
 |-------|--------|
 | `name` | Display name |
 | `expression` | Boolean CEL; all enabled org policies must be true |
-| `priority` | Higher first (default 100) |
+| `priority` | Higher first (default 100). Batch-reorder via `POST .../policies/reorder` with `{ "items": [{ "id", "priority" }, ...] }`. |
 | `enabled` | Default true |
 
 CEL variables: `request.model`, `request.path`, `request.stream`, `key.id`, `key.organization_id`, `key.project_id`, `key.kind`, `key.owner_user_id`, `key.name`. Denial → HTTP 403 `policy_violation`. Owner/admin to create/update/delete.

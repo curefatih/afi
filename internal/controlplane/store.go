@@ -553,6 +553,10 @@ func (s *Store) UpdatePolicy(ctx context.Context, policyID string, name, express
 	return gatewayconfig.UpdatePolicy(ctx, s.policies(), celValidator{}, policyID, name, expression, enabled, priority)
 }
 
+func (s *Store) ReorderPolicies(ctx context.Context, orgID string, items []gatewayconfig.PolicyPriorityUpdate) error {
+	return gatewayconfig.ReorderPolicies(ctx, s.policies(), orgID, items)
+}
+
 func (s *Store) DeletePolicy(ctx context.Context, policyID string) error {
 	return s.policies().Delete(ctx, policyID)
 }

@@ -1,10 +1,10 @@
 package dataplane
 
 import (
-	"github.com/curefatih/afi/internal/adapters/llm"
-	afiredis "github.com/curefatih/afi/internal/adapters/redis"
 	"bytes"
 	"context"
+	"github.com/curefatih/afi/internal/adapters/llm"
+	afiredis "github.com/curefatih/afi/internal/adapters/redis"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"

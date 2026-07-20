@@ -100,7 +100,7 @@ type memOrgs struct {
 	roles map[string]string // userID|orgID -> role
 }
 
-func (o *memOrgs) Count(context.Context) (int64, error)                        { return 0, nil }
+func (o *memOrgs) Count(context.Context) (int64, error) { return 0, nil }
 func (o *memOrgs) Get(_ context.Context, orgID string) (*Organization, error) {
 	return &Organization{ID: orgID, Name: "Org"}, nil
 }

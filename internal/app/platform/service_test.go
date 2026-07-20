@@ -38,7 +38,9 @@ func (m *memAPI) ListOrganizationsForUser(context.Context, string) ([]tenancy.Or
 func (m *memAPI) CreateOrganization(_ context.Context, name, _ string) (*tenancy.Organization, error) {
 	return &tenancy.Organization{ID: "org_1", Name: name}, nil
 }
-func (m *memAPI) ListOrgMembers(context.Context, string) ([]tenancy.OrgMember, error) { return nil, nil }
+func (m *memAPI) ListOrgMembers(context.Context, string) ([]tenancy.OrgMember, error) {
+	return nil, nil
+}
 func (m *memAPI) UpdateOrgMemberRole(context.Context, string, string, string, string) (*tenancy.OrgMember, error) {
 	return &tenancy.OrgMember{UserID: "u1", Role: "admin"}, nil
 }
@@ -110,7 +112,7 @@ func (m *memAPI) CreateProvider(context.Context, string, string, string, string,
 func (m *memAPI) UpdateProvider(context.Context, string, string, string, string) (*gatewayconfig.Provider, error) {
 	panic("unused")
 }
-func (m *memAPI) DeleteProvider(context.Context, string) error { panic("unused") }
+func (m *memAPI) DeleteProvider(context.Context, string) error                      { panic("unused") }
 func (m *memAPI) ListRoutes(context.Context, string) ([]gatewayconfig.Route, error) { return nil, nil }
 func (m *memAPI) CreateRoute(context.Context, string, string, string, string, []gatewayconfig.RouteFallback) (*gatewayconfig.Route, error) {
 	panic("unused")
@@ -144,6 +146,9 @@ func (m *memAPI) CreatePolicy(context.Context, string, string, string, bool, int
 	panic("unused")
 }
 func (m *memAPI) UpdatePolicy(context.Context, string, *string, *string, *bool, *int) (*gatewayconfig.RequestPolicy, error) {
+	panic("unused")
+}
+func (m *memAPI) ReorderPolicies(context.Context, string, []gatewayconfig.PolicyPriorityUpdate) error {
 	panic("unused")
 }
 func (m *memAPI) DeletePolicy(context.Context, string) error { panic("unused") }

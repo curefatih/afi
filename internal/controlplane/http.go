@@ -105,6 +105,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /api/v1/platform/quotas/{quotaID}", s.requireAuth(s.requireOrgAdminViaQuota(s.handleDeleteQuota)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/policies", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListPolicies)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/policies", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreatePolicy)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/policies/reorder", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleReorderPolicies)))
 	mux.HandleFunc("PATCH /api/v1/platform/policies/{policyID}", s.requireAuth(s.requireOrgAdminViaPolicy(s.handleUpdatePolicy)))
 	mux.HandleFunc("DELETE /api/v1/platform/policies/{policyID}", s.requireAuth(s.requireOrgAdminViaPolicy(s.handleDeletePolicy)))
 

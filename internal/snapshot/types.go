@@ -30,15 +30,15 @@ const (
 var RequestWindows = []string{WindowMinute, WindowHour, WindowDay, WindowTotal}
 
 type Snapshot struct {
-	Version     int64                   `json:"version"`
-	CreatedAt   time.Time               `json:"created_at"`
-	APIKeys     map[string]APIKey       `json:"api_keys"`     // keyed by key hash
-	Providers   map[string]Provider     `json:"providers"`    // keyed by provider id
-	Routes      map[string]Route        `json:"routes"`       // keyed by orgID + "::" + model
-	Credentials map[string]Credential   `json:"credentials"`  // keyed by credential id
-	Assignments map[string]string       `json:"assignments"`  // providerType::scopeType::scopeID → credential id
-	Quotas      []Quota                 `json:"quotas"`
-	Policies    []Policy                `json:"policies"`
+	Version     int64                 `json:"version"`
+	CreatedAt   time.Time             `json:"created_at"`
+	APIKeys     map[string]APIKey     `json:"api_keys"`    // keyed by key hash
+	Providers   map[string]Provider   `json:"providers"`   // keyed by provider id
+	Routes      map[string]Route      `json:"routes"`      // keyed by orgID + "::" + model
+	Credentials map[string]Credential `json:"credentials"` // keyed by credential id
+	Assignments map[string]string     `json:"assignments"` // providerType::scopeType::scopeID → credential id
+	Quotas      []Quota               `json:"quotas"`
+	Policies    []Policy              `json:"policies"`
 }
 
 // Credential is a compiled upstream secret reference (never plaintext for encrypted_db).

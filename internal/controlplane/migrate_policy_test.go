@@ -14,20 +14,20 @@ func TestShouldWipeSchema(t *testing.T) {
 		wantWipe      bool
 	}{
 		{
-			name: "empty database",
+			name:     "empty database",
 			wantWipe: false,
 		},
 		{
-			name:       "legacy uuid organizations",
-			orgExists:  true,
-			orgIDType:  "uuid",
-			wantWipe:   true,
+			name:      "legacy uuid organizations",
+			orgExists: true,
+			orgIDType: "uuid",
+			wantWipe:  true,
 		},
 		{
-			name:       "text orgs without meta is wipe",
-			orgExists:  true,
-			orgIDType:  "text",
-			wantWipe:   true, // unknown/incomplete install → reset once
+			name:      "text orgs without meta is wipe",
+			orgExists: true,
+			orgIDType: "text",
+			wantWipe:  true, // unknown/incomplete install → reset once
 		},
 		{
 			name:          "matching schema version never wipes",

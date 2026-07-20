@@ -35,14 +35,14 @@ const (
 
 // OrgInvite is a pending (or historical) organization membership invite.
 type OrgInvite struct {
-	ID              string    `json:"id"`
-	OrganizationID  string    `json:"organization_id"`
-	Email           string    `json:"email"`
-	Role            string    `json:"role"`
-	InvitedByUserID string    `json:"invited_by_user_id"`
-	Status          string    `json:"status"`
-	ExpiresAt       time.Time `json:"expires_at"`
-	CreatedAt       time.Time `json:"created_at"`
+	ID              string     `json:"id"`
+	OrganizationID  string     `json:"organization_id"`
+	Email           string     `json:"email"`
+	Role            string     `json:"role"`
+	InvitedByUserID string     `json:"invited_by_user_id"`
+	Status          string     `json:"status"`
+	ExpiresAt       time.Time  `json:"expires_at"`
+	CreatedAt       time.Time  `json:"created_at"`
 	AcceptedAt      *time.Time `json:"accepted_at,omitempty"`
 }
 

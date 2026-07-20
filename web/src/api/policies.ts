@@ -70,3 +70,21 @@ export const deletePolicyMutationOptions = () =>
 				method: "DELETE",
 			}),
 	});
+
+export type ReorderPoliciesInput = {
+	orgId: string;
+	policies: Array<Pick<RequestPolicy, "id" | "priority">>;
+};
+
+/** Persist priority changes in one transactional reorder request. */
+export const reorderPoliciesMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ orgId, policies }: ReorderPoliciesInput) =>
+			apiFetch<RequestPolicy[]>(
+				`/api/v1/platform/organizations/${orgId}/policies/reorder`,
+				{
+					method: "POST",
+					body: { items: policies },
+				},
+			),
+	});
