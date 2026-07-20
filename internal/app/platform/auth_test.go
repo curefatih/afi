@@ -138,7 +138,7 @@ func TestCompleteSSO_JIT(t *testing.T) {
 		NewUserID: func() string { return "user_jit" },
 		NewLinkID: func() string { return "ext_1" },
 	}
-	authURL, err := svc.BeginSSO("google", "/app/dashboard")
+	authURL, err := svc.BeginSSO(context.Background(), "google", "/app/dashboard")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestCompleteSSO_JIT(t *testing.T) {
 		t.Fatal("empty auth url")
 	}
 	// Extract state from stored map by completing with Take via Begin's Put — re-put known state.
-	_ = states.Put("fixedstate", identity.SSOState{Provider: "google", ReturnTo: "/app/dashboard", ExpiresAt: time.Now().Add(time.Minute)})
+	_ = states.Put(context.Background(), "fixedstate", identity.SSOState{Provider: "google", ReturnTo: "/app/dashboard", ExpiresAt: time.Now().Add(time.Minute)})
 	result, err := svc.CompleteSSO(context.Background(), "google", "code", "fixedstate")
 	if err != nil {
 		t.Fatal(err)

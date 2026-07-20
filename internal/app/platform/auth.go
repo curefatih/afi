@@ -80,7 +80,7 @@ func (a *AuthService) LoginWithPassword(ctx context.Context, email, password str
 }
 
 // BeginSSO starts an OAuth/OIDC login and returns the IdP redirect URL.
-func (a *AuthService) BeginSSO(providerID, returnTo string) (authURL string, err error) {
+func (a *AuthService) BeginSSO(ctx context.Context, providerID, returnTo string) (authURL string, err error) {
 	if a == nil || !a.SSOEnabled {
 		return "", identity.ErrSSODisabled
 	}
@@ -102,7 +102,7 @@ func (a *AuthService) BeginSSO(providerID, returnTo string) (authURL string, err
 	if a.Now != nil {
 		now = a.Now().UTC()
 	}
-	if err := a.States.Put(state, identity.SSOState{
+	if err := a.States.Put(ctx, state, identity.SSOState{
 		Provider:  providerID,
 		ReturnTo:  sanitizeReturnTo(returnTo),
 		ExpiresAt: now.Add(10 * time.Minute),
@@ -131,8 +131,14 @@ func (a *AuthService) CompleteSSO(ctx context.Context, providerID, code, state s
 	if code == "" || state == "" {
 		return nil, kernel.ErrInvalidRequest
 	}
-	st, ok := a.States.Take(state)
-	if !ok || st.Provider != providerID {
+	st, err := a.States.Take(ctx, state)
+	if err != nil {
+		if errors.Is(err, kernel.ErrNotFound) {
+			return nil, identity.ErrInvalidSSOState
+		}
+		return nil, err
+	}
+	if st.Provider != providerID {
 		return nil, identity.ErrInvalidSSOState
 	}
 	redirectURI := ssoCallbackURL(a.PublicBaseURL, providerID)
