@@ -77,7 +77,9 @@ func main() {
 	if redisCloser != nil {
 		defer redisCloser()
 	}
-	log.Info("sso state store", "backend", cfg.Auth.SSO.StateStore)
+	if cfg.Auth.SSO.Enabled {
+		log.Info("sso state store", "backend", cfg.Auth.SSO.StateStore)
+	}
 
 	srv := controlplane.NewServer(cfg, store, seeder, snapStore, log, eventOutbox, ssoStates)
 	httpServer := &http.Server{
@@ -104,6 +106,9 @@ func main() {
 }
 
 func openSSOStateStore(cfg *kernel.Config) (identity.SSOStateStore, func(), error) {
+	if cfg == nil || !cfg.Auth.SSO.Enabled {
+		return nil, nil, nil
+	}
 	backend := strings.ToLower(strings.TrimSpace(cfg.Auth.SSO.StateStore))
 	if backend == "" {
 		backend = "redis"

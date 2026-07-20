@@ -43,7 +43,8 @@ func newAuthService(cfg *kernel.Config, store *Store, states identity.SSOStateSt
 	if cfg == nil || store == nil {
 		return nil
 	}
-	if states == nil {
+	if states == nil && cfg.Auth.SSO.Enabled {
+		// Fallback for tests / miswired composition roots when SSO is on.
 		states = memory.NewSSOStateStore(defaultSSOStateTTL)
 	}
 	authAdapter := adapterauth.NewService(cfg.Auth.JWTSecret, cfg.Auth.TokenTTL)
