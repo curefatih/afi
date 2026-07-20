@@ -363,7 +363,7 @@ function RouteComponent() {
 										policyId: edit.id,
 										name: editName,
 										expression: editExpression,
-										priority: Number(editPriority) || 100,
+										priority: editPriority.trim() === "" || isNaN(Number(editPriority)) ? 100 : Number(editPriority),
 										enabled: editEnabled,
 									},
 									{
