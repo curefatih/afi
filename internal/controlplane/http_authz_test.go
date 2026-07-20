@@ -460,8 +460,8 @@ func TestCreateProjectSurfacesPublishError(t *testing.T) {
 		cfg:       testCfg(),
 		members:   api,
 		publisher: pub,
-		api: api, config: api,
-		log:       slog.Default(),
+		api:       api, config: api,
+		log: slog.Default(),
 	}
 	tok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_1", "a@b.c", "admin")
 	if err != nil {

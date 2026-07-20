@@ -6,7 +6,7 @@ func TestResolveCredentialPrefersProject(t *testing.T) {
 	t.Parallel()
 	snap := &Snapshot{
 		Credentials: map[string]Credential{
-			"c_org": {ID: "c_org", ProviderType: "openai", Status: CredentialStatusActive},
+			"c_org":  {ID: "c_org", ProviderType: "openai", Status: CredentialStatusActive},
 			"c_proj": {ID: "c_proj", ProviderType: "openai", Status: CredentialStatusActive},
 		},
 		Assignments: map[string]string{

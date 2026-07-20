@@ -135,7 +135,7 @@ func (c *AnthropicClient) Messages(ctx context.Context, provider snapshot.Provid
 		return &http.Response{
 			StatusCode: http.StatusOK,
 			Header: http.Header{
-				"Content-Type": []string{"text/event-stream"},
+				"Content-Type":  []string{"text/event-stream"},
 				"Cache-Control": []string{"no-cache"},
 			},
 			Body: pr,

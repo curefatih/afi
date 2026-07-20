@@ -1,8 +1,8 @@
 package dataplane
 
 import (
-	"github.com/curefatih/afi/internal/adapters/llm"
 	"bytes"
+	"github.com/curefatih/afi/internal/adapters/llm"
 	"io"
 	"log/slog"
 	"mime/multipart"

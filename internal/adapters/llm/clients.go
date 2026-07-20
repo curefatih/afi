@@ -6,10 +6,10 @@ import (
 
 // Clients holds the built-in outbound LLM HTTP clients.
 type Clients struct {
-	OpenAI            *OpenAIClient
-	OpenAICompatible  *OpenAIClient
-	Anthropic         *AnthropicClient
-	Gemini            *GeminiClient
+	OpenAI           *OpenAIClient
+	OpenAICompatible *OpenAIClient
+	Anthropic        *AnthropicClient
+	Gemini           *GeminiClient
 }
 
 // NewClients constructs vendor clients with a shared secret resolver.

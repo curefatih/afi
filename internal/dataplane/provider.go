@@ -96,7 +96,7 @@ func newOpenAIChatProvider(typ string, client *llm.OpenAIClient, caps ProviderCa
 	return &openaiChatProvider{typ: typ, client: client, caps: caps}
 }
 
-func (p *openaiChatProvider) Type() string              { return p.typ }
+func (p *openaiChatProvider) Type() string               { return p.typ }
 func (p *openaiChatProvider) Capabilities() ProviderCaps { return p.caps }
 
 func (p *openaiChatProvider) Chat(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
