@@ -75,16 +75,15 @@ func (h *Hook) BeforeCall(ctx context.Context, call *sdkhook.CallContext) (sdkho
 	}
 
 	scopeID := fmt.Sprintf("%s:%s:%s:%s", parentType, parentID, h.Config.TagKey, val)
-	used, err := h.Counters.Get(ctx, "tag", scopeID, snapshot.MetricRequests, h.Config.Window)
+	// Incr-then-check: atomic vs Get+Incr race; one RTT on the allow path.
+	used, err := h.Counters.Incr(ctx, "tag", scopeID, snapshot.MetricRequests, h.Config.Window, 1)
 	if err != nil {
 		return sdkhook.CallDecision{}, err
 	}
-	if used >= h.Config.Limit {
+	if used > h.Config.Limit {
+		_, _ = h.Counters.Incr(ctx, "tag", scopeID, snapshot.MetricRequests, h.Config.Window, -1)
 		return sdkhook.Deny(http.StatusTooManyRequests, "insufficient_quota",
 			fmt.Sprintf("tag quota exceeded for %s=%s", h.Config.TagKey, val)), nil
-	}
-	if _, err := h.Counters.Incr(ctx, "tag", scopeID, snapshot.MetricRequests, h.Config.Window, 1); err != nil {
-		return sdkhook.CallDecision{}, err
 	}
 	return sdkhook.Allow(), nil
 }

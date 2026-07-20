@@ -66,6 +66,48 @@ func TestTagQuotaIndependentUsers(t *testing.T) {
 	}
 }
 
+func TestTagQuotaConcurrentRespectsLimit(t *testing.T) {
+	t.Parallel()
+	counters := &memCounters{used: map[string]int64{}}
+	h := New(counters, Config{TagKey: "end-user-id", Limit: 10, Window: "total", ScopeParent: "project"})
+	call := &sdkhook.CallContext{
+		Principal: sdkhook.Principal{OrganizationID: "o1", ProjectID: "p1", APIKeyID: "k1"},
+		Tags:      map[string]string{"end-user-id": "fatih"},
+		Metadata:  map[string]any{},
+	}
+
+	const n = 50
+	var (
+		mu     sync.Mutex
+		allowed int
+		wg     sync.WaitGroup
+	)
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func() {
+			defer wg.Done()
+			d, err := h.BeforeCall(context.Background(), call)
+			if err != nil {
+				t.Errorf("BeforeCall: %v", err)
+				return
+			}
+			if d.Allow {
+				mu.Lock()
+				allowed++
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+	if allowed != 10 {
+		t.Fatalf("allowed=%d want 10", allowed)
+	}
+	got, _ := counters.Get(context.Background(), "tag", "project:p1:end-user-id:fatih", "requests", "total")
+	if got != 10 {
+		t.Fatalf("counter=%d want 10", got)
+	}
+}
+
 func TestTagQuotaSkipsMissingTag(t *testing.T) {
 	t.Parallel()
 	counters := &memCounters{used: map[string]int64{}}
