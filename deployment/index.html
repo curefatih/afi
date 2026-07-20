@@ -334,6 +334,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../getting-started/sso/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Single sign-on (SSO)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../getting-started/verify/" class="md-nav__link">
         
   
@@ -1159,6 +1187,7 @@
 <ol>
 <li>Replace all <code>CHANGE_ME</code> values in <code>deploy/.env</code> and <code>deploy/afi.yaml</code> (or your own config).</li>
 <li>Set strong <code>AFI_JWT_SECRET</code> and <code>AFI_INTERNAL_TOKEN</code> (never use the local-dev defaults).</li>
+<li>If enabling platform SSO, set <code>auth.public_base_url</code> / <code>mail.public_app_url</code> to public HTTPS URLs, use <code>auth.sso.state_store: redis</code>, and keep IdP client secrets out of git (<a href="../getting-started/sso/">SSO guide</a>).</li>
 <li>Use a strong Postgres password and restrict network access to the database.</li>
 <li>Inject upstream provider API keys only into the <strong>gateway</strong> process environment.</li>
 <li>Change seed admin password and virtual API key (or delete the seed key after creating your own).</li>
@@ -1199,6 +1228,7 @@
 </code></pre></div>
 <h2 id="related">Related</h2>
 <ul>
+<li><a href="../getting-started/sso/">Single sign-on (SSO)</a></li>
 <li><a href="../development/platform-events/">Platform domain events</a></li>
 <li><a href="../development/providers/">Providers</a></li>
 <li><a href="../development/architecture/">Architecture</a></li>

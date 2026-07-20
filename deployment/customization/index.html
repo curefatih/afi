@@ -334,6 +334,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../getting-started/sso/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Single sign-on (SSO)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../getting-started/verify/" class="md-nav__link">
         
   
@@ -1266,8 +1294,8 @@
 <td><code>AFI_REDIS_URL</code></td>
 <td><code>redis_url</code></td>
 <td><code>redis://localhost:6379/0</code></td>
-<td>Gateway</td>
-<td>Required for <code>minute</code>/<code>hour</code>/<code>day</code> quotas</td>
+<td>Gateway, control plane</td>
+<td>Gateway timed quotas; SSO CSRF state when <code>auth.sso.state_store=redis</code></td>
 </tr>
 <tr>
 <td><code>AFI_CONTROLPLANE_ADDR</code></td>
@@ -1311,11 +1339,33 @@
 <td>Control plane</td>
 <td>Header <code>X-AFI-Internal-Token</code> for <code>/internal/v1/*</code></td>
 </tr>
+<tr>
+<td><code>AFI_AUTH_PUBLIC_BASE_URL</code></td>
+<td><code>auth.public_base_url</code></td>
+<td><code>http://localhost:8081</code></td>
+<td>Control plane</td>
+<td>Public control-plane URL (SSO callbacks)</td>
+</tr>
+<tr>
+<td><code>AFI_SSO_ENABLED</code></td>
+<td><code>auth.sso.enabled</code></td>
+<td><code>false</code></td>
+<td>Control plane</td>
+<td>Enable platform OAuth2/OIDC SSO</td>
+</tr>
+<tr>
+<td><code>AFI_SSO_STATE_STORE</code></td>
+<td><code>auth.sso.state_store</code></td>
+<td><code>redis</code></td>
+<td>Control plane</td>
+<td><code>redis</code> (multi-node) or <code>memory</code> (single-node)</td>
+</tr>
 </tbody>
 </table>
 <h3 id="auth-behavior">Auth behavior</h3>
 <ul>
 <li>Platform login: <code>POST /api/v1/platform/auth/login</code> → JWT signed with <code>jwt_secret</code>.</li>
+<li>Platform SSO (OAuth2/OIDC): see <strong><a href="../../getting-started/sso/">Single sign-on (SSO)</a></strong>. Providers are configured under <code>auth.sso.providers</code> (YAML). Prefer <code>state_store: redis</code> when running multiple control-plane replicas.</li>
 <li>Empty <code>internal_token</code> fails closed for HTTP internal admin routes.</li>
 <li>CLI <code>afi seed</code> / <code>afi snapshot publish</code> run in-process and do not need the header.</li>
 </ul>
@@ -1714,6 +1764,11 @@
 <span class="w">  </span><span class="nt">jwt_secret</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;long-random-string&quot;</span>
 <span class="w">  </span><span class="nt">token_ttl</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;12h&quot;</span>
 <span class="w">  </span><span class="nt">internal_token</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;another-long-random-string&quot;</span>
+<span class="w">  </span><span class="nt">public_base_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://afi-control.example.com&quot;</span>
+<span class="w">  </span><span class="nt">sso</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">state_store</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">redis</span>
+<span class="w">    </span><span class="c1"># providers: see getting-started/sso.md</span>
 
 <span class="nt">seed</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">virtual_api_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;sk-live-initial-only&quot;</span>

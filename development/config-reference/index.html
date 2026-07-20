@@ -334,6 +334,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../getting-started/sso/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Single sign-on (SSO)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../getting-started/verify/" class="md-nav__link">
         
   
@@ -1206,7 +1234,7 @@
 <tr>
 <td><code>AFI_REDIS_URL</code></td>
 <td><code>redis://localhost:6379/0</code></td>
-<td>gateway timed quotas</td>
+<td>Gateway timed quotas; control plane SSO state when <code>auth.sso.state_store=redis</code></td>
 </tr>
 <tr>
 <td><code>AFI_CONTROLPLANE_ADDR</code></td>
@@ -1237,6 +1265,21 @@
 <td><code>AFI_TOKEN_TTL</code></td>
 <td><code>24h</code></td>
 <td>JWT lifetime</td>
+</tr>
+<tr>
+<td><code>AFI_AUTH_PUBLIC_BASE_URL</code></td>
+<td><code>http://localhost:8081</code></td>
+<td>SSO OAuth callback base URL</td>
+</tr>
+<tr>
+<td><code>AFI_SSO_ENABLED</code></td>
+<td><code>false</code></td>
+<td>Enable platform SSO</td>
+</tr>
+<tr>
+<td><code>AFI_SSO_STATE_STORE</code></td>
+<td><code>redis</code></td>
+<td><code>redis</code> | <code>memory</code></td>
 </tr>
 <tr>
 <td><code>AFI_CREDENTIALS_MASTER_KEY</code></td>
@@ -1486,6 +1529,18 @@
 <tr>
 <td>GET/POST</td>
 <td><code>/api/v1/platform/auth/invites/{token}</code> / <code>…/accept</code> (public)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/platform/auth/sso/providers</code> (public)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/platform/auth/sso/{provider}/start</code> (public; redirects to IdP)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/platform/auth/sso/{provider}/callback</code> (public; redirects to web UI)</td>
 </tr>
 <tr>
 <td>GET/POST</td>
