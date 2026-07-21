@@ -46,9 +46,24 @@ Seeded demo: [`extensions/demohook`](../../extensions/demohook) prefixes the las
 
 Provider adapters use [`sdk/provider`](../../sdk/provider) + `Registry.RegisterSDK` (see [`extensions/echo`](../../extensions/echo)). Lifecycle types live in [`sdk/hook`](../../sdk/hook).
 
+## WASM (data plane)
+
+Sandboxed TinyGo modules can implement `before_call` / `before_chat` via [`internal/adapters/wasm`](../../internal/adapters/wasm) (wazero).
+
+```bash
+export AFI_WASM_BEFORE_CALL=extensions/wasmhook/hook.wasm
+export AFI_WASM_BEFORE_CHAT=extensions/wasmhook/hook.wasm   # optional
+```
+
+Guest ABI, limits, and DDD ownership: [wasm.md](wasm.md). Example guest: [`extensions/wasmhook`](../../extensions/wasmhook).
+
+Benchmarks vs native Go hooks: [Performance](wasm.md#performance-wasm-vs-native-go).
+
+Control-plane Plugin CRUD / snapshot-driven module refs are **not** shipped yet — configuration is gateway env only so domain packages stay free of the WASM runtime.
+
 ## Future
 
 * gRPC extensions — providers, auth, secrets, notifications, remote BeforeCall
-* WASM extensions — prompt/header mutation, PII masking, enrichment
+* Control-plane plugin bindings compiled into the snapshot (hot reload)
 
 Redis rate limits and CEL request policies remain available via the built-in BeforeCall gates (see Quotas / Policies in the platform UI).

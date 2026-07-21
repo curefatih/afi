@@ -28,6 +28,8 @@ export AFI_JWT_SECRET="..."   # overrides auth.jwt_secret in the file
 | `AFI_CONTROLPLANE_ADDR` | `controlplane.addr` | `:8081` | Control plane | Listen address |
 | `AFI_GATEWAY_ADDR` | `gateway.addr` | `:8080` | Gateway | Listen address |
 | `AFI_SNAPSHOT_POLL_INTERVAL` | `gateway.snapshot_poll_interval` | `2s` | Gateway | Poll period (also uses Postgres `LISTEN`) |
+| `AFI_WASM_BEFORE_CALL` | `gateway.wasm_before_call` | _(empty)_ | Gateway | Optional TinyGo `.wasm` exporting `before_call` |
+| `AFI_WASM_BEFORE_CHAT` | `gateway.wasm_before_chat` | _(empty)_ | Gateway | Optional TinyGo `.wasm` exporting `before_chat` |
 | `AFI_JWT_SECRET` | `auth.jwt_secret` | `afi-local-dev-jwt-secret-change-me` | Control plane | **Change in prod** — HS256 signing |
 | `AFI_TOKEN_TTL` | `auth.token_ttl` | `24h` | Control plane | Platform session JWT lifetime |
 | `AFI_INTERNAL_TOKEN` | `auth.internal_token` | `afi-local-internal-token` | Control plane | Header `X-AFI-Internal-Token` for `/internal/v1/*` |
