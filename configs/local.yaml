@@ -7,6 +7,11 @@ controlplane:
 gateway:
   addr: ":8080"
   snapshot_poll_interval: "2s"
+  # Local TinyGo example (extensions/wasmhook). Paths are relative to process cwd (repo root).
+  # before_call: deny when X-AFI-Tags includes plan:blocked; stamps metadata.wasm_hook.
+  # before_chat: prefixes last user message with "[wasm] ".
+  wasm_before_call: "extensions/wasmhook/hook.wasm"
+  wasm_before_chat: "extensions/wasmhook/hook.wasm"
 
 auth:
   jwt_secret: "afi-local-dev-jwt-secret-change-me"
