@@ -24,11 +24,11 @@ Covered areas:
 
 ```bash
 go test ./internal/adapters/wasm/ \
-  -bench='BenchmarkBefore(Call|Chat)_' \
-  -benchmem -count=10 -benchtime=500ms
+  -bench='BenchmarkBefore(Call|Chat)_(Native|WASM)' \
+  -benchmem -count=5 -benchtime=300ms
 ```
 
-Compares in-process Go hooks to TinyGo WASM (`extensions/wasmhook`). Documented numbers, collapsible code samples, and guidance: [WASM hooks — Performance](../hooks/wasm.md#performance-wasm-vs-native-go).
+Compares in-process Go hooks to TinyGo WASM with **instance pooling** (and `WASM_NoPool` for the old per-call instantiate path). See [WASM hooks — Performance](../hooks/wasm.md#performance-wasm-vs-native-go).
 
 ## Automated local verify
 

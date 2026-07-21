@@ -144,6 +144,7 @@ The host instantiates with `_initialize` (not `_start`). WASI preview1 is provid
 
 - Default invoke timeout: **100ms** (wall clock via context).
 - Default memory limit: **32 MiB** (512 WASM pages).
+- Default **instance pool size: 8** (`Config.PoolSize`; set negative to disable pooling).
 - Guest panic / timeout / invalid JSON → hook **error** → HTTP 500 (fail closed), same as a Go hook error.
 
 ## Field names
@@ -155,29 +156,30 @@ Go types in [`sdk/hook`](../../sdk/hook) are the source of truth for semantics; 
 Comparable hooks (same allow/deny + metadata stamp / chat prefix logic) are benchmarked in [`internal/adapters/wasm/bench_test.go`](../../internal/adapters/wasm/bench_test.go):
 
 * **Native** — in-process Go `sdk/hook` implementation (no sandbox).
-* **WASM** — TinyGo `extensions/wasmhook/hook.wasm` via the wazero host (current v1: **fresh module instance per invoke**).
+* **WASM (pooled)** — default host: reused guest instances (`PoolSize=8`).
+* **WASM (no pool)** — `PoolSize: -1` instantiate+close every invoke (pre-pool behavior).
 
-Each benchmark warms up with **64 invokes** before `ResetTimer()` so reported numbers exclude compile/load and cold-cache effects as much as Go’s harness allows.
+Each benchmark warms up with **64 invokes** before `ResetTimer()`.
 
 ### How to run
 
 ```bash
 go test ./internal/adapters/wasm/ \
-  -bench='BenchmarkBefore(Call|Chat)_' \
-  -benchmem -count=10 -benchtime=500ms
+  -bench='BenchmarkBefore(Call|Chat)_(Native|WASM)' \
+  -benchmem -count=5 -benchtime=300ms
 ```
 
-### Results (warmed, `-count=10`)
+### Results (warmed, pooled default, `-count=5`)
 
-Machine: `darwin/arm64` (Apple Silicon). Values are **median** ns/op across 10 runs (min–max shown for stability).
+Machine: `darwin/arm64` (Apple Silicon). Values are **median** ns/op.
 
-| Benchmark | Native (med) | WASM (med) | Approx. ratio | Native range | WASM range |
-|-----------|--------------|------------|---------------|--------------|------------|
-| `BeforeCall` allow | 46.5 ns, 0 allocs | 358 µs, ~523 KiB, 322 allocs | ~**7700×** | 46–50 ns | 353–374 µs |
-| `BeforeCall` deny | 97.8 ns, 0 allocs | 263 µs, ~523 KiB, 319 allocs | ~**2700×** | 97–99 ns | 262–266 µs |
-| `BeforeChat` prefix | 1.68 µs, 38 allocs | 71.3 µs, ~193 KiB, 297 allocs | ~**42×** | 1.64–1.88 µs | 70–74 µs |
+| Benchmark | Native | WASM pooled | WASM no pool | Pooled vs native | Pool speedup |
+|-----------|--------|-------------|--------------|------------------|--------------|
+| `BeforeCall` allow | 46 ns, 0 allocs | **33 µs**, ~3.3 KiB, 49 allocs | 352 µs, ~523 KiB, 331 allocs | ~**720×** | ~**10.6×** |
+| `BeforeCall` deny | 98 ns, 0 allocs | **33 µs**, ~3.0 KiB, 45 allocs | — | ~**340×** | — |
+| `BeforeChat` prefix | 1.7 µs, 38 allocs | **24 µs**, ~1.7 KiB, 26 allocs | ~71 µs pre-pool | ~**14×** | ~**3×** |
 
-After warmup, run-to-run spread is small (a few percent). Cold-start / first-load cost is **not** in these numbers — module compile happens once in setup; per-op cost is still dominated by **instantiate + JSON ABI**.
+Pooling removes most of the per-call instantiate cost. Remaining gap vs native is mainly **JSON ABI + guest execution**.
 
 ??? example "Native Go hook used in the benchmark"
 
@@ -196,44 +198,37 @@ After warmup, run-to-run spread is small (a few percent). Cold-start / first-loa
     }
     ```
 
-??? example "Benchmark harness (warmup + timed loop)"
+??? example "Pooled vs no-pool compile"
 
     ```go
-    func BenchmarkBeforeCall_WASM(b *testing.B) {
-        ctx := context.Background()
-        mod, err := CompileFile(ctx, exampleWASMPath(b), Config{Name: "bench", Timeout: time.Second})
-        // ...
-        h, err := NewBeforeCall(mod)
-        for i := 0; i < 64; i++ { // warmup
-            _, _ = h.BeforeCall(ctx, benchCallAllow())
-        }
-        b.ReportAllocs()
-        b.ResetTimer()
-        for i := 0; i < b.N; i++ {
-            d, err := h.BeforeCall(ctx, benchCallAllow())
-            if err != nil || !d.Allow {
-                b.Fatal(err)
-            }
-        }
-    }
+    // Default: pool of 8 reused instances
+    mod, _ := CompileFile(ctx, path, Config{Name: "hook"})
+
+    // Disable pooling (instantiate every call)
+    mod, _ := CompileFile(ctx, path, Config{Name: "hook", PoolSize: -1})
     ```
 
-??? tip "Full raw `go test` output (`-count=10`)"
+??? tip "Raw medians from the pooled run set"
 
     ```text
-    BenchmarkBeforeCall_Native-12         	…	        46.51 ns/op	       0 B/op	       0 allocs/op
-    BenchmarkBeforeCall_WASM-12           	…	    358450 ns/op	  522785 B/op	     322 allocs/op
-    BenchmarkBeforeCall_Native_Deny-12    	…	        97.80 ns/op	       0 B/op	       0 allocs/op
-    BenchmarkBeforeCall_WASM_Deny-12      	…	    263276 ns/op	  522579 B/op	     319 allocs/op
-    BenchmarkBeforeChat_Native-12         	…	      1677 ns/op	    1520 B/op	      38 allocs/op
-    BenchmarkBeforeChat_WASM-12           	…	     71271 ns/op	  193115 B/op	     297 allocs/op
+    BenchmarkBeforeCall_Native-12         	…	        46.13 ns/op	       0 B/op	       0 allocs/op
+    BenchmarkBeforeCall_WASM-12           	…	     33149 ns/op	    3331 B/op	      49 allocs/op
+    BenchmarkBeforeCall_WASM_NoPool-12    	…	    352217 ns/op	  535518 B/op	     331 allocs/op
+    BenchmarkBeforeCall_Native_Deny-12    	…	        97.50 ns/op	       0 B/op	       0 allocs/op
+    BenchmarkBeforeCall_WASM_Deny-12      	…	     32902 ns/op	    3027 B/op	      45 allocs/op
+    BenchmarkBeforeChat_Native-12         	…	      1719 ns/op	    1520 B/op	      38 allocs/op
+    BenchmarkBeforeChat_WASM-12           	…	     24195 ns/op	    1657 B/op	      26 allocs/op
     ```
-
-    Medians from the same run set; individual lines vary slightly within the ranges in the table above.
 
 ### How to read this
 
 * Prefer **native Go hooks** for hot-path gates when you control the binary and do not need sandbox isolation.
-* Prefer **WASM** when tenants or operators supply untrusted transform/deny logic and sandboxing matters more than microseconds.
-* Most of the WASM cost in v1 is **per-call instantiate + JSON ABI**, not the guest’s business logic. Instance pooling / reuse would narrow the gap substantially (not shipped yet).
-* Absolute WASM latency (~0.07–0.36 ms median) is still small versus typical LLM round-trips (tens–hundreds of ms), so it is often acceptable on the gateway path when isolation is required.
+* Prefer **WASM** when tenants or operators supply untrusted transform/deny logic and sandboxing matters more than tens of microseconds.
+* Keep pooling enabled (default). Absolute pooled WASM latency (~24–33 µs median) is negligible vs typical LLM round-trips.
+* Guest modules should free host-visible buffers; long-lived pooled instances may still grow TinyGo heap over time — monitor in production and recycle via gateway restart / future snapshot reload.
+
+## Roadmap (next)
+
+1. **Control-plane Plugin bindings** — CP stores module refs / enablement; compile into snapshot; gateway hot-reloads (same split as CEL).
+2. **Content-addressed artifacts** — URI + digest instead of only `AFI_WASM_*` local paths.
+3. **Broader guest surface** — `AfterCall`, header mutation; providers remain Go SDK / future gRPC.
