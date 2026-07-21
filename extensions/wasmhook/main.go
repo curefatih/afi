@@ -147,6 +147,12 @@ func _before_chat(ptr, size uint32) uint64 {
 	return leakJSON(beforeChatOut{BodyB64: req.BodyB64})
 }
 
+//go:wasmexport after_call
+func _after_call(ptr, size uint32) uint64 {
+	_ = ptrToBytes(ptr, size)
+	return 0
+}
+
 func leakJSON(v any) uint64 {
 	b, err := json.Marshal(v)
 	if err != nil {

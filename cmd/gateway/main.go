@@ -89,6 +89,9 @@ func main() {
 
 	pipeline := dataplane.NewPipelineWithRegistry(holder, reg, log)
 	pipeline.Hooks = hooks
+	wasmCache := afiWasm.NewModuleCache(afiWasm.Config{Name: "snap-wasm"})
+	defer func() { _ = wasmCache.Close(context.Background()) }()
+	pipeline.Wasm = &dataplane.WasmRunner{Cache: wasmCache, Log: log}
 	var credBox *credentials.Box
 	if cfg.Credentials.MasterKey != "" {
 		box, err := credentials.ParseMasterKey(cfg.Credentials.MasterKey)
