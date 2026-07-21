@@ -1196,7 +1196,7 @@
 </code></pre></div>
 <p>Expect assistant content containing <code>echo:</code> (and <code>[hook:demo]</code> if the demo BeforeChat hook is registered).</p>
 <h2 id="hooks-in-process">Hooks (in-process)</h2>
-<p><code>ChatHook.BeforeChat</code> / <code>AfterChatHook.AfterChat</code> run around provider dispatch. Register via <code>dataplane.NewHookChain().RegisterHook(...)</code> (see <code>extensions/demohook</code>). Gateway <code>/healthz</code> lists hook objects with <code>before_chat</code> / <code>after_chat</code>. Full gRPC/WASM plugin runtimes remain future work.</p>
+<p><code>BeforeCall</code> / <code>AfterCall</code> run on all modalities; <code>ChatHook.BeforeChat</code> / <code>AfterChatHook.AfterChat</code> remain for chat body mutation. Register via <code>dataplane.NewHookChain().RegisterHook(...)</code> / <code>RegisterBeforeCall</code> (see <code>extensions/demohook</code>). Gateway <code>/healthz</code> lists hook objects with <code>before_call</code> / <code>after_call</code> / <code>before_chat</code> / <code>after_chat</code>. <code>extensions/tagquota</code> is an example-only BeforeCall sample for per-tag limits (not registered by default). Full gRPC/WASM plugin runtimes remain future work.</p>
 <h2 id="example-local-ollama">Example: local Ollama</h2>
 <ol>
 <li>Create provider type <code>openai_compatible</code>, base URL <code>http://127.0.0.1:11434/v1</code>, env <code>OLLAMA_API_KEY</code> (any non-empty value if Ollama ignores auth).</li>

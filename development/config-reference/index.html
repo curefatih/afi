@@ -1595,6 +1595,10 @@
 <td><code>/api/v1/platform/organizations/{orgID}/policies</code> (POST = org admin)</td>
 </tr>
 <tr>
+<td>POST</td>
+<td><code>/api/v1/platform/organizations/{orgID}/policies/reorder</code> (org admin; batch priority update)</td>
+</tr>
+<tr>
 <td>PATCH/DELETE</td>
 <td><code>/api/v1/platform/policies/{policyID}</code> (org admin)</td>
 </tr>
@@ -1711,7 +1715,7 @@
 </tr>
 <tr>
 <td><code>priority</code></td>
-<td>Higher first (default 100)</td>
+<td>Higher first (default 100). Batch-reorder via <code>POST .../policies/reorder</code> with <code>{ "items": [{ "id", "priority" }, ...] }</code>.</td>
 </tr>
 <tr>
 <td><code>enabled</code></td>

@@ -736,6 +736,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Today (in-process)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-tags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request tags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-per-tag-request-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: per-tag request limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -966,6 +994,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Today (in-process)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-tags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request tags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-per-tag-request-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: per-tag request limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -998,24 +1054,42 @@
 
 <h1 id="plugins-hooks">Plugins / hooks</h1>
 <h2 id="today-in-process">Today (in-process)</h2>
-<p>The gateway runs an in-process hook chain on the chat path:</p>
+<p>The gateway runs an in-process hook chain on every modality (chat, messages, TTS, STT):</p>
 <ol>
-<li><strong>BeforeChat</strong> — after auth/quota, before provider dispatch (<code>ChatHook</code>)</li>
-<li><strong>AfterChat</strong> — after the attempt finishes, success or error (<code>AfterChatHook</code>)</li>
+<li><strong>BeforeCall</strong> — after auth, before routing/provider. Receives a mutable <code>CallContext</code> (principal, route, tags from <code>X-AFI-Tags</code>, metadata, body). May <strong>allow</strong>, <strong>enrich</strong>, or <strong>deny</strong> (<code>Allow=false</code> + status/reason).</li>
+<li><strong>BeforeChat</strong> — chat only; mutates the OpenAI chat body after BeforeCall allows (existing <code>ChatHook</code>).</li>
+<li><strong>AfterCall</strong> — after the upstream attempt finishes (all modalities).</li>
+<li><strong>AfterChat</strong> — chat only; logging/side effects after AfterCall.</li>
 </ol>
+<p>Built-in gates always run in the request path (not registered on <code>pipeline.Hooks</code>, so replacing the chain cannot bypass them). Order:</p>
+<ol>
+<li><strong>cel_policy</strong> — org CEL allow-policies → 403 <code>policy_violation</code></li>
+<li>user <strong>BeforeCall</strong> hooks</li>
+<li><strong>quota</strong> — request quotas → 429 <code>insufficient_quota</code> (last so denied/errored hooks do not consume quota)</li>
+</ol>
+<p>Token quotas still increment after the response (<code>incrTokens</code>).</p>
 <p>Register in <code>cmd/gateway</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nx">hooks</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">dataplane</span><span class="p">.</span><span class="nx">NewHookChain</span><span class="p">().</span><span class="nx">RegisterHook</span><span class="p">(</span><span class="nx">demohook</span><span class="p">.</span><span class="nx">NewWithLog</span><span class="p">(</span><span class="nx">log</span><span class="p">))</span>
+<div class="highlight"><pre><span></span><code><span class="nx">hooks</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">dataplane</span><span class="p">.</span><span class="nx">NewHookChain</span><span class="p">().</span>
+<span class="w">    </span><span class="nx">RegisterHook</span><span class="p">(</span><span class="nx">demohook</span><span class="p">.</span><span class="nx">NewWithLog</span><span class="p">(</span><span class="nx">log</span><span class="p">)).</span>
+<span class="w">    </span><span class="nx">RegisterBeforeCall</span><span class="p">(</span><span class="nx">myBeforeCall</span><span class="p">)</span>
 <span class="nx">pipeline</span><span class="p">.</span><span class="nx">Hooks</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">hooks</span>
 </code></pre></div>
-<p>Inspect active hooks on <code>GET /healthz</code> (<code>hooks</code> array of <code>{name, before_chat, after_chat}</code>) or the platform <strong>Hooks</strong> page.</p>
-<p>Seeded demo: <a href="../../extensions/demohook"><code>extensions/demohook</code></a> prefixes the last user message with <code>[hook:demo]</code> and logs AfterChat to the gateway logger.</p>
-<p>Provider adapters use the same in-process path via <a href="../../sdk/provider"><code>sdk/provider</code></a> + <code>Registry.RegisterSDK</code> (see <a href="../../extensions/echo"><code>extensions/echo</code></a>).</p>
+<p>Inspect active hooks on <code>GET /healthz</code> (<code>hooks</code> array of <code>{name, before_call, after_call, before_chat, after_chat}</code>) or the platform <strong>Hooks</strong> page.</p>
+<h3 id="request-tags">Request tags</h3>
+<p>Clients may send:</p>
+<div class="highlight"><pre><span></span><code><span class="err">X-AFI-Tags: end-user-id:fatihcure,tenant:acme</span>
+</code></pre></div>
+<p>Parsed into <code>CallContext.Tags</code> and persisted on usage events (<code>tags</code> JSONB).</p>
+<h3 id="example-per-tag-request-limits">Example: per-tag request limits</h3>
+<p><a href="../../extensions/tagquota"><code>extensions/tagquota</code></a> is a <strong>reference implementation</strong> of <code>BeforeCall</code> with independent counters per tag value (e.g. each <code>end-user-id</code>). It is <strong>not</strong> registered by the default gateway — copy or register it yourself if you need that behavior. See the package <a href="../../extensions/tagquota/README.md">README</a>.</p>
+<p>Seeded demo: <a href="../../extensions/demohook"><code>extensions/demohook</code></a> prefixes the last user message with <code>[hook:demo]</code> and logs AfterChat.</p>
+<p>Provider adapters use <a href="../../sdk/provider"><code>sdk/provider</code></a> + <code>Registry.RegisterSDK</code> (see <a href="../../extensions/echo"><code>extensions/echo</code></a>). Lifecycle types live in <a href="../../sdk/hook"><code>sdk/hook</code></a>.</p>
 <h2 id="future">Future</h2>
 <ul>
-<li>gRPC extensions — providers, auth, secrets, notifications</li>
+<li>gRPC extensions — providers, auth, secrets, notifications, remote BeforeCall</li>
 <li>WASM extensions — prompt/header mutation, PII masking, enrichment</li>
 </ul>
-<p>Redis rate limits and CEL request policies are shipped (see Quotas / Policies in the platform UI).</p>
+<p>Redis rate limits and CEL request policies remain available via the built-in BeforeCall gates (see Quotas / Policies in the platform UI).</p>
 
 
 

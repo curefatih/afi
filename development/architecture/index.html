@@ -1147,7 +1147,7 @@
 <p>In-process registration is live:</p>
 <ul>
 <li><strong>Providers</strong> — <code>sdk/provider.ChatProvider</code> via <code>Registry.RegisterSDK</code> (example: <code>extensions/echo</code>)</li>
-<li><strong>Hooks</strong> — <code>BeforeChat</code> / <code>AfterChat</code> (example: <code>extensions/demohook</code>)</li>
+<li><strong>Hooks</strong> — <code>BeforeCall</code> / <code>AfterCall</code> (all modalities) plus <code>BeforeChat</code> / <code>AfterChat</code>; tags via <code>X-AFI-Tags</code> (<code>extensions/demohook</code>; example-only tag limits in <code>extensions/tagquota</code>)</li>
 <li><strong>Provider health</strong> — control-plane rollup from <code>usage_events</code> for Providers UI</li>
 </ul>
 <p>gRPC / WASM plugin runtimes, billing invoices, external HashiCorp Vault, and multi-region snapshot distribution remain future work.</p>
