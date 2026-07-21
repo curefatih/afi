@@ -26,11 +26,12 @@ type routeWire struct {
 }
 
 type beforeCallIn struct {
-	Principal principalWire    `json:"principal"`
-	Route     routeWire        `json:"route"`
+	Principal principalWire     `json:"principal"`
+	Route     routeWire         `json:"route"`
 	Tags      map[string]string `json:"tags"`
-	Metadata  map[string]any   `json:"metadata"`
-	BodyB64   string           `json:"body_b64"`
+	Metadata  map[string]any    `json:"metadata"`
+	BodyB64   string            `json:"body_b64"`
+	Config    json.RawMessage   `json:"config,omitempty"`
 }
 
 type beforeCallOut struct {
@@ -45,14 +46,29 @@ type beforeCallOut struct {
 }
 
 type beforeChatIn struct {
-	BodyB64 string `json:"body_b64"`
+	BodyB64 string          `json:"body_b64"`
+	Config  json.RawMessage `json:"config,omitempty"`
 }
 
 type beforeChatOut struct {
 	BodyB64 string `json:"body_b64"`
 }
 
-func encodeBeforeCallIn(call *sdkhook.CallContext) ([]byte, error) {
+type afterCallIn struct {
+	Principal principalWire     `json:"principal"`
+	Route     routeWire         `json:"route"`
+	Tags      map[string]string `json:"tags"`
+	Metadata  map[string]any    `json:"metadata"`
+	Status    string            `json:"status"`
+	LatencyMs int64             `json:"latency_ms"`
+	Provider  string            `json:"provider_type"`
+	Target    string            `json:"target_model"`
+	PromptTok int64             `json:"prompt_tokens"`
+	ComplTok  int64             `json:"completion_tokens"`
+	Config    json.RawMessage   `json:"config,omitempty"`
+}
+
+func encodeBeforeCallIn(call *sdkhook.CallContext, config json.RawMessage) ([]byte, error) {
 	in := beforeCallIn{
 		Principal: principalWire{
 			OrganizationID: call.Principal.OrganizationID,
@@ -70,6 +86,7 @@ func encodeBeforeCallIn(call *sdkhook.CallContext) ([]byte, error) {
 		},
 		Tags:     call.Tags,
 		Metadata: call.Metadata,
+		Config:   config,
 	}
 	if in.Tags == nil {
 		in.Tags = map[string]string{}
@@ -118,8 +135,8 @@ func applyBeforeCallOut(call *sdkhook.CallContext, raw []byte) (sdkhook.CallDeci
 	return d, nil
 }
 
-func encodeBeforeChatIn(body []byte) ([]byte, error) {
-	in := beforeChatIn{}
+func encodeBeforeChatIn(body []byte, config json.RawMessage) ([]byte, error) {
+	in := beforeChatIn{Config: config}
 	if len(body) > 0 {
 		in.BodyB64 = base64.StdEncoding.EncodeToString(body)
 	}
@@ -135,4 +152,39 @@ func decodeBeforeChatOut(raw []byte) ([]byte, error) {
 		return nil, nil
 	}
 	return base64.StdEncoding.DecodeString(out.BodyB64)
+}
+
+func encodeAfterCallIn(call *sdkhook.CallContext, info sdkhook.AfterCallInfo, config json.RawMessage) ([]byte, error) {
+	in := afterCallIn{
+		Principal: principalWire{
+			OrganizationID: call.Principal.OrganizationID,
+			ProjectID:      call.Principal.ProjectID,
+			APIKeyID:       call.Principal.APIKeyID,
+			Kind:           call.Principal.Kind,
+			OwnerUserID:    call.Principal.OwnerUserID,
+			Name:           call.Principal.Name,
+		},
+		Route: routeWire{
+			Model:    call.Route.Model,
+			Path:     call.Route.Path,
+			Stream:   call.Route.Stream,
+			Modality: call.Route.Modality,
+		},
+		Tags:      call.Tags,
+		Metadata:  call.Metadata,
+		Status:    info.Status,
+		LatencyMs: info.LatencyMs,
+		Provider:  info.ProviderType,
+		Target:    info.TargetModel,
+		PromptTok: info.PromptTokens,
+		ComplTok:  info.CompletionTokens,
+		Config:    config,
+	}
+	if in.Tags == nil {
+		in.Tags = map[string]string{}
+	}
+	if in.Metadata == nil {
+		in.Metadata = map[string]any{}
+	}
+	return json.Marshal(in)
 }

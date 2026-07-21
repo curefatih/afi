@@ -124,6 +124,28 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 		return src, err
 	}
 
+	wasmRows, err := l.Pool.Query(ctx, `
+		SELECT id, organization_id, name, phase, module_uri, digest, enabled, priority, config
+		FROM wasm_hooks
+	`)
+	if err != nil {
+		return src, err
+	}
+	defer wasmRows.Close()
+	for wasmRows.Next() {
+		var h snapshot.WasmHook
+		if err := wasmRows.Scan(
+			&h.ID, &h.OrganizationID, &h.Name, &h.Phase, &h.ModuleURI, &h.Digest,
+			&h.Enabled, &h.Priority, &h.Config,
+		); err != nil {
+			return src, err
+		}
+		src.WasmHooks = append(src.WasmHooks, h)
+	}
+	if err := wasmRows.Err(); err != nil {
+		return src, err
+	}
+
 	credRows, err := l.Pool.Query(ctx, `
 		SELECT id, provider_type, storage_kind, secret_ref, encrypted_payload, key_version, status
 		FROM provider_credentials

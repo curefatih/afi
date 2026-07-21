@@ -15,7 +15,7 @@ func TestEncodeDecodeBeforeCall(t *testing.T) {
 		Metadata:  map[string]any{"x": float64(1)},
 		Body:      []byte(`{"messages":[]}`),
 	}
-	raw, err := encodeBeforeCallIn(call)
+	raw, err := encodeBeforeCallIn(call, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestApplyBeforeCallDeny(t *testing.T) {
 }
 
 func TestBeforeChatRoundTrip(t *testing.T) {
-	in, err := encodeBeforeChatIn([]byte(`{"a":1}`))
+	in, err := encodeBeforeChatIn([]byte(`{"a":1}`), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
