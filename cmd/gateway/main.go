@@ -13,6 +13,7 @@ import (
 	"github.com/curefatih/afi/internal/adapters/postgres"
 	afiRedis "github.com/curefatih/afi/internal/adapters/redis"
 	"github.com/curefatih/afi/internal/adapters/secrets"
+	afiWasm "github.com/curefatih/afi/internal/adapters/wasm"
 	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/dataplane"
 	"github.com/curefatih/afi/internal/kernel"
@@ -46,6 +47,46 @@ func main() {
 	holder := dataplane.NewHolder()
 	reg := dataplane.DefaultRegistry().RegisterSDK(echo.New())
 	hooks := dataplane.NewHookChain().RegisterHook(demohook.NewWithLog(log))
+
+	var wasmMods []*afiWasm.Module
+	defer func() {
+		for _, m := range wasmMods {
+			_ = m.Close(context.Background())
+		}
+	}()
+	if path := cfg.Gateway.WasmBeforeCall; path != "" {
+		mod, err := afiWasm.CompileFile(ctx, path, afiWasm.Config{Name: "wasm:before_call"})
+		if err != nil {
+			log.Error("wasm before_call", "path", path, "err", err)
+			os.Exit(1)
+		}
+		hook, err := afiWasm.NewBeforeCall(mod)
+		if err != nil {
+			_ = mod.Close(ctx)
+			log.Error("wasm before_call adapter", "err", err)
+			os.Exit(1)
+		}
+		wasmMods = append(wasmMods, mod)
+		hooks = hooks.RegisterBeforeCall(hook)
+		log.Info("wasm before_call loaded", "path", path)
+	}
+	if path := cfg.Gateway.WasmBeforeChat; path != "" {
+		mod, err := afiWasm.CompileFile(ctx, path, afiWasm.Config{Name: "wasm:before_chat"})
+		if err != nil {
+			log.Error("wasm before_chat", "path", path, "err", err)
+			os.Exit(1)
+		}
+		hook, err := afiWasm.NewBeforeChat(mod)
+		if err != nil {
+			_ = mod.Close(ctx)
+			log.Error("wasm before_chat adapter", "err", err)
+			os.Exit(1)
+		}
+		wasmMods = append(wasmMods, mod)
+		hooks = hooks.Register(hook)
+		log.Info("wasm before_chat loaded", "path", path)
+	}
+
 	pipeline := dataplane.NewPipelineWithRegistry(holder, reg, log)
 	pipeline.Hooks = hooks
 	var credBox *credentials.Box
