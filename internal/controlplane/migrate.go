@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 11
+const schemaVersion = 12
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS platform_event_outbox CASCADE;
@@ -18,6 +18,7 @@ DROP TABLE IF EXISTS usage_outbox CASCADE;
 DROP TABLE IF EXISTS quota_counters CASCADE;
 DROP TABLE IF EXISTS quotas CASCADE;
 DROP TABLE IF EXISTS request_policies CASCADE;
+DROP TABLE IF EXISTS wasm_hooks CASCADE;
 DROP TABLE IF EXISTS model_prices CASCADE;
 DROP TABLE IF EXISTS usage_events CASCADE;
 DROP TABLE IF EXISTS api_key_provider_scopes CASCADE;
@@ -262,6 +263,21 @@ CREATE TABLE IF NOT EXISTS request_policies (
     priority INT NOT NULL DEFAULT 100,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS wasm_hooks (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    phase TEXT NOT NULL,
+    module_uri TEXT NOT NULL,
+    digest TEXT NOT NULL DEFAULT '',
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    priority INT NOT NULL DEFAULT 100,
+    config JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS wasm_hooks_org_phase_idx
+    ON wasm_hooks (organization_id, phase, priority DESC);
 `
 
 // Migrate applies the schema. Legacy UUID installs are wiped once.
@@ -575,6 +591,25 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS tags JSONB NOT NULL DEFAULT '{}'::jsonb;
 	`); err != nil {
 		return fmt.Errorf("cycle18 usage tags: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS wasm_hooks (
+			id TEXT PRIMARY KEY,
+			organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+			name TEXT NOT NULL,
+			phase TEXT NOT NULL,
+			module_uri TEXT NOT NULL,
+			digest TEXT NOT NULL DEFAULT '',
+			enabled BOOLEAN NOT NULL DEFAULT TRUE,
+			priority INT NOT NULL DEFAULT 100,
+			config JSONB NOT NULL DEFAULT '{}'::jsonb,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);
+		CREATE INDEX IF NOT EXISTS wasm_hooks_org_phase_idx
+			ON wasm_hooks (organization_id, phase, priority DESC);
+	`); err != nil {
+		return fmt.Errorf("cycle19 wasm hooks: %w", err)
 	}
 	return nil
 }

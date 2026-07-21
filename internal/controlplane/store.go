@@ -564,3 +564,30 @@ func (s *Store) DeletePolicy(ctx context.Context, policyID string) error {
 func (s *Store) GetPolicyOrgID(ctx context.Context, policyID string) (string, error) {
 	return s.policies().OrgID(ctx, policyID)
 }
+
+// WasmHook is the platform write-model WASM lifecycle binding.
+type WasmHook = gatewayconfig.WasmHook
+
+func (s *Store) wasmHooks() *postgres.WasmHooks {
+	return postgres.NewWasmHooks(s.pool)
+}
+
+func (s *Store) ListWasmHooks(ctx context.Context, orgID string) ([]WasmHook, error) {
+	return s.wasmHooks().ListByOrg(ctx, orgID)
+}
+
+func (s *Store) CreateWasmHook(ctx context.Context, orgID, name, phase, moduleURI, digest string, enabled bool, priority int, config []byte) (*WasmHook, error) {
+	return gatewayconfig.CreateWasmHook(ctx, s.wasmHooks(), newID("wasm"), orgID, name, phase, moduleURI, digest, enabled, priority, config)
+}
+
+func (s *Store) UpdateWasmHook(ctx context.Context, id string, name, phase, moduleURI, digest *string, enabled *bool, priority *int, config []byte) (*WasmHook, error) {
+	return gatewayconfig.UpdateWasmHook(ctx, s.wasmHooks(), id, name, phase, moduleURI, digest, enabled, priority, config)
+}
+
+func (s *Store) DeleteWasmHook(ctx context.Context, id string) error {
+	return s.wasmHooks().Delete(ctx, id)
+}
+
+func (s *Store) GetWasmHookOrgID(ctx context.Context, id string) (string, error) {
+	return s.wasmHooks().OrgID(ctx, id)
+}
