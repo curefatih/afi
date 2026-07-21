@@ -4,14 +4,43 @@ AFI can run **sandboxed TinyGo WASM modules** as lifecycle hooks on the gateway 
 
 ## Enable on the gateway
 
+### Env (process-global demos)
+
 ```bash
 export AFI_WASM_BEFORE_CALL=/path/to/hook.wasm   # optional BeforeCall
 export AFI_WASM_BEFORE_CHAT=/path/to/hook.wasm   # optional BeforeChat
 ```
 
-Unset = no WASM hooks (default). Built-in CEL and quota gates are unchanged.
+### Control plane (org-scoped, snapshot-backed)
 
-Example module: [`extensions/wasmhook`](../../extensions/wasmhook).
+Admins manage bindings via platform API; they compile into the gateway snapshot and hot-reload:
+
+```http
+POST /api/v1/platform/organizations/{orgID}/wasm-hooks
+Content-Type: application/json
+
+{
+  "name": "block-plan",
+  "phase": "before_call",
+  "module_uri": "file:///var/afi/hooks/block.wasm",
+  "digest": "<sha256 hex of the .wasm file>",
+  "enabled": true,
+  "priority": 100,
+  "config": {}
+}
+```
+
+| Field | Notes |
+|-------|--------|
+| `phase` | `before_call` \| `before_chat` \| `after_call` |
+| `module_uri` | Local path or `file://` URI (content-addressed by optional `digest`) |
+| `digest` | SHA-256 hex of module bytes; empty skips verification |
+| `priority` | Higher runs first within a phase |
+| `config` | JSON object passed to the guest as `"config"` |
+
+List / update / delete: `GET …/wasm-hooks`, `PATCH /api/v1/platform/wasm-hooks/{hookID}`, `DELETE …`.
+
+Request path order: **CEL → env/user BeforeCall hooks → snapshot WASM BeforeCall → quota**.
 
 ??? example "Gateway wiring (`cmd/gateway`)"
 
@@ -42,6 +71,7 @@ Guest must export TinyGo allocator symbols and at least one hook:
 | `free` | `(ptr i32)` | Host frees input/output buffers |
 | `before_call` | `(ptr i32, len i32) -> i64` | Optional; packed `ptr<<32 \| len` of JSON out |
 | `before_chat` | `(ptr i32, len i32) -> i64` | Optional; same packing |
+| `after_call` | `(ptr i32, len i32) -> i64` | Optional; side effects (empty return OK) |
 
 Build with:
 
@@ -229,6 +259,8 @@ Pooling removes most of the per-call instantiate cost. Remaining gap vs native i
 
 ## Roadmap (next)
 
-1. **Control-plane Plugin bindings** — CP stores module refs / enablement; compile into snapshot; gateway hot-reloads (same split as CEL).
-2. **Content-addressed artifacts** — URI + digest instead of only `AFI_WASM_*` local paths.
-3. **Broader guest surface** — `AfterCall`, header mutation; providers remain Go SDK / future gRPC.
+1. ~~Control-plane Plugin bindings~~ — shipped (`wasm_hooks` table + snapshot + gateway runner).
+2. ~~Content-addressed artifacts~~ — `digest` (sha256) + `file://` / path URIs (HTTP object store later).
+3. ~~`AfterCall` guest export~~ — shipped in ABI + example module.
+4. Header mutation helpers / richer response transforms.
+5. gRPC providers / remote hooks.

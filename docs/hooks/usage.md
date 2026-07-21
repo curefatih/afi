@@ -48,22 +48,16 @@ Provider adapters use [`sdk/provider`](../../sdk/provider) + `Registry.RegisterS
 
 ## WASM (data plane)
 
-Sandboxed TinyGo modules can implement `before_call` / `before_chat` via [`internal/adapters/wasm`](../../internal/adapters/wasm) (wazero).
+Sandboxed TinyGo modules via [`internal/adapters/wasm`](../../internal/adapters/wasm):
 
-```bash
-export AFI_WASM_BEFORE_CALL=extensions/wasmhook/hook.wasm
-export AFI_WASM_BEFORE_CHAT=extensions/wasmhook/hook.wasm   # optional
-```
+* **Env:** `AFI_WASM_BEFORE_CALL` / `AFI_WASM_BEFORE_CHAT` (process-global)
+* **Control plane:** org `wasm-hooks` API → snapshot → gateway module cache (URI + optional SHA-256 digest)
 
-Guest ABI, limits, and DDD ownership: [wasm.md](wasm.md). Example guest: [`extensions/wasmhook`](../../extensions/wasmhook).
-
-Benchmarks vs native Go hooks: [Performance](wasm.md#performance-wasm-vs-native-go).
-
-Control-plane Plugin CRUD / snapshot-driven module refs are **not** shipped yet — configuration is gateway env only so domain packages stay free of the WASM runtime.
+Guest ABI, limits, pooling benchmarks: [wasm.md](wasm.md). Example: [`extensions/wasmhook`](../../extensions/wasmhook).
 
 ## Future
 
 * gRPC extensions — providers, auth, secrets, notifications, remote BeforeCall
-* Control-plane plugin bindings compiled into the snapshot (hot reload)
+* Remote / HTTP-backed WASM artifact stores (beyond local `file://` paths)
 
 Redis rate limits and CEL request policies remain available via the built-in BeforeCall gates (see Quotas / Policies in the platform UI).

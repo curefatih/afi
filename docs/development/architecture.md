@@ -82,7 +82,7 @@ In-process registration is live:
 
 * **Providers** — `sdk/provider.ChatProvider` via `Registry.RegisterSDK` (example: `extensions/echo`)
 * **Hooks** — `BeforeCall` / `AfterCall` (all modalities) plus `BeforeChat` / `AfterChat`; tags via `X-AFI-Tags` (`extensions/demohook`; example-only tag limits in `extensions/tagquota`)
-* **WASM hooks** — sandboxed TinyGo guests via `internal/adapters/wasm` (`AFI_WASM_BEFORE_CALL` / `AFI_WASM_BEFORE_CHAT`; example `extensions/wasmhook`). See [WASM hooks](../hooks/wasm.md).
+* **WASM hooks** — sandboxed TinyGo guests via `internal/adapters/wasm` + org `wasm_hooks` in the snapshot (`AFI_WASM_*` env still works for demos). See [WASM hooks](../hooks/wasm.md).
 * **Provider health** — control-plane rollup from `usage_events` for Providers UI
 
 gRPC plugin runtimes, control-plane Plugin CRUD / snapshot module refs, billing invoices, external HashiCorp Vault, and multi-region snapshot distribution remain future work.
