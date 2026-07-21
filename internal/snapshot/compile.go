@@ -11,6 +11,7 @@ type Source struct {
 	Assignments []CredentialAssignment
 	Quotas      []Quota
 	Policies    []Policy
+	WasmHooks   []WasmHook
 }
 
 // CredentialAssignment is a compile-time binding of credential → scope.
@@ -32,6 +33,7 @@ func Compile(src Source) *Snapshot {
 		Assignments: make(map[string]string, len(src.Assignments)),
 		Quotas:      append([]Quota(nil), src.Quotas...),
 		Policies:    append([]Policy(nil), src.Policies...),
+		WasmHooks:   append([]WasmHook(nil), src.WasmHooks...),
 	}
 	for _, k := range src.APIKeys {
 		if k.KeyHash == "" {
