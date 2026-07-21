@@ -37,6 +37,7 @@ type Pipeline struct {
 	Holder      *Holder
 	Providers   *Registry
 	Hooks       *HookChain
+	Wasm        *WasmRunner
 	Log         *slog.Logger
 	Usage       func(UsageEvent)
 	Counters    CounterStore
@@ -185,6 +186,16 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		})
 		return
 	}
+	if p.Wasm != nil {
+		body, err = p.Wasm.RunBeforeChat(ctx, snap, call.Principal.OrganizationID, body)
+		if err != nil {
+			log.Error("wasm before_chat", "err", err)
+			writeJSON(w, http.StatusBadRequest, map[string]any{
+				"error": map[string]string{"message": "chat hook failed: " + err.Error(), "type": "invalid_request_error"},
+			})
+			return
+		}
+	}
 	call.Body = body
 
 	log.Info("chat.completions",
@@ -267,7 +278,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 			Status: "error", LatencyMs: time.Since(start).Milliseconds(),
 			ProviderType: usedProvider.Type, TargetModel: usedTarget,
 		}
-		p.Hooks.RunAfterCall(ctx, call, afterInfo)
+		p.runAfterCall(ctx, snap, call, afterInfo)
 		p.Hooks.RunAfterChat(ctx, AfterChatInfo{
 			Model: reqBody.Model, Status: "error",
 			LatencyMs:    time.Since(start).Milliseconds(),
@@ -357,7 +368,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		ProviderType: usedProvider.Type, TargetModel: usedTarget,
 		PromptTokens: promptTokens, CompletionTokens: completionTokens,
 	}
-	p.Hooks.RunAfterCall(ctx, call, afterInfo)
+	p.runAfterCall(ctx, snap, call, afterInfo)
 	p.Hooks.RunAfterChat(ctx, AfterChatInfo{
 		Model: reqBody.Model, Status: status,
 		LatencyMs:    time.Since(start).Milliseconds(),

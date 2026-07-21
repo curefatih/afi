@@ -61,6 +61,22 @@ func (p *Pipeline) gateCall(ctx context.Context, w http.ResponseWriter, snap *sn
 		writeCallDeny(w, d)
 		return false
 	}
+	if p.Wasm != nil {
+		d, err = p.Wasm.RunBeforeCall(ctx, snap, call)
+		if err != nil {
+			if p.Log != nil {
+				p.Log.Error("wasm before_call", "err", err)
+			}
+			writeJSON(w, http.StatusInternalServerError, map[string]any{
+				"error": map[string]string{"message": "call hook failed", "type": "server_error"},
+			})
+			return false
+		}
+		if !d.Allow {
+			writeCallDeny(w, d)
+			return false
+		}
+	}
 	return p.applyBeforeCall(ctx, w, &quotaCallHook{p: p, snap: snap}, call)
 }
 
@@ -87,6 +103,13 @@ func builtinHookInfos() []HookInfo {
 	return []HookInfo{
 		{Name: "cel_policy", BeforeCall: true},
 		{Name: "quota", BeforeCall: true},
+	}
+}
+
+func (p *Pipeline) runAfterCall(ctx context.Context, snap *snapshot.Snapshot, call *CallContext, info AfterCallInfo) {
+	p.Hooks.RunAfterCall(ctx, call, info)
+	if p != nil && p.Wasm != nil {
+		p.Wasm.RunAfterCall(ctx, snap, call, info)
 	}
 }
 

@@ -155,7 +155,7 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 			Modality:       ModalityMessages,
 			Tags:           cloneTags(call.Tags),
 		})
-		p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+		p.runAfterCall(ctx, snap, call, AfterCallInfo{
 			Status: "error", LatencyMs: time.Since(start).Milliseconds(),
 			ProviderType: usedProvider.Type, TargetModel: usedTarget,
 		})
@@ -220,7 +220,7 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 		Metrics:          tokenMetrics(promptTokens, completionTokens),
 		Tags:             cloneTags(call.Tags),
 	})
-	p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+	p.runAfterCall(ctx, snap, call, AfterCallInfo{
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		ProviderType: usedProvider.Type, TargetModel: usedTarget,
 		PromptTokens: promptTokens, CompletionTokens: completionTokens,

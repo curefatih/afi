@@ -153,7 +153,7 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			Modality: ModalityTTS, Metrics: ttsMetrics, Tags: cloneTags(call.Tags),
 		})
-		p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+		p.runAfterCall(ctx, snap, call, AfterCallInfo{
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			ProviderType: bound.Type, TargetModel: route.TargetModel,
 		})
@@ -173,7 +173,7 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		Modality: ModalityTTS, Metrics: ttsMetrics, Tags: cloneTags(call.Tags),
 	})
-	p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+	p.runAfterCall(ctx, snap, call, AfterCallInfo{
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		ProviderType: bound.Type, TargetModel: route.TargetModel,
 	})
@@ -285,7 +285,7 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			Modality: ModalitySTT, Tags: cloneTags(call.Tags),
 		})
-		p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+		p.runAfterCall(ctx, snap, call, AfterCallInfo{
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			ProviderType: bound.Type, TargetModel: route.TargetModel,
 		})
@@ -305,7 +305,7 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		Modality: ModalitySTT, Tags: cloneTags(call.Tags),
 	})
-	p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+	p.runAfterCall(ctx, snap, call, AfterCallInfo{
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		ProviderType: bound.Type, TargetModel: route.TargetModel,
 	})
