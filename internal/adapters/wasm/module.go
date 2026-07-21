@@ -9,22 +9,29 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
 const (
 	defaultMaxMemoryPages = 512 // 512 * 64KiB = 32MiB
 	defaultTimeout        = 100 * time.Millisecond
+	defaultPoolSize       = 8
 )
 
-// Config controls sandbox limits for a loaded module.
+// Config controls sandbox limits and instance pooling for a loaded module.
 type Config struct {
 	Name           string
 	Timeout        time.Duration
 	MaxMemoryPages uint32
+	// PoolSize is the max number of reused guest instances (default 8).
+	// Set to 1 for a single reusable instance; set to 0 to use the default.
+	// Negative disables pooling (instantiate+close every invoke; useful for benches).
+	PoolSize int
 }
 
 func (c Config) withDefaults() Config {
@@ -37,15 +44,29 @@ func (c Config) withDefaults() Config {
 	if c.MaxMemoryPages == 0 {
 		c.MaxMemoryPages = defaultMaxMemoryPages
 	}
+	if c.PoolSize == 0 {
+		c.PoolSize = defaultPoolSize
+	}
 	return c
 }
 
-// Module is a compiled WASM hook module.
+type pooledInst struct {
+	mod    api.Module
+	malloc api.Function
+	free   api.Function
+	fns    map[string]api.Function
+}
+
+// Module is a compiled WASM hook module with an optional instance pool.
 type Module struct {
 	rt       wazero.Runtime
 	compiled wazero.CompiledModule
 	cfg      Config
-	mu       sync.Mutex
+
+	mu     sync.Mutex
+	closed bool
+	pool   chan *pooledInst // nil when pooling disabled
+	seq    atomic.Uint64
 }
 
 // Compile loads and compiles wasmBytes. Call Close when done.
@@ -70,7 +91,6 @@ func Compile(ctx context.Context, wasmBytes []byte, cfg Config) (*Module, error)
 		return nil, fmt.Errorf("wasm: compile: %w", err)
 	}
 
-	// Validate required exports exist at load time.
 	exp := compiled.ExportedFunctions()
 	for _, name := range []string{"malloc", "free"} {
 		if _, ok := exp[name]; !ok {
@@ -87,7 +107,11 @@ func Compile(ctx context.Context, wasmBytes []byte, cfg Config) (*Module, error)
 		}
 	}
 
-	return &Module{rt: rt, compiled: compiled, cfg: cfg}, nil
+	m := &Module{rt: rt, compiled: compiled, cfg: cfg}
+	if cfg.PoolSize > 0 {
+		m.pool = make(chan *pooledInst, cfg.PoolSize)
+	}
+	return m, nil
 }
 
 // CompileFile reads path and compiles.
@@ -102,13 +126,26 @@ func CompileFile(ctx context.Context, path string, cfg Config) (*Module, error) 
 	return Compile(ctx, b, cfg)
 }
 
-// Close releases the runtime.
+// Close drains the pool and releases the runtime.
 func (m *Module) Close(ctx context.Context) error {
 	if m == nil {
 		return nil
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.closed {
+		return nil
+	}
+	m.closed = true
+
+	if m.pool != nil {
+		close(m.pool)
+		for inst := range m.pool {
+			_ = inst.mod.Close(ctx)
+		}
+		m.pool = nil
+	}
+
 	var err error
 	if m.compiled != nil {
 		err = m.compiled.Close(ctx)
@@ -131,9 +168,79 @@ func (m *Module) hasExport(name string) bool {
 	return ok
 }
 
+func (m *Module) newInst(ctx context.Context) (*pooledInst, error) {
+	id := m.seq.Add(1)
+	modCfg := wazero.NewModuleConfig().
+		WithName(fmt.Sprintf("%s-%d", m.cfg.Name, id)).
+		WithStartFunctions("_initialize")
+	mod, err := m.rt.InstantiateModule(ctx, m.compiled, modCfg)
+	if err != nil {
+		return nil, fmt.Errorf("wasm: instantiate: %w", err)
+	}
+	malloc := mod.ExportedFunction("malloc")
+	free := mod.ExportedFunction("free")
+	if malloc == nil || free == nil {
+		_ = mod.Close(ctx)
+		return nil, fmt.Errorf("wasm: exports missing after instantiate")
+	}
+	fns := make(map[string]api.Function, 2)
+	if f := mod.ExportedFunction("before_call"); f != nil {
+		fns["before_call"] = f
+	}
+	if f := mod.ExportedFunction("before_chat"); f != nil {
+		fns["before_chat"] = f
+	}
+	return &pooledInst{mod: mod, malloc: malloc, free: free, fns: fns}, nil
+}
+
+func (m *Module) acquire(ctx context.Context) (*pooledInst, error) {
+	m.mu.Lock()
+	if m.closed || m.rt == nil || m.compiled == nil {
+		m.mu.Unlock()
+		return nil, fmt.Errorf("wasm: module closed")
+	}
+	pool := m.pool
+	m.mu.Unlock()
+
+	if pool != nil {
+		select {
+		case inst, ok := <-pool:
+			if ok && inst != nil {
+				return inst, nil
+			}
+		default:
+		}
+	}
+
+	m.mu.Lock()
+	if m.closed || m.rt == nil || m.compiled == nil {
+		m.mu.Unlock()
+		return nil, fmt.Errorf("wasm: module closed")
+	}
+	m.mu.Unlock()
+	return m.newInst(ctx)
+}
+
+func (m *Module) release(inst *pooledInst) {
+	if inst == nil {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.closed || m.pool == nil {
+		_ = inst.mod.Close(context.Background())
+		return
+	}
+	select {
+	case m.pool <- inst:
+	default:
+		_ = inst.mod.Close(context.Background())
+	}
+}
+
 // invokeJSON allocates input in guest memory, calls export(name), returns output bytes.
 func (m *Module) invokeJSON(ctx context.Context, exportName string, in []byte) ([]byte, error) {
-	if m == nil || m.rt == nil || m.compiled == nil {
+	if m == nil {
 		return nil, fmt.Errorf("wasm: module closed")
 	}
 	if !m.hasExport(exportName) {
@@ -149,34 +256,34 @@ func (m *Module) invokeJSON(ctx context.Context, exportName string, in []byte) (
 		return nil, err
 	}
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// TinyGo -buildmode=c-shared exports _initialize (not _start).
-	modCfg := wazero.NewModuleConfig().WithName("").WithStartFunctions("_initialize")
-	mod, err := m.rt.InstantiateModule(ctx, m.compiled, modCfg)
+	inst, err := m.acquire(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("wasm: instantiate: %w", err)
+		return nil, err
 	}
-	defer mod.Close(ctx)
+	reuse := m.cfg.PoolSize > 0
+	defer func() {
+		if reuse {
+			m.release(inst)
+		} else {
+			_ = inst.mod.Close(context.Background())
+		}
+	}()
 
-	malloc := mod.ExportedFunction("malloc")
-	free := mod.ExportedFunction("free")
-	fn := mod.ExportedFunction(exportName)
-	if malloc == nil || free == nil || fn == nil {
-		return nil, fmt.Errorf("wasm: exports missing after instantiate")
+	fn := inst.fns[exportName]
+	if fn == nil {
+		return nil, fmt.Errorf("wasm: missing export %q", exportName)
 	}
 
 	inSize := uint64(len(in))
 	var inPtr uint64
 	if inSize > 0 {
-		results, err := malloc.Call(ctx, inSize)
+		results, err := inst.malloc.Call(ctx, inSize)
 		if err != nil {
 			return nil, fmt.Errorf("wasm: malloc: %w", err)
 		}
 		inPtr = results[0]
-		defer func() { _, _ = free.Call(ctx, inPtr) }()
-		if !mod.Memory().Write(uint32(inPtr), in) {
+		defer func() { _, _ = inst.free.Call(ctx, inPtr) }()
+		if !inst.mod.Memory().Write(uint32(inPtr), in) {
 			return nil, fmt.Errorf("wasm: write input out of range")
 		}
 	}
@@ -194,9 +301,9 @@ func (m *Module) invokeJSON(ctx context.Context, exportName string, in []byte) (
 	if outPtr == 0 || outSize == 0 {
 		return []byte{}, nil
 	}
-	defer func() { _, _ = free.Call(ctx, uint64(outPtr)) }()
+	defer func() { _, _ = inst.free.Call(ctx, uint64(outPtr)) }()
 
-	out, ok := mod.Memory().Read(outPtr, outSize)
+	out, ok := inst.mod.Memory().Read(outPtr, outSize)
 	if !ok {
 		return nil, fmt.Errorf("wasm: read output out of range")
 	}

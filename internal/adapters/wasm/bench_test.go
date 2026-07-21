@@ -141,6 +141,33 @@ func BenchmarkBeforeCall_WASM(b *testing.B) {
 	}
 }
 
+func BenchmarkBeforeCall_WASM_NoPool(b *testing.B) {
+	ctx := context.Background()
+	mod, err := CompileFile(ctx, exampleWASMPath(b), Config{Name: "bench-nopool", Timeout: time.Second, PoolSize: -1})
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.Cleanup(func() { _ = mod.Close(context.Background()) })
+	h, err := NewBeforeCall(mod)
+	if err != nil {
+		b.Fatal(err)
+	}
+	for i := 0; i < 64; i++ {
+		if _, err := h.BeforeCall(ctx, benchCallAllow()); err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		call := benchCallAllow()
+		d, err := h.BeforeCall(ctx, call)
+		if err != nil || !d.Allow {
+			b.Fatalf("wasm nopool: allow=%v err=%v", d.Allow, err)
+		}
+	}
+}
+
 func BenchmarkBeforeCall_Native_Deny(b *testing.B) {
 	h := nativeBeforeCall{}
 	ctx := context.Background()
