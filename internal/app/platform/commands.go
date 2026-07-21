@@ -320,6 +320,41 @@ func (s *Service) DeletePolicy(ctx context.Context, policyID string) error {
 	return nil
 }
 
+func (s *Service) CreateWasmHook(ctx context.Context, orgID, name, phase, moduleURI, digest string, enabled bool, priority int, config []byte) (*gatewayconfig.WasmHook, error) {
+	h, err := s.API.CreateWasmHook(ctx, orgID, name, phase, moduleURI, digest, enabled, priority, config)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "created"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventWasmHookCreated, h.ID, orgID)
+	return h, nil
+}
+
+func (s *Service) UpdateWasmHook(ctx context.Context, id string, name, phase, moduleURI, digest *string, enabled *bool, priority *int, config []byte) (*gatewayconfig.WasmHook, error) {
+	h, err := s.API.UpdateWasmHook(ctx, id, name, phase, moduleURI, digest, enabled, priority, config)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "updated"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventWasmHookUpdated, id, h.OrganizationID)
+	return h, nil
+}
+
+func (s *Service) DeleteWasmHook(ctx context.Context, id string) error {
+	if err := s.API.DeleteWasmHook(ctx, id); err != nil {
+		return err
+	}
+	if err := s.publish(ctx, "deleted"); err != nil {
+		return err
+	}
+	s.emit(ctx, EventWasmHookDeleted, id, "")
+	return nil
+}
+
 func (s *Service) CreateCredential(ctx context.Context, orgID, name, providerType, storageKind, secretRef, secretValue string) (*credentials.Credential, error) {
 	c, err := s.API.CreateCredential(ctx, orgID, name, providerType, storageKind, secretRef, secretValue)
 	if err != nil {

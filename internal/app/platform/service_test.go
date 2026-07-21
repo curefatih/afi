@@ -152,6 +152,16 @@ func (m *memAPI) ReorderPolicies(context.Context, string, []gatewayconfig.Policy
 	panic("unused")
 }
 func (m *memAPI) DeletePolicy(context.Context, string) error { panic("unused") }
+func (m *memAPI) ListWasmHooks(context.Context, string) ([]gatewayconfig.WasmHook, error) {
+	return nil, nil
+}
+func (m *memAPI) CreateWasmHook(context.Context, string, string, string, string, string, bool, int, []byte) (*gatewayconfig.WasmHook, error) {
+	panic("unused")
+}
+func (m *memAPI) UpdateWasmHook(context.Context, string, *string, *string, *string, *string, *bool, *int, []byte) (*gatewayconfig.WasmHook, error) {
+	panic("unused")
+}
+func (m *memAPI) DeleteWasmHook(context.Context, string) error { panic("unused") }
 func (m *memAPI) ListCredentials(context.Context, string) ([]credentials.Credential, error) {
 	return nil, nil
 }
