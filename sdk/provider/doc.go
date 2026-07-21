@@ -7,6 +7,6 @@
 // register at process startup via dataplane.Registry.RegisterSDK — see
 // github.com/curefatih/afi/extensions/echo for a working example.
 //
-// gRPC and WASM plugin runtimes are not shipped yet; in-process registration
-// is the supported extension path. See also docs/development/providers.md.
+// gRPC provider runtimes are not shipped yet. WASM is for lifecycle hooks
+// (docs/hooks/wasm.md), not ChatProvider adapters. See docs/development/providers.md.
 package provider
