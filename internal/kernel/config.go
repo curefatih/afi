@@ -36,6 +36,10 @@ type Config struct {
 		Addr                    string        `yaml:"addr" env:"AFI_GATEWAY_ADDR" env-default:":8080"`
 		SnapshotPollIntervalRaw string        `yaml:"snapshot_poll_interval" env:"AFI_SNAPSHOT_POLL_INTERVAL" env-default:"2s"`
 		SnapshotPollInterval    time.Duration `yaml:"-"`
+		// WasmBeforeCall is an optional path to a TinyGo .wasm exporting before_call.
+		WasmBeforeCall string `yaml:"wasm_before_call" env:"AFI_WASM_BEFORE_CALL"`
+		// WasmBeforeChat is an optional path to a TinyGo .wasm exporting before_chat.
+		WasmBeforeChat string `yaml:"wasm_before_chat" env:"AFI_WASM_BEFORE_CHAT"`
 	} `yaml:"gateway"`
 
 	Auth struct {
