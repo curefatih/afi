@@ -3,7 +3,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PlusIcon, RouteIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { orgMembersQueryOptions, orgDefaultRetryQueryOptions } from "#/api/organization";
+import {
+	orgMembersQueryOptions,
+	orgDefaultRetryQueryOptions,
+} from "#/api/organization";
 import { providersQueryOptions } from "#/api/provider";
 import {
 	createRouteMutationOptions,
@@ -396,7 +399,11 @@ function RouteComponent() {
 								</SelectContent>
 							</Select>
 						</div>
-						<RetryEditor value={retry} onChange={setRetry} idPrefix="create-retry" />
+						<RetryEditor
+							value={retry}
+							onChange={setRetry}
+							idPrefix="create-retry"
+						/>
 						<FallbackList
 							fallbacks={fallbacks}
 							onChange={setFallbacks}

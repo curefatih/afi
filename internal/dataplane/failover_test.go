@@ -307,7 +307,6 @@ func TestRetrySkippedOn400(t *testing.T) {
 	}
 }
 
-
 func TestFailoverPrimary400NoFallback(t *testing.T) {
 	var fallbackHits atomic.Int32
 	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

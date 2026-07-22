@@ -138,8 +138,8 @@ function RouteComponent() {
 					<section className="space-y-3 rounded-md border p-4">
 						<h2 className="text-sm font-medium">Default retry</h2>
 						<p className="text-muted-foreground text-sm">
-							Used for routes that do not set their own retry. Route-level
-							retry always wins when configured.
+							Used for routes that do not set their own retry. Route-level retry
+							always wins when configured.
 						</p>
 						{retryLoaded ? (
 							<>
