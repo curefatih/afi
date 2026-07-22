@@ -168,6 +168,18 @@ func (s *Store) SetOrgMailProvider(ctx context.Context, orgID, provider string) 
 	return s.organizations().Get(ctx, orgID)
 }
 
+func (s *Store) GetOrgDefaultRetry(ctx context.Context, orgID string) (*RetryConfig, error) {
+	return s.organizations().GetDefaultRetry(ctx, orgID)
+}
+
+func (s *Store) SetOrgDefaultRetry(ctx context.Context, orgID string, retry *RetryConfig) error {
+	retry, err := gatewayconfig.NormalizeRetry(retry)
+	if err != nil {
+		return err
+	}
+	return s.organizations().SetDefaultRetry(ctx, orgID, retry)
+}
+
 func (s *Store) InviteOrgMember(ctx context.Context, orgID, email, invitedByUserID string) (*InviteOutcome, string, error) {
 	return tenancy.InviteOrgMember(ctx, s.organizations(), s.invitesRepo(), s, newID("inv"), orgID, email, invitedByUserID)
 }

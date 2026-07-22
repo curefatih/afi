@@ -274,6 +274,12 @@ func (f *fakePlatform) UpdateRoute(context.Context, string, string, string, stri
 	return nil, errors.New("unused")
 }
 func (f *fakePlatform) DeleteRoute(context.Context, string) error { return nil }
+func (f *fakePlatform) GetOrgDefaultRetry(context.Context, string) (*RetryConfig, error) {
+	return nil, nil
+}
+func (f *fakePlatform) SetOrgDefaultRetry(context.Context, string, *RetryConfig) error {
+	return nil
+}
 func (f *fakePlatform) ListUsage(context.Context, string, UsageFilter) ([]UsageEvent, error) {
 	return nil, nil
 }

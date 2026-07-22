@@ -80,6 +80,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/mail", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleGetOrgMail)))
 	mux.HandleFunc("PATCH /api/v1/platform/organizations/{orgID}/mail", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleUpdateOrgMail)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/mail/test", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleTestOrgMail)))
+	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/default-retry", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleGetOrgDefaultRetry)))
+	mux.HandleFunc("PUT /api/v1/platform/organizations/{orgID}/default-retry", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleUpdateOrgDefaultRetry)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/teams", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListTeams)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/teams", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateTeam)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/projects", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListProjects)))
