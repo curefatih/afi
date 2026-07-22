@@ -48,6 +48,7 @@ type APIKey = access.APIKey
 // Provider / Route are platform write-model config (canonical in gatewayconfig).
 type Provider = gatewayconfig.Provider
 type RouteFallback = gatewayconfig.RouteFallback
+type RetryConfig = gatewayconfig.RetryConfig
 type Route = gatewayconfig.Route
 
 // Credential / Assignment are org-owned upstream secrets (canonical in credentials).
@@ -353,16 +354,16 @@ func (s *Store) ListRoutes(ctx context.Context, orgID string) ([]Route, error) {
 	return s.routes().ListByOrg(ctx, orgID)
 }
 
-func (s *Store) CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []RouteFallback) (*Route, error) {
-	return gatewayconfig.CreateRoute(ctx, s.routes(), s.providers(), newID("route"), orgID, model, providerID, targetModel, fallbacks)
+func (s *Store) CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []RouteFallback, retry *RetryConfig) (*Route, error) {
+	return gatewayconfig.CreateRoute(ctx, s.routes(), s.providers(), newID("route"), orgID, model, providerID, targetModel, fallbacks, retry)
 }
 
-func (s *Store) UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []RouteFallback) (*Route, error) {
+func (s *Store) UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []RouteFallback, retry *RetryConfig) (*Route, error) {
 	orgID, err := s.GetRouteOrgID(ctx, routeID)
 	if err != nil {
 		return nil, err
 	}
-	return gatewayconfig.UpdateRoute(ctx, s.routes(), s.providers(), routeID, orgID, model, providerID, targetModel, fallbacks)
+	return gatewayconfig.UpdateRoute(ctx, s.routes(), s.providers(), routeID, orgID, model, providerID, targetModel, fallbacks, retry)
 }
 
 func (s *Store) credentialsRepo() *postgres.Credentials {

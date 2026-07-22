@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 14
+const schemaVersion = 15
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS platform_event_outbox CASCADE;
@@ -189,6 +189,7 @@ CREATE TABLE IF NOT EXISTS routes (
     provider_id TEXT NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
     target_model TEXT NOT NULL,
     fallbacks JSONB NOT NULL DEFAULT '[]'::jsonb,
+    retry JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (organization_id, model)
 );
@@ -715,6 +716,12 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		`); err != nil {
 			return fmt.Errorf("cycle25 policy actions data migrate: %w", err)
 		}
+	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE routes ADD COLUMN IF NOT EXISTS retry JSONB;
+	`); err != nil {
+		return fmt.Errorf("cycle26 route retry: %w", err)
 	}
 	return nil
 }

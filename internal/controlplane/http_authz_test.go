@@ -267,10 +267,10 @@ func (f *fakePlatform) UpdateProvider(context.Context, string, string, string, s
 }
 func (f *fakePlatform) DeleteProvider(context.Context, string) error        { return nil }
 func (f *fakePlatform) ListRoutes(context.Context, string) ([]Route, error) { return nil, nil }
-func (f *fakePlatform) CreateRoute(context.Context, string, string, string, string, []RouteFallback) (*Route, error) {
+func (f *fakePlatform) CreateRoute(context.Context, string, string, string, string, []RouteFallback, *RetryConfig) (*Route, error) {
 	return nil, errors.New("unused")
 }
-func (f *fakePlatform) UpdateRoute(context.Context, string, string, string, string, []RouteFallback) (*Route, error) {
+func (f *fakePlatform) UpdateRoute(context.Context, string, string, string, string, []RouteFallback, *RetryConfig) (*Route, error) {
 	return nil, errors.New("unused")
 }
 func (f *fakePlatform) DeleteRoute(context.Context, string) error { return nil }
