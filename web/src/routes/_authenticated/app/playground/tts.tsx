@@ -108,7 +108,8 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Text to speech"
-				description="OpenAI-compatible TTS via the gateway. Lists catalog models with mode audio_speech (e.g. tts-1)."
+				description="OpenAI-compatible TTS via the gateway."
+				info="Lists catalog models with mode audio_speech (e.g. tts-1)."
 			/>
 			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
 				<div className="space-y-5">

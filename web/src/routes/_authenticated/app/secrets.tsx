@@ -14,6 +14,7 @@ import {
 	deleteCredentialAssignmentMutationOptions,
 	deleteCredentialMutationOptions,
 } from "#/api/credentials";
+import { orgKeysQueryOptions } from "#/api/keys";
 import { orgMembersQueryOptions } from "#/api/organization";
 import { PROVIDER_TYPE_PRESETS } from "#/api/provider";
 import { PageBody, PageHeader } from "#/components/page-header";
@@ -56,6 +57,7 @@ import {
 import { pageTitle } from "#/lib/page-meta";
 import { useAuthUser } from "#/state/auth-state";
 import { useActiveOrg } from "#/state/organization-state";
+import { InfoAlert } from "#/components/info-alert";
 
 export const Route = createFileRoute("/_authenticated/app/secrets")({
 	...pageTitle("Secrets"),
@@ -146,7 +148,8 @@ function RouteComponent() {
 		<>
 			<PageHeader
 				title="Secrets"
-				description="Provider credentials (env refs or encrypted) assigned to the org or a project. Virtual keys inherit the most specific assignment; providers.api_key_env remains a migration fallback."
+				description="Provider credentials for env, encrypted, or vault storage."
+				info="Assign credentials to org, project, or API key scopes. To switch keys by request header, add a policy with Then: Use credential."
 				actions={
 					isOrgAdmin ? (
 						<Button onClick={() => setCreateOpen(true)}>
@@ -208,10 +211,13 @@ function RouteComponent() {
 											<TableRow key={c.id}>
 												<TableCell className="font-medium">
 													{c.name}
-													{c.storage_kind === "env" && c.secret_ref ? (
-														<div className="text-muted-foreground text-xs font-normal">
-															{c.secret_ref}
-														</div>
+													{c.storage_kind === "env" ||
+													c.storage_kind === "vault" ? (
+														c.secret_ref ? (
+															<div className="text-muted-foreground text-xs font-normal">
+																{c.secret_ref}
+															</div>
+														) : null
 													) : null}
 												</TableCell>
 												<TableCell>{c.provider_type}</TableCell>
@@ -219,7 +225,9 @@ function RouteComponent() {
 													<Badge variant="outline" className="font-normal">
 														{c.storage_kind === "encrypted_db"
 															? "encrypted"
-															: "env"}
+															: c.storage_kind === "vault"
+																? "vault"
+																: "env"}
 													</Badge>
 												</TableCell>
 												<TableCell>
@@ -237,7 +245,9 @@ function RouteComponent() {
 																	<span>
 																		{a.scope_type === "organization"
 																			? `Org · ${org?.name ?? a.scope_id}`
-																			: `Project · ${projectName(a.scope_id)}`}
+																			: a.scope_type === "api_key"
+																				? `API key · ${a.scope_id}`
+																				: `Project · ${projectName(a.scope_id)}`}
 																	</span>
 																	{isOrgAdmin ? (
 																		<Button
@@ -376,9 +386,14 @@ function CreateCredentialSheet({
 				<SheetHeader>
 					<SheetTitle>Add credential</SheetTitle>
 					<SheetDescription>
-						Env storage references a gateway process variable. Encrypted storage
-						seals the secret with AFI_CREDENTIALS_MASTER_KEY.
+						Choose how the secret is stored on the gateway.
 					</SheetDescription>
+					<InfoAlert>
+						Env storage references a gateway process variable. Encrypted storage
+						seals the secret with AFI_CREDENTIALS_MASTER_KEY. Vault storage
+						references AWS Secrets Manager or HashiCorp Vault
+						(aws-sm://region/name#key or hashicorp://mount/path#key).
+					</InfoAlert>
 				</SheetHeader>
 				<div className="flex flex-1 flex-col gap-4 px-4">
 					<div className="grid gap-2">
@@ -431,6 +446,7 @@ function CreateCredentialSheet({
 								<SelectItem value="encrypted_db">
 									Stored secret (encrypted)
 								</SelectItem>
+								<SelectItem value="vault">Vault reference</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
@@ -442,6 +458,16 @@ function CreateCredentialSheet({
 								value={secretRef}
 								onChange={(e) => setSecretRef(e.target.value)}
 								placeholder="OPENAI_API_KEY"
+							/>
+						</div>
+					) : storageKind === "vault" ? (
+						<div className="grid gap-2">
+							<Label htmlFor="cred-ref">Vault secret ref</Label>
+							<Input
+								id="cred-ref"
+								value={secretRef}
+								onChange={(e) => setSecretRef(e.target.value)}
+								placeholder="aws-sm://us-east-1/afi/openai#api_key"
 							/>
 						</div>
 					) : (
@@ -466,7 +492,9 @@ function CreateCredentialSheet({
 						disabled={
 							pending ||
 							!name.trim() ||
-							(storageKind === "env" ? !secretRef.trim() : !secretValue.trim())
+							(storageKind === "encrypted_db"
+								? !secretValue.trim()
+								: !secretRef.trim())
 						}
 						onClick={() =>
 							onSubmit({
@@ -474,7 +502,7 @@ function CreateCredentialSheet({
 								provider_type: providerType,
 								storage_kind: storageKind,
 								secret_ref:
-									storageKind === "env" ? secretRef.trim() : undefined,
+									storageKind === "encrypted_db" ? undefined : secretRef.trim(),
 								secret_value:
 									storageKind === "encrypted_db"
 										? secretValue.trim()
@@ -505,12 +533,17 @@ function AssignCredentialSheet({
 	projects: { id: string; name: string }[];
 	pending: boolean;
 	onOpenChange: (open: boolean) => void;
-	onSubmit: (scopeType: "organization" | "project", scopeId: string) => void;
+	onSubmit: (
+		scopeType: "organization" | "project" | "api_key",
+		scopeId: string,
+	) => void;
 }) {
-	const [scopeType, setScopeType] = useState<"organization" | "project">(
-		"organization",
-	);
+	const keys = useQuery(orgKeysQueryOptions(orgId));
+	const [scopeType, setScopeType] = useState<
+		"organization" | "project" | "api_key"
+	>("organization");
 	const [projectId, setProjectId] = useState("");
+	const [apiKeyId, setApiKeyId] = useState("");
 
 	return (
 		<Sheet open={!!credential} onOpenChange={onOpenChange}>
@@ -519,9 +552,14 @@ function AssignCredentialSheet({
 					<SheetTitle>Assign credential</SheetTitle>
 					<SheetDescription>
 						{credential
-							? `Bind “${credential.name}” (${credential.provider_type}) to a scope. Project overrides organization.`
+							? `Bind “${credential.name}” (${credential.provider_type}) to a scope.`
 							: null}
 					</SheetDescription>
+					{credential ? (
+						<InfoAlert>
+							Resolution order: API key → project → organization.
+						</InfoAlert>
+					) : null}
 				</SheetHeader>
 				<div className="flex flex-1 flex-col gap-4 px-4">
 					<div className="grid gap-2">
@@ -530,7 +568,8 @@ function AssignCredentialSheet({
 							value={scopeType}
 							onValueChange={(v) =>
 								setScopeType(
-									(v as "organization" | "project") ?? "organization",
+									(v as "organization" | "project" | "api_key") ??
+										"organization",
 								)
 							}
 						>
@@ -540,6 +579,7 @@ function AssignCredentialSheet({
 							<SelectContent>
 								<SelectItem value="organization">Organization</SelectItem>
 								<SelectItem value="project">Project</SelectItem>
+								<SelectItem value="api_key">API key</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
@@ -547,7 +587,7 @@ function AssignCredentialSheet({
 						<p className="text-muted-foreground text-sm">
 							Assigned to <span className="text-foreground">{orgName}</span>
 						</p>
-					) : (
+					) : scopeType === "project" ? (
 						<div className="grid gap-2">
 							<Label>Project</Label>
 							<Select
@@ -566,6 +606,25 @@ function AssignCredentialSheet({
 								</SelectContent>
 							</Select>
 						</div>
+					) : (
+						<div className="grid gap-2">
+							<Label>API key</Label>
+							<Select
+								value={apiKeyId || null}
+								onValueChange={(v) => setApiKeyId(v ?? "")}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder="Select API key" />
+								</SelectTrigger>
+								<SelectContent>
+									{(keys.data ?? []).map((k) => (
+										<SelectItem key={k.id} value={k.id}>
+											{k.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
 					)}
 				</div>
 				<SheetFooter>
@@ -574,12 +633,19 @@ function AssignCredentialSheet({
 					</Button>
 					<Button
 						disabled={
-							pending || (scopeType === "project" && !projectId) || !credential
+							pending ||
+							!credential ||
+							(scopeType === "project" && !projectId) ||
+							(scopeType === "api_key" && !apiKeyId)
 						}
 						onClick={() =>
 							onSubmit(
 								scopeType,
-								scopeType === "organization" ? orgId : projectId,
+								scopeType === "organization"
+									? orgId
+									: scopeType === "project"
+										? projectId
+										: apiKeyId,
 							)
 						}
 					>

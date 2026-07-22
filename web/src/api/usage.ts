@@ -7,6 +7,9 @@ export type UsageEvent = {
 	project_id: string;
 	project_name?: string;
 	api_key_id: string;
+	credential_id?: string;
+	credential_name?: string;
+	used_byok?: boolean;
 	model: string;
 	status: string;
 	latency_ms: number;
@@ -41,24 +44,30 @@ export type UsageFilters = {
 	limit?: number;
 	project_id?: string;
 	api_key_id?: string;
+	credential_id?: string;
 	model?: string;
 	modality?: string;
 	from?: string;
 	to?: string;
+	exclude_byok?: boolean;
+	byok_only?: boolean;
 };
 
-export type UsageGroupBy = "day" | "model" | "key" | "modality";
+export type UsageGroupBy = "day" | "model" | "key" | "modality" | "byok";
 
 function usageQueryString(filters: UsageFilters & { group_by?: UsageGroupBy }) {
 	const params = new URLSearchParams();
 	if (filters.limit != null) params.set("limit", String(filters.limit));
 	if (filters.project_id) params.set("project_id", filters.project_id);
 	if (filters.api_key_id) params.set("api_key_id", filters.api_key_id);
+	if (filters.credential_id) params.set("credential_id", filters.credential_id);
 	if (filters.model) params.set("model", filters.model);
 	if (filters.modality) params.set("modality", filters.modality);
 	if (filters.from) params.set("from", filters.from);
 	if (filters.to) params.set("to", filters.to);
 	if (filters.group_by) params.set("group_by", filters.group_by);
+	if (filters.exclude_byok) params.set("exclude_byok", "true");
+	if (filters.byok_only) params.set("byok_only", "true");
 	const qs = params.toString();
 	return qs ? `?${qs}` : "";
 }

@@ -35,7 +35,8 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title={activeOrg ? activeOrg.name : "Overview"}
-				description="Control-plane summary for the active organization. Configure projects and keys, then exercise traffic in the playground."
+				description="Control-plane summary for the active organization."
+				info="Configure projects and keys, then exercise traffic in the playground."
 			/>
 
 			<QueryGate

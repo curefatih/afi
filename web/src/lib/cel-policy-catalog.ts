@@ -43,6 +43,34 @@ export const CEL_VARIABLES: CelSymbol[] = [
 		group: "Request",
 	},
 	{
+		label: "request.tags",
+		insert: 'request.tags[""]',
+		detail: "Map from X-AFI-Tags (string → string)",
+		type: "field",
+		group: "Request",
+	},
+	{
+		label: "request.headers",
+		insert: 'request.headers[""]',
+		detail: "Inbound HTTP headers (lowercased keys; auth/cookie omitted)",
+		type: "field",
+		group: "Request",
+	},
+	{
+		label: "credential.is_byok",
+		insert: "credential.is_byok",
+		detail: "True when a stored credential is bound (vs platform key)",
+		type: "field",
+		group: "Credential",
+	},
+	{
+		label: "credential.name",
+		insert: "credential.name",
+		detail: "Resolved credential display name",
+		type: "field",
+		group: "Credential",
+	},
+	{
 		label: "key.id",
 		insert: "key.id",
 		detail: "API key id",
@@ -153,30 +181,26 @@ export type CelExample = {
 
 export const CEL_EXAMPLES: CelExample[] = [
 	{
-		title: "Block a model",
-		description: "Deny one model id; allow everything else.",
-		expression: 'request.model != "blocked-model"',
+		title: "Deny a model",
+		description: "Then: Deny when this model is requested.",
+		expression: 'request.model == "blocked-model"',
 	},
 	{
 		title: "Allowlist models",
-		description: "Only these model ids may pass.",
-		expression: 'request.model in ["echo-demo", "gpt-4o-mini"]',
+		description: "Then: Deny when model is outside the list.",
+		expression: '!(request.model in ["echo-demo", "gpt-4o-mini"])',
 	},
 	{
 		title: "No streaming",
-		description: "Reject stream: true chat requests.",
-		expression: "!request.stream",
+		description: "Then: Deny stream requests.",
+		expression: "request.stream",
 	},
 	{
-		title: "Chat paths only",
-		description: "Limit to OpenAI-style chat and Anthropic messages.",
+		title: "Credential from header value",
+		description:
+			"Then: Use credential → From CEL: request.headers[\"x-tenant-id\"].",
 		expression:
-			'request.path == "/v1/chat/completions" || request.path == "/v1/messages"',
-	},
-	{
-		title: "Personal keys only",
-		description: "Service-account keys are denied.",
-		expression: 'key.kind == "personal"',
+			'("x-tenant-id" in request.headers) && request.headers["x-tenant-id"] != ""',
 	},
 ];
 

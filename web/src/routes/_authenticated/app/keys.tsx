@@ -228,7 +228,8 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="API Keys"
-				description="Personal keys authenticate as you. Service accounts are for automation — org- or project-scoped."
+				description="Personal and service-account keys for the gateway."
+				info="Personal keys authenticate as you. Service accounts are for automation — org- or project-scoped."
 				actions={
 					<Button onClick={() => setOpen(true)} disabled={!orgId}>
 						<PlusIcon />

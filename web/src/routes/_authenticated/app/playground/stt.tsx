@@ -93,7 +93,8 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Speech to text"
-				description="OpenAI-compatible transcriptions via the gateway. Lists catalog models with mode audio_transcription (e.g. whisper-1)."
+				description="OpenAI-compatible transcriptions via the gateway."
+				info="Lists catalog models with mode audio_transcription (e.g. whisper-1)."
 			/>
 			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(280px,1fr)]">
 				<div className="space-y-5">

@@ -13,6 +13,7 @@ import {
 	revokeOrgInviteMutationOptions,
 	updateOrgMemberRoleMutationOptions,
 } from "#/api/organization";
+import { InfoAlert } from "#/components/info-alert";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
 import { Badge } from "#/components/ui/badge";
@@ -136,11 +137,8 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Users"
-				description={
-					org
-						? `People in ${org.name}. Invite by email — new users get an accept link.`
-						: "Organization members. Invite by email — new users get an accept link."
-				}
+				description={org ? `People in ${org.name}.` : "Organization members."}
+				info="Invite by email — existing users are added and emailed; new users get an accept link."
 				actions={
 					<div className="flex flex-wrap gap-2">
 						{isOrgAdmin ? (
@@ -322,9 +320,12 @@ function RouteComponent() {
 					<SheetHeader>
 						<SheetTitle>Invite member</SheetTitle>
 						<SheetDescription>
-							Enter an email address. Existing users are added and emailed; new
-							users receive an invite link to set a password and join.
+							Enter an email address to invite.
 						</SheetDescription>
+						<InfoAlert>
+							Existing users are added and emailed; new users receive an invite
+							link to set a password and join.
+						</InfoAlert>
 					</SheetHeader>
 					<form
 						className="flex flex-1 flex-col gap-4 px-4"

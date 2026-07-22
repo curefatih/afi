@@ -12,6 +12,7 @@ import {
 	routesQueryOptions,
 	updateRouteMutationOptions,
 } from "#/api/routing";
+import { InfoAlert } from "#/components/info-alert";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
 import {
@@ -146,7 +147,8 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Routing"
-				description="Map requested model names to providers. Optional fallbacks run on 5xx/timeout/429 before the response body is committed."
+				description="Map requested model names to providers."
+				info="Optional fallbacks run on 5xx/timeout/429 before the response body is committed."
 				actions={
 					isOrgAdmin ? (
 						<Button onClick={() => setCreateOpen(true)} disabled={!canAddRoute}>
@@ -297,8 +299,11 @@ function RouteComponent() {
 					<SheetHeader>
 						<SheetTitle>Add route</SheetTitle>
 						<SheetDescription>
-							Publishes a new gateway snapshot with this model mapping.
+							Add a model mapping for this organization.
 						</SheetDescription>
+						<InfoAlert>
+							Publishes a new gateway snapshot with this model mapping.
+						</InfoAlert>
 					</SheetHeader>
 					<form
 						className="flex flex-1 flex-col gap-4 px-4"
@@ -400,9 +405,9 @@ function RouteComponent() {
 					<SheetHeader>
 						<SheetTitle>Edit route</SheetTitle>
 						<SheetDescription>
-							Update model mapping and fallbacks. Publishes a new gateway
-							snapshot.
+							Update model mapping and fallbacks.
 						</SheetDescription>
+						<InfoAlert>Publishes a new gateway snapshot.</InfoAlert>
 					</SheetHeader>
 					{edit ? (
 						<form

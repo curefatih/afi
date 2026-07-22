@@ -74,6 +74,7 @@ function PolicyRow({
 			<TableCell className="font-medium">{policy.name}</TableCell>
 			<TableCell>{policy.priority}</TableCell>
 			<TableCell>{policy.enabled ? "yes" : "no"}</TableCell>
+			<TableCell className="font-mono text-xs">{policy.action || "deny"}</TableCell>
 			<TableCell className="font-mono text-xs max-w-md truncate">
 				{policy.expression}
 			</TableCell>
@@ -127,7 +128,8 @@ export function SortablePolicyTable({
 						<TableHead>Name</TableHead>
 						<TableHead>Priority</TableHead>
 						<TableHead>Enabled</TableHead>
-						<TableHead>Expression</TableHead>
+						<TableHead>Then</TableHead>
+						<TableHead>When</TableHead>
 						{canEdit ? <TableHead className="w-40" /> : null}
 					</TableRow>
 				</TableHeader>
@@ -174,6 +176,9 @@ export function SortablePolicyTable({
 								<TableCell className="font-medium">{p.name}</TableCell>
 								<TableCell>{p.priority}</TableCell>
 								<TableCell>{p.enabled ? "yes" : "no"}</TableCell>
+								<TableCell className="font-mono text-xs">
+									{p.action || "deny"}
+								</TableCell>
 								<TableCell className="font-mono text-xs max-w-md truncate">
 									{p.expression}
 								</TableCell>

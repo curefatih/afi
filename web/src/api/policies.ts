@@ -1,11 +1,27 @@
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "#/lib/api-client";
 
+export type PolicyAction =
+	| "allow"
+	| "deny"
+	| "set_header"
+	| "use_credential";
+
+export type PolicyActionConfig = {
+	header?: string;
+	value?: string;
+	value_expr?: string;
+	credential_name?: string;
+	credential_name_expr?: string;
+};
+
 export type RequestPolicy = {
 	id: string;
 	organization_id: string;
 	name: string;
 	expression: string;
+	action: PolicyAction;
+	action_config?: PolicyActionConfig;
 	enabled: boolean;
 	priority: number;
 	created_at: string;
@@ -25,6 +41,8 @@ export type CreatePolicyInput = {
 	orgId: string;
 	name: string;
 	expression: string;
+	action: PolicyAction;
+	action_config?: PolicyActionConfig;
 	enabled?: boolean;
 	priority?: number;
 };
@@ -39,6 +57,8 @@ export const createPolicyMutationOptions = () =>
 					body: {
 						name: body.name,
 						expression: body.expression,
+						action: body.action,
+						action_config: body.action_config ?? {},
 						enabled: body.enabled ?? true,
 						priority: body.priority ?? 100,
 					},
@@ -50,6 +70,8 @@ export type UpdatePolicyInput = {
 	policyId: string;
 	name?: string;
 	expression?: string;
+	action?: PolicyAction;
+	action_config?: PolicyActionConfig;
 	enabled?: boolean;
 	priority?: number;
 };

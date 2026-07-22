@@ -12,6 +12,7 @@ import {
 	quotasQueryOptions,
 	updateQuotaMutationOptions,
 } from "#/api/quota";
+import { InfoAlert } from "#/components/info-alert";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
 import { Button } from "#/components/ui/button";
@@ -152,7 +153,8 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Quotas"
-				description="Request and token limits. Windows: total (Postgres lifetime) or minute/hour/day (Redis rate limits). Most specific wins per window: api key → user → project → organization."
+				description="Request and token limits for this organization."
+				info="Windows: total (Postgres lifetime) or minute/hour/day (Redis rate limits). Most specific wins per window: api key → user → project → organization."
 				actions={
 					isOrgAdmin ? (
 						<Button onClick={() => setCreateOpen(true)} disabled={!orgId}>
@@ -443,10 +445,10 @@ function RouteComponent() {
 				<SheetContent>
 					<SheetHeader>
 						<SheetTitle>Edit quota</SheetTitle>
-						<SheetDescription>
-							Scope, metric, and window are fixed after create. Update the limit
-							value.
-						</SheetDescription>
+						<SheetDescription>Update the limit value.</SheetDescription>
+						<InfoAlert>
+							Scope, metric, and window are fixed after create.
+						</InfoAlert>
 					</SheetHeader>
 					{edit ? (
 						<form

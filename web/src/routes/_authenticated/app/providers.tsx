@@ -15,6 +15,7 @@ import {
 	providersQueryOptions,
 	updateProviderMutationOptions,
 } from "#/api/provider";
+import { InfoAlert } from "#/components/info-alert";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
 import { Badge } from "#/components/ui/badge";
@@ -196,7 +197,8 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Providers"
-				description="Upstream LLM providers. Health is derived from usage over the last 24h (routed models). Credentials are environment variable references on the gateway."
+				description="Upstream LLM providers for this organization."
+				info="Health is derived from usage over the last 24h (routed models). Credentials are environment variable references on the gateway."
 				actions={
 					isOrgAdmin ? (
 						<Button onClick={() => setCreateOpen(true)} disabled={!orgId}>
@@ -318,9 +320,11 @@ function RouteComponent() {
 					<SheetHeader>
 						<SheetTitle>Add provider</SheetTitle>
 						<SheetDescription>
-							Publishes a new gateway snapshot. Set the env var on the gateway
-							process.
+							Publishes a new gateway snapshot.
 						</SheetDescription>
+						<InfoAlert>
+							Set the credential env var on the gateway process.
+						</InfoAlert>
 					</SheetHeader>
 					<form
 						className="flex flex-1 flex-col gap-4 px-4"
@@ -430,8 +434,9 @@ function RouteComponent() {
 					<SheetHeader>
 						<SheetTitle>Edit provider</SheetTitle>
 						<SheetDescription>
-							Type is fixed after create. Update name, base URL, or env ref.
+							Update name, base URL, or env ref.
 						</SheetDescription>
+						<InfoAlert>Type is fixed after create.</InfoAlert>
 					</SheetHeader>
 					{edit ? (
 						<form
