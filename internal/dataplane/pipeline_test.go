@@ -205,10 +205,11 @@ func TestChatCompletionsPolicyCredentialMarksBYOK(t *testing.T) {
 		}},
 		Policies: []snapshot.Policy{{
 			ID: "pol1", OrganizationID: "o1", Name: "byok-header",
-			Expression:   `("x-tenant-id" in request.headers) && request.headers["x-tenant-id"] != ""`,
-			Action:       snapshot.PolicyActionUseCredential,
-			ActionConfig: credCfg,
-			Enabled:      true, Priority: 100,
+			Expression: `("x-tenant-id" in request.headers) && request.headers["x-tenant-id"] != ""`,
+			Actions: []snapshot.PolicyAction{{
+				Type: snapshot.PolicyActionUseCredential, Config: credCfg,
+			}},
+			Enabled: true, Priority: 100,
 		}},
 	}))
 

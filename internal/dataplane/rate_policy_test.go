@@ -83,7 +83,7 @@ func TestCELPolicyDenies(t *testing.T) {
 		Policies: []snapshot.Policy{{
 			ID: "pol1", OrganizationID: "o1", Name: "deny-mini",
 			Expression: `request.model == "gpt-4o-mini"`,
-			Action:     snapshot.PolicyActionDeny,
+			Actions:    []snapshot.PolicyAction{{Type: snapshot.PolicyActionDeny}},
 			Enabled:    true, Priority: 100,
 		}},
 	}))
