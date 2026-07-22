@@ -27,7 +27,7 @@ type RouteFallback struct {
 	TargetModel string `json:"target_model"`
 }
 
-// Route maps a virtual model to a provider target (+ optional fallbacks).
+// Route maps a virtual model to a provider target (+ optional fallbacks / retry).
 type Route struct {
 	ID             string          `json:"id"`
 	OrganizationID string          `json:"organization_id"`
@@ -35,6 +35,7 @@ type Route struct {
 	ProviderID     string          `json:"provider_id"`
 	TargetModel    string          `json:"target_model"`
 	Fallbacks      []RouteFallback `json:"fallbacks"`
+	Retry          *RetryConfig    `json:"retry,omitempty"`
 	CreatedAt      time.Time       `json:"created_at"`
 }
 
@@ -65,7 +66,7 @@ func NewProvider(id, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.
 }
 
 // NewRoute builds a validated route entity.
-func NewRoute(id, orgID, model, providerID, targetModel string, fallbacks []RouteFallback, now time.Time) (*Route, error) {
+func NewRoute(id, orgID, model, providerID, targetModel string, fallbacks []RouteFallback, retry *RetryConfig, now time.Time) (*Route, error) {
 	model = strings.TrimSpace(model)
 	providerID = strings.TrimSpace(providerID)
 	if id == "" || orgID == "" {
@@ -77,6 +78,10 @@ func NewRoute(id, orgID, model, providerID, targetModel string, fallbacks []Rout
 	if fallbacks == nil {
 		fallbacks = []RouteFallback{}
 	}
+	retry, err := NormalizeRetry(retry)
+	if err != nil {
+		return nil, err
+	}
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
@@ -87,6 +92,7 @@ func NewRoute(id, orgID, model, providerID, targetModel string, fallbacks []Rout
 		ProviderID:     providerID,
 		TargetModel:    targetModel,
 		Fallbacks:      fallbacks,
+		Retry:          retry,
 		CreatedAt:      now.UTC(),
 	}, nil
 }

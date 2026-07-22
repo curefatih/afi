@@ -21,7 +21,7 @@ type ProviderRepository interface {
 type RouteRepository interface {
 	ListByOrg(ctx context.Context, orgID string) ([]Route, error)
 	Insert(ctx context.Context, r Route) error
-	Update(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []RouteFallback) (*Route, error)
+	Update(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []RouteFallback, retry *RetryConfig) (*Route, error)
 	Delete(ctx context.Context, routeID string) error
 	OrgID(ctx context.Context, routeID string) (string, error)
 }
@@ -74,8 +74,9 @@ func CreateRoute(
 	providers ProviderRepository,
 	id, orgID, model, providerID, targetModel string,
 	fallbacks []RouteFallback,
+	retry *RetryConfig,
 ) (*Route, error) {
-	r, err := NewRoute(id, orgID, model, providerID, targetModel, fallbacks, timeNowUTC())
+	r, err := NewRoute(id, orgID, model, providerID, targetModel, fallbacks, retry, timeNowUTC())
 	if err != nil {
 		return nil, err
 	}
@@ -95,9 +96,14 @@ func UpdateRoute(
 	providers ProviderRepository,
 	routeID, orgID, model, providerID, targetModel string,
 	fallbacks []RouteFallback,
+	retry *RetryConfig,
 ) (*Route, error) {
+	retry, err := NormalizeRetry(retry)
+	if err != nil {
+		return nil, err
+	}
 	if err := assertRouteProviders(ctx, orgID, providerID, fallbacks, providers); err != nil {
 		return nil, err
 	}
-	return repo.Update(ctx, routeID, model, providerID, targetModel, fallbacks)
+	return repo.Update(ctx, routeID, model, providerID, targetModel, fallbacks, retry)
 }
