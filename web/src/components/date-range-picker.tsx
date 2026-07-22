@@ -40,7 +40,7 @@ export type DateRangeValue = {
 	to: Date;
 };
 
-type PresetId =
+export type DateRangePresetId =
 	| "today"
 	| "yesterday"
 	| "this_week"
@@ -52,7 +52,7 @@ type PresetId =
 	| "last_90";
 
 type Preset = {
-	id: PresetId;
+	id: DateRangePresetId;
 	label: string;
 	icon: LucideIcon;
 	range: () => DateRangeValue;
@@ -149,7 +149,7 @@ const PRESETS: Preset[] = [
 ];
 
 export function defaultDateRange(
-	presetId: PresetId = "last_30",
+	presetId: DateRangePresetId = "last_30",
 ): DateRangeValue {
 	const preset =
 		PRESETS.find((p) => p.id === presetId) ??
@@ -159,6 +159,12 @@ export function defaultDateRange(
 		return { from: startOfDay(subDays(now, 29)), to: endOfDay(now) };
 	}
 	return preset.range();
+}
+
+export function findDateRangePreset(
+	range: DateRangeValue,
+): DateRangePresetId | undefined {
+	return PRESETS.find((p) => rangesMatch(range, p.range()))?.id;
 }
 
 function rangesMatch(a: DateRangeValue, b: DateRangeValue): boolean {
