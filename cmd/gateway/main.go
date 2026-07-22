@@ -117,7 +117,21 @@ func main() {
 		}
 		credBox = box
 	}
-	pipeline.Credentials = secrets.NewCredentialResolver(credBox)
+	vaultMulti := secrets.Multi{Env: secrets.Env{}}
+	if cfg.Secrets.AWSSM.Enabled {
+		awsSM, err := secrets.NewAWSSMFromEnv(ctx, true, cfg.Secrets.AWSSM.Region)
+		if err != nil {
+			log.Error("aws secrets manager", "err", err)
+			os.Exit(1)
+		}
+		vaultMulti.AWSSM = awsSM
+		log.Info("aws secrets manager enabled", "region", cfg.Secrets.AWSSM.Region)
+	}
+	if h := secrets.NewHashicorpFromEnv(cfg.Secrets.Vault.Addr, cfg.Secrets.Vault.Token); h != nil {
+		vaultMulti.Hashicorp = h
+		log.Info("hashicorp vault enabled", "addr", h.Addr)
+	}
+	pipeline.Credentials = secrets.NewCredentialResolver(credBox).WithVault(vaultMulti)
 
 	var timed dataplane.CounterStore
 	if cfg.RedisURL != "" {
