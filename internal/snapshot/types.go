@@ -2,6 +2,7 @@ package snapshot
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 )
 
@@ -25,6 +26,7 @@ const (
 
 	CredentialStorageEnv         = "env"
 	CredentialStorageEncryptedDB = "encrypted_db"
+	CredentialStorageVault       = "vault"
 	CredentialStatusActive       = "active"
 	CredentialStatusDisabled     = "disabled"
 )
@@ -68,6 +70,8 @@ const (
 // Credential is a compiled upstream secret reference (never plaintext for encrypted_db).
 type Credential struct {
 	ID               string `json:"id"`
+	OrganizationID   string `json:"organization_id,omitempty"`
+	Name             string `json:"name,omitempty"`
 	ProviderType     string `json:"provider_type"`
 	StorageKind      string `json:"storage_kind"`
 	SecretRef        string `json:"secret_ref,omitempty"`
@@ -84,16 +88,6 @@ type Quota struct {
 	Metric         string `json:"metric"`
 	LimitValue     int64  `json:"limit_value"`
 	Window         string `json:"window"`
-}
-
-// Policy is a CEL allow-expression compiled into the gateway snapshot.
-type Policy struct {
-	ID             string `json:"id"`
-	OrganizationID string `json:"organization_id"`
-	Name           string `json:"name"`
-	Expression     string `json:"expression"`
-	Enabled        bool   `json:"enabled"`
-	Priority       int    `json:"priority"`
 }
 
 type APIKey struct {
@@ -165,27 +159,79 @@ func AssignmentKey(providerType, scopeType, scopeID string) string {
 	return providerType + "::" + scopeType + "::" + scopeID
 }
 
-// ResolveCredential picks the most specific active credential for a provider type
-// (project → organization). Returns false when no assignment matches.
-func (s *Snapshot) ResolveCredential(providerType string, key APIKey) (Credential, bool) {
-	if s == nil || s.Credentials == nil || s.Assignments == nil {
+// LookupCredentialByName finds an active credential in the org by display name + provider type.
+// Names are matched case-sensitively after trim (same uniqueness as provider_credentials).
+func (s *Snapshot) LookupCredentialByName(orgID, providerType, name string) (Credential, bool) {
+	if s == nil || s.Credentials == nil {
 		return Credential{}, false
 	}
+	orgID = strings.TrimSpace(orgID)
+	providerType = strings.TrimSpace(providerType)
+	name = strings.TrimSpace(name)
+	if orgID == "" || providerType == "" || name == "" {
+		return Credential{}, false
+	}
+	for _, c := range s.Credentials {
+		if c.Status != CredentialStatusActive {
+			continue
+		}
+		if c.OrganizationID == orgID && c.ProviderType == providerType && c.Name == name {
+			return c, true
+		}
+	}
+	return Credential{}, false
+}
+
+// ResolveCredential picks the most specific active credential for a provider type
+// (api_key → project → organization). Returns false when no assignment matches.
+func (s *Snapshot) ResolveCredential(providerType string, key APIKey) (Credential, bool) {
+	c, ok, _ := s.ResolveCredentialForCall(providerType, key, "")
+	return c, ok
+}
+
+// ResolveCredentialForCall resolves BYOK for a call.
+// When overrideName is non-empty (from a matching select-credential policy), that name
+// selects a credential in the org for the provider type. Otherwise falls back to
+// assignment scopes: api_key → project → organization.
+//
+// If overrideName is set but no matching credential exists, ok=false and
+// missingOverride=true so the gateway can fail closed instead of using the platform key.
+func (s *Snapshot) ResolveCredentialForCall(providerType string, key APIKey, overrideName string) (cred Credential, ok bool, missingOverride bool) {
+	if s == nil || s.Credentials == nil {
+		return Credential{}, false, false
+	}
+	if name := strings.TrimSpace(overrideName); name != "" {
+		c, found := s.LookupCredentialByName(key.OrganizationID, providerType, name)
+		if !found {
+			return Credential{}, false, true
+		}
+		return c, true, false
+	}
+	if s.Assignments == nil {
+		return Credential{}, false, false
+	}
+	if key.ID != "" {
+		if id, hit := s.Assignments[AssignmentKey(providerType, ScopeAPIKey, key.ID)]; hit {
+			if c, hit := s.Credentials[id]; hit && c.Status == CredentialStatusActive {
+				return c, true, false
+			}
+		}
+	}
 	if key.ProjectID != "" {
-		if id, ok := s.Assignments[AssignmentKey(providerType, ScopeProject, key.ProjectID)]; ok {
-			if c, ok := s.Credentials[id]; ok && c.Status == CredentialStatusActive {
-				return c, true
+		if id, hit := s.Assignments[AssignmentKey(providerType, ScopeProject, key.ProjectID)]; hit {
+			if c, hit := s.Credentials[id]; hit && c.Status == CredentialStatusActive {
+				return c, true, false
 			}
 		}
 	}
 	if key.OrganizationID != "" {
-		if id, ok := s.Assignments[AssignmentKey(providerType, ScopeOrganization, key.OrganizationID)]; ok {
-			if c, ok := s.Credentials[id]; ok && c.Status == CredentialStatusActive {
-				return c, true
+		if id, hit := s.Assignments[AssignmentKey(providerType, ScopeOrganization, key.OrganizationID)]; hit {
+			if c, hit := s.Credentials[id]; hit && c.Status == CredentialStatusActive {
+				return c, true, false
 			}
 		}
 	}
-	return Credential{}, false
+	return Credential{}, false, false
 }
 
 // ValidQuotaWindow reports whether window is supported.

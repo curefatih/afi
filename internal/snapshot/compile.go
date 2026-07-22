@@ -1,6 +1,8 @@
 package snapshot
 
-import "time"
+import (
+	"time"
+)
 
 // Source is the control-plane view used to compile a snapshot.
 type Source struct {
