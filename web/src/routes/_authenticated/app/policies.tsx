@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { PlusIcon, ShieldCheckIcon } from "lucide-react";
+import { PlusIcon, ShieldCheckIcon, Trash2Icon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { credentialsQueryOptions } from "#/api/credentials";
@@ -8,9 +8,11 @@ import { orgMembersQueryOptions } from "#/api/organization";
 import {
 	createPolicyMutationOptions,
 	deletePolicyMutationOptions,
-	type PolicyAction,
 	type PolicyActionConfig,
+	type PolicyActionType,
+	type PolicyThen,
 	policiesQueryOptions,
+	policyActions,
 	type RequestPolicy,
 	reorderPoliciesMutationOptions,
 	updatePolicyMutationOptions,
@@ -57,33 +59,35 @@ export const Route = createFileRoute("/_authenticated/app/policies")({
 	component: RouteComponent,
 });
 
-const ACTIONS: Array<{ value: PolicyAction; label: string; hint: string }> = [
+const ACTIONS: Array<{
+	value: PolicyActionType;
+	label: string;
+	hint: string;
+}> = [
 	{
 		value: "deny",
 		label: "Deny",
-		hint: "Reject the request with HTTP 403.",
+		hint: "Reject the request with HTTP 403. Stops further Then steps and lower-priority policies.",
 	},
 	{
 		value: "allow",
 		label: "Allow",
-		hint: "Short-circuit: allow immediately (skips lower-priority rules).",
+		hint: "Short-circuit: allow immediately (skips remaining Then steps and lower-priority rules).",
 	},
 	{
 		value: "set_header",
 		label: "Update header",
-		hint: "Set an outbound header on the upstream provider request.",
+		hint: "Set an outbound header on the upstream provider request, then continue.",
 	},
 	{
 		value: "use_credential",
 		label: "Use credential",
-		hint: "Switch to a named secret for this request.",
+		hint: "Switch to a named secret for this request, then continue.",
 	},
 ];
 
-type FormState = {
-	name: string;
-	expression: string;
-	action: PolicyAction;
+type ThenForm = {
+	action: PolicyActionType;
 	header: string;
 	headerValue: string;
 	headerValueMode: "static" | "expr";
@@ -91,13 +95,17 @@ type FormState = {
 	credentialMode: "static" | "expr";
 	credentialName: string;
 	credentialNameExpr: string;
+};
+
+type FormState = {
+	name: string;
+	expression: string;
+	thens: ThenForm[];
 	priority: string;
 	enabled: boolean;
 };
 
-const defaultForm = (): FormState => ({
-	name: "",
-	expression: 'request.model == "blocked-model"',
+const defaultThen = (): ThenForm => ({
 	action: "deny",
 	header: "",
 	headerValue: "",
@@ -106,38 +114,22 @@ const defaultForm = (): FormState => ({
 	credentialMode: "static",
 	credentialName: "",
 	credentialNameExpr: 'request.headers["x-tenant-id"]',
+});
+
+const defaultForm = (): FormState => ({
+	name: "",
+	expression: 'request.model == "blocked-model"',
+	thens: [defaultThen()],
 	priority: "100",
 	enabled: true,
 });
 
-function buildActionConfig(f: FormState): PolicyActionConfig {
-	switch (f.action) {
-		case "set_header":
-			if (f.headerValueMode === "expr") {
-				return {
-					header: f.header.trim(),
-					value_expr: f.headerValueExpr.trim(),
-				};
-			}
-			return { header: f.header.trim(), value: f.headerValue };
-		case "use_credential":
-			if (f.credentialMode === "expr") {
-				return { credential_name_expr: f.credentialNameExpr.trim() };
-			}
-			return { credential_name: f.credentialName.trim() };
-		default:
-			return {};
-	}
-}
-
-function formFromPolicy(p: RequestPolicy): FormState {
-	const cfg = p.action_config ?? {};
+function thenFromAction(a: PolicyThen): ThenForm {
+	const cfg = a.config ?? {};
 	const credExpr = Boolean(cfg.credential_name_expr);
 	const valueExpr = Boolean(cfg.value_expr);
 	return {
-		name: p.name,
-		expression: p.expression,
-		action: p.action || "deny",
+		action: a.type || "deny",
 		header: cfg.header ?? "",
 		headerValue: cfg.value ?? "",
 		headerValueMode: valueExpr ? "expr" : "static",
@@ -146,9 +138,61 @@ function formFromPolicy(p: RequestPolicy): FormState {
 		credentialName: cfg.credential_name ?? "",
 		credentialNameExpr:
 			cfg.credential_name_expr ?? 'request.headers["x-tenant-id"]',
+	};
+}
+
+function buildActionConfig(t: ThenForm): PolicyActionConfig {
+	switch (t.action) {
+		case "set_header":
+			if (t.headerValueMode === "expr") {
+				return {
+					header: t.header.trim(),
+					value_expr: t.headerValueExpr.trim(),
+				};
+			}
+			return { header: t.header.trim(), value: t.headerValue };
+		case "use_credential":
+			if (t.credentialMode === "expr") {
+				return { credential_name_expr: t.credentialNameExpr.trim() };
+			}
+			return { credential_name: t.credentialName.trim() };
+		default:
+			return {};
+	}
+}
+
+function buildActions(f: FormState): PolicyThen[] {
+	return f.thens.map((t) => ({
+		type: t.action,
+		config: buildActionConfig(t),
+	}));
+}
+
+function formFromPolicy(p: RequestPolicy): FormState {
+	const actions = policyActions(p);
+	return {
+		name: p.name,
+		expression: p.expression,
+		thens: actions.map(thenFromAction),
 		priority: String(p.priority),
 		enabled: p.enabled,
 	};
+}
+
+function thenIncomplete(t: ThenForm): boolean {
+	if (t.action === "set_header") {
+		return (
+			!t.header.trim() ||
+			(t.headerValueMode === "expr" && !t.headerValueExpr.trim())
+		);
+	}
+	if (t.action === "use_credential") {
+		return (
+			(t.credentialMode === "static" && !t.credentialName.trim()) ||
+			(t.credentialMode === "expr" && !t.credentialNameExpr.trim())
+		);
+	}
+	return false;
 }
 
 function RouteComponent() {
@@ -274,7 +318,7 @@ function RouteComponent() {
 			<PageHeader
 				title="Policies"
 				description="When/then rules for gateway traffic."
-				info="When the CEL expression is true, the Then action runs. Higher priority runs first. Deny/allow stop evaluation; header and credential actions continue."
+				info="When the CEL expression is true, Then actions run in order. Higher priority policies run first. Deny/allow stop evaluation; header and credential actions continue."
 				actions={
 					isOrgAdmin ? (
 						<Button onClick={() => setCreateOpen(true)} disabled={!orgId}>
@@ -291,8 +335,8 @@ function RouteComponent() {
 					<p className="text-muted-foreground text-xs mt-1 leading-relaxed">
 						Write a When condition with{" "}
 						<code className="text-foreground">request.*</code> /{" "}
-						<code className="text-foreground">key.*</code>, then choose Then:
-						deny, allow, update header, or use credential.
+						<code className="text-foreground">key.*</code>, then add one or more
+						Then steps: deny, allow, update header, or use credential.
 					</p>
 				</div>
 				<div className="flex flex-wrap gap-1.5">
@@ -374,7 +418,7 @@ function RouteComponent() {
 				open={createOpen}
 				onOpenChange={setCreateOpen}
 				title="Add policy"
-				description="When the expression matches, run the Then action."
+				description="When the expression matches, run Then actions in order."
 				form={createForm}
 				setForm={setCreateForm}
 				credentialNames={credentialNames}
@@ -389,8 +433,7 @@ function RouteComponent() {
 							orgId,
 							name: createForm.name,
 							expression: createForm.expression,
-							action: createForm.action,
-							action_config: buildActionConfig(createForm),
+							actions: buildActions(createForm),
 							priority: Number(createForm.priority) || 100,
 						},
 						{
@@ -423,8 +466,7 @@ function RouteComponent() {
 							policyId: edit.id,
 							name: editForm.name,
 							expression: editForm.expression,
-							action: editForm.action,
-							action_config: buildActionConfig(editForm),
+							actions: buildActions(editForm),
 							priority:
 								editForm.priority.trim() === "" ||
 								Number.isNaN(Number(editForm.priority))
@@ -472,7 +514,38 @@ function PolicySheet({
 	onSubmit: () => void;
 	showEnabled?: boolean;
 }) {
-	const actionMeta = ACTIONS.find((a) => a.value === form.action);
+	const updateThen = (index: number, patch: Partial<ThenForm>) => {
+		setForm((prev) => ({
+			...prev,
+			thens: prev.thens.map((t, i) => (i === index ? { ...t, ...patch } : t)),
+		}));
+	};
+
+	const removeThen = (index: number) => {
+		setForm((prev) => ({
+			...prev,
+			thens: prev.thens.length <= 1 ? prev.thens : prev.thens.filter((_, i) => i !== index),
+		}));
+	};
+
+	const addThen = () => {
+		setForm((prev) => ({
+			...prev,
+			thens: [
+				...prev.thens,
+				{
+					...defaultThen(),
+					action: "use_credential",
+				},
+			],
+		}));
+	};
+
+	const submitDisabled =
+		pending ||
+		!form.name.trim() ||
+		form.thens.length === 0 ||
+		form.thens.some(thenIncomplete);
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
@@ -481,8 +554,9 @@ function PolicySheet({
 					<SheetTitle>{title}</SheetTitle>
 					<SheetDescription>{description}</SheetDescription>
 					<InfoAlert>
-						Matching rules run by priority. Deny and allow stop; update header
-						and use credential continue.
+						Matching rules run by priority. Within a match, Then steps run in
+						order. Deny and allow stop; update header and use credential
+						continue.
 					</InfoAlert>
 				</SheetHeader>
 				<form
@@ -522,7 +596,7 @@ function PolicySheet({
 									When
 								</span>
 								<p className="text-[11px] text-muted-foreground">
-									CEL expression must be true for Then to run.
+									CEL expression must be true for Then steps to run.
 								</p>
 							</div>
 							<CelExpressionEditor
@@ -532,198 +606,29 @@ function PolicySheet({
 							/>
 						</div>
 
-						<div className="border-t">
-							<div className="space-y-3 border-l-2 border-muted-foreground/25 py-3 pr-3 pl-4 ml-3">
-								<div className="flex items-baseline gap-2">
-									<span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-										Then
-									</span>
-									<p className="text-[11px] text-muted-foreground">
-										Action to apply when When matches.
-									</p>
-								</div>
+						{form.thens.map((then, index) => (
+							<ThenBlock
+								key={index}
+								index={index}
+								thenCount={form.thens.length}
+								then={then}
+								canRemove={form.thens.length > 1}
+								credentialNames={credentialNames}
+								onChange={(patch) => updateThen(index, patch)}
+								onRemove={() => removeThen(index)}
+							/>
+						))}
 
-								<div className="space-y-1">
-									<Label htmlFor="pol-action">Action</Label>
-									<Select
-										value={form.action}
-										onValueChange={(v) =>
-											setForm({ ...form, action: v as PolicyAction })
-										}
-									>
-										<SelectTrigger id="pol-action">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											{ACTIONS.map((a) => (
-												<SelectItem key={a.value} value={a.value}>
-													{a.label}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-									{actionMeta ? (
-										<p className="text-[11px] text-muted-foreground">
-											{actionMeta.hint}
-										</p>
-									) : null}
-								</div>
-
-								{form.action === "set_header" ? (
-									<div className="space-y-3 border-l-2 border-muted-foreground/20 py-1 pl-3">
-										<div className="grid gap-3 sm:grid-cols-2">
-											<div className="space-y-1">
-												<Label htmlFor="pol-hdr">Header</Label>
-												<Input
-													id="pol-hdr"
-													value={form.header}
-													placeholder="X-Partner-Id"
-													onChange={(e) =>
-														setForm({ ...form, header: e.target.value })
-													}
-													required
-												/>
-											</div>
-											<div className="space-y-1">
-												<Label htmlFor="pol-hdr-mode">Value source</Label>
-												<Select
-													value={form.headerValueMode}
-													onValueChange={(v) =>
-														setForm({
-															...form,
-															headerValueMode: v as "static" | "expr",
-														})
-													}
-												>
-													<SelectTrigger id="pol-hdr-mode">
-														<SelectValue />
-													</SelectTrigger>
-													<SelectContent>
-														<SelectItem value="static">Static value</SelectItem>
-														<SelectItem value="expr">
-															From CEL expression
-														</SelectItem>
-													</SelectContent>
-												</Select>
-											</div>
-										</div>
-										{form.headerValueMode === "static" ? (
-											<div className="space-y-1">
-												<Label htmlFor="pol-hdr-val">Value</Label>
-												<Input
-													id="pol-hdr-val"
-													value={form.headerValue}
-													placeholder="acme"
-													onChange={(e) =>
-														setForm({ ...form, headerValue: e.target.value })
-													}
-												/>
-											</div>
-										) : (
-											<div className="space-y-1 border-l-2 border-muted-foreground/15 pl-3">
-												<Label htmlFor="pol-hdr-expr">Value expression</Label>
-												<Input
-													id="pol-hdr-expr"
-													value={form.headerValueExpr}
-													placeholder={'request.headers["x-tenant-id"]'}
-													onChange={(e) =>
-														setForm({
-															...form,
-															headerValueExpr: e.target.value,
-														})
-													}
-													className="font-mono text-sm"
-													required
-												/>
-												<p className="text-[11px] text-muted-foreground">
-													Must evaluate to a string (same vars as When).
-												</p>
-											</div>
-										)}
-									</div>
-								) : null}
-
-								{form.action === "use_credential" ? (
-									<div className="space-y-3 border-l-2 border-muted-foreground/20 py-1 pl-3">
-										<div className="space-y-1">
-											<Label htmlFor="pol-cred-mode">Credential source</Label>
-											<Select
-												value={form.credentialMode}
-												onValueChange={(v) =>
-													setForm({
-														...form,
-														credentialMode: v as "static" | "expr",
-													})
-												}
-											>
-												<SelectTrigger id="pol-cred-mode">
-													<SelectValue />
-												</SelectTrigger>
-												<SelectContent>
-													<SelectItem value="static">Named secret</SelectItem>
-													<SelectItem value="expr">
-														From CEL expression
-													</SelectItem>
-												</SelectContent>
-											</Select>
-											<p className="text-[11px] text-muted-foreground">
-												Expression mode uses the resolved string as the
-												credential name (e.g. header value → secret name).
-											</p>
-										</div>
-										{form.credentialMode === "static" ? (
-											<div className="space-y-1">
-												<Label htmlFor="pol-cred">Credential</Label>
-												<Select
-													value={form.credentialName || undefined}
-													onValueChange={(v) =>
-														setForm({ ...form, credentialName: v ?? "" })
-													}
-												>
-													<SelectTrigger id="pol-cred">
-														<SelectValue placeholder="Select a secret" />
-													</SelectTrigger>
-													<SelectContent>
-														{credentialNames.map((n) => (
-															<SelectItem key={n} value={n}>
-																{n}
-															</SelectItem>
-														))}
-													</SelectContent>
-												</Select>
-											</div>
-										) : (
-											<div className="space-y-1 border-l-2 border-muted-foreground/15 pl-3">
-												<Label htmlFor="pol-cred-expr">Name expression</Label>
-												<Input
-													id="pol-cred-expr"
-													value={form.credentialNameExpr}
-													placeholder={'request.headers["x-tenant-id"]'}
-													onChange={(e) =>
-														setForm({
-															...form,
-															credentialNameExpr: e.target.value,
-														})
-													}
-													className="font-mono text-sm"
-													required
-												/>
-												<p className="text-[11px] text-muted-foreground">
-													Example: When{" "}
-													<code>
-														{'("x-tenant-id" in request.headers)'}
-													</code>
-													, Then use{" "}
-													<code>
-														{'request.headers["x-tenant-id"]'}
-													</code>
-													.
-												</p>
-											</div>
-										)}
-									</div>
-								) : null}
-							</div>
+						<div className="border-t px-3 py-2">
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={addThen}
+							>
+								<PlusIcon />
+								Add Then
+							</Button>
 						</div>
 					</section>
 
@@ -752,27 +657,222 @@ function PolicySheet({
 						>
 							Cancel
 						</Button>
-						<Button
-							type="submit"
-							disabled={
-								pending ||
-								!form.name.trim() ||
-								(form.action === "set_header" &&
-									(!form.header.trim() ||
-										(form.headerValueMode === "expr" &&
-											!form.headerValueExpr.trim()))) ||
-								(form.action === "use_credential" &&
-									((form.credentialMode === "static" &&
-										!form.credentialName.trim()) ||
-										(form.credentialMode === "expr" &&
-											!form.credentialNameExpr.trim())))
-							}
-						>
+						<Button type="submit" disabled={submitDisabled}>
 							{submitLabel}
 						</Button>
 					</SheetFooter>
 				</form>
 			</SheetContent>
 		</Sheet>
+	);
+}
+
+function ThenBlock({
+	index,
+	thenCount,
+	then,
+	canRemove,
+	credentialNames,
+	onChange,
+	onRemove,
+}: {
+	index: number;
+	thenCount: number;
+	then: ThenForm;
+	canRemove: boolean;
+	credentialNames: string[];
+	onChange: (patch: Partial<ThenForm>) => void;
+	onRemove: () => void;
+}) {
+	const actionMeta = ACTIONS.find((a) => a.value === then.action);
+	const idPrefix = `pol-then-${index}`;
+
+	return (
+		<div className="border-t">
+			<div className="space-y-3 border-l-2 border-muted-foreground/25 py-3 pr-3 pl-4 ml-3">
+				<div className="flex items-center justify-between gap-2">
+					<div className="flex items-baseline gap-2">
+						<span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+							Then{thenCount > 1 ? ` ${index + 1}` : ""}
+						</span>
+						<p className="text-[11px] text-muted-foreground">
+							{index === 0
+								? "First action when When matches."
+								: "Runs after previous Then steps (unless stopped)."}
+						</p>
+					</div>
+					{canRemove ? (
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon-xs"
+							aria-label={`Remove Then ${index + 1}`}
+							onClick={onRemove}
+						>
+							<Trash2Icon />
+						</Button>
+					) : null}
+				</div>
+
+				<div className="space-y-1">
+					<Label htmlFor={`${idPrefix}-action`}>Action</Label>
+					<Select
+						value={then.action}
+						onValueChange={(v) =>
+							onChange({ action: v as PolicyActionType })
+						}
+					>
+						<SelectTrigger id={`${idPrefix}-action`}>
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{ACTIONS.map((a) => (
+								<SelectItem key={a.value} value={a.value}>
+									{a.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					{actionMeta ? (
+						<p className="text-[11px] text-muted-foreground">
+							{actionMeta.hint}
+						</p>
+					) : null}
+				</div>
+
+				{then.action === "set_header" ? (
+					<div className="space-y-3 border-l-2 border-muted-foreground/20 py-1 pl-3">
+						<div className="grid gap-3 sm:grid-cols-2">
+							<div className="space-y-1">
+								<Label htmlFor={`${idPrefix}-hdr`}>Header</Label>
+								<Input
+									id={`${idPrefix}-hdr`}
+									value={then.header}
+									placeholder="X-Partner-Id"
+									onChange={(e) => onChange({ header: e.target.value })}
+									required
+								/>
+							</div>
+							<div className="space-y-1">
+								<Label htmlFor={`${idPrefix}-hdr-mode`}>Value source</Label>
+								<Select
+									value={then.headerValueMode}
+									onValueChange={(v) =>
+										onChange({
+											headerValueMode: v as "static" | "expr",
+										})
+									}
+								>
+									<SelectTrigger id={`${idPrefix}-hdr-mode`}>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="static">Static value</SelectItem>
+										<SelectItem value="expr">From CEL expression</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+						</div>
+						{then.headerValueMode === "static" ? (
+							<div className="space-y-1">
+								<Label htmlFor={`${idPrefix}-hdr-val`}>Value</Label>
+								<Input
+									id={`${idPrefix}-hdr-val`}
+									value={then.headerValue}
+									placeholder="acme"
+									onChange={(e) => onChange({ headerValue: e.target.value })}
+								/>
+							</div>
+						) : (
+							<div className="space-y-1 border-l-2 border-muted-foreground/15 pl-3">
+								<Label htmlFor={`${idPrefix}-hdr-expr`}>Value expression</Label>
+								<Input
+									id={`${idPrefix}-hdr-expr`}
+									value={then.headerValueExpr}
+									placeholder={'request.headers["x-tenant-id"]'}
+									onChange={(e) =>
+										onChange({ headerValueExpr: e.target.value })
+									}
+									className="font-mono text-sm"
+									required
+								/>
+								<p className="text-[11px] text-muted-foreground">
+									Must evaluate to a string (same vars as When).
+								</p>
+							</div>
+						)}
+					</div>
+				) : null}
+
+				{then.action === "use_credential" ? (
+					<div className="space-y-3 border-l-2 border-muted-foreground/20 py-1 pl-3">
+						<div className="space-y-1">
+							<Label htmlFor={`${idPrefix}-cred-mode`}>Credential source</Label>
+							<Select
+								value={then.credentialMode}
+								onValueChange={(v) =>
+									onChange({
+										credentialMode: v as "static" | "expr",
+									})
+								}
+							>
+								<SelectTrigger id={`${idPrefix}-cred-mode`}>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="static">Named secret</SelectItem>
+									<SelectItem value="expr">From CEL expression</SelectItem>
+								</SelectContent>
+							</Select>
+							<p className="text-[11px] text-muted-foreground">
+								Expression mode uses the resolved string as the credential name
+								(e.g. header value → secret name).
+							</p>
+						</div>
+						{then.credentialMode === "static" ? (
+							<div className="space-y-1">
+								<Label htmlFor={`${idPrefix}-cred`}>Credential</Label>
+								<Select
+									value={then.credentialName || undefined}
+									onValueChange={(v) =>
+										onChange({ credentialName: v ?? "" })
+									}
+								>
+									<SelectTrigger id={`${idPrefix}-cred`}>
+										<SelectValue placeholder="Select a secret" />
+									</SelectTrigger>
+									<SelectContent>
+										{credentialNames.map((n) => (
+											<SelectItem key={n} value={n}>
+												{n}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+						) : (
+							<div className="space-y-1 border-l-2 border-muted-foreground/15 pl-3">
+								<Label htmlFor={`${idPrefix}-cred-expr`}>Name expression</Label>
+								<Input
+									id={`${idPrefix}-cred-expr`}
+									value={then.credentialNameExpr}
+									placeholder={'request.headers["x-tenant-id"]'}
+									onChange={(e) =>
+										onChange({ credentialNameExpr: e.target.value })
+									}
+									className="font-mono text-sm"
+									required
+								/>
+								<p className="text-[11px] text-muted-foreground">
+									Example: When{" "}
+									<code>{'("x-tenant-id" in request.headers)'}</code>, Then use{" "}
+									<code>{'request.headers["x-tenant-id"]'}</code>.
+								</p>
+							</div>
+						)}
+					</div>
+				) : null}
+			</div>
+		</div>
 	);
 }
