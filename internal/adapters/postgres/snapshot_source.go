@@ -206,5 +206,29 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 		return src, err
 	}
 
+	orgRows, err := l.Pool.Query(ctx, `
+		SELECT id, default_retry FROM organizations WHERE default_retry IS NOT NULL
+	`)
+	if err != nil {
+		return src, err
+	}
+	defer orgRows.Close()
+	for orgRows.Next() {
+		var orgID string
+		var raw []byte
+		if err := orgRows.Scan(&orgID, &raw); err != nil {
+			return src, err
+		}
+		if rc := DecodeRetry(raw); rc != nil {
+			if src.DefaultRetries == nil {
+				src.DefaultRetries = make(map[string]*snapshot.RetryConfig)
+			}
+			src.DefaultRetries[orgID] = rc.ToSnapshot()
+		}
+	}
+	if err := orgRows.Err(); err != nil {
+		return src, err
+	}
+
 	return src, nil
 }

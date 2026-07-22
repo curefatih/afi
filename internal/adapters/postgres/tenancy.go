@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/tenancy"
@@ -124,6 +125,37 @@ func (o *Organizations) SetMailProvider(ctx context.Context, orgID, provider str
 	tag, err := o.Pool.Exec(ctx, `
 		UPDATE organizations SET mail_provider = $1 WHERE id = $2
 	`, provider, orgID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return kernel.ErrNotFound
+	}
+	return nil
+}
+
+func (o *Organizations) GetDefaultRetry(ctx context.Context, orgID string) (*gatewayconfig.RetryConfig, error) {
+	var raw []byte
+	err := o.Pool.QueryRow(ctx, `
+		SELECT default_retry FROM organizations WHERE id = $1
+	`, orgID).Scan(&raw)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, kernel.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return DecodeRetry(raw), nil
+}
+
+func (o *Organizations) SetDefaultRetry(ctx context.Context, orgID string, retry *gatewayconfig.RetryConfig) error {
+	raw, err := encodeRetry(retry)
+	if err != nil {
+		return err
+	}
+	tag, err := o.Pool.Exec(ctx, `
+		UPDATE organizations SET default_retry = $1 WHERE id = $2
+	`, raw, orgID)
 	if err != nil {
 		return err
 	}
