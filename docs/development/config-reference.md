@@ -87,7 +87,8 @@ Written on first control-plane start (or `make seed`):
 | Seeded providers | `prov_openai`, `prov_anthropic`, `prov_gemini`, `prov_ollama` (`openai_compatible` → `http://127.0.0.1:11434/v1`, no default route) |
 | `OLLAMA_API_KEY` | _(any value if Ollama ignores auth)_ | gateway → openai_compatible |
 | Route `fallbacks` | optional ordered `[{provider_id,target_model}]` for 5xx/timeout/429 failover |
-| Route `retry` | optional `{max_attempts,backoff:{strategy,base_delay,max_delay?,multiplier?}}` — `fixed` or `exponential` same-target retries before `fallbacks` (5xx/timeout/429) |
+| Route `retry` | optional per-route override; else org `default_retry` from Settings → General |
+| Org `default_retry` | optional org-wide `{max_attempts,backoff…}` applied when a route has no `retry` |
 | Gateway models | `GET /v1/models` lists org route model ids (`supports_streaming` / `supports_tts` / `supports_stt`) |
 | Gateway audio | `POST /v1/audio/speech`, `POST /v1/audio/transcriptions` (openai / openai_compatible) |
 
@@ -118,6 +119,7 @@ Written on first control-plane start (or `make seed`):
 | GET | `/api/v1/platform/auth/sso/providers` (public) |
 | GET | `/api/v1/platform/auth/sso/{provider}/start` (public; redirects to IdP) |
 | GET | `/api/v1/platform/auth/sso/{provider}/callback` (public; redirects to web UI) |
+| GET/PUT | `/api/v1/platform/organizations/{orgID}/default-retry` (PUT = org admin; publishes snapshot) |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/keys` (personal = member; service_account = org admin) |
 | DELETE | `/api/v1/platform/keys/{keyID}` (admin or personal key owner) |
 | GET/POST | `/api/v1/platform/projects/{projectID}/keys` (POST = org admin) |
@@ -184,7 +186,7 @@ Optional same-target retry before ordered `fallbacks` failover. Create/update vi
 
 `fixed` rejects `max_delay` / `multiplier`. Delay before retry index `n` (0 = first retry): fixed → `base_delay`; exponential → `min(base_delay * multiplier^n, max_delay)`.
 
-Compiled into the gateway snapshot. On chat (`/v1/chat/completions`) and Anthropic messages (`/v1/messages`), the gateway retries the same target up to `max_attempts` with the configured backoff on transport errors, HTTP 5xx, and 429, then walks ordered `fallbacks`.
+Compiled into the gateway snapshot. Resolution order: **route `retry` → org `default_retry` → none**. On chat (`/v1/chat/completions`) and Anthropic messages (`/v1/messages`), the gateway retries the same target up to `max_attempts` with the configured backoff on transport errors, HTTP 5xx, and 429, then walks ordered `fallbacks`.
 
 ### CEL policies
 

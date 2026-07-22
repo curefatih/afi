@@ -166,6 +166,7 @@ These are **not** env vars — configure them after deploy via the control plane
 | **API keys** | `personal` or `service_account`; project scope optional |
 | **Providers** | type, base URL, `api_key_env`, health |
 | **Routes** | model id, provider, target model, modality, ordered `fallbacks`, optional `retry` (`fixed` / `exponential` backoff) |
+| **Org default retry** | optional org-wide retry used when a route has no `retry` |
 | **Quotas** | scope (`organization`/`project`/`user`/`api_key`), metric (`requests`/`tokens`), window (`total`/`minute`/`hour`/`day`), `limit_value` |
 | **CEL policies** | `expression`, `priority`, `enabled` |
 | **Model prices** | DB overrides for usage `cost_usd` (else embedded catalog) |
