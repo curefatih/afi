@@ -66,7 +66,7 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	}
 
 	routeRows, err := l.Pool.Query(ctx, `
-		SELECT organization_id, model, provider_id, target_model, fallbacks FROM routes
+		SELECT organization_id, model, provider_id, target_model, fallbacks, retry FROM routes
 	`)
 	if err != nil {
 		return src, err
@@ -74,14 +74,17 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	defer routeRows.Close()
 	for routeRows.Next() {
 		var r snapshot.Route
-		var fb []byte
-		if err := routeRows.Scan(&r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel, &fb); err != nil {
+		var fb, retryRaw []byte
+		if err := routeRows.Scan(&r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel, &fb, &retryRaw); err != nil {
 			return src, err
 		}
 		for _, f := range DecodeFallbacks(fb) {
 			r.Fallbacks = append(r.Fallbacks, snapshot.RouteTarget{
 				ProviderID: f.ProviderID, TargetModel: f.TargetModel,
 			})
+		}
+		if rc := DecodeRetry(retryRaw); rc != nil {
+			r.Retry = rc.ToSnapshot()
 		}
 		src.Routes = append(src.Routes, r)
 	}

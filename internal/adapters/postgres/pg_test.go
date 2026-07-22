@@ -224,8 +224,12 @@ func TestSnapshotPutLatestAndSourceLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO routes (id, organization_id, model, provider_id, target_model, fallbacks)
-		VALUES ('route_1', 'org_1', 'gpt-4o-mini', 'prov_1', 'gpt-4o-mini', '[{"provider_id":"prov_1","target_model":"gpt-4o"}]')
+		INSERT INTO routes (id, organization_id, model, provider_id, target_model, fallbacks, retry)
+		VALUES (
+			'route_1', 'org_1', 'gpt-4o-mini', 'prov_1', 'gpt-4o-mini',
+			'[{"provider_id":"prov_1","target_model":"gpt-4o"}]',
+			'{"max_attempts":3,"backoff":{"strategy":"exponential","base_delay":"100ms","max_delay":"1s","multiplier":2}}'
+		)
 	`); err != nil {
 		t.Fatal(err)
 	}
@@ -246,6 +250,9 @@ func TestSnapshotPutLatestAndSourceLoad(t *testing.T) {
 	}
 	if len(src.Routes[0].Fallbacks) != 1 || src.Routes[0].Fallbacks[0].TargetModel != "gpt-4o" {
 		t.Fatalf("fallbacks=%+v", src.Routes[0].Fallbacks)
+	}
+	if src.Routes[0].Retry == nil || src.Routes[0].Retry.MaxAttempts != 3 || src.Routes[0].Retry.Backoff.Strategy != "exponential" {
+		t.Fatalf("retry=%+v", src.Routes[0].Retry)
 	}
 
 	compiled := snapshot.Compile(src)

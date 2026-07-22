@@ -131,9 +131,31 @@ func decodeFallbacks(raw []byte) []gatewayconfig.RouteFallback {
 	return out
 }
 
+func DecodeRetry(raw []byte) *gatewayconfig.RetryConfig {
+	return decodeRetry(raw)
+}
+
+func decodeRetry(raw []byte) *gatewayconfig.RetryConfig {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil
+	}
+	var out gatewayconfig.RetryConfig
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil
+	}
+	return &out
+}
+
+func encodeRetry(c *gatewayconfig.RetryConfig) ([]byte, error) {
+	if c == nil {
+		return nil, nil
+	}
+	return json.Marshal(c)
+}
+
 func (r *Routes) ListByOrg(ctx context.Context, orgID string) ([]gatewayconfig.Route, error) {
 	rows, err := r.Pool.Query(ctx, `
-		SELECT id, organization_id, model, provider_id, target_model, fallbacks, created_at
+		SELECT id, organization_id, model, provider_id, target_model, fallbacks, retry, created_at
 		FROM routes WHERE organization_id=$1 ORDER BY created_at
 	`, orgID)
 	if err != nil {
@@ -143,11 +165,12 @@ func (r *Routes) ListByOrg(ctx context.Context, orgID string) ([]gatewayconfig.R
 	var out []gatewayconfig.Route
 	for rows.Next() {
 		var item gatewayconfig.Route
-		var fb []byte
-		if err := rows.Scan(&item.ID, &item.OrganizationID, &item.Model, &item.ProviderID, &item.TargetModel, &fb, &item.CreatedAt); err != nil {
+		var fb, retryRaw []byte
+		if err := rows.Scan(&item.ID, &item.OrganizationID, &item.Model, &item.ProviderID, &item.TargetModel, &fb, &retryRaw, &item.CreatedAt); err != nil {
 			return nil, err
 		}
 		item.Fallbacks = decodeFallbacks(fb)
+		item.Retry = decodeRetry(retryRaw)
 		out = append(out, item)
 	}
 	return out, rows.Err()
@@ -158,14 +181,18 @@ func (r *Routes) Insert(ctx context.Context, item gatewayconfig.Route) error {
 	if err != nil {
 		return err
 	}
+	retryRaw, err := encodeRetry(item.Retry)
+	if err != nil {
+		return err
+	}
 	_, err = r.Pool.Exec(ctx, `
-		INSERT INTO routes (id, organization_id, model, provider_id, target_model, fallbacks, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7)
-	`, item.ID, item.OrganizationID, item.Model, item.ProviderID, item.TargetModel, fb, item.CreatedAt)
+		INSERT INTO routes (id, organization_id, model, provider_id, target_model, fallbacks, retry, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+	`, item.ID, item.OrganizationID, item.Model, item.ProviderID, item.TargetModel, fb, retryRaw, item.CreatedAt)
 	return err
 }
 
-func (r *Routes) Update(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback) (*gatewayconfig.Route, error) {
+func (r *Routes) Update(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback, retry *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error) {
 	if fallbacks == nil {
 		fallbacks = []gatewayconfig.RouteFallback{}
 	}
@@ -173,14 +200,18 @@ func (r *Routes) Update(ctx context.Context, routeID, model, providerID, targetM
 	if err != nil {
 		return nil, err
 	}
+	retryRaw, err := encodeRetry(retry)
+	if err != nil {
+		return nil, err
+	}
 	item := &gatewayconfig.Route{}
-	var raw []byte
+	var raw, gotRetry []byte
 	err = r.Pool.QueryRow(ctx, `
-		UPDATE routes SET model=$2, provider_id=$3, target_model=$4, fallbacks=$5
+		UPDATE routes SET model=$2, provider_id=$3, target_model=$4, fallbacks=$5, retry=$6
 		WHERE id=$1
-		RETURNING id, organization_id, model, provider_id, target_model, fallbacks, created_at
-	`, routeID, model, providerID, targetModel, fb).Scan(
-		&item.ID, &item.OrganizationID, &item.Model, &item.ProviderID, &item.TargetModel, &raw, &item.CreatedAt,
+		RETURNING id, organization_id, model, provider_id, target_model, fallbacks, retry, created_at
+	`, routeID, model, providerID, targetModel, fb, retryRaw).Scan(
+		&item.ID, &item.OrganizationID, &item.Model, &item.ProviderID, &item.TargetModel, &raw, &gotRetry, &item.CreatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, kernel.ErrNotFound
@@ -189,6 +220,7 @@ func (r *Routes) Update(ctx context.Context, routeID, model, providerID, targetM
 		return nil, err
 	}
 	item.Fallbacks = decodeFallbacks(raw)
+	item.Retry = decodeRetry(gotRetry)
 	return item, nil
 }
 
