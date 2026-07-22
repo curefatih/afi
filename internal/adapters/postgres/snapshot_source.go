@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -107,7 +108,7 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	}
 
 	polRows, err := l.Pool.Query(ctx, `
-		SELECT id, organization_id, name, expression, action, action_config, enabled, priority FROM request_policies
+		SELECT id, organization_id, name, expression, actions, enabled, priority FROM request_policies
 	`)
 	if err != nil {
 		return src, err
@@ -115,11 +116,22 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	defer polRows.Close()
 	for polRows.Next() {
 		var p snapshot.Policy
-		var cfg []byte
-		if err := polRows.Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Expression, &p.Action, &cfg, &p.Enabled, &p.Priority); err != nil {
+		var actionsJSON []byte
+		if err := polRows.Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Expression, &actionsJSON, &p.Enabled, &p.Priority); err != nil {
 			return src, err
 		}
-		p.ActionConfig = cfg
+		if len(actionsJSON) > 0 {
+			var acts []struct {
+				Type   string          `json:"type"`
+				Config json.RawMessage `json:"config"`
+			}
+			if err := json.Unmarshal(actionsJSON, &acts); err != nil {
+				return src, err
+			}
+			for _, a := range acts {
+				p.Actions = append(p.Actions, snapshot.PolicyAction{Type: a.Type, Config: []byte(a.Config)})
+			}
+		}
 		src.Policies = append(src.Policies, p)
 	}
 	if err := polRows.Err(); err != nil {

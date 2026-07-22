@@ -22,25 +22,32 @@ func NewPolicies(pool *pgxpool.Pool) *Policies {
 
 func scanPolicy(row pgx.Row) (*gatewayconfig.RequestPolicy, error) {
 	item := &gatewayconfig.RequestPolicy{}
-	var cfg []byte
+	var actionsJSON []byte
 	err := row.Scan(
 		&item.ID, &item.OrganizationID, &item.Name, &item.Expression,
-		&item.Action, &cfg, &item.Enabled, &item.Priority, &item.CreatedAt,
+		&actionsJSON, &item.Enabled, &item.Priority, &item.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
 	}
-	if len(cfg) == 0 {
-		item.ActionConfig = json.RawMessage(`{}`)
-	} else {
-		item.ActionConfig = cfg
+	if len(actionsJSON) == 0 {
+		item.Actions = []gatewayconfig.PolicyAction{}
+	} else if err := json.Unmarshal(actionsJSON, &item.Actions); err != nil {
+		return nil, err
 	}
 	return item, nil
 }
 
+func actionsBytes(actions []gatewayconfig.PolicyAction) ([]byte, error) {
+	if actions == nil {
+		actions = []gatewayconfig.PolicyAction{}
+	}
+	return json.Marshal(actions)
+}
+
 func (p *Policies) ListByOrg(ctx context.Context, orgID string) ([]gatewayconfig.RequestPolicy, error) {
 	rows, err := p.Pool.Query(ctx, `
-		SELECT id, organization_id, name, expression, action, action_config, enabled, priority, created_at
+		SELECT id, organization_id, name, expression, actions, enabled, priority, created_at
 		FROM request_policies WHERE organization_id=$1
 		ORDER BY priority DESC, name ASC
 	`, orgID)
@@ -60,20 +67,20 @@ func (p *Policies) ListByOrg(ctx context.Context, orgID string) ([]gatewayconfig
 }
 
 func (p *Policies) Insert(ctx context.Context, item gatewayconfig.RequestPolicy) error {
-	cfg := item.ActionConfig
-	if len(cfg) == 0 {
-		cfg = json.RawMessage(`{}`)
+	raw, err := actionsBytes(item.Actions)
+	if err != nil {
+		return err
 	}
-	_, err := p.Pool.Exec(ctx, `
-		INSERT INTO request_policies (id, organization_id, name, expression, action, action_config, enabled, priority, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-	`, item.ID, item.OrganizationID, item.Name, item.Expression, item.Action, cfg, item.Enabled, item.Priority, item.CreatedAt)
+	_, err = p.Pool.Exec(ctx, `
+		INSERT INTO request_policies (id, organization_id, name, expression, actions, enabled, priority, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+	`, item.ID, item.OrganizationID, item.Name, item.Expression, raw, item.Enabled, item.Priority, item.CreatedAt)
 	return err
 }
 
 func (p *Policies) Get(ctx context.Context, policyID string) (*gatewayconfig.RequestPolicy, error) {
 	item, err := scanPolicy(p.Pool.QueryRow(ctx, `
-		SELECT id, organization_id, name, expression, action, action_config, enabled, priority, created_at
+		SELECT id, organization_id, name, expression, actions, enabled, priority, created_at
 		FROM request_policies WHERE id=$1
 	`, policyID))
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -83,14 +90,14 @@ func (p *Policies) Get(ctx context.Context, policyID string) (*gatewayconfig.Req
 }
 
 func (p *Policies) Update(ctx context.Context, item gatewayconfig.RequestPolicy) (*gatewayconfig.RequestPolicy, error) {
-	cfg := item.ActionConfig
-	if len(cfg) == 0 {
-		cfg = json.RawMessage(`{}`)
+	raw, err := actionsBytes(item.Actions)
+	if err != nil {
+		return nil, err
 	}
 	out, err := scanPolicy(p.Pool.QueryRow(ctx, `
-		UPDATE request_policies SET name=$2, expression=$3, action=$4, action_config=$5, enabled=$6, priority=$7 WHERE id=$1
-		RETURNING id, organization_id, name, expression, action, action_config, enabled, priority, created_at
-	`, item.ID, item.Name, item.Expression, item.Action, cfg, item.Enabled, item.Priority))
+		UPDATE request_policies SET name=$2, expression=$3, actions=$4, enabled=$5, priority=$6 WHERE id=$1
+		RETURNING id, organization_id, name, expression, actions, enabled, priority, created_at
+	`, item.ID, item.Name, item.Expression, raw, item.Enabled, item.Priority))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, kernel.ErrNotFound
 	}
