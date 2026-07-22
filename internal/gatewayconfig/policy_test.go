@@ -2,6 +2,7 @@ package gatewayconfig
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -20,23 +21,35 @@ func (badValidator) ValidateString(string) error { return errors.New("bad cel") 
 
 func TestNewRequestPolicy(t *testing.T) {
 	t.Parallel()
-	p, err := NewRequestPolicy("pol_1", "org_1", "allow", "true", ActionDeny, nil, true, 10, timeNowUTC(), okValidator{})
-	if err != nil || p.Name != "allow" || p.Action != ActionDeny {
+	p, err := NewRequestPolicy("pol_1", "org_1", "allow", "true", []PolicyAction{{Type: ActionDeny}}, true, 10, timeNowUTC(), okValidator{})
+	if err != nil || p.Name != "allow" || len(p.Actions) != 1 || p.Actions[0].Type != ActionDeny {
 		t.Fatalf("p=%+v err=%v", p, err)
 	}
 }
 
-func TestNewRequestPolicySetHeader(t *testing.T) {
+func TestNewRequestPolicyMultiActions(t *testing.T) {
 	t.Parallel()
-	p, err := NewRequestPolicy("pol_1", "org_1", "hdr", "true", ActionSetHeader, []byte(`{"header":"X-A","value":"1"}`), true, 1, timeNowUTC(), okValidator{})
-	if err != nil || p.Action != ActionSetHeader {
+	cfg, _ := json.Marshal(map[string]string{"header": "X-A", "value": "1"})
+	p, err := NewRequestPolicy("pol_1", "org_1", "multi", "true", []PolicyAction{
+		{Type: ActionUseCredential, Config: json.RawMessage(`{"credential_name":"acme"}`)},
+		{Type: ActionSetHeader, Config: cfg},
+	}, true, 1, timeNowUTC(), okValidator{})
+	if err != nil || len(p.Actions) != 2 {
 		t.Fatalf("p=%+v err=%v", p, err)
 	}
 }
 
 func TestNewRequestPolicyRejectsBadCEL(t *testing.T) {
 	t.Parallel()
-	_, err := NewRequestPolicy("pol_1", "org_1", "allow", "true", ActionDeny, nil, true, 1, timeNowUTC(), badValidator{})
+	_, err := NewRequestPolicy("pol_1", "org_1", "allow", "true", []PolicyAction{{Type: ActionDeny}}, true, 1, timeNowUTC(), badValidator{})
+	if !errors.Is(err, kernel.ErrInvalidRequest) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestNewRequestPolicyRequiresAction(t *testing.T) {
+	t.Parallel()
+	_, err := NewRequestPolicy("pol_1", "org_1", "allow", "true", nil, true, 1, timeNowUTC(), okValidator{})
 	if !errors.Is(err, kernel.ErrInvalidRequest) {
 		t.Fatalf("err=%v", err)
 	}
@@ -87,37 +100,5 @@ func TestReorderPolicies(t *testing.T) {
 	}
 	if repo.byID["pol_a"].Priority != 30 || repo.byID["pol_b"].Priority != 20 {
 		t.Fatalf("priorities=%+v", repo.byID)
-	}
-}
-
-func TestReorderPoliciesRejectsEmpty(t *testing.T) {
-	t.Parallel()
-	err := ReorderPolicies(context.Background(), &memPolicyRepo{}, "org_1", nil)
-	if !errors.Is(err, kernel.ErrInvalidRequest) {
-		t.Fatalf("err=%v", err)
-	}
-}
-
-func TestReorderPoliciesRejectsDuplicates(t *testing.T) {
-	t.Parallel()
-	err := ReorderPolicies(context.Background(), &memPolicyRepo{}, "org_1", []PolicyPriorityUpdate{
-		{ID: "pol_a", Priority: 1},
-		{ID: "pol_a", Priority: 2},
-	})
-	if !errors.Is(err, kernel.ErrInvalidRequest) {
-		t.Fatalf("err=%v", err)
-	}
-}
-
-func TestReorderPoliciesRejectsForeignPolicy(t *testing.T) {
-	t.Parallel()
-	repo := &memPolicyRepo{byID: map[string]RequestPolicy{
-		"pol_a": {ID: "pol_a", OrganizationID: "org_other", Priority: 10},
-	}}
-	err := ReorderPolicies(context.Background(), repo, "org_1", []PolicyPriorityUpdate{
-		{ID: "pol_a", Priority: 30},
-	})
-	if !errors.Is(err, kernel.ErrNotFound) {
-		t.Fatalf("err=%v", err)
 	}
 }

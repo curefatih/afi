@@ -12,24 +12,29 @@ import (
 
 // Policy action kinds (THEN clause).
 const (
-	ActionAllow          = "allow"
-	ActionDeny           = "deny"
-	ActionSetHeader      = "set_header"
-	ActionUseCredential  = "use_credential"
+	ActionAllow         = "allow"
+	ActionDeny          = "deny"
+	ActionSetHeader     = "set_header"
+	ActionUseCredential = "use_credential"
 )
 
+// PolicyAction is one Then step for a when/then policy.
+type PolicyAction struct {
+	Type   string          `json:"type"`
+	Config json.RawMessage `json:"config,omitempty"`
+}
+
 // RequestPolicy is a when/then CEL policy for an organization.
-// WHEN Expression is true, THEN Action runs (with ActionConfig options).
+// WHEN Expression is true, THEN Actions run in order.
 type RequestPolicy struct {
-	ID             string          `json:"id"`
-	OrganizationID string          `json:"organization_id"`
-	Name           string          `json:"name"`
-	Expression     string          `json:"expression"`
-	Action         string          `json:"action"`
-	ActionConfig   json.RawMessage `json:"action_config,omitempty"`
-	Enabled        bool            `json:"enabled"`
-	Priority       int             `json:"priority"`
-	CreatedAt      time.Time       `json:"created_at"`
+	ID             string         `json:"id"`
+	OrganizationID string         `json:"organization_id"`
+	Name           string         `json:"name"`
+	Expression     string         `json:"expression"`
+	Actions        []PolicyAction `json:"actions"`
+	Enabled        bool           `json:"enabled"`
+	Priority       int            `json:"priority"`
+	CreatedAt      time.Time      `json:"created_at"`
 }
 
 // ActionConfigAllow/Deny have no fields.
@@ -67,6 +72,31 @@ type PolicyPriorityUpdate struct {
 	Priority int    `json:"priority"`
 }
 
+// NormalizeAction validates one Then action and returns a canonical copy.
+func NormalizeAction(a PolicyAction, v ExpressionValidator) (PolicyAction, error) {
+	typ, cfg, err := NormalizeActionConfig(a.Type, a.Config, v)
+	if err != nil {
+		return PolicyAction{}, err
+	}
+	return PolicyAction{Type: typ, Config: cfg}, nil
+}
+
+// NormalizeActions validates a Then list (at least one action required).
+func NormalizeActions(actions []PolicyAction, v ExpressionValidator) ([]PolicyAction, error) {
+	if len(actions) == 0 {
+		return nil, fmt.Errorf("%w: at least one then action required", kernel.ErrInvalidRequest)
+	}
+	out := make([]PolicyAction, 0, len(actions))
+	for i, a := range actions {
+		na, err := NormalizeAction(a, v)
+		if err != nil {
+			return nil, fmt.Errorf("actions[%d]: %w", i, err)
+		}
+		out = append(out, na)
+	}
+	return out, nil
+}
+
 // NormalizeActionConfig validates action + config and returns canonical JSON.
 // When v is non-nil, dynamic *_expr fields are validated as string CEL.
 func NormalizeActionConfig(action string, raw json.RawMessage, v ExpressionValidator) (string, json.RawMessage, error) {
@@ -96,7 +126,7 @@ func NormalizeActionConfig(action string, raw json.RawMessage, v ExpressionValid
 					return "", nil, fmt.Errorf("%w: invalid value_expr: %v", kernel.ErrInvalidRequest, err)
 				}
 			}
-			cfg.Value = "" // expr wins; keep payload clean
+			cfg.Value = ""
 		}
 		out, err := json.Marshal(cfg)
 		if err != nil {
@@ -132,8 +162,21 @@ func NormalizeActionConfig(action string, raw json.RawMessage, v ExpressionValid
 	}
 }
 
+// LegacySingleAction converts old action + action_config fields into an actions slice.
+func LegacySingleAction(action string, actionConfig json.RawMessage) []PolicyAction {
+	action = strings.TrimSpace(action)
+	if action == "" {
+		return nil
+	}
+	cfg := actionConfig
+	if len(cfg) == 0 {
+		cfg = json.RawMessage(`{}`)
+	}
+	return []PolicyAction{{Type: action, Config: cfg}}
+}
+
 // NewRequestPolicy builds a validated policy entity.
-func NewRequestPolicy(id, orgID, name, expression, action string, actionConfig json.RawMessage, enabled bool, priority int, now time.Time, v ExpressionValidator) (*RequestPolicy, error) {
+func NewRequestPolicy(id, orgID, name, expression string, actions []PolicyAction, enabled bool, priority int, now time.Time, v ExpressionValidator) (*RequestPolicy, error) {
 	name = strings.TrimSpace(name)
 	expression = strings.TrimSpace(expression)
 	if id == "" || orgID == "" {
@@ -147,7 +190,7 @@ func NewRequestPolicy(id, orgID, name, expression, action string, actionConfig j
 			return nil, fmt.Errorf("%w: invalid CEL expression: %v", kernel.ErrInvalidRequest, err)
 		}
 	}
-	action, cfg, err := NormalizeActionConfig(action, actionConfig, v)
+	actions, err := NormalizeActions(actions, v)
 	if err != nil {
 		return nil, err
 	}
@@ -159,8 +202,7 @@ func NewRequestPolicy(id, orgID, name, expression, action string, actionConfig j
 		OrganizationID: orgID,
 		Name:           name,
 		Expression:     expression,
-		Action:         action,
-		ActionConfig:   cfg,
+		Actions:        actions,
 		Enabled:        enabled,
 		Priority:       priority,
 		CreatedAt:      now.UTC(),
@@ -168,7 +210,7 @@ func NewRequestPolicy(id, orgID, name, expression, action string, actionConfig j
 }
 
 // ApplyPolicyPatch mutates a policy with optional field updates.
-func ApplyPolicyPatch(cur *RequestPolicy, name, expression, action *string, actionConfig json.RawMessage, enabled *bool, priority *int, v ExpressionValidator) error {
+func ApplyPolicyPatch(cur *RequestPolicy, name, expression *string, actions []PolicyAction, enabled *bool, priority *int, v ExpressionValidator) error {
 	if cur == nil {
 		return kernel.ErrNotFound
 	}
@@ -191,21 +233,12 @@ func ApplyPolicyPatch(cur *RequestPolicy, name, expression, action *string, acti
 		}
 		cur.Expression = e
 	}
-	nextAction := cur.Action
-	nextCfg := cur.ActionConfig
-	if action != nil {
-		nextAction = *action
-	}
-	if actionConfig != nil {
-		nextCfg = actionConfig
-	}
-	if action != nil || actionConfig != nil {
-		a, cfg, err := NormalizeActionConfig(nextAction, nextCfg, v)
+	if actions != nil {
+		na, err := NormalizeActions(actions, v)
 		if err != nil {
 			return err
 		}
-		cur.Action = a
-		cur.ActionConfig = cfg
+		cur.Actions = na
 	}
 	if enabled != nil {
 		cur.Enabled = *enabled
