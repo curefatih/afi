@@ -1,7 +1,7 @@
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
+import type { RetryConfig } from "#/api/routing";
 import { apiFetch } from "#/lib/api-client";
 import type { Organization, Project, Team } from "#/state/organization-state";
-import type { RetryConfig } from "#/api/routing";
 
 export type OrgSummary = {
 	id: string;
