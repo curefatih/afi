@@ -12,6 +12,7 @@ import {
 	createOrgKeyMutationOptions,
 	type KeyKind,
 } from "#/api/keys";
+import { InfoAlert } from "#/components/info-alert";
 import { Button } from "#/components/ui/button";
 import {
 	Field,
@@ -175,11 +176,16 @@ export function CreateKeySheet({
 					</SheetTitle>
 					<SheetDescription>
 						{createdKey
-							? "This secret is shown once. Store it securely before closing."
+							? "Copy the key before closing this sheet."
 							: projectOnly
 								? "Creates a project service-account key for automation."
 								: "Personal keys belong to you. Service accounts are for automation (admin only)."}
 					</SheetDescription>
+					{createdKey ? (
+						<InfoAlert>
+							This secret is shown once. Store it securely before closing.
+						</InfoAlert>
+					) : null}
 				</SheetHeader>
 
 				{createdKey ? (

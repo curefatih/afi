@@ -29,6 +29,7 @@ func newCallContext(key snapshot.APIKey, model, path, modality string, stream bo
 			Modality: modality,
 		},
 		Tags:            tags,
+		Headers:         map[string]string{},
 		Metadata:        map[string]any{},
 		Body:            body,
 		RequestHeaders:  map[string]string{},
@@ -59,30 +60,30 @@ func (p *Pipeline) gateCall(ctx context.Context, w http.ResponseWriter, snap *sn
 		})
 		return false
 	}
+	if !d.Allow {
+		applyResponseHeaders(w, call)
+		writeCallDeny(w, d)
+		return false
+	}
+	if p.Wasm != nil {
+		d, err = p.Wasm.RunBeforeCall(ctx, snap, call)
+		if err != nil {
+			if p.Log != nil {
+				p.Log.Error("wasm before_call", "err", err)
+			}
+			writeJSON(w, http.StatusInternalServerError, map[string]any{
+				"error": map[string]string{"message": "call hook failed", "type": "server_error"},
+			})
+			return false
+		}
 		if !d.Allow {
 			applyResponseHeaders(w, call)
 			writeCallDeny(w, d)
 			return false
 		}
-		if p.Wasm != nil {
-			d, err = p.Wasm.RunBeforeCall(ctx, snap, call)
-			if err != nil {
-				if p.Log != nil {
-					p.Log.Error("wasm before_call", "err", err)
-				}
-				writeJSON(w, http.StatusInternalServerError, map[string]any{
-					"error": map[string]string{"message": "call hook failed", "type": "server_error"},
-				})
-				return false
-			}
-			if !d.Allow {
-				applyResponseHeaders(w, call)
-				writeCallDeny(w, d)
-				return false
-			}
-		}
-		return p.applyBeforeCall(ctx, w, &quotaCallHook{p: p, snap: snap}, call)
 	}
+	return p.applyBeforeCall(ctx, w, &quotaCallHook{p: p, snap: snap}, call)
+}
 
 func (p *Pipeline) applyBeforeCall(ctx context.Context, w http.ResponseWriter, h BeforeCallHook, call *CallContext) bool {
 	d, err := h.BeforeCall(ctx, call)
@@ -142,20 +143,53 @@ func (h *policyCallHook) BeforeCall(_ context.Context, call *CallContext) (CallD
 		OwnerUserID:    call.Principal.OwnerUserID,
 		Name:           call.Principal.Name,
 	}
-	allowed, deniedName, err := p.Policies.Evaluate(snap.Policies, key, policy.Request{
-		Model:  call.Route.Model,
-		Path:   call.Route.Path,
-		Stream: call.Route.Stream,
-	})
+	cred := policy.Credential{}
+	req := policy.Request{
+		Model:   call.Route.Model,
+		Path:    call.Route.Path,
+		Stream:  call.Route.Stream,
+		Tags:    call.Tags,
+		Headers: call.Headers,
+	}
+	// First pass without credential meta to collect use_credential / set_header / allow / deny.
+	d, err := p.Policies.Apply(snap.Policies, key, req, cred)
 	if err != nil {
 		return CallDecision{}, err
 	}
-	if !allowed {
+	if !d.Allowed {
 		msg := "request denied by policy"
-		if deniedName != "" {
-			msg = "request denied by policy: " + deniedName
+		if d.DeniedBy != "" {
+			msg = "request denied by policy: " + d.DeniedBy
 		}
 		return sdkhook.Deny(http.StatusForbidden, "policy_violation", msg), nil
+	}
+	for k, v := range d.RequestHeaders {
+		if call.RequestHeaders == nil {
+			call.RequestHeaders = map[string]string{}
+		}
+		call.RequestHeaders[k] = v
+	}
+	if route, provider, ok := snap.LookupRoute(key.OrganizationID, call.Route.Model); ok {
+		_ = route
+		cred = policy.CredentialFromSnapshot(snap, provider.Type, key, d.CredentialName)
+		// Re-check deny/allow with credential context (credential.* vars).
+		d2, err := p.Policies.Apply(snap.Policies, key, req, cred)
+		if err != nil {
+			return CallDecision{}, err
+		}
+		if !d2.Allowed {
+			msg := "request denied by policy"
+			if d2.DeniedBy != "" {
+				msg = "request denied by policy: " + d2.DeniedBy
+			}
+			return sdkhook.Deny(http.StatusForbidden, "policy_violation", msg), nil
+		}
+		for k, v := range d2.RequestHeaders {
+			if call.RequestHeaders == nil {
+				call.RequestHeaders = map[string]string{}
+			}
+			call.RequestHeaders[k] = v
+		}
 	}
 	return sdkhook.Allow(), nil
 }

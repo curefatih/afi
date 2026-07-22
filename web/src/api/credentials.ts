@@ -1,7 +1,7 @@
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "#/lib/api-client";
 
-export type CredentialStorageKind = "env" | "encrypted_db";
+export type CredentialStorageKind = "env" | "encrypted_db" | "vault";
 
 export type Credential = {
 	id: string;
@@ -22,7 +22,7 @@ export type CredentialAssignment = {
 	credential_id: string;
 	organization_id: string;
 	provider_type: string;
-	scope_type: "organization" | "project";
+	scope_type: "organization" | "project" | "api_key";
 	scope_id: string;
 	created_at: string;
 	created_by?: string;
@@ -86,7 +86,7 @@ export const deleteCredentialMutationOptions = () =>
 export type AssignCredentialInput = {
 	orgId: string;
 	credential_id: string;
-	scope_type: "organization" | "project";
+	scope_type: "organization" | "project" | "api_key";
 	scope_id: string;
 };
 

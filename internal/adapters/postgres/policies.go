@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/curefatih/afi/internal/gatewayconfig"
@@ -19,9 +20,34 @@ func NewPolicies(pool *pgxpool.Pool) *Policies {
 	return &Policies{Pool: pool}
 }
 
+func scanPolicy(row pgx.Row) (*gatewayconfig.RequestPolicy, error) {
+	item := &gatewayconfig.RequestPolicy{}
+	var actionsJSON []byte
+	err := row.Scan(
+		&item.ID, &item.OrganizationID, &item.Name, &item.Expression,
+		&actionsJSON, &item.Enabled, &item.Priority, &item.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if len(actionsJSON) == 0 {
+		item.Actions = []gatewayconfig.PolicyAction{}
+	} else if err := json.Unmarshal(actionsJSON, &item.Actions); err != nil {
+		return nil, err
+	}
+	return item, nil
+}
+
+func actionsBytes(actions []gatewayconfig.PolicyAction) ([]byte, error) {
+	if actions == nil {
+		actions = []gatewayconfig.PolicyAction{}
+	}
+	return json.Marshal(actions)
+}
+
 func (p *Policies) ListByOrg(ctx context.Context, orgID string) ([]gatewayconfig.RequestPolicy, error) {
 	rows, err := p.Pool.Query(ctx, `
-		SELECT id, organization_id, name, expression, enabled, priority, created_at
+		SELECT id, organization_id, name, expression, actions, enabled, priority, created_at
 		FROM request_policies WHERE organization_id=$1
 		ORDER BY priority DESC, name ASC
 	`, orgID)
@@ -31,35 +57,32 @@ func (p *Policies) ListByOrg(ctx context.Context, orgID string) ([]gatewayconfig
 	defer rows.Close()
 	var out []gatewayconfig.RequestPolicy
 	for rows.Next() {
-		var item gatewayconfig.RequestPolicy
-		if err := rows.Scan(
-			&item.ID, &item.OrganizationID, &item.Name, &item.Expression,
-			&item.Enabled, &item.Priority, &item.CreatedAt,
-		); err != nil {
+		item, err := scanPolicy(rows)
+		if err != nil {
 			return nil, err
 		}
-		out = append(out, item)
+		out = append(out, *item)
 	}
 	return out, rows.Err()
 }
 
 func (p *Policies) Insert(ctx context.Context, item gatewayconfig.RequestPolicy) error {
-	_, err := p.Pool.Exec(ctx, `
-		INSERT INTO request_policies (id, organization_id, name, expression, enabled, priority, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7)
-	`, item.ID, item.OrganizationID, item.Name, item.Expression, item.Enabled, item.Priority, item.CreatedAt)
+	raw, err := actionsBytes(item.Actions)
+	if err != nil {
+		return err
+	}
+	_, err = p.Pool.Exec(ctx, `
+		INSERT INTO request_policies (id, organization_id, name, expression, actions, enabled, priority, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+	`, item.ID, item.OrganizationID, item.Name, item.Expression, raw, item.Enabled, item.Priority, item.CreatedAt)
 	return err
 }
 
 func (p *Policies) Get(ctx context.Context, policyID string) (*gatewayconfig.RequestPolicy, error) {
-	item := &gatewayconfig.RequestPolicy{}
-	err := p.Pool.QueryRow(ctx, `
-		SELECT id, organization_id, name, expression, enabled, priority, created_at
+	item, err := scanPolicy(p.Pool.QueryRow(ctx, `
+		SELECT id, organization_id, name, expression, actions, enabled, priority, created_at
 		FROM request_policies WHERE id=$1
-	`, policyID).Scan(
-		&item.ID, &item.OrganizationID, &item.Name, &item.Expression,
-		&item.Enabled, &item.Priority, &item.CreatedAt,
-	)
+	`, policyID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, kernel.ErrNotFound
 	}
@@ -67,13 +90,14 @@ func (p *Policies) Get(ctx context.Context, policyID string) (*gatewayconfig.Req
 }
 
 func (p *Policies) Update(ctx context.Context, item gatewayconfig.RequestPolicy) (*gatewayconfig.RequestPolicy, error) {
-	out := &gatewayconfig.RequestPolicy{}
-	err := p.Pool.QueryRow(ctx, `
-		UPDATE request_policies SET name=$2, expression=$3, enabled=$4, priority=$5 WHERE id=$1
-		RETURNING id, organization_id, name, expression, enabled, priority, created_at
-	`, item.ID, item.Name, item.Expression, item.Enabled, item.Priority).Scan(
-		&out.ID, &out.OrganizationID, &out.Name, &out.Expression, &out.Enabled, &out.Priority, &out.CreatedAt,
-	)
+	raw, err := actionsBytes(item.Actions)
+	if err != nil {
+		return nil, err
+	}
+	out, err := scanPolicy(p.Pool.QueryRow(ctx, `
+		UPDATE request_policies SET name=$2, expression=$3, actions=$4, enabled=$5, priority=$6 WHERE id=$1
+		RETURNING id, organization_id, name, expression, actions, enabled, priority, created_at
+	`, item.ID, item.Name, item.Expression, raw, item.Enabled, item.Priority))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, kernel.ErrNotFound
 	}

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -107,7 +108,7 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	}
 
 	polRows, err := l.Pool.Query(ctx, `
-		SELECT id, organization_id, name, expression, enabled, priority FROM request_policies
+		SELECT id, organization_id, name, expression, actions, enabled, priority FROM request_policies
 	`)
 	if err != nil {
 		return src, err
@@ -115,8 +116,21 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	defer polRows.Close()
 	for polRows.Next() {
 		var p snapshot.Policy
-		if err := polRows.Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Expression, &p.Enabled, &p.Priority); err != nil {
+		var actionsJSON []byte
+		if err := polRows.Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Expression, &actionsJSON, &p.Enabled, &p.Priority); err != nil {
 			return src, err
+		}
+		if len(actionsJSON) > 0 {
+			var acts []struct {
+				Type   string          `json:"type"`
+				Config json.RawMessage `json:"config"`
+			}
+			if err := json.Unmarshal(actionsJSON, &acts); err != nil {
+				return src, err
+			}
+			for _, a := range acts {
+				p.Actions = append(p.Actions, snapshot.PolicyAction{Type: a.Type, Config: []byte(a.Config)})
+			}
 		}
 		src.Policies = append(src.Policies, p)
 	}
@@ -147,7 +161,7 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	}
 
 	credRows, err := l.Pool.Query(ctx, `
-		SELECT id, provider_type, storage_kind, secret_ref, encrypted_payload, key_version, status
+		SELECT id, organization_id, name, provider_type, storage_kind, secret_ref, encrypted_payload, key_version, status
 		FROM provider_credentials
 	`)
 	if err != nil {
@@ -158,7 +172,7 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 		var c snapshot.Credential
 		var secretRef *string
 		var payload []byte
-		if err := credRows.Scan(&c.ID, &c.ProviderType, &c.StorageKind, &secretRef, &payload, &c.KeyVersion, &c.Status); err != nil {
+		if err := credRows.Scan(&c.ID, &c.OrganizationID, &c.Name, &c.ProviderType, &c.StorageKind, &secretRef, &payload, &c.KeyVersion, &c.Status); err != nil {
 			return src, err
 		}
 		if secretRef != nil {
@@ -185,5 +199,9 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 		}
 		src.Assignments = append(src.Assignments, a)
 	}
-	return src, asgRows.Err()
+	if err := asgRows.Err(); err != nil {
+		return src, err
+	}
+
+	return src, nil
 }

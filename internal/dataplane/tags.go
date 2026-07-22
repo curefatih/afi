@@ -40,6 +40,27 @@ func TagsFromRequest(r *http.Request) map[string]string {
 	return ParseAFITags(r.Header.Get(AFITagsHeader))
 }
 
+// HeadersForPolicy copies inbound headers for CEL as lowercased key → first value.
+// Sensitive headers (authorization, cookie, set-cookie) are omitted.
+func HeadersForPolicy(h http.Header) map[string]string {
+	if h == nil {
+		return map[string]string{}
+	}
+	out := make(map[string]string)
+	for k, vals := range h {
+		if len(vals) == 0 {
+			continue
+		}
+		lk := strings.ToLower(k)
+		switch lk {
+		case "authorization", "cookie", "set-cookie", "proxy-authorization":
+			continue
+		}
+		out[lk] = vals[0]
+	}
+	return out
+}
+
 func cloneTags(tags map[string]string) map[string]string {
 	if len(tags) == 0 {
 		return nil

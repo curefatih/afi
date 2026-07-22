@@ -13,10 +13,11 @@ func CreatePolicy(
 	repo PolicyRepository,
 	validator ExpressionValidator,
 	id, orgID, name, expression string,
+	actions []PolicyAction,
 	enabled bool,
 	priority int,
 ) (*RequestPolicy, error) {
-	p, err := NewRequestPolicy(id, orgID, name, expression, enabled, priority, timeNowUTC(), validator)
+	p, err := NewRequestPolicy(id, orgID, name, expression, actions, enabled, priority, timeNowUTC(), validator)
 	if err != nil {
 		return nil, err
 	}
@@ -33,6 +34,7 @@ func UpdatePolicy(
 	validator ExpressionValidator,
 	policyID string,
 	name, expression *string,
+	actions []PolicyAction,
 	enabled *bool,
 	priority *int,
 ) (*RequestPolicy, error) {
@@ -40,7 +42,7 @@ func UpdatePolicy(
 	if err != nil {
 		return nil, err
 	}
-	if err := ApplyPolicyPatch(cur, name, expression, enabled, priority, validator); err != nil {
+	if err := ApplyPolicyPatch(cur, name, expression, actions, enabled, priority, validator); err != nil {
 		return nil, err
 	}
 	return repo.Update(ctx, *cur)

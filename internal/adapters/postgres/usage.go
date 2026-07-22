@@ -24,6 +24,7 @@ func NewUsageQueries(pool *pgxpool.Pool) *UsageQueries {
 }
 
 func (q *UsageQueries) InsertRecord(ctx context.Context, e usage.Record) error {
+	e.UsedBYOK = e.CredentialID != ""
 	modality := usage.NormalizeModality(e.Modality)
 	metrics := e.Metrics
 	if metrics == nil {
@@ -43,10 +44,10 @@ func (q *UsageQueries) InsertRecord(ctx context.Context, e usage.Record) error {
 	}
 	_, err = q.Pool.Exec(ctx, `
 		INSERT INTO usage_events (
-			organization_id, project_id, api_key_id, model, status,
+			organization_id, project_id, api_key_id, credential_id, used_byok, model, status,
 			latency_ms, prompt_tokens, completion_tokens, cost_usd, modality, metrics, tags
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-	`, e.OrganizationID, e.ProjectID, e.APIKeyID, e.Model, e.Status,
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+	`, e.OrganizationID, e.ProjectID, e.APIKeyID, nullIfEmpty(e.CredentialID), e.UsedBYOK, e.Model, e.Status,
 		e.LatencyMs, e.PromptTokens, e.CompletionTokens, e.CostUSD, modality, metricsJSON, tagsJSON)
 	return err
 }
@@ -66,6 +67,11 @@ func usageWhere(orgID string, f usage.Filter) (string, []any) {
 		args = append(args, f.APIKeyID)
 		n++
 	}
+	if f.CredentialID != "" {
+		b.WriteString(fmt.Sprintf(" AND e.credential_id=$%d", n))
+		args = append(args, f.CredentialID)
+		n++
+	}
 	if f.Model != "" {
 		b.WriteString(fmt.Sprintf(" AND e.model=$%d", n))
 		args = append(args, f.Model)
@@ -75,6 +81,12 @@ func usageWhere(orgID string, f usage.Filter) (string, []any) {
 		b.WriteString(fmt.Sprintf(" AND e.modality=$%d", n))
 		args = append(args, f.Modality)
 		n++
+	}
+	if f.ExcludeBYOK {
+		b.WriteString(" AND e.used_byok=FALSE")
+	}
+	if f.BYOKOnly {
+		b.WriteString(" AND e.used_byok=TRUE")
 	}
 	if f.From != nil {
 		b.WriteString(fmt.Sprintf(" AND e.created_at >= $%d", n))
@@ -97,16 +109,19 @@ func (q *UsageQueries) List(ctx context.Context, orgID string, f usage.Filter) (
 	args = append(args, limit)
 	limitArg := len(args)
 	rows, err := q.Pool.Query(ctx, fmt.Sprintf(`
-		SELECT e.id, e.organization_id, e.project_id, e.api_key_id, e.model, e.status,
+		SELECT e.id, e.organization_id, e.project_id, e.api_key_id,
+			COALESCE(e.credential_id, ''), e.used_byok,
+			e.model, e.status,
 			e.latency_ms, e.prompt_tokens, e.completion_tokens, e.cost_usd, e.created_at,
 			e.modality, e.metrics, e.tags,
 			COALESCE(k.name, ''), COALESCE(k.kind, ''),
 			COALESCE(k.owner_user_id, ''), COALESCE(u.email, ''), COALESCE(u.name, ''),
-			COALESCE(proj.name, '')
+			COALESCE(proj.name, ''), COALESCE(c.name, '')
 		FROM usage_events e
 		LEFT JOIN api_keys k ON k.id = e.api_key_id
 		LEFT JOIN users u ON u.id = k.owner_user_id
 		LEFT JOIN projects proj ON proj.id = NULLIF(e.project_id, '')
+		LEFT JOIN provider_credentials c ON c.id = e.credential_id
 		WHERE %s
 		ORDER BY e.created_at DESC
 		LIMIT $%d
@@ -120,11 +135,13 @@ func (q *UsageQueries) List(ctx context.Context, orgID string, f usage.Filter) (
 		var e usage.Record
 		var metricsJSON, tagsJSON []byte
 		if err := rows.Scan(
-			&e.ID, &e.OrganizationID, &e.ProjectID, &e.APIKeyID, &e.Model, &e.Status,
+			&e.ID, &e.OrganizationID, &e.ProjectID, &e.APIKeyID,
+			&e.CredentialID, &e.UsedBYOK,
+			&e.Model, &e.Status,
 			&e.LatencyMs, &e.PromptTokens, &e.CompletionTokens, &e.CostUSD, &e.CreatedAt,
 			&e.Modality, &metricsJSON, &tagsJSON,
 			&e.KeyName, &e.KeyKind, &e.OwnerUserID, &e.OwnerEmail, &e.OwnerName,
-			&e.ProjectName,
+			&e.ProjectName, &e.CredentialName,
 		); err != nil {
 			return nil, err
 		}
@@ -176,6 +193,11 @@ func (q *UsageQueries) Summarize(ctx context.Context, orgID string, f usage.Filt
 		groupSQL = `1`
 		orderSQL = `requests DESC`
 		joinSQL = ""
+	case "byok":
+		selectBucket = `CASE WHEN e.used_byok THEN 'byok' ELSE 'platform' END`
+		groupSQL = `1`
+		orderSQL = `requests DESC`
+		joinSQL = ""
 	case "key":
 		selectBucket = `e.api_key_id`
 		groupSQL = `1, COALESCE(k.name,''), COALESCE(k.kind,''), COALESCE(u.email,''), COALESCE(u.name,'')`
@@ -184,7 +206,7 @@ func (q *UsageQueries) Summarize(ctx context.Context, orgID string, f usage.Filt
 			LEFT JOIN api_keys k ON k.id = e.api_key_id
 			LEFT JOIN users u ON u.id = k.owner_user_id`
 	default:
-		return nil, fmt.Errorf("%w: group_by must be day, model, key, or modality", kernel.ErrInvalidRequest)
+		return nil, fmt.Errorf("%w: group_by must be day, model, key, modality, or byok", kernel.ErrInvalidRequest)
 	}
 
 	extraCols := ``
@@ -248,6 +270,14 @@ func (q *UsageQueries) Summarize(ctx context.Context, orgID string, f usage.Filt
 				return nil, err
 			}
 			b.Label = b.Bucket
+			if groupBy == "byok" {
+				switch b.Bucket {
+				case "byok":
+					b.Label = "BYOK"
+				case "platform":
+					b.Label = "Platform"
+				}
+			}
 		}
 		totals := map[string]float64{}
 		if characters != 0 {

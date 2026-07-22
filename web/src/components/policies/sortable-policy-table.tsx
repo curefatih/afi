@@ -1,6 +1,10 @@
 import { GripVerticalIcon } from "lucide-react";
 import { Reorder, useDragControls } from "motion/react";
-import type { RequestPolicy } from "#/api/policies";
+import {
+	type PolicyThen,
+	policyActions,
+	type RequestPolicy,
+} from "#/api/policies";
 import { Button } from "#/components/ui/button";
 import {
 	Table,
@@ -15,6 +19,22 @@ import { cn } from "#/lib/utils";
 /** Assign descending priorities from top → bottom (higher runs first). */
 export function prioritiesForOrder(count: number): number[] {
 	return Array.from({ length: count }, (_, i) => (count - i) * 10);
+}
+
+function formatThenSteps(actions: PolicyThen[]): string {
+	return actions.map((a) => a.type || "deny").join(" > ");
+}
+
+function ThenColumn({ policy }: { policy: RequestPolicy }) {
+	const label = formatThenSteps(policyActions(policy));
+
+	return (
+		<TableCell className="max-w-[20rem] min-w-[10rem]">
+			<span className="block truncate font-mono text-xs" title={label}>
+				{label}
+			</span>
+		</TableCell>
+	);
 }
 
 type SortablePolicyTableProps = {
@@ -74,6 +94,7 @@ function PolicyRow({
 			<TableCell className="font-medium">{policy.name}</TableCell>
 			<TableCell>{policy.priority}</TableCell>
 			<TableCell>{policy.enabled ? "yes" : "no"}</TableCell>
+			<ThenColumn policy={policy} />
 			<TableCell className="font-mono text-xs max-w-md truncate">
 				{policy.expression}
 			</TableCell>
@@ -127,7 +148,8 @@ export function SortablePolicyTable({
 						<TableHead>Name</TableHead>
 						<TableHead>Priority</TableHead>
 						<TableHead>Enabled</TableHead>
-						<TableHead>Expression</TableHead>
+						<TableHead>Then</TableHead>
+						<TableHead>When</TableHead>
 						{canEdit ? <TableHead className="w-40" /> : null}
 					</TableRow>
 				</TableHeader>
@@ -174,6 +196,7 @@ export function SortablePolicyTable({
 								<TableCell className="font-medium">{p.name}</TableCell>
 								<TableCell>{p.priority}</TableCell>
 								<TableCell>{p.enabled ? "yes" : "no"}</TableCell>
+								<ThenColumn policy={p} />
 								<TableCell className="font-mono text-xs max-w-md truncate">
 									{p.expression}
 								</TableCell>

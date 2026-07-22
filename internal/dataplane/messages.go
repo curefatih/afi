@@ -9,6 +9,7 @@ import (
 
 	"github.com/curefatih/afi/internal/adapters/llm"
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
 )
 
@@ -62,6 +63,7 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	call := newCallContext(key, reqBody.Model, "/v1/messages", ModalityMessages, reqBody.Stream, body, TagsFromRequest(r))
+	call.Headers = HeadersForPolicy(r.Header)
 	if !p.gateCall(ctx, w, snap, call) {
 		return
 	}
@@ -104,7 +106,13 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 	)
 
 	for i, attempt := range attempts {
-		bound, credID, bindErr := p.bindProviderSecret(ctx, snap, attempt.Provider, key)
+		bound, credID, bindErr := p.bindProviderSecret(ctx, snap, attempt.Provider, key, policy.Request{
+			Model:   reqBody.Model,
+			Path:    call.Route.Path,
+			Stream:  reqBody.Stream,
+			Tags:    call.Tags,
+			Headers: call.Headers,
+		})
 		if bindErr != nil {
 			lastErr = bindErr
 			log.Warn("credential resolve failed", "provider", attempt.Provider.ID, "err", bindErr, "attempt", i)

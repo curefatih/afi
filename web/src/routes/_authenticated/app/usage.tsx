@@ -12,6 +12,7 @@ import {
 	LayersIcon,
 	type LucideIcon,
 	ShapesIcon,
+	ShieldIcon,
 	TimerIcon,
 	UserIcon,
 } from "lucide-react";
@@ -142,6 +143,9 @@ function RouteComponent() {
 	const [apiKeyId, setApiKeyId] = useState("");
 	const [modality, setModality] = useState("");
 	const [model, setModel] = useState("");
+	const [byokFilter, setByokFilter] = useState<"all" | "exclude" | "only">(
+		"all",
+	);
 	const [dateRange, setDateRange] = useState<DateRangeValue>(() =>
 		defaultDateRange("last_30"),
 	);
@@ -154,8 +158,10 @@ function RouteComponent() {
 		if (projectId) f.project_id = projectId;
 		if (apiKeyId) f.api_key_id = apiKeyId;
 		if (modality) f.modality = modality;
+		if (byokFilter === "exclude") f.exclude_byok = true;
+		if (byokFilter === "only") f.byok_only = true;
 		return f;
-	}, [projectId, apiKeyId, modality, dateRange]);
+	}, [projectId, apiKeyId, modality, byokFilter, dateRange]);
 
 	const filters: UsageFilters = useMemo(() => {
 		const f = { ...baseFilters };
@@ -228,10 +234,11 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Usage"
-				description="Gateway requests across chat, TTS, STT, and other modalities. Events appear after the usage worker drains the outbox."
+				description="Gateway requests across chat, TTS, STT, and other modalities."
+				info="Events appear after the usage worker drains the outbox."
 			/>
 
-			<div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+			<div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
 				<DateRangePicker
 					className="sm:col-span-2 lg:col-span-1"
 					value={dateRange}
@@ -286,6 +293,30 @@ function RouteComponent() {
 									{k.name}
 								</SelectItem>
 							))}
+						</SelectContent>
+					</Select>
+				</div>
+				<div className="space-y-1">
+					<Label className="inline-flex items-center gap-1.5">
+						<ShieldIcon
+							className="size-3.5 text-muted-foreground"
+							aria-hidden
+						/>
+						BYOK
+					</Label>
+					<Select
+						value={byokFilter}
+						onValueChange={(v) =>
+							setByokFilter((v as "all" | "exclude" | "only") ?? "all")
+						}
+					>
+						<SelectTrigger className="w-full">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">Include all</SelectItem>
+							<SelectItem value="exclude">Exclude BYOK</SelectItem>
+							<SelectItem value="only">BYOK only</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>
@@ -646,6 +677,7 @@ function RouteComponent() {
 										<IconHead icon={LayersIcon} label="Modality" />
 										<IconHead icon={UserIcon} label="Owner / scope" />
 										<IconHead icon={KeyRoundIcon} label="Key" />
+										<IconHead icon={ShieldIcon} label="Credential" />
 										<IconHead icon={BoxIcon} label="Model" />
 										<IconHead icon={CircleDotIcon} label="Status" />
 										<IconHead icon={TimerIcon} label="Latency" />
@@ -691,6 +723,25 @@ function RouteComponent() {
 															</Badge>
 														) : null}
 													</div>
+												</TableCell>
+												<TableCell>
+													{e.used_byok ? (
+														<div className="flex flex-col gap-1">
+															<Badge
+																variant="outline"
+																className="w-fit text-xs"
+															>
+																BYOK
+															</Badge>
+															<span className="text-muted-foreground text-xs">
+																{e.credential_name || e.credential_id || "—"}
+															</span>
+														</div>
+													) : (
+														<span className="text-muted-foreground text-sm">
+															Platform
+														</span>
+													)}
 												</TableCell>
 												<TableCell>
 													<Badge

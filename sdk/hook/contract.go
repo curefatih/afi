@@ -32,8 +32,10 @@ type CallContext struct {
 	Principal Principal
 	Route     RouteContext
 	Tags      map[string]string
-	Metadata  map[string]any
-	Body      []byte
+	// Headers are sanitized inbound HTTP headers (lowercased keys) for policy/CEL.
+	Headers  map[string]string
+	Metadata map[string]any
+	Body     []byte
 	// RequestHeaders are applied to the upstream provider HTTP request after BeforeCall.
 	// Keys are canonicalized with http.CanonicalHeaderKey when applied.
 	RequestHeaders map[string]string

@@ -28,6 +28,10 @@ Full operator table (defaults, required vs optional, which process): [Customizat
 | `AFI_SSO_ENABLED` | `false` | Enable platform SSO |
 | `AFI_SSO_STATE_STORE` | `redis` | `redis` \| `memory` |
 | `AFI_CREDENTIALS_MASTER_KEY` | from yaml (`credentials.master_key`) | controlplane + gateway (encrypted_db credentials) |
+| `AFI_SECRETS_AWS_SM_ENABLED` | `false` | gateway: enable AWS Secrets Manager for `storage_kind=vault` |
+| `AFI_SECRETS_AWS_SM_REGION` | _(AWS default)_ | default region for aws-sm refs |
+| `AFI_SECRETS_VAULT_ADDR` / `VAULT_ADDR` | _(empty)_ | HashiCorp Vault address |
+| `AFI_SECRETS_VAULT_TOKEN` / `VAULT_TOKEN` | _(empty)_ | HashiCorp Vault token |
 | `OPENAI_API_KEY` | _(required for OpenAI live calls)_ | gateway → OpenAI |
 | `ANTHROPIC_API_KEY` | _(required for Anthropic routes)_ | gateway → Anthropic |
 | `GEMINI_API_KEY` | _(required for Gemini routes)_ | gateway → Gemini |
@@ -170,8 +174,37 @@ Most specific scope wins **per window**: api_key → user → project → organi
 | Field | Notes |
 |-------|--------|
 | `name` | Display name |
-| `expression` | Boolean CEL; all enabled org policies must be true |
-| `priority` | Higher first (default 100). Batch-reorder via `POST .../policies/reorder` with `{ "items": [{ "id", "priority" }, ...] }`. |
+| `expression` | Boolean CEL **when** clause |
+| `actions` | Ordered Then steps: `[{ "type", "config"? }, …]` (at least one) |
+| `priority` | Higher first (default 100). Batch-reorder via `POST .../policies/reorder`. |
 | `enabled` | Default true |
 
-CEL variables: `request.model`, `request.path`, `request.stream`, `key.id`, `key.organization_id`, `key.project_id`, `key.kind`, `key.owner_user_id`, `key.name`. Denial → HTTP 403 `policy_violation`. Owner/admin to create/update/delete.
+Legacy create/update bodies may still send a single `action` + `action_config`; the API stores them as a one-element `actions` array.
+
+**Then actions** (when expression is true: steps run **in order**; policies by priority desc):
+| Action | Config | Behavior |
+|--------|--------|----------|
+| `deny` | `{}` | Stop; HTTP 403 `policy_violation` |
+| `allow` | `{}` | Stop; allow (skips remaining Then steps and lower-priority rules) |
+| `set_header` | `{ "header", "value"? , "value_expr"? }` | Set outbound upstream header; continue. Later writes to the same header overwrite. `value_expr` is CEL → string and wins over `value`. |
+| `use_credential` | `{ "credential_name"? , "credential_name_expr"? }` | Select secret by name; continue. Later Then steps (and later matching policies) overwrite. `credential_name_expr` is CEL → string (e.g. header value) and wins over `credential_name`. |
+
+CEL variables: `request.model`, `request.path`, `request.stream`, `request.tags`, `request.headers` (lowercased; `authorization` / `cookie` omitted), `key.*`, `credential.*`. Owner/admin to create/update/delete.
+
+Examples:
+- Deny a model: when `request.model == "blocked-model"` then `deny`
+- Partner key by header value: when `("x-tenant-id" in request.headers) && request.headers["x-tenant-id"] != ""` then `use_credential` with `credential_name_expr: "request.headers[\\"x-tenant-id\\"]"` (secret name = header value)
+- Fixed partner key: when header equals `acme` then `use_credential` with `credential_name: "partner-acme"`
+- Multi-then: same when → `use_credential` (name from header) **then** `set_header` with `header: "X-Partner"`, `value_expr: "request.headers[\\"x-tenant-id\\"]"`
+
+### Provider credentials (BYOK)
+
+| `storage_kind` | Notes |
+|----------------|--------|
+| `env` | `secret_ref` = process env name (or `env://NAME`) |
+| `encrypted_db` | plaintext sealed with `AFI_CREDENTIALS_MASTER_KEY` |
+| `vault` | `secret_ref` = `aws-sm://{region}/{secret-id}[#jsonKey]` or `hashicorp://{path}[#jsonKey]` |
+
+Create secrets normally, then select them from a `use_credential` policy and/or assign scopes. Runtime resolve order: **policy use_credential → api_key → project → organization → provider.api_key_env**. Unknown credential names fail closed.
+
+Usage list/summary query params: `exclude_byok`, `byok_only`, `credential_id`; summary `group_by=byok`.

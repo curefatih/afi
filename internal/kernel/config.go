@@ -73,6 +73,18 @@ type Config struct {
 		MasterKey string `yaml:"master_key" env:"AFI_CREDENTIALS_MASTER_KEY"`
 	} `yaml:"credentials"`
 
+	// Secrets configures external vault backends for storage_kind=vault credentials.
+	Secrets struct {
+		AWSSM struct {
+			Enabled bool   `yaml:"enabled" env:"AFI_SECRETS_AWS_SM_ENABLED"`
+			Region  string `yaml:"region" env:"AFI_SECRETS_AWS_SM_REGION"`
+		} `yaml:"aws_sm"`
+		Vault struct {
+			Addr  string `yaml:"addr" env:"AFI_SECRETS_VAULT_ADDR"`
+			Token string `yaml:"token" env:"AFI_SECRETS_VAULT_TOKEN"`
+		} `yaml:"vault"`
+	} `yaml:"secrets"`
+
 	Seed struct {
 		VirtualAPIKey   string `yaml:"virtual_api_key"`
 		AdminEmail      string `yaml:"admin_email"`

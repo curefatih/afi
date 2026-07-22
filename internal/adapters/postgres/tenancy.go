@@ -88,9 +88,9 @@ func (o *Organizations) Count(ctx context.Context) (int64, error) {
 func (o *Organizations) Get(ctx context.Context, orgID string) (*tenancy.Organization, error) {
 	var item tenancy.Organization
 	err := o.Pool.QueryRow(ctx, `
-		SELECT id, name, COALESCE(mail_provider, ''), created_at
+		SELECT id, name, COALESCE(mail_provider, ''), COALESCE(byok_selector_header, ''), created_at
 		FROM organizations WHERE id = $1
-	`, orgID).Scan(&item.ID, &item.Name, &item.MailProvider, &item.CreatedAt)
+	`, orgID).Scan(&item.ID, &item.Name, &item.MailProvider, &item.BYOKSelectorHeader, &item.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, kernel.ErrNotFound
 	}
@@ -99,7 +99,7 @@ func (o *Organizations) Get(ctx context.Context, orgID string) (*tenancy.Organiz
 
 func (o *Organizations) ListForUser(ctx context.Context, userID string) ([]tenancy.Organization, error) {
 	rows, err := o.Pool.Query(ctx, `
-		SELECT org.id, org.name, COALESCE(org.mail_provider, ''), org.created_at
+		SELECT org.id, org.name, COALESCE(org.mail_provider, ''), COALESCE(org.byok_selector_header, ''), org.created_at
 		FROM organizations org
 		JOIN organization_members m ON m.organization_id = org.id
 		WHERE m.user_id = $1
@@ -112,7 +112,7 @@ func (o *Organizations) ListForUser(ctx context.Context, userID string) ([]tenan
 	var out []tenancy.Organization
 	for rows.Next() {
 		var item tenancy.Organization
-		if err := rows.Scan(&item.ID, &item.Name, &item.MailProvider, &item.CreatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Name, &item.MailProvider, &item.BYOKSelectorHeader, &item.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, item)

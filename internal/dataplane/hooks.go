@@ -10,12 +10,12 @@ import (
 
 // Re-export SDK hook types so existing extensions can keep importing dataplane.
 type (
-	CallContext   = sdkhook.CallContext
-	CallDecision  = sdkhook.CallDecision
-	Principal     = sdkhook.Principal
-	RouteContext  = sdkhook.RouteContext
-	AfterCallInfo = sdkhook.AfterCallInfo
-	AfterChatInfo = sdkhook.AfterChatInfo
+	CallContext    = sdkhook.CallContext
+	CallDecision   = sdkhook.CallDecision
+	Principal      = sdkhook.Principal
+	RouteContext   = sdkhook.RouteContext
+	AfterCallInfo  = sdkhook.AfterCallInfo
+	AfterChatInfo  = sdkhook.AfterChatInfo
 	BeforeCallHook = sdkhook.BeforeCallHook
 	AfterCallHook  = sdkhook.AfterCallHook
 	ChatHook       = sdkhook.ChatHook

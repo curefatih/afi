@@ -55,6 +55,7 @@ type UsageSink struct {
 }
 
 func (s *UsageSink) InsertUsage(ctx context.Context, e usage.Event, costUSD *float64) error {
+	e.MarkBYOK()
 	modality := usage.NormalizeModality(e.Modality)
 	metrics := e.Metrics
 	if metrics == nil {
@@ -74,10 +75,10 @@ func (s *UsageSink) InsertUsage(ctx context.Context, e usage.Event, costUSD *flo
 	}
 	_, err = s.Pool.Exec(ctx, `
 		INSERT INTO usage_events (
-			organization_id, project_id, api_key_id, model, status,
+			organization_id, project_id, api_key_id, credential_id, used_byok, model, status,
 			latency_ms, prompt_tokens, completion_tokens, cost_usd, modality, metrics, tags
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-	`, e.OrganizationID, e.ProjectID, e.APIKeyID, e.Model, e.Status,
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+	`, e.OrganizationID, e.ProjectID, e.APIKeyID, nullIfEmpty(e.CredentialID), e.UsedBYOK, e.Model, e.Status,
 		e.LatencyMs, e.PromptTokens, e.CompletionTokens, costUSD, modality, metricsJSON, tagsJSON)
 	return err
 }

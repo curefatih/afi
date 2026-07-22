@@ -78,9 +78,9 @@ func TestTagQuotaConcurrentRespectsLimit(t *testing.T) {
 
 	const n = 50
 	var (
-		mu     sync.Mutex
+		mu      sync.Mutex
 		allowed int
-		wg     sync.WaitGroup
+		wg      sync.WaitGroup
 	)
 	wg.Add(n)
 	for i := 0; i < n; i++ {

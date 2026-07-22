@@ -60,10 +60,10 @@ Snapshots contain:
 
 * Virtual API keys (hashes) → org binding, optional project, kind, owner user id
 * Providers (type, base URL, API key env ref, capabilities)
-* Provider credentials (env ref or ciphertext) + assignments (provider type × org/project scope)
+* Provider credentials (env ref, encrypted_db ciphertext, or vault secret_ref) + assignments (provider type × org/project/api_key scope)
 * Static model routes (optional fallbacks)
 * Quotas (scope, metric, limit, window) — resolve order per window: api_key → user → project → organization
-* CEL request policies (boolean allow-expressions)
+* CEL request policies (when/then: CEL when + ordered Then actions allow|deny|set_header|use_credential; vars include `request`, `key`, and `credential`)
 
 Stored in Postgres (`gateway_snapshots`). The gateway watches for new versions (poll + `LISTEN/NOTIFY`) and hot-reloads.
 
@@ -85,10 +85,10 @@ In-process registration is live:
 * **WASM hooks** — sandboxed TinyGo guests via `internal/adapters/wasm` + org `wasm_hooks` in the snapshot (`AFI_WASM_*` env still works for demos). See [WASM hooks](../hooks/wasm.md).
 * **Provider health** — control-plane rollup from `usage_events` for Providers UI
 
-Control-plane WASM hook bindings are available; gRPC plugin runtimes, billing invoices, external HashiCorp Vault, and multi-region snapshot distribution remain future work.
+Control-plane WASM hook bindings are available; gRPC plugin runtimes, billing invoices, and multi-region snapshot distribution remain future work.
 
 **Shipped governance:**
 
 * **Quotas** — `total` windows on Postgres; `minute` / `hour` / `day` rate limits on Redis (`AFI_REDIS_URL`)
-* **CEL policies** — org allow-expressions in the snapshot; deny → HTTP 403 `policy_violation`
-* **Provider credentials** — org-owned secrets (`env` or AES-GCM `encrypted_db`) assignable to organization/project scopes; gateway resolves project → org → provider `api_key_env` fallback
+* **CEL policies** — when/then rules in the snapshot. When the expression is true, Then `actions` run in order: `deny` stops with 403, `allow` short-circuits allow, `set_header` sets an outbound provider header, `use_credential` selects a secret by name. Credential context: `credential.is_byok`, `credential.id`, `credential.name`, `credential.storage_kind`, `credential.provider_type`.
+* **Provider credentials (BYOK)** — org-owned secrets (`env`, AES-GCM `encrypted_db`, or `vault` refs). Assignable to organization, project, or API key scopes. **Policy override:** `use_credential` action picks a credential by **name**; otherwise resolve **api_key → project → org → provider `api_key_env`**. Usage events persist `credential_id` and `used_byok`.

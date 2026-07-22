@@ -92,7 +92,8 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Organization settings"
-				description={`Preferences for ${activeOrg.name}. Switch organizations from the sidebar or Organizations page.`}
+				description={`Preferences for ${activeOrg.name}.`}
+				info="Switch organizations from the sidebar or Organizations page."
 			/>
 
 			<section className="space-y-3 rounded-md border p-4">

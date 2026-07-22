@@ -291,10 +291,10 @@ func (f *fakePlatform) DeleteQuota(context.Context, string) error { return nil }
 func (f *fakePlatform) ListPolicies(context.Context, string) ([]RequestPolicy, error) {
 	return nil, nil
 }
-func (f *fakePlatform) CreatePolicy(context.Context, string, string, string, bool, int) (*RequestPolicy, error) {
+func (f *fakePlatform) CreatePolicy(context.Context, string, string, string, []gatewayconfig.PolicyAction, bool, int) (*RequestPolicy, error) {
 	return nil, nil
 }
-func (f *fakePlatform) UpdatePolicy(context.Context, string, *string, *string, *bool, *int) (*RequestPolicy, error) {
+func (f *fakePlatform) UpdatePolicy(context.Context, string, *string, *string, []gatewayconfig.PolicyAction, *bool, *int) (*RequestPolicy, error) {
 	return nil, nil
 }
 func (f *fakePlatform) ReorderPolicies(context.Context, string, []gatewayconfig.PolicyPriorityUpdate) error {
