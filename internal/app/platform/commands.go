@@ -274,8 +274,8 @@ func (s *Service) DeleteQuota(ctx context.Context, quotaID string) error {
 	return nil
 }
 
-func (s *Service) CreatePolicy(ctx context.Context, orgID, name, expression string, enabled bool, priority int) (*gatewayconfig.RequestPolicy, error) {
-	p, err := s.API.CreatePolicy(ctx, orgID, name, expression, enabled, priority)
+func (s *Service) CreatePolicy(ctx context.Context, orgID, name, expression, action string, actionConfig []byte, enabled bool, priority int) (*gatewayconfig.RequestPolicy, error) {
+	p, err := s.API.CreatePolicy(ctx, orgID, name, expression, action, actionConfig, enabled, priority)
 	if err != nil {
 		return nil, err
 	}
@@ -286,8 +286,8 @@ func (s *Service) CreatePolicy(ctx context.Context, orgID, name, expression stri
 	return p, nil
 }
 
-func (s *Service) UpdatePolicy(ctx context.Context, policyID string, name, expression *string, enabled *bool, priority *int) (*gatewayconfig.RequestPolicy, error) {
-	p, err := s.API.UpdatePolicy(ctx, policyID, name, expression, enabled, priority)
+func (s *Service) UpdatePolicy(ctx context.Context, policyID string, name, expression, action *string, actionConfig []byte, enabled *bool, priority *int) (*gatewayconfig.RequestPolicy, error) {
+	p, err := s.API.UpdatePolicy(ctx, policyID, name, expression, action, actionConfig, enabled, priority)
 	if err != nil {
 		return nil, err
 	}

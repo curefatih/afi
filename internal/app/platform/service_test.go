@@ -142,10 +142,10 @@ func (m *memAPI) DeleteQuota(context.Context, string) error { panic("unused") }
 func (m *memAPI) ListPolicies(context.Context, string) ([]gatewayconfig.RequestPolicy, error) {
 	return nil, nil
 }
-func (m *memAPI) CreatePolicy(context.Context, string, string, string, bool, int) (*gatewayconfig.RequestPolicy, error) {
+func (m *memAPI) CreatePolicy(context.Context, string, string, string, string, []byte, bool, int) (*gatewayconfig.RequestPolicy, error) {
 	panic("unused")
 }
-func (m *memAPI) UpdatePolicy(context.Context, string, *string, *string, *bool, *int) (*gatewayconfig.RequestPolicy, error) {
+func (m *memAPI) UpdatePolicy(context.Context, string, *string, *string, *string, []byte, *bool, *int) (*gatewayconfig.RequestPolicy, error) {
 	panic("unused")
 }
 func (m *memAPI) ReorderPolicies(context.Context, string, []gatewayconfig.PolicyPriorityUpdate) error {
