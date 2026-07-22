@@ -30,6 +30,12 @@ export AFI_JWT_SECRET="..."   # overrides auth.jwt_secret in the file
 | `AFI_SNAPSHOT_POLL_INTERVAL` | `gateway.snapshot_poll_interval` | `2s` | Gateway | Poll period (also uses Postgres `LISTEN`) |
 | `AFI_WASM_BEFORE_CALL` | `gateway.wasm_before_call` | _(empty)_ | Gateway | Optional TinyGo `.wasm` exporting `before_call` |
 | `AFI_WASM_BEFORE_CHAT` | `gateway.wasm_before_chat` | _(empty)_ | Gateway | Optional TinyGo `.wasm` exporting `before_chat` |
+| `AFI_WASM_S3_ENDPOINT` | `gateway.wasm_s3.endpoint` | _(empty)_ | Gateway | S3-compatible host:port for `s3://` module URIs |
+| `AFI_WASM_S3_ACCESS_KEY` | `gateway.wasm_s3.access_key` | _(empty)_ | Gateway | Object-store access key |
+| `AFI_WASM_S3_SECRET_KEY` | `gateway.wasm_s3.secret_key` | _(empty)_ | Gateway | Object-store secret key |
+| `AFI_WASM_S3_REGION` | `gateway.wasm_s3.region` | _(empty → us-east-1)_ | Gateway | Object-store region |
+| `AFI_WASM_S3_USE_SSL` | `gateway.wasm_s3.use_ssl` | `false` | Gateway | Use HTTPS to the endpoint |
+| `AFI_WASM_S3_PATH_STYLE` | `gateway.wasm_s3.path_style` | `false` | Gateway | Path-style addressing (typical for MinIO) |
 | `AFI_JWT_SECRET` | `auth.jwt_secret` | `afi-local-dev-jwt-secret-change-me` | Control plane | **Change in prod** — HS256 signing |
 | `AFI_TOKEN_TTL` | `auth.token_ttl` | `24h` | Control plane | Platform session JWT lifetime |
 | `AFI_INTERNAL_TOKEN` | `auth.internal_token` | `afi-local-internal-token` | Control plane | Header `X-AFI-Internal-Token` for `/internal/v1/*` |

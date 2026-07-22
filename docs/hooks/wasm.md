@@ -33,7 +33,7 @@ Content-Type: application/json
 | Field | Notes |
 |-------|--------|
 | `phase` | `before_call` \| `before_chat` \| `after_call` |
-| `module_uri` | Local path or `file://` URI (content-addressed by optional `digest`) |
+| `module_uri` | Local path, `file://…`, or `s3://bucket/key` (requires `gateway.wasm_s3`) |
 | `digest` | SHA-256 hex of module bytes; empty skips verification |
 | `priority` | Higher runs first within a phase |
 | `config` | JSON object passed to the guest as `"config"` |
@@ -103,7 +103,9 @@ The host instantiates with `_initialize` (not `_start`). WASI preview1 is provid
   },
   "tags": {},
   "metadata": {},
-  "body_b64": ""
+  "body_b64": "",
+  "request_headers": {},
+  "response_headers": {}
 }
 ```
 
@@ -118,13 +120,37 @@ The host instantiates with `_initialize` (not `_start`). WASI preview1 is provid
   "headers": {},
   "tags": {},
   "metadata": {},
-  "body_b64": null
+  "body_b64": null,
+  "request_headers": {},
+  "response_headers": {}
 }
 ```
 
 - `allow: false` denies the request (default status 403 if unset).
 - If `tags` / `metadata` are present, they **replace** the call’s maps.
 - If `body_b64` is a JSON string (including `""`), it replaces `CallContext.Body`. Omit or `null` to leave the body unchanged.
+- `request_headers` (when present) replaces outbound upstream HTTP headers applied after BeforeCall.
+- `response_headers` (when present) replaces headers merged onto the client response (allow and deny).
+- Deny-only `headers` still works; `response_headers` are also merged onto deny responses when not already set.
+
+Native Go hooks can use `CallContext.SetRequestHeader` / `SetResponseHeader` helpers in [`sdk/hook`](../../sdk/hook).
+
+### S3-compatible artifacts
+
+Configure an S3-compatible endpoint on the gateway (MinIO, Garage, AWS S3, etc.):
+
+```yaml
+gateway:
+  wasm_s3:
+    endpoint: "localhost:9000"
+    access_key: "minioadmin"
+    secret_key: "minioadmin"
+    region: "us-east-1"
+    use_ssl: false
+    path_style: true
+```
+
+Then set `module_uri` to `s3://bucket/key` (digest still verified when provided). Empty `endpoint` disables remote fetch.
 
 ??? example "TinyGo guest `before_call` (excerpt from `extensions/wasmhook`)"
 
@@ -260,7 +286,8 @@ Pooling removes most of the per-call instantiate cost. Remaining gap vs native i
 ## Roadmap (next)
 
 1. ~~Control-plane Plugin bindings~~ — shipped (`wasm_hooks` table + snapshot + gateway runner).
-2. ~~Content-addressed artifacts~~ — `digest` (sha256) + `file://` / path URIs (HTTP object store later).
+2. ~~Content-addressed artifacts~~ — `digest` (sha256) + `file://` / `s3://` URIs.
 3. ~~`AfterCall` guest export~~ — shipped in ABI + example module.
-4. Header mutation helpers / richer response transforms.
-5. gRPC providers / remote hooks.
+4. ~~Header mutation helpers~~ — ABI `request_headers` / `response_headers` + SDK helpers.
+5. Richer response transforms / streaming WASM hooks.
+6. gRPC providers / remote lifecycle hooks (auth, secrets, BeforeCall over RPC).

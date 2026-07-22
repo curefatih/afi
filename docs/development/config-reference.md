@@ -20,6 +20,7 @@ Full operator table (defaults, required vs optional, which process): [Customizat
 | `AFI_SNAPSHOT_POLL_INTERVAL` | `2s` | gateway watch |
 | `AFI_WASM_BEFORE_CALL` | _(empty)_ | gateway — optional TinyGo `.wasm` path (`before_call`) |
 | `AFI_WASM_BEFORE_CHAT` | _(empty)_ | gateway — optional TinyGo `.wasm` path (`before_chat`) |
+| `AFI_WASM_S3_*` | _(empty)_ | gateway — S3-compatible fetch for `s3://` wasm module URIs |
 | `AFI_JWT_SECRET` | from yaml | controlplane auth |
 | `AFI_INTERNAL_TOKEN` | from yaml (`afi-local-internal-token`) | HTTP `/internal/v1/*` |
 | `AFI_TOKEN_TTL` | `24h` | JWT lifetime |
