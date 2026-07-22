@@ -66,8 +66,8 @@ type ConfigAPI interface {
 	DeleteQuota(ctx context.Context, quotaID string) error
 
 	ListPolicies(ctx context.Context, orgID string) ([]gatewayconfig.RequestPolicy, error)
-	CreatePolicy(ctx context.Context, orgID, name, expression, action string, actionConfig []byte, enabled bool, priority int) (*gatewayconfig.RequestPolicy, error)
-	UpdatePolicy(ctx context.Context, policyID string, name, expression, action *string, actionConfig []byte, enabled *bool, priority *int) (*gatewayconfig.RequestPolicy, error)
+	CreatePolicy(ctx context.Context, orgID, name, expression string, actions []gatewayconfig.PolicyAction, enabled bool, priority int) (*gatewayconfig.RequestPolicy, error)
+	UpdatePolicy(ctx context.Context, policyID string, name, expression *string, actions []gatewayconfig.PolicyAction, enabled *bool, priority *int) (*gatewayconfig.RequestPolicy, error)
 	ReorderPolicies(ctx context.Context, orgID string, items []gatewayconfig.PolicyPriorityUpdate) error
 	DeletePolicy(ctx context.Context, policyID string) error
 
