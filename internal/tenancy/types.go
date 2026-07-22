@@ -20,10 +20,11 @@ const (
 
 // Organization is a tenant root.
 type Organization struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	MailProvider string    `json:"mail_provider,omitempty"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID                 string    `json:"id"`
+	Name               string    `json:"name"`
+	MailProvider       string    `json:"mail_provider,omitempty"`
+	BYOKSelectorHeader string    `json:"byok_selector_header,omitempty"`
+	CreatedAt          time.Time `json:"created_at"`
 }
 
 const (
