@@ -220,11 +220,12 @@ func (e *Evaluator) resolveDynamicString(static, expr string, vars map[string]an
 	return static, nil
 }
 
-// Apply walks enabled policies by priority (desc). When Expression is true, runs Action:
+// Apply walks enabled policies by priority (desc). When Expression is true, runs
+// each Then action in order:
 //   - deny → stop, deny
 //   - allow → stop, allow (short-circuit)
-//   - set_header → merge outbound header, continue (value may be CEL via value_expr)
-//   - use_credential → set credential name if unset, continue (name may be CEL via credential_name_expr)
+//   - set_header → merge outbound header, continue
+//   - use_credential → set credential name if unset, continue
 // Default (no deny / no short-circuit allow): allow.
 func (e *Evaluator) Apply(policies []snapshot.Policy, key snapshot.APIKey, req Request, cred Credential) (Decision, error) {
 	out := Decision{Allowed: true, RequestHeaders: map[string]string{}}
@@ -237,62 +238,83 @@ func (e *Evaluator) Apply(policies []snapshot.Policy, key snapshot.APIKey, req R
 		if !ok {
 			continue
 		}
-		action := strings.TrimSpace(strings.ToLower(p.Action))
-		if action == "" {
-			action = snapshot.PolicyActionDeny
+		actions := p.EffectiveActions()
+		if len(actions) == 0 {
+			return Decision{}, fmt.Errorf("policy %q: no then actions", p.Name)
 		}
-		switch action {
-		case snapshot.PolicyActionDeny:
-			return Decision{Allowed: false, DeniedBy: p.Name}, nil
-		case snapshot.PolicyActionAllow:
-			out.MatchedAllowName = p.Name
-			return out, nil
-		case snapshot.PolicyActionSetHeader:
-			var cfg struct {
-				Header    string `json:"header"`
-				Value     string `json:"value"`
-				ValueExpr string `json:"value_expr"`
-			}
-			if len(p.ActionConfig) > 0 {
-				if err := json.Unmarshal(p.ActionConfig, &cfg); err != nil {
-					return Decision{}, fmt.Errorf("policy %q: invalid set_header config: %w", p.Name, err)
-				}
-			}
-			h := strings.TrimSpace(cfg.Header)
-			if h == "" {
-				return Decision{}, fmt.Errorf("policy %q: set_header missing header", p.Name)
-			}
-			val, err := e.resolveDynamicString(cfg.Value, cfg.ValueExpr, vars)
+		for ai, act := range actions {
+			stop, err := e.applyAction(p.Name, ai, act, vars, &out)
 			if err != nil {
-				return Decision{}, fmt.Errorf("policy %q: set_header value: %w", p.Name, err)
+				return Decision{}, err
 			}
-			out.RequestHeaders[h] = val
-		case snapshot.PolicyActionUseCredential:
-			var cfg struct {
-				CredentialName     string `json:"credential_name"`
-				CredentialNameExpr string `json:"credential_name_expr"`
+			if stop {
+				return out, nil
 			}
-			if len(p.ActionConfig) > 0 {
-				if err := json.Unmarshal(p.ActionConfig, &cfg); err != nil {
-					return Decision{}, fmt.Errorf("policy %q: invalid use_credential config: %w", p.Name, err)
-				}
-			}
-			name, err := e.resolveDynamicString(cfg.CredentialName, cfg.CredentialNameExpr, vars)
-			if err != nil {
-				return Decision{}, fmt.Errorf("policy %q: use_credential name: %w", p.Name, err)
-			}
-			name = strings.TrimSpace(name)
-			if name == "" {
-				return Decision{}, fmt.Errorf("policy %q: use_credential resolved empty credential name", p.Name)
-			}
-			if out.CredentialName == "" {
-				out.CredentialName = name
-			}
-		default:
-			return Decision{}, fmt.Errorf("policy %q: unknown action %q", p.Name, p.Action)
 		}
 	}
 	return out, nil
+}
+
+// applyAction runs one Then step. stop=true means the overall Apply should return.
+func (e *Evaluator) applyAction(policyName string, index int, act snapshot.PolicyAction, vars map[string]any, out *Decision) (stop bool, err error) {
+	action := strings.TrimSpace(strings.ToLower(act.Type))
+	if action == "" {
+		action = snapshot.PolicyActionDeny
+	}
+	label := fmt.Sprintf("%s.actions[%d]", policyName, index)
+	switch action {
+	case snapshot.PolicyActionDeny:
+		*out = Decision{Allowed: false, DeniedBy: policyName}
+		return true, nil
+	case snapshot.PolicyActionAllow:
+		out.MatchedAllowName = policyName
+		return true, nil
+	case snapshot.PolicyActionSetHeader:
+		var cfg struct {
+			Header    string `json:"header"`
+			Value     string `json:"value"`
+			ValueExpr string `json:"value_expr"`
+		}
+		if len(act.Config) > 0 {
+			if err := json.Unmarshal(act.Config, &cfg); err != nil {
+				return false, fmt.Errorf("policy %q: invalid set_header config: %w", label, err)
+			}
+		}
+		h := strings.TrimSpace(cfg.Header)
+		if h == "" {
+			return false, fmt.Errorf("policy %q: set_header missing header", label)
+		}
+		val, err := e.resolveDynamicString(cfg.Value, cfg.ValueExpr, vars)
+		if err != nil {
+			return false, fmt.Errorf("policy %q: set_header value: %w", label, err)
+		}
+		out.RequestHeaders[h] = val
+		return false, nil
+	case snapshot.PolicyActionUseCredential:
+		var cfg struct {
+			CredentialName     string `json:"credential_name"`
+			CredentialNameExpr string `json:"credential_name_expr"`
+		}
+		if len(act.Config) > 0 {
+			if err := json.Unmarshal(act.Config, &cfg); err != nil {
+				return false, fmt.Errorf("policy %q: invalid use_credential config: %w", label, err)
+			}
+		}
+		name, err := e.resolveDynamicString(cfg.CredentialName, cfg.CredentialNameExpr, vars)
+		if err != nil {
+			return false, fmt.Errorf("policy %q: use_credential name: %w", label, err)
+		}
+		name = strings.TrimSpace(name)
+		if name == "" {
+			return false, fmt.Errorf("policy %q: use_credential resolved empty credential name", label)
+		}
+		if out.CredentialName == "" {
+			out.CredentialName = name
+		}
+		return false, nil
+	default:
+		return false, fmt.Errorf("policy %q: unknown action %q", label, act.Type)
+	}
 }
 
 // CredentialFromSnapshot builds CEL credential metadata without opening the secret.
