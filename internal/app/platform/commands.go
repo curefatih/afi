@@ -239,6 +239,25 @@ func (s *Service) DeleteRoute(ctx context.Context, routeID string) error {
 	return nil
 }
 
+func (s *Service) GetOrgDefaultRetry(ctx context.Context, orgID string) (*gatewayconfig.RetryConfig, error) {
+	return s.API.GetOrgDefaultRetry(ctx, orgID)
+}
+
+func (s *Service) SetOrgDefaultRetry(ctx context.Context, orgID string, retry *gatewayconfig.RetryConfig) (*gatewayconfig.RetryConfig, error) {
+	if err := s.API.SetOrgDefaultRetry(ctx, orgID, retry); err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "updated"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventOrgDefaultRetryUpdated, orgID, orgID)
+	out, err := s.API.GetOrgDefaultRetry(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (s *Service) CreateQuota(ctx context.Context, orgID, scopeType, scopeID, metric string, limitValue int64, window string) (*gatewayconfig.Quota, error) {
 	q, err := s.API.CreateQuota(ctx, orgID, scopeType, scopeID, metric, limitValue, window)
 	if err != nil {

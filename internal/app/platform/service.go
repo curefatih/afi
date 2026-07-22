@@ -56,6 +56,8 @@ type ConfigAPI interface {
 	CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback, retry *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error)
 	UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback, retry *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error)
 	DeleteRoute(ctx context.Context, routeID string) error
+	GetOrgDefaultRetry(ctx context.Context, orgID string) (*gatewayconfig.RetryConfig, error)
+	SetOrgDefaultRetry(ctx context.Context, orgID string, retry *gatewayconfig.RetryConfig) error
 
 	ListUsage(ctx context.Context, orgID string, f usage.Filter) ([]usage.Record, error)
 	SummarizeUsage(ctx context.Context, orgID string, f usage.Filter) ([]usage.SummaryBucket, error)
