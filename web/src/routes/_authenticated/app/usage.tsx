@@ -190,10 +190,7 @@ function RouteComponent() {
 	const modality = search.modality ?? "";
 	const model = search.model ?? "";
 	const byokFilter = search.byok ?? "all";
-	const dateRange = useMemo(
-		() => dateRangeFromSearch(search),
-		[search.preset, search.from, search.to],
-	);
+	const dateRange = useMemo(() => dateRangeFromSearch(search), [search]);
 
 	function patchSearch(patch: Partial<UsageSearch>) {
 		void navigate({
@@ -325,11 +322,7 @@ function RouteComponent() {
 				description="Gateway requests across chat, TTS, STT, and other modalities."
 				info="Events appear after the usage worker drains the outbox."
 				actions={
-					<Button
-						variant="outline"
-						onClick={refreshData}
-						disabled={refreshing}
-					>
+					<Button variant="outline" onClick={refreshData} disabled={refreshing}>
 						<RefreshCwIcon className={cn(refreshing && "animate-spin")} />
 						Refresh
 					</Button>
