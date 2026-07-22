@@ -28,9 +28,11 @@ func newCallContext(key snapshot.APIKey, model, path, modality string, stream bo
 			Stream:   stream,
 			Modality: modality,
 		},
-		Tags:     tags,
-		Metadata: map[string]any{},
-		Body:     body,
+		Tags:            tags,
+		Metadata:        map[string]any{},
+		Body:            body,
+		RequestHeaders:  map[string]string{},
+		ResponseHeaders: map[string]string{},
 	}
 }
 
@@ -57,28 +59,30 @@ func (p *Pipeline) gateCall(ctx context.Context, w http.ResponseWriter, snap *sn
 		})
 		return false
 	}
-	if !d.Allow {
-		writeCallDeny(w, d)
-		return false
-	}
-	if p.Wasm != nil {
-		d, err = p.Wasm.RunBeforeCall(ctx, snap, call)
-		if err != nil {
-			if p.Log != nil {
-				p.Log.Error("wasm before_call", "err", err)
-			}
-			writeJSON(w, http.StatusInternalServerError, map[string]any{
-				"error": map[string]string{"message": "call hook failed", "type": "server_error"},
-			})
-			return false
-		}
 		if !d.Allow {
+			applyResponseHeaders(w, call)
 			writeCallDeny(w, d)
 			return false
 		}
+		if p.Wasm != nil {
+			d, err = p.Wasm.RunBeforeCall(ctx, snap, call)
+			if err != nil {
+				if p.Log != nil {
+					p.Log.Error("wasm before_call", "err", err)
+				}
+				writeJSON(w, http.StatusInternalServerError, map[string]any{
+					"error": map[string]string{"message": "call hook failed", "type": "server_error"},
+				})
+				return false
+			}
+			if !d.Allow {
+				applyResponseHeaders(w, call)
+				writeCallDeny(w, d)
+				return false
+			}
+		}
+		return p.applyBeforeCall(ctx, w, &quotaCallHook{p: p, snap: snap}, call)
 	}
-	return p.applyBeforeCall(ctx, w, &quotaCallHook{p: p, snap: snap}, call)
-}
 
 func (p *Pipeline) applyBeforeCall(ctx context.Context, w http.ResponseWriter, h BeforeCallHook, call *CallContext) bool {
 	d, err := h.BeforeCall(ctx, call)
@@ -92,6 +96,7 @@ func (p *Pipeline) applyBeforeCall(ctx context.Context, w http.ResponseWriter, h
 		return false
 	}
 	if !d.Allow {
+		applyResponseHeaders(w, call)
 		writeCallDeny(w, d)
 		return false
 	}

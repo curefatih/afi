@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/curefatih/afi/internal/adapters/llm"
 	"github.com/curefatih/afi/internal/adapters/secrets"
 	"github.com/curefatih/afi/internal/dataplane/openaichat"
 	"github.com/curefatih/afi/internal/kernel"
@@ -232,7 +233,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		usedProvider = bound
 		usedTarget = attempt.TargetModel
 		usedCredentialID = credID
-		resp, lastErr = p.callProvider(ctx, bound, attempt.TargetModel, body, reqBody.Stream)
+		resp, lastErr = p.callProvider(ctx, bound, attempt.TargetModel, body, reqBody.Stream, call)
 		if lastErr != nil {
 			log.Warn("upstream attempt failed", "provider", attempt.Provider.ID, "err", lastErr, "attempt", i)
 			if errors.Is(lastErr, ErrStreamUnsupported) {
@@ -311,6 +312,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		}
 		promptTokens, completionTokens = openaichat.ParseUsageTokens(respBody)
 		p.incrTokens(ctx, snap, key, promptTokens+completionTokens)
+		applyResponseHeaders(w, call)
 		for k, vals := range resp.Header {
 			if strings.EqualFold(k, "Transfer-Encoding") || strings.EqualFold(k, "Connection") {
 				continue
@@ -322,6 +324,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(resp.StatusCode)
 		_, _ = w.Write(respBody)
 	} else if reqBody.Stream && resp.StatusCode < 400 {
+		applyResponseHeaders(w, call)
 		for k, vals := range resp.Header {
 			if strings.EqualFold(k, "Transfer-Encoding") || strings.EqualFold(k, "Connection") {
 				continue
@@ -526,7 +529,7 @@ func modelListItem(virtualModel, targetModel, providerType string, caps snapshot
 	return item
 }
 
-func (p *Pipeline) callProvider(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
+func (p *Pipeline) callProvider(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool, call *CallContext) (*http.Response, error) {
 	if p.Providers == nil {
 		return nil, fmt.Errorf("provider registry not configured")
 	}
@@ -540,6 +543,9 @@ func (p *Pipeline) callProvider(ctx context.Context, provider snapshot.Provider,
 	}
 	if !caps.Chat {
 		return nil, fmt.Errorf("chat is not supported for provider type %q", provider.Type)
+	}
+	if call != nil {
+		ctx = llm.WithExtraHeaders(ctx, call.RequestHeaders)
 	}
 	return adapter.Chat(ctx, provider, targetModel, body, stream)
 }

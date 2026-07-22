@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/curefatih/afi/internal/adapters/llm"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
 )
@@ -124,7 +125,7 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 			}
 			break
 		}
-		resp, lastErr = client.PassThrough(ctx, bound, attempt.TargetModel, body, reqBody.Stream)
+		resp, lastErr = client.PassThrough(llm.WithExtraHeaders(ctx, call.RequestHeaders), bound, attempt.TargetModel, body, reqBody.Stream)
 		if lastErr != nil {
 			log.Warn("upstream messages attempt failed", "provider", bound.ID, "err", lastErr, "attempt", i)
 			if i+1 < len(attempts) && shouldFailoverError(lastErr) {
@@ -187,6 +188,7 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 		}
 		promptTokens, completionTokens = parseAnthropicUsageTokens(respBody)
 		p.incrTokens(ctx, snap, key, promptTokens+completionTokens)
+		applyResponseHeaders(w, call)
 		for k, vals := range resp.Header {
 			if strings.EqualFold(k, "Transfer-Encoding") || strings.EqualFold(k, "Connection") {
 				continue
@@ -198,6 +200,7 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(resp.StatusCode)
 		_, _ = w.Write(respBody)
 	} else {
+		applyResponseHeaders(w, call)
 		if err := CopyResponse(w, resp); err != nil {
 			log.Error("copy response", "err", err)
 			status = "error"

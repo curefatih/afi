@@ -77,6 +77,7 @@ func (c *AnthropicClient) PassThrough(ctx context.Context, provider snapshot.Pro
 	if stream {
 		req.Header.Set("Accept", "text/event-stream")
 	}
+	applyExtraHeaders(ctx, req)
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
@@ -111,6 +112,7 @@ func (c *AnthropicClient) Messages(ctx context.Context, provider snapshot.Provid
 	if stream {
 		req.Header.Set("Accept", "text/event-stream")
 	}
+	applyExtraHeaders(ctx, req)
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {

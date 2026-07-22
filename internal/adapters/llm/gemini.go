@@ -80,6 +80,7 @@ func (c *GeminiClient) GenerateContent(ctx context.Context, provider snapshot.Pr
 	if stream {
 		req.Header.Set("Accept", "text/event-stream")
 	}
+	applyExtraHeaders(ctx, req)
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
