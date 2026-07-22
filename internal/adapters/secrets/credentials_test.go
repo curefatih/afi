@@ -53,9 +53,25 @@ func TestCredentialResolverEnvAndEncrypted(t *testing.T) {
 		t.Fatalf("db=%q err=%v", dbSecret, err)
 	}
 
-	_, err = r.Open(context.Background(), snapshot.Credential{StorageKind: "vault"})
-	if err == nil || !strings.Contains(err.Error(), "unknown storage_kind") {
+	_, err = r.Open(context.Background(), snapshot.Credential{StorageKind: "vault", SecretRef: "aws-sm://us-east-1/x"})
+	if err == nil || !strings.Contains(err.Error(), "not configured") {
+		// Multi with only Env: aws-sm scheme should fail as not configured
 		t.Fatalf("err=%v", err)
+	}
+
+	fake := secrets.Multi{
+		Env: secrets.Env{},
+		AWSSM: resolverFunc(func(_ context.Context, ref string) (string, error) {
+			return "sk-from-vault", nil
+		}),
+	}
+	r = secrets.NewCredentialResolver(box).WithVault(fake)
+	vaultSecret, err := r.Open(context.Background(), snapshot.Credential{
+		StorageKind: snapshot.CredentialStorageVault,
+		SecretRef:   "aws-sm://us-east-1/afi/openai#api_key",
+	})
+	if err != nil || vaultSecret != "sk-from-vault" {
+		t.Fatalf("vault=%q err=%v", vaultSecret, err)
 	}
 
 	noBox := secrets.NewCredentialResolver(nil)
@@ -67,3 +83,7 @@ func TestCredentialResolverEnvAndEncrypted(t *testing.T) {
 		t.Fatalf("err=%v", err)
 	}
 }
+
+type resolverFunc func(context.Context, string) (string, error)
+
+func (f resolverFunc) Get(ctx context.Context, ref string) (string, error) { return f(ctx, ref) }

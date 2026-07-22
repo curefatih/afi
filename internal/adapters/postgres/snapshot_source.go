@@ -107,7 +107,7 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	}
 
 	polRows, err := l.Pool.Query(ctx, `
-		SELECT id, organization_id, name, expression, enabled, priority FROM request_policies
+		SELECT id, organization_id, name, expression, action, action_config, enabled, priority FROM request_policies
 	`)
 	if err != nil {
 		return src, err
@@ -115,9 +115,11 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	defer polRows.Close()
 	for polRows.Next() {
 		var p snapshot.Policy
-		if err := polRows.Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Expression, &p.Enabled, &p.Priority); err != nil {
+		var cfg []byte
+		if err := polRows.Scan(&p.ID, &p.OrganizationID, &p.Name, &p.Expression, &p.Action, &cfg, &p.Enabled, &p.Priority); err != nil {
 			return src, err
 		}
+		p.ActionConfig = cfg
 		src.Policies = append(src.Policies, p)
 	}
 	if err := polRows.Err(); err != nil {
@@ -147,7 +149,7 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	}
 
 	credRows, err := l.Pool.Query(ctx, `
-		SELECT id, provider_type, storage_kind, secret_ref, encrypted_payload, key_version, status
+		SELECT id, organization_id, name, provider_type, storage_kind, secret_ref, encrypted_payload, key_version, status
 		FROM provider_credentials
 	`)
 	if err != nil {
@@ -158,7 +160,7 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 		var c snapshot.Credential
 		var secretRef *string
 		var payload []byte
-		if err := credRows.Scan(&c.ID, &c.ProviderType, &c.StorageKind, &secretRef, &payload, &c.KeyVersion, &c.Status); err != nil {
+		if err := credRows.Scan(&c.ID, &c.OrganizationID, &c.Name, &c.ProviderType, &c.StorageKind, &secretRef, &payload, &c.KeyVersion, &c.Status); err != nil {
 			return src, err
 		}
 		if secretRef != nil {
@@ -185,5 +187,9 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 		}
 		src.Assignments = append(src.Assignments, a)
 	}
-	return src, asgRows.Err()
+	if err := asgRows.Err(); err != nil {
+		return src, err
+	}
+
+	return src, nil
 }
