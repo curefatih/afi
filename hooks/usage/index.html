@@ -14,7 +14,7 @@
         <link rel="prev" href="../../development/testing/">
       
       
-        <link rel="next" href="../../deployment/">
+        <link rel="next" href="../wasm/">
       
       
         
@@ -767,6 +767,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#wasm-data-plane" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WASM (data plane)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#future" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -781,6 +792,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wasm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WASM hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1025,6 +1064,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#wasm-data-plane" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WASM (data plane)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#future" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1084,10 +1134,17 @@
 <p><a href="../../extensions/tagquota"><code>extensions/tagquota</code></a> is a <strong>reference implementation</strong> of <code>BeforeCall</code> with independent counters per tag value (e.g. each <code>end-user-id</code>). It is <strong>not</strong> registered by the default gateway — copy or register it yourself if you need that behavior. See the package <a href="../../extensions/tagquota/README.md">README</a>.</p>
 <p>Seeded demo: <a href="../../extensions/demohook"><code>extensions/demohook</code></a> prefixes the last user message with <code>[hook:demo]</code> and logs AfterChat.</p>
 <p>Provider adapters use <a href="../../sdk/provider"><code>sdk/provider</code></a> + <code>Registry.RegisterSDK</code> (see <a href="../../extensions/echo"><code>extensions/echo</code></a>). Lifecycle types live in <a href="../../sdk/hook"><code>sdk/hook</code></a>.</p>
+<h2 id="wasm-data-plane">WASM (data plane)</h2>
+<p>Sandboxed TinyGo modules via <a href="../../internal/adapters/wasm"><code>internal/adapters/wasm</code></a>:</p>
+<ul>
+<li><strong>Env:</strong> <code>AFI_WASM_BEFORE_CALL</code> / <code>AFI_WASM_BEFORE_CHAT</code> (process-global)</li>
+<li><strong>Control plane:</strong> org <code>wasm-hooks</code> API → snapshot → gateway module cache (URI + optional SHA-256 digest)</li>
+</ul>
+<p>Guest ABI, limits, pooling benchmarks: <a href="../wasm/">wasm.md</a>. Example: <a href="../../extensions/wasmhook"><code>extensions/wasmhook</code></a>.</p>
 <h2 id="future">Future</h2>
 <ul>
 <li>gRPC extensions — providers, auth, secrets, notifications, remote BeforeCall</li>
-<li>WASM extensions — prompt/header mutation, PII masking, enrichment</li>
+<li>Remote / HTTP-backed WASM artifact stores (beyond local <code>file://</code> paths)</li>
 </ul>
 <p>Redis rate limits and CEL request policies remain available via the built-in BeforeCall gates (see Quotas / Policies in the platform UI).</p>
 

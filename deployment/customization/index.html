@@ -687,6 +687,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/wasm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WASM hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1317,6 +1345,62 @@
 <td><code>2s</code></td>
 <td>Gateway</td>
 <td>Poll period (also uses Postgres <code>LISTEN</code>)</td>
+</tr>
+<tr>
+<td><code>AFI_WASM_BEFORE_CALL</code></td>
+<td><code>gateway.wasm_before_call</code></td>
+<td><em>(empty)</em></td>
+<td>Gateway</td>
+<td>Optional TinyGo <code>.wasm</code> exporting <code>before_call</code></td>
+</tr>
+<tr>
+<td><code>AFI_WASM_BEFORE_CHAT</code></td>
+<td><code>gateway.wasm_before_chat</code></td>
+<td><em>(empty)</em></td>
+<td>Gateway</td>
+<td>Optional TinyGo <code>.wasm</code> exporting <code>before_chat</code></td>
+</tr>
+<tr>
+<td><code>AFI_WASM_S3_ENDPOINT</code></td>
+<td><code>gateway.wasm_s3.endpoint</code></td>
+<td><em>(empty)</em></td>
+<td>Gateway</td>
+<td>S3-compatible host:port for <code>s3://</code> module URIs</td>
+</tr>
+<tr>
+<td><code>AFI_WASM_S3_ACCESS_KEY</code></td>
+<td><code>gateway.wasm_s3.access_key</code></td>
+<td><em>(empty)</em></td>
+<td>Gateway</td>
+<td>Object-store access key</td>
+</tr>
+<tr>
+<td><code>AFI_WASM_S3_SECRET_KEY</code></td>
+<td><code>gateway.wasm_s3.secret_key</code></td>
+<td><em>(empty)</em></td>
+<td>Gateway</td>
+<td>Object-store secret key</td>
+</tr>
+<tr>
+<td><code>AFI_WASM_S3_REGION</code></td>
+<td><code>gateway.wasm_s3.region</code></td>
+<td><em>(empty → us-east-1)</em></td>
+<td>Gateway</td>
+<td>Object-store region</td>
+</tr>
+<tr>
+<td><code>AFI_WASM_S3_USE_SSL</code></td>
+<td><code>gateway.wasm_s3.use_ssl</code></td>
+<td><code>false</code></td>
+<td>Gateway</td>
+<td>Use HTTPS to the endpoint</td>
+</tr>
+<tr>
+<td><code>AFI_WASM_S3_PATH_STYLE</code></td>
+<td><code>gateway.wasm_s3.path_style</code></td>
+<td><code>false</code></td>
+<td>Gateway</td>
+<td>Path-style addressing (typical for MinIO)</td>
 </tr>
 <tr>
 <td><code>AFI_JWT_SECRET</code></td>

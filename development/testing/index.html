@@ -654,6 +654,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Unit tests (test-first)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wasm-vs-native-hook-benchmarks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WASM vs native hook benchmarks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -767,6 +784,34 @@
     
   
     Plugins (hooks)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/wasm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WASM hooks
   
 
     
@@ -988,6 +1033,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Unit tests (test-first)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wasm-vs-native-hook-benchmarks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WASM vs native hook benchmarks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1061,6 +1123,12 @@ go<span class="w"> </span><span class="nb">test</span><span class="w"> </span>./
 <li>Publish error surfaced on create project</li>
 <li>Migrate wipe policy (version bumps never wipe)</li>
 </ul>
+<h3 id="wasm-vs-native-hook-benchmarks">WASM vs native hook benchmarks</h3>
+<div class="highlight"><pre><span></span><code>go<span class="w"> </span><span class="nb">test</span><span class="w"> </span>./internal/adapters/wasm/<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-bench<span class="o">=</span><span class="s1">&#39;BenchmarkBefore(Call|Chat)_(Native|WASM)&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-benchmem<span class="w"> </span>-count<span class="o">=</span><span class="m">5</span><span class="w"> </span>-benchtime<span class="o">=</span>300ms
+</code></pre></div>
+<p>Compares in-process Go hooks to TinyGo WASM with <strong>instance pooling</strong> (and <code>WASM_NoPool</code> for the old per-call instantiate path). See <a href="../../hooks/wasm/#performance-wasm-vs-native-go">WASM hooks — Performance</a>.</p>
 <h2 id="automated-local-verify">Automated local verify</h2>
 <p>With Postgres + control plane + gateway already running:</p>
 <div class="highlight"><pre><span></span><code>make<span class="w"> </span>verify

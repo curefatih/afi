@@ -802,6 +802,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/wasm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WASM hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1096,7 +1124,7 @@
 <li>New providers register through a stable adapter contract without editing the request pipeline core.</li>
 </ol>
 <h2 id="control-plane">Control plane</h2>
-<p>Uses pragmatic domain packages (full DDD bounded contexts grow over time).</p>
+<p>Uses pragmatic domain packages.</p>
 <p>Responsibilities today:</p>
 <ul>
 <li>Persist orgs, projects, users, virtual API keys, providers, routes, quotas</li>
@@ -1107,7 +1135,7 @@
 <li>Internal admin (<code>/internal/v1/*</code>, <code>/healthz</code>)</li>
 </ul>
 <h2 id="data-plane">Data plane</h2>
-<p>Implemented as a <strong>request pipeline</strong>, not DDD:</p>
+<p>Implemented as a <strong>request pipeline</strong>:</p>
 <pre class="mermaid"><code>flowchart TD
   A[Authenticate — virtual API key]
   B[Load Snapshot — in-memory]
@@ -1148,9 +1176,10 @@
 <ul>
 <li><strong>Providers</strong> — <code>sdk/provider.ChatProvider</code> via <code>Registry.RegisterSDK</code> (example: <code>extensions/echo</code>)</li>
 <li><strong>Hooks</strong> — <code>BeforeCall</code> / <code>AfterCall</code> (all modalities) plus <code>BeforeChat</code> / <code>AfterChat</code>; tags via <code>X-AFI-Tags</code> (<code>extensions/demohook</code>; example-only tag limits in <code>extensions/tagquota</code>)</li>
+<li><strong>WASM hooks</strong> — sandboxed TinyGo guests via <code>internal/adapters/wasm</code> + org <code>wasm_hooks</code> in the snapshot (<code>AFI_WASM_*</code> env still works for demos). See <a href="../../hooks/wasm/">WASM hooks</a>.</li>
 <li><strong>Provider health</strong> — control-plane rollup from <code>usage_events</code> for Providers UI</li>
 </ul>
-<p>gRPC / WASM plugin runtimes, billing invoices, external HashiCorp Vault, and multi-region snapshot distribution remain future work.</p>
+<p>Control-plane WASM hook bindings are available; gRPC plugin runtimes, billing invoices, external HashiCorp Vault, and multi-region snapshot distribution remain future work.</p>
 <p><strong>Shipped governance:</strong></p>
 <ul>
 <li><strong>Quotas</strong> — <code>total</code> windows on Postgres; <code>minute</code> / <code>hour</code> / <code>day</code> rate limits on Redis (<code>AFI_REDIS_URL</code>)</li>
