@@ -739,6 +739,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#provider-credentials-byok" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provider credentials (BYOK)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1212,6 +1223,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#provider-credentials-byok" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provider credentials (BYOK)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1328,6 +1350,26 @@
 <td><code>AFI_CREDENTIALS_MASTER_KEY</code></td>
 <td>from yaml (<code>credentials.master_key</code>)</td>
 <td>controlplane + gateway (encrypted_db credentials)</td>
+</tr>
+<tr>
+<td><code>AFI_SECRETS_AWS_SM_ENABLED</code></td>
+<td><code>false</code></td>
+<td>gateway: enable AWS Secrets Manager for <code>storage_kind=vault</code></td>
+</tr>
+<tr>
+<td><code>AFI_SECRETS_AWS_SM_REGION</code></td>
+<td><em>(AWS default)</em></td>
+<td>default region for aws-sm refs</td>
+</tr>
+<tr>
+<td><code>AFI_SECRETS_VAULT_ADDR</code> / <code>VAULT_ADDR</code></td>
+<td><em>(empty)</em></td>
+<td>HashiCorp Vault address</td>
+</tr>
+<tr>
+<td><code>AFI_SECRETS_VAULT_TOKEN</code> / <code>VAULT_TOKEN</code></td>
+<td><em>(empty)</em></td>
+<td>HashiCorp Vault token</td>
 </tr>
 <tr>
 <td><code>OPENAI_API_KEY</code></td>
@@ -1754,11 +1796,15 @@
 </tr>
 <tr>
 <td><code>expression</code></td>
-<td>Boolean CEL; all enabled org policies must be true</td>
+<td>Boolean CEL <strong>when</strong> clause</td>
+</tr>
+<tr>
+<td><code>actions</code></td>
+<td>Ordered Then steps: <code>[{ "type", "config"? }, …]</code> (at least one)</td>
 </tr>
 <tr>
 <td><code>priority</code></td>
-<td>Higher first (default 100). Batch-reorder via <code>POST .../policies/reorder</code> with <code>{ "items": [{ "id", "priority" }, ...] }</code>.</td>
+<td>Higher first (default 100). Batch-reorder via <code>POST .../policies/reorder</code>.</td>
 </tr>
 <tr>
 <td><code>enabled</code></td>
@@ -1766,7 +1812,45 @@
 </tr>
 </tbody>
 </table>
-<p>CEL variables: <code>request.model</code>, <code>request.path</code>, <code>request.stream</code>, <code>key.id</code>, <code>key.organization_id</code>, <code>key.project_id</code>, <code>key.kind</code>, <code>key.owner_user_id</code>, <code>key.name</code>. Denial → HTTP 403 <code>policy_violation</code>. Owner/admin to create/update/delete.</p>
+<p>Legacy create/update bodies may still send a single <code>action</code> + <code>action_config</code>; the API stores them as a one-element <code>actions</code> array.</p>
+<p><strong>Then actions</strong> (when expression is true: steps run <strong>in order</strong>; policies by priority desc):
+| Action | Config | Behavior |
+|--------|--------|----------|
+| <code>deny</code> | <code>{}</code> | Stop; HTTP 403 <code>policy_violation</code> |
+| <code>allow</code> | <code>{}</code> | Stop; allow (skips remaining Then steps and lower-priority rules) |
+| <code>set_header</code> | <code>{ "header", "value"? , "value_expr"? }</code> | Set outbound upstream header; continue. Later writes to the same header overwrite. <code>value_expr</code> is CEL → string and wins over <code>value</code>. |
+| <code>use_credential</code> | <code>{ "credential_name"? , "credential_name_expr"? }</code> | Select secret by name; continue. Later Then steps (and later matching policies) overwrite. <code>credential_name_expr</code> is CEL → string (e.g. header value) and wins over <code>credential_name</code>. |</p>
+<p>CEL variables: <code>request.model</code>, <code>request.path</code>, <code>request.stream</code>, <code>request.tags</code>, <code>request.headers</code> (lowercased; <code>authorization</code> / <code>cookie</code> omitted), <code>key.*</code>, <code>credential.*</code>. Owner/admin to create/update/delete.</p>
+<p>Examples:
+- Deny a model: when <code>request.model == "blocked-model"</code> then <code>deny</code>
+- Partner key by header value: when <code>("x-tenant-id" in request.headers) &amp;&amp; request.headers["x-tenant-id"] != ""</code> then <code>use_credential</code> with <code>credential_name_expr: "request.headers[\\"x-tenant-id\\"]"</code> (secret name = header value)
+- Fixed partner key: when header equals <code>acme</code> then <code>use_credential</code> with <code>credential_name: "partner-acme"</code>
+- Multi-then: same when → <code>use_credential</code> (name from header) <strong>then</strong> <code>set_header</code> with <code>header: "X-Partner"</code>, <code>value_expr: "request.headers[\\"x-tenant-id\\"]"</code></p>
+<h3 id="provider-credentials-byok">Provider credentials (BYOK)</h3>
+<table>
+<thead>
+<tr>
+<th><code>storage_kind</code></th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>env</code></td>
+<td><code>secret_ref</code> = process env name (or <code>env://NAME</code>)</td>
+</tr>
+<tr>
+<td><code>encrypted_db</code></td>
+<td>plaintext sealed with <code>AFI_CREDENTIALS_MASTER_KEY</code></td>
+</tr>
+<tr>
+<td><code>vault</code></td>
+<td><code>secret_ref</code> = <code>aws-sm://{region}/{secret-id}[#jsonKey]</code> or <code>hashicorp://{path}[#jsonKey]</code></td>
+</tr>
+</tbody>
+</table>
+<p>Create secrets normally, then select them from a <code>use_credential</code> policy and/or assign scopes. Runtime resolve order: <strong>policy use_credential → api_key → project → organization → provider.api_key_env</strong>. Unknown credential names fail closed.</p>
+<p>Usage list/summary query params: <code>exclude_byok</code>, <code>byok_only</code>, <code>credential_id</code>; summary <code>group_by=byok</code>.</p>
 
 
 

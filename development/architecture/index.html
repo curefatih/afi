@@ -1161,10 +1161,10 @@
 <ul>
 <li>Virtual API keys (hashes) → org binding, optional project, kind, owner user id</li>
 <li>Providers (type, base URL, API key env ref, capabilities)</li>
-<li>Provider credentials (env ref or ciphertext) + assignments (provider type × org/project scope)</li>
+<li>Provider credentials (env ref, encrypted_db ciphertext, or vault secret_ref) + assignments (provider type × org/project/api_key scope)</li>
 <li>Static model routes (optional fallbacks)</li>
 <li>Quotas (scope, metric, limit, window) — resolve order per window: api_key → user → project → organization</li>
-<li>CEL request policies (boolean allow-expressions)</li>
+<li>CEL request policies (when/then: CEL when + ordered Then actions allow|deny|set_header|use_credential; vars include <code>request</code>, <code>key</code>, and <code>credential</code>)</li>
 </ul>
 <p>Stored in Postgres (<code>gateway_snapshots</code>). The gateway watches for new versions (poll + <code>LISTEN/NOTIFY</code>) and hot-reloads.</p>
 <h2 id="async-usage">Async usage</h2>
@@ -1179,12 +1179,12 @@
 <li><strong>WASM hooks</strong> — sandboxed TinyGo guests via <code>internal/adapters/wasm</code> + org <code>wasm_hooks</code> in the snapshot (<code>AFI_WASM_*</code> env still works for demos). See <a href="../../hooks/wasm/">WASM hooks</a>.</li>
 <li><strong>Provider health</strong> — control-plane rollup from <code>usage_events</code> for Providers UI</li>
 </ul>
-<p>Control-plane WASM hook bindings are available; gRPC plugin runtimes, billing invoices, external HashiCorp Vault, and multi-region snapshot distribution remain future work.</p>
+<p>Control-plane WASM hook bindings are available; gRPC plugin runtimes, billing invoices, and multi-region snapshot distribution remain future work.</p>
 <p><strong>Shipped governance:</strong></p>
 <ul>
 <li><strong>Quotas</strong> — <code>total</code> windows on Postgres; <code>minute</code> / <code>hour</code> / <code>day</code> rate limits on Redis (<code>AFI_REDIS_URL</code>)</li>
-<li><strong>CEL policies</strong> — org allow-expressions in the snapshot; deny → HTTP 403 <code>policy_violation</code></li>
-<li><strong>Provider credentials</strong> — org-owned secrets (<code>env</code> or AES-GCM <code>encrypted_db</code>) assignable to organization/project scopes; gateway resolves project → org → provider <code>api_key_env</code> fallback</li>
+<li><strong>CEL policies</strong> — when/then rules in the snapshot. When the expression is true, Then <code>actions</code> run in order: <code>deny</code> stops with 403, <code>allow</code> short-circuits allow, <code>set_header</code> sets an outbound provider header, <code>use_credential</code> selects a secret by name. Credential context: <code>credential.is_byok</code>, <code>credential.id</code>, <code>credential.name</code>, <code>credential.storage_kind</code>, <code>credential.provider_type</code>.</li>
+<li><strong>Provider credentials (BYOK)</strong> — org-owned secrets (<code>env</code>, AES-GCM <code>encrypted_db</code>, or <code>vault</code> refs). Assignable to organization, project, or API key scopes. <strong>Policy override:</strong> <code>use_credential</code> action picks a credential by <strong>name</strong>; otherwise resolve <strong>api_key → project → org → provider <code>api_key_env</code></strong>. Usage events persist <code>credential_id</code> and <code>used_byok</code>.</li>
 </ul>
 
 
