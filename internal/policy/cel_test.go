@@ -62,6 +62,32 @@ func TestApplyMultipleThenActions(t *testing.T) {
 	}
 }
 
+func TestApplyUseCredentialLastWins(t *testing.T) {
+	ev, err := policy.NewEvaluator()
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := snapshot.APIKey{OrganizationID: "o1"}
+	first, _ := json.Marshal(map[string]string{"credential_name": "first-secret"})
+	second, _ := json.Marshal(map[string]string{"credential_name": "second-secret"})
+	policies := []snapshot.Policy{{
+		OrganizationID: "o1", Name: "override-cred",
+		Expression: "true",
+		Actions: []snapshot.PolicyAction{
+			{Type: snapshot.PolicyActionUseCredential, Config: first},
+			{Type: snapshot.PolicyActionUseCredential, Config: second},
+		},
+		Enabled: true, Priority: 10,
+	}}
+	d, err := ev.Apply(policies, key, policy.Request{Model: "m"}, policy.Credential{})
+	if err != nil || !d.Allowed {
+		t.Fatalf("%+v err=%v", d, err)
+	}
+	if d.CredentialName != "second-secret" {
+		t.Fatalf("credential=%q want second-secret", d.CredentialName)
+	}
+}
+
 func TestApplyAllowShortCircuit(t *testing.T) {
 	ev, err := policy.NewEvaluator()
 	if err != nil {

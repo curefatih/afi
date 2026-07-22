@@ -224,8 +224,8 @@ func (e *Evaluator) resolveDynamicString(static, expr string, vars map[string]an
 // each Then action in order:
 //   - deny → stop, deny
 //   - allow → stop, allow (short-circuit)
-//   - set_header → merge outbound header, continue
-//   - use_credential → set credential name if unset, continue
+//   - set_header → set outbound header (later writes overwrite), continue
+//   - use_credential → set credential name (later writes overwrite), continue
 // Default (no deny / no short-circuit allow): allow.
 func (e *Evaluator) Apply(policies []snapshot.Policy, key snapshot.APIKey, req Request, cred Credential) (Decision, error) {
 	out := Decision{Allowed: true, RequestHeaders: map[string]string{}}
@@ -308,9 +308,7 @@ func (e *Evaluator) applyAction(policyName string, index int, act snapshot.Polic
 		if name == "" {
 			return false, fmt.Errorf("policy %q: use_credential resolved empty credential name", label)
 		}
-		if out.CredentialName == "" {
-			out.CredentialName = name
-		}
+		out.CredentialName = name
 		return false, nil
 	default:
 		return false, fmt.Errorf("policy %q: unknown action %q", label, act.Type)
