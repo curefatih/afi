@@ -226,6 +226,7 @@ func (e *Evaluator) resolveDynamicString(static, expr string, vars map[string]an
 //   - allow → stop, allow (short-circuit)
 //   - set_header → set outbound header (later writes overwrite), continue
 //   - use_credential → set credential name (later writes overwrite), continue
+//
 // Default (no deny / no short-circuit allow): allow.
 func (e *Evaluator) Apply(policies []snapshot.Policy, key snapshot.APIKey, req Request, cred Credential) (Decision, error) {
 	out := Decision{Allowed: true, RequestHeaders: map[string]string{}}

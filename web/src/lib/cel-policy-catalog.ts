@@ -198,7 +198,7 @@ export const CEL_EXAMPLES: CelExample[] = [
 	{
 		title: "Credential from header value",
 		description:
-			"Then: Use credential → From CEL: request.headers[\"x-tenant-id\"].",
+			'Then: Use credential → From CEL: request.headers["x-tenant-id"].',
 		expression:
 			'("x-tenant-id" in request.headers) && request.headers["x-tenant-id"] != ""',
 	},

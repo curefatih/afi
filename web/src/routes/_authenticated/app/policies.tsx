@@ -524,7 +524,10 @@ function PolicySheet({
 	const removeThen = (index: number) => {
 		setForm((prev) => ({
 			...prev,
-			thens: prev.thens.length <= 1 ? prev.thens : prev.thens.filter((_, i) => i !== index),
+			thens:
+				prev.thens.length <= 1
+					? prev.thens
+					: prev.thens.filter((_, i) => i !== index),
 		}));
 	};
 
@@ -718,9 +721,7 @@ function ThenBlock({
 					<Label htmlFor={`${idPrefix}-action`}>Action</Label>
 					<Select
 						value={then.action}
-						onValueChange={(v) =>
-							onChange({ action: v as PolicyActionType })
-						}
+						onValueChange={(v) => onChange({ action: v as PolicyActionType })}
 					>
 						<SelectTrigger id={`${idPrefix}-action`}>
 							<SelectValue />
@@ -834,9 +835,7 @@ function ThenBlock({
 								<Label htmlFor={`${idPrefix}-cred`}>Credential</Label>
 								<Select
 									value={then.credentialName || undefined}
-									onValueChange={(v) =>
-										onChange({ credentialName: v ?? "" })
-									}
+									onValueChange={(v) => onChange({ credentialName: v ?? "" })}
 								>
 									<SelectTrigger id={`${idPrefix}-cred`}>
 										<SelectValue placeholder="Select a secret" />

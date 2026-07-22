@@ -23,13 +23,13 @@ func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCreatePolicy(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Name         string                     `json:"name"`
-		Expression   string                     `json:"expression"`
+		Name         string                       `json:"name"`
+		Expression   string                       `json:"expression"`
 		Actions      []gatewayconfig.PolicyAction `json:"actions"`
-		Action       string                     `json:"action"`        // legacy
-		ActionConfig json.RawMessage            `json:"action_config"` // legacy
-		Enabled      *bool                      `json:"enabled"`
-		Priority     *int                       `json:"priority"`
+		Action       string                       `json:"action"`        // legacy
+		ActionConfig json.RawMessage              `json:"action_config"` // legacy
+		Enabled      *bool                        `json:"enabled"`
+		Priority     *int                         `json:"priority"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" || body.Expression == "" {
 		writeErr(w, http.StatusBadRequest, "name and expression required")

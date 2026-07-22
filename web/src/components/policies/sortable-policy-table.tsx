@@ -30,10 +30,7 @@ function ThenColumn({ policy }: { policy: RequestPolicy }) {
 
 	return (
 		<TableCell className="max-w-[20rem] min-w-[10rem]">
-			<span
-				className="block truncate font-mono text-xs"
-				title={label}
-			>
+			<span className="block truncate font-mono text-xs" title={label}>
 				{label}
 			</span>
 		</TableCell>
