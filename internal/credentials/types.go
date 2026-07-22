@@ -12,12 +12,14 @@ import (
 const (
 	StorageEnv         = snapshot.CredentialStorageEnv
 	StorageEncryptedDB = snapshot.CredentialStorageEncryptedDB
+	StorageVault       = snapshot.CredentialStorageVault
 
 	StatusActive   = "active"
 	StatusDisabled = "disabled"
 
 	ScopeOrganization = snapshot.ScopeOrganization
 	ScopeProject      = snapshot.ScopeProject
+	ScopeAPIKey       = snapshot.ScopeAPIKey
 )
 
 // Credential is an org-owned upstream provider secret (env ref or encrypted value).
@@ -52,7 +54,7 @@ type Assignment struct {
 func (c Credential) Public() Credential {
 	out := c
 	has := c.HasSecret
-	if c.StorageKind == StorageEnv && c.SecretRef != "" {
+	if (c.StorageKind == StorageEnv || c.StorageKind == StorageVault) && c.SecretRef != "" {
 		has = true
 	}
 	if c.StorageKind == StorageEncryptedDB && len(c.EncryptedPayload) > 0 {
@@ -82,9 +84,9 @@ func NewCredential(id, orgID, name, providerType, storageKind, status string, no
 		return nil, fmt.Errorf("%w: provider_type is required", kernel.ErrInvalidRequest)
 	}
 	switch storageKind {
-	case StorageEnv, StorageEncryptedDB:
+	case StorageEnv, StorageEncryptedDB, StorageVault:
 	default:
-		return nil, fmt.Errorf("%w: storage_kind must be %q or %q", kernel.ErrInvalidRequest, StorageEnv, StorageEncryptedDB)
+		return nil, fmt.Errorf("%w: storage_kind must be %q, %q, or %q", kernel.ErrInvalidRequest, StorageEnv, StorageEncryptedDB, StorageVault)
 	}
 	if status == "" {
 		status = StatusActive
@@ -113,9 +115,9 @@ func NewCredential(id, orgID, name, providerType, storageKind, status string, no
 // ValidateAssignmentScope validates scope_type for credential assignments.
 func ValidateAssignmentScope(scopeType string) error {
 	switch scopeType {
-	case ScopeOrganization, ScopeProject:
+	case ScopeOrganization, ScopeProject, ScopeAPIKey:
 		return nil
 	default:
-		return fmt.Errorf("%w: scope_type must be %q or %q", kernel.ErrInvalidRequest, ScopeOrganization, ScopeProject)
+		return fmt.Errorf("%w: scope_type must be %q, %q, or %q", kernel.ErrInvalidRequest, ScopeOrganization, ScopeProject, ScopeAPIKey)
 	}
 }

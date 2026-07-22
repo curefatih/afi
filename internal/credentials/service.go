@@ -30,6 +30,7 @@ type Repository interface {
 // ScopeChecker verifies assignment targets belong to the credential's org.
 type ScopeChecker interface {
 	ProjectBelongsToOrg(ctx context.Context, projectID, orgID string) error
+	APIKeyBelongsToOrg(ctx context.Context, keyID, orgID string) error
 }
 
 // CreateInput is the write payload for a new credential.
@@ -51,10 +52,14 @@ func Create(ctx context.Context, repo Repository, box *Box, in CreateInput) (*Cr
 		return nil, err
 	}
 	switch c.StorageKind {
-	case StorageEnv:
+	case StorageEnv, StorageVault:
 		ref := strings.TrimSpace(in.SecretRef)
 		if ref == "" {
-			return nil, fmt.Errorf("%w: secret_ref is required for env storage", kernel.ErrInvalidRequest)
+			kind := "env"
+			if c.StorageKind == StorageVault {
+				kind = "vault"
+			}
+			return nil, fmt.Errorf("%w: secret_ref is required for %s storage", kernel.ErrInvalidRequest, kind)
 		}
 		c.SecretRef = ref
 		c.HasSecret = true
@@ -88,7 +93,7 @@ func RotateSecret(ctx context.Context, repo Repository, box *Box, id, secretRef,
 		return nil, err
 	}
 	switch c.StorageKind {
-	case StorageEnv:
+	case StorageEnv, StorageVault:
 		ref := strings.TrimSpace(secretRef)
 		if ref == "" {
 			return nil, fmt.Errorf("%w: secret_ref is required", kernel.ErrInvalidRequest)
@@ -155,6 +160,10 @@ func Assign(ctx context.Context, repo Repository, scopes ScopeChecker, in Assign
 		}
 	case ScopeProject:
 		if err := scopes.ProjectBelongsToOrg(ctx, scopeID, c.OrganizationID); err != nil {
+			return nil, err
+		}
+	case ScopeAPIKey:
+		if err := scopes.APIKeyBelongsToOrg(ctx, scopeID, c.OrganizationID); err != nil {
 			return nil, err
 		}
 	}
