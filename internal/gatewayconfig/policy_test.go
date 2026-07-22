@@ -10,23 +10,33 @@ import (
 
 type okValidator struct{}
 
-func (okValidator) Validate(string) error { return nil }
+func (okValidator) Validate(string) error       { return nil }
+func (okValidator) ValidateString(string) error { return nil }
 
 type badValidator struct{}
 
-func (badValidator) Validate(string) error { return errors.New("bad cel") }
+func (badValidator) Validate(string) error       { return errors.New("bad cel") }
+func (badValidator) ValidateString(string) error { return errors.New("bad cel") }
 
 func TestNewRequestPolicy(t *testing.T) {
 	t.Parallel()
-	p, err := NewRequestPolicy("pol_1", "org_1", "allow", "true", true, 10, timeNowUTC(), okValidator{})
-	if err != nil || p.Name != "allow" {
+	p, err := NewRequestPolicy("pol_1", "org_1", "allow", "true", ActionDeny, nil, true, 10, timeNowUTC(), okValidator{})
+	if err != nil || p.Name != "allow" || p.Action != ActionDeny {
+		t.Fatalf("p=%+v err=%v", p, err)
+	}
+}
+
+func TestNewRequestPolicySetHeader(t *testing.T) {
+	t.Parallel()
+	p, err := NewRequestPolicy("pol_1", "org_1", "hdr", "true", ActionSetHeader, []byte(`{"header":"X-A","value":"1"}`), true, 1, timeNowUTC(), okValidator{})
+	if err != nil || p.Action != ActionSetHeader {
 		t.Fatalf("p=%+v err=%v", p, err)
 	}
 }
 
 func TestNewRequestPolicyRejectsBadCEL(t *testing.T) {
 	t.Parallel()
-	_, err := NewRequestPolicy("pol_1", "org_1", "allow", "true", true, 1, timeNowUTC(), badValidator{})
+	_, err := NewRequestPolicy("pol_1", "org_1", "allow", "true", ActionDeny, nil, true, 1, timeNowUTC(), badValidator{})
 	if !errors.Is(err, kernel.ErrInvalidRequest) {
 		t.Fatalf("err=%v", err)
 	}
