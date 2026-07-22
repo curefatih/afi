@@ -515,200 +515,216 @@ function PolicySheet({
 						</p>
 					</div>
 
-					<section className="space-y-3 rounded-lg border p-3">
-						<div>
-							<p className="font-medium text-sm">When</p>
-							<p className="text-[11px] text-muted-foreground">
-								CEL expression must be true for Then to run.
-							</p>
-						</div>
-						<CelExpressionEditor
-							id="pol-expr"
-							value={form.expression}
-							onChange={(expression) => setForm({ ...form, expression })}
-						/>
-					</section>
-
-					<section className="space-y-3 rounded-lg border p-3">
-						<div>
-							<p className="font-medium text-sm">Then</p>
-							<p className="text-[11px] text-muted-foreground">
-								Action to apply when When matches.
-							</p>
-						</div>
-						<div className="space-y-1">
-							<Label htmlFor="pol-action">Action</Label>
-							<Select
-								value={form.action}
-								onValueChange={(v) =>
-									setForm({ ...form, action: v as PolicyAction })
-								}
-							>
-								<SelectTrigger id="pol-action">
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{ACTIONS.map((a) => (
-										<SelectItem key={a.value} value={a.value}>
-											{a.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							{actionMeta ? (
+					<section className="rounded-lg border">
+						<div className="space-y-3 p-3">
+							<div className="flex items-baseline gap-2">
+								<span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+									When
+								</span>
 								<p className="text-[11px] text-muted-foreground">
-									{actionMeta.hint}
+									CEL expression must be true for Then to run.
 								</p>
-							) : null}
+							</div>
+							<CelExpressionEditor
+								id="pol-expr"
+								value={form.expression}
+								onChange={(expression) => setForm({ ...form, expression })}
+							/>
 						</div>
 
-						{form.action === "set_header" ? (
-							<div className="space-y-3">
-								<div className="grid gap-3 sm:grid-cols-2">
-									<div className="space-y-1">
-										<Label htmlFor="pol-hdr">Header</Label>
-										<Input
-											id="pol-hdr"
-											value={form.header}
-											placeholder="X-Partner-Id"
-											onChange={(e) =>
-												setForm({ ...form, header: e.target.value })
-											}
-											required
-										/>
-									</div>
-									<div className="space-y-1">
-										<Label htmlFor="pol-hdr-mode">Value source</Label>
-										<Select
-											value={form.headerValueMode}
-											onValueChange={(v) =>
-												setForm({
-													...form,
-													headerValueMode: v as "static" | "expr",
-												})
-											}
-										>
-											<SelectTrigger id="pol-hdr-mode">
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="static">Static value</SelectItem>
-												<SelectItem value="expr">From CEL expression</SelectItem>
-											</SelectContent>
-										</Select>
-									</div>
+						<div className="border-t">
+							<div className="space-y-3 border-l-2 border-muted-foreground/25 py-3 pr-3 pl-4 ml-3">
+								<div className="flex items-baseline gap-2">
+									<span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+										Then
+									</span>
+									<p className="text-[11px] text-muted-foreground">
+										Action to apply when When matches.
+									</p>
 								</div>
-								{form.headerValueMode === "static" ? (
-									<div className="space-y-1">
-										<Label htmlFor="pol-hdr-val">Value</Label>
-										<Input
-											id="pol-hdr-val"
-											value={form.headerValue}
-											placeholder="acme"
-											onChange={(e) =>
-												setForm({ ...form, headerValue: e.target.value })
-											}
-										/>
-									</div>
-								) : (
-									<div className="space-y-1">
-										<Label htmlFor="pol-hdr-expr">Value expression</Label>
-										<Input
-											id="pol-hdr-expr"
-											value={form.headerValueExpr}
-											placeholder={'request.headers["x-tenant-id"]'}
-											onChange={(e) =>
-												setForm({ ...form, headerValueExpr: e.target.value })
-											}
-											className="font-mono text-sm"
-											required
-										/>
-										<p className="text-[11px] text-muted-foreground">
-											Must evaluate to a string (same vars as When).
-										</p>
-									</div>
-								)}
-							</div>
-						) : null}
 
-						{form.action === "use_credential" ? (
-							<div className="space-y-3">
 								<div className="space-y-1">
-									<Label htmlFor="pol-cred-mode">Credential source</Label>
+									<Label htmlFor="pol-action">Action</Label>
 									<Select
-										value={form.credentialMode}
+										value={form.action}
 										onValueChange={(v) =>
-											setForm({
-												...form,
-												credentialMode: v as "static" | "expr",
-											})
+											setForm({ ...form, action: v as PolicyAction })
 										}
 									>
-										<SelectTrigger id="pol-cred-mode">
+										<SelectTrigger id="pol-action">
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
-											<SelectItem value="static">Named secret</SelectItem>
-											<SelectItem value="expr">From CEL expression</SelectItem>
+											{ACTIONS.map((a) => (
+												<SelectItem key={a.value} value={a.value}>
+													{a.label}
+												</SelectItem>
+											))}
 										</SelectContent>
 									</Select>
-									<p className="text-[11px] text-muted-foreground">
-										Expression mode uses the resolved string as the credential
-										name (e.g. header value → secret name).
-									</p>
-								</div>
-								{form.credentialMode === "static" ? (
-									<div className="space-y-1">
-										<Label htmlFor="pol-cred">Credential</Label>
-										<Select
-											value={form.credentialName || undefined}
-											onValueChange={(v) =>
-												setForm({ ...form, credentialName: v ?? "" })
-											}
-										>
-											<SelectTrigger id="pol-cred">
-												<SelectValue placeholder="Select a secret" />
-											</SelectTrigger>
-											<SelectContent>
-												{credentialNames.map((n) => (
-													<SelectItem key={n} value={n}>
-														{n}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</div>
-								) : (
-									<div className="space-y-1">
-										<Label htmlFor="pol-cred-expr">Name expression</Label>
-										<Input
-											id="pol-cred-expr"
-											value={form.credentialNameExpr}
-											placeholder={'request.headers["x-tenant-id"]'}
-											onChange={(e) =>
-												setForm({
-													...form,
-													credentialNameExpr: e.target.value,
-												})
-											}
-											className="font-mono text-sm"
-											required
-										/>
+									{actionMeta ? (
 										<p className="text-[11px] text-muted-foreground">
-											Example: When{" "}
-											<code>
-												{"(\"x-tenant-id\" in request.headers)"}
-											</code>
-											, Then use{" "}
-											<code>
-												{'request.headers["x-tenant-id"]'}
-											</code>
-											.
+											{actionMeta.hint}
 										</p>
+									) : null}
+								</div>
+
+								{form.action === "set_header" ? (
+									<div className="space-y-3 border-l-2 border-muted-foreground/20 py-1 pl-3">
+										<div className="grid gap-3 sm:grid-cols-2">
+											<div className="space-y-1">
+												<Label htmlFor="pol-hdr">Header</Label>
+												<Input
+													id="pol-hdr"
+													value={form.header}
+													placeholder="X-Partner-Id"
+													onChange={(e) =>
+														setForm({ ...form, header: e.target.value })
+													}
+													required
+												/>
+											</div>
+											<div className="space-y-1">
+												<Label htmlFor="pol-hdr-mode">Value source</Label>
+												<Select
+													value={form.headerValueMode}
+													onValueChange={(v) =>
+														setForm({
+															...form,
+															headerValueMode: v as "static" | "expr",
+														})
+													}
+												>
+													<SelectTrigger id="pol-hdr-mode">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="static">Static value</SelectItem>
+														<SelectItem value="expr">
+															From CEL expression
+														</SelectItem>
+													</SelectContent>
+												</Select>
+											</div>
+										</div>
+										{form.headerValueMode === "static" ? (
+											<div className="space-y-1">
+												<Label htmlFor="pol-hdr-val">Value</Label>
+												<Input
+													id="pol-hdr-val"
+													value={form.headerValue}
+													placeholder="acme"
+													onChange={(e) =>
+														setForm({ ...form, headerValue: e.target.value })
+													}
+												/>
+											</div>
+										) : (
+											<div className="space-y-1 border-l-2 border-muted-foreground/15 pl-3">
+												<Label htmlFor="pol-hdr-expr">Value expression</Label>
+												<Input
+													id="pol-hdr-expr"
+													value={form.headerValueExpr}
+													placeholder={'request.headers["x-tenant-id"]'}
+													onChange={(e) =>
+														setForm({
+															...form,
+															headerValueExpr: e.target.value,
+														})
+													}
+													className="font-mono text-sm"
+													required
+												/>
+												<p className="text-[11px] text-muted-foreground">
+													Must evaluate to a string (same vars as When).
+												</p>
+											</div>
+										)}
 									</div>
-								)}
+								) : null}
+
+								{form.action === "use_credential" ? (
+									<div className="space-y-3 border-l-2 border-muted-foreground/20 py-1 pl-3">
+										<div className="space-y-1">
+											<Label htmlFor="pol-cred-mode">Credential source</Label>
+											<Select
+												value={form.credentialMode}
+												onValueChange={(v) =>
+													setForm({
+														...form,
+														credentialMode: v as "static" | "expr",
+													})
+												}
+											>
+												<SelectTrigger id="pol-cred-mode">
+													<SelectValue />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="static">Named secret</SelectItem>
+													<SelectItem value="expr">
+														From CEL expression
+													</SelectItem>
+												</SelectContent>
+											</Select>
+											<p className="text-[11px] text-muted-foreground">
+												Expression mode uses the resolved string as the
+												credential name (e.g. header value → secret name).
+											</p>
+										</div>
+										{form.credentialMode === "static" ? (
+											<div className="space-y-1">
+												<Label htmlFor="pol-cred">Credential</Label>
+												<Select
+													value={form.credentialName || undefined}
+													onValueChange={(v) =>
+														setForm({ ...form, credentialName: v ?? "" })
+													}
+												>
+													<SelectTrigger id="pol-cred">
+														<SelectValue placeholder="Select a secret" />
+													</SelectTrigger>
+													<SelectContent>
+														{credentialNames.map((n) => (
+															<SelectItem key={n} value={n}>
+																{n}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											</div>
+										) : (
+											<div className="space-y-1 border-l-2 border-muted-foreground/15 pl-3">
+												<Label htmlFor="pol-cred-expr">Name expression</Label>
+												<Input
+													id="pol-cred-expr"
+													value={form.credentialNameExpr}
+													placeholder={'request.headers["x-tenant-id"]'}
+													onChange={(e) =>
+														setForm({
+															...form,
+															credentialNameExpr: e.target.value,
+														})
+													}
+													className="font-mono text-sm"
+													required
+												/>
+												<p className="text-[11px] text-muted-foreground">
+													Example: When{" "}
+													<code>
+														{'("x-tenant-id" in request.headers)'}
+													</code>
+													, Then use{" "}
+													<code>
+														{'request.headers["x-tenant-id"]'}
+													</code>
+													.
+												</p>
+											</div>
+										)}
+									</div>
+								) : null}
 							</div>
-						) : null}
+						</div>
 					</section>
 
 					{showEnabled ? (
