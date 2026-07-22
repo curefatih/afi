@@ -24,6 +24,7 @@ func NewUsageQueries(pool *pgxpool.Pool) *UsageQueries {
 }
 
 func (q *UsageQueries) InsertRecord(ctx context.Context, e usage.Record) error {
+	e.UsedBYOK = e.CredentialID != ""
 	modality := usage.NormalizeModality(e.Modality)
 	metrics := e.Metrics
 	if metrics == nil {

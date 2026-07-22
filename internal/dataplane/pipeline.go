@@ -628,6 +628,8 @@ func (p *Pipeline) recordUsage(e UsageEvent) {
 		"organization_id", e.OrganizationID,
 		"project_id", e.ProjectID,
 		"api_key_id", e.APIKeyID,
+		"credential_id", e.CredentialID,
+		"used_byok", e.UsedBYOK,
 		"model", e.Model,
 		"provider_type", e.ProviderType,
 		"target_model", e.TargetModel,
