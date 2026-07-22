@@ -40,6 +40,15 @@ type Config struct {
 		WasmBeforeCall string `yaml:"wasm_before_call" env:"AFI_WASM_BEFORE_CALL"`
 		// WasmBeforeChat is an optional path to a TinyGo .wasm exporting before_chat.
 		WasmBeforeChat string `yaml:"wasm_before_chat" env:"AFI_WASM_BEFORE_CHAT"`
+		// WasmS3 is an optional S3-compatible store for module_uri values like s3://bucket/key.
+		WasmS3 struct {
+			Endpoint  string `yaml:"endpoint" env:"AFI_WASM_S3_ENDPOINT"`
+			AccessKey string `yaml:"access_key" env:"AFI_WASM_S3_ACCESS_KEY"`
+			SecretKey string `yaml:"secret_key" env:"AFI_WASM_S3_SECRET_KEY"`
+			Region    string `yaml:"region" env:"AFI_WASM_S3_REGION"`
+			UseSSL    bool   `yaml:"use_ssl" env:"AFI_WASM_S3_USE_SSL"`
+			PathStyle bool   `yaml:"path_style" env:"AFI_WASM_S3_PATH_STYLE"`
+		} `yaml:"wasm_s3"`
 	} `yaml:"gateway"`
 
 	Auth struct {
