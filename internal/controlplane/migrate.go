@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 12
+const schemaVersion = 13
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS platform_event_outbox CASCADE;
@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS organizations (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     mail_provider TEXT NOT NULL DEFAULT '',
+    byok_selector_header TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -162,7 +163,8 @@ CREATE TABLE IF NOT EXISTS provider_credentials (
     UNIQUE (organization_id, name),
     CONSTRAINT provider_credentials_storage_check CHECK (
         (storage_kind = 'env' AND secret_ref IS NOT NULL AND encrypted_payload IS NULL) OR
-        (storage_kind = 'encrypted_db' AND encrypted_payload IS NOT NULL AND secret_ref IS NULL)
+        (storage_kind = 'encrypted_db' AND encrypted_payload IS NOT NULL AND secret_ref IS NULL) OR
+        (storage_kind = 'vault' AND secret_ref IS NOT NULL AND encrypted_payload IS NULL)
     ),
     CONSTRAINT provider_credentials_status_check CHECK (status IN ('active', 'disabled'))
 );
@@ -177,7 +179,7 @@ CREATE TABLE IF NOT EXISTS credential_assignments (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_by TEXT,
     UNIQUE (scope_type, scope_id, provider_type),
-    CONSTRAINT credential_assignments_scope_check CHECK (scope_type IN ('organization', 'project'))
+    CONSTRAINT credential_assignments_scope_check CHECK (scope_type IN ('organization', 'project', 'api_key'))
 );
 
 CREATE TABLE IF NOT EXISTS routes (
@@ -202,6 +204,8 @@ CREATE TABLE IF NOT EXISTS usage_events (
     organization_id TEXT NOT NULL,
     project_id TEXT NOT NULL,
     api_key_id TEXT NOT NULL DEFAULT '',
+    credential_id TEXT,
+    used_byok BOOLEAN NOT NULL DEFAULT FALSE,
     model TEXT NOT NULL,
     status TEXT NOT NULL,
     latency_ms BIGINT NOT NULL DEFAULT 0,
@@ -259,6 +263,8 @@ CREATE TABLE IF NOT EXISTS request_policies (
     organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     expression TEXT NOT NULL,
+    action TEXT NOT NULL DEFAULT 'deny',
+    action_config JSONB NOT NULL DEFAULT '{}'::jsonb,
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
     priority INT NOT NULL DEFAULT 100,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -484,6 +490,8 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
 			name TEXT NOT NULL,
 			expression TEXT NOT NULL,
+			action TEXT NOT NULL DEFAULT 'deny',
+			action_config JSONB NOT NULL DEFAULT '{}'::jsonb,
 			enabled BOOLEAN NOT NULL DEFAULT TRUE,
 			priority INT NOT NULL DEFAULT 100,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -610,6 +618,75 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			ON wasm_hooks (organization_id, phase, priority DESC);
 	`); err != nil {
 		return fmt.Errorf("cycle19 wasm hooks: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS credential_id TEXT;
+		ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS used_byok BOOLEAN NOT NULL DEFAULT FALSE;
+		CREATE INDEX IF NOT EXISTS usage_events_org_byok_created
+			ON usage_events (organization_id, used_byok, created_at DESC);
+	`); err != nil {
+		return fmt.Errorf("cycle20 usage byok attribution: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE provider_credentials DROP CONSTRAINT IF EXISTS provider_credentials_storage_check;
+		ALTER TABLE provider_credentials ADD CONSTRAINT provider_credentials_storage_check CHECK (
+			(storage_kind = 'env' AND secret_ref IS NOT NULL AND encrypted_payload IS NULL) OR
+			(storage_kind = 'encrypted_db' AND encrypted_payload IS NOT NULL AND secret_ref IS NULL) OR
+			(storage_kind = 'vault' AND secret_ref IS NOT NULL AND encrypted_payload IS NULL)
+		);
+		ALTER TABLE credential_assignments DROP CONSTRAINT IF EXISTS credential_assignments_scope_check;
+		ALTER TABLE credential_assignments ADD CONSTRAINT credential_assignments_scope_check CHECK (
+			scope_type IN ('organization', 'project', 'api_key')
+		);
+	`); err != nil {
+		return fmt.Errorf("cycle21 vault credentials and api_key scope: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE organizations ADD COLUMN IF NOT EXISTS byok_selector_header TEXT NOT NULL DEFAULT '';
+	`); err != nil {
+		return fmt.Errorf("cycle22 byok selector header: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE request_policies ADD COLUMN IF NOT EXISTS credential_name TEXT NOT NULL DEFAULT '';
+	`); err != nil {
+		return fmt.Errorf("cycle23 policy credential_name: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE request_policies ADD COLUMN IF NOT EXISTS action TEXT NOT NULL DEFAULT 'deny';
+		ALTER TABLE request_policies ADD COLUMN IF NOT EXISTS action_config JSONB NOT NULL DEFAULT '{}'::jsonb;
+	`); err != nil {
+		return fmt.Errorf("cycle24 policy action columns: %w", err)
+	}
+
+	// One-time: credential_name → use_credential; legacy allow-gates → deny with inverted WHEN.
+	var hasV13 bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM afi_schema_meta WHERE version = 13)`).Scan(&hasV13); err != nil {
+		return err
+	}
+	if !hasV13 {
+		if _, err := pool.Exec(ctx, `
+			UPDATE request_policies
+			SET action = 'use_credential',
+			    action_config = jsonb_build_object('credential_name', credential_name)
+			WHERE COALESCE(credential_name, '') <> ''
+			  AND action = 'deny'
+			  AND action_config = '{}'::jsonb;
+
+			UPDATE request_policies
+			SET expression = '!(' || expression || ')',
+			    action = 'deny',
+			    action_config = '{}'::jsonb
+			WHERE COALESCE(credential_name, '') = ''
+			  AND action = 'deny'
+			  AND action_config = '{}'::jsonb;
+		`); err != nil {
+			return fmt.Errorf("cycle24 policy when/then data migrate: %w", err)
+		}
 	}
 	return nil
 }

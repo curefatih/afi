@@ -545,12 +545,12 @@ func (s *Store) ListPolicies(ctx context.Context, orgID string) ([]RequestPolicy
 	return s.policies().ListByOrg(ctx, orgID)
 }
 
-func (s *Store) CreatePolicy(ctx context.Context, orgID, name, expression string, enabled bool, priority int) (*RequestPolicy, error) {
-	return gatewayconfig.CreatePolicy(ctx, s.policies(), celValidator{}, newID("pol"), orgID, name, expression, enabled, priority)
+func (s *Store) CreatePolicy(ctx context.Context, orgID, name, expression, action string, actionConfig []byte, enabled bool, priority int) (*RequestPolicy, error) {
+	return gatewayconfig.CreatePolicy(ctx, s.policies(), celValidator{}, newID("pol"), orgID, name, expression, action, actionConfig, enabled, priority)
 }
 
-func (s *Store) UpdatePolicy(ctx context.Context, policyID string, name, expression *string, enabled *bool, priority *int) (*RequestPolicy, error) {
-	return gatewayconfig.UpdatePolicy(ctx, s.policies(), celValidator{}, policyID, name, expression, enabled, priority)
+func (s *Store) UpdatePolicy(ctx context.Context, policyID string, name, expression, action *string, actionConfig []byte, enabled *bool, priority *int) (*RequestPolicy, error) {
+	return gatewayconfig.UpdatePolicy(ctx, s.policies(), celValidator{}, policyID, name, expression, action, actionConfig, enabled, priority)
 }
 
 func (s *Store) ReorderPolicies(ctx context.Context, orgID string, items []gatewayconfig.PolicyPriorityUpdate) error {

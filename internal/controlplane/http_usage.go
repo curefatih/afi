@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/curefatih/afi/internal/kernel"
@@ -14,12 +15,18 @@ func parseUsageFilter(r *http.Request) (UsageFilter, error) {
 	q := r.URL.Query()
 	limit, _ := strconv.Atoi(q.Get("limit"))
 	f := UsageFilter{
-		Limit:     limit,
-		ProjectID: q.Get("project_id"),
-		APIKeyID:  q.Get("api_key_id"),
-		Model:     q.Get("model"),
-		Modality:  q.Get("modality"),
-		GroupBy:   q.Get("group_by"),
+		Limit:        limit,
+		ProjectID:    q.Get("project_id"),
+		APIKeyID:     q.Get("api_key_id"),
+		CredentialID: q.Get("credential_id"),
+		Model:        q.Get("model"),
+		Modality:     q.Get("modality"),
+		GroupBy:      q.Get("group_by"),
+		ExcludeBYOK:  q.Get("exclude_byok") == "1" || strings.EqualFold(q.Get("exclude_byok"), "true"),
+		BYOKOnly:     q.Get("byok_only") == "1" || strings.EqualFold(q.Get("byok_only"), "true"),
+	}
+	if f.ExcludeBYOK && f.BYOKOnly {
+		return f, fmt.Errorf("%w: exclude_byok and byok_only are mutually exclusive", kernel.ErrInvalidRequest)
 	}
 	if v := q.Get("from"); v != "" {
 		t, err := time.Parse(time.RFC3339, v)

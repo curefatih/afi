@@ -23,10 +23,12 @@ func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCreatePolicy(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Name       string `json:"name"`
-		Expression string `json:"expression"`
-		Enabled    *bool  `json:"enabled"`
-		Priority   *int   `json:"priority"`
+		Name         string          `json:"name"`
+		Expression   string          `json:"expression"`
+		Action       string          `json:"action"`
+		ActionConfig json.RawMessage `json:"action_config"`
+		Enabled      *bool           `json:"enabled"`
+		Priority     *int            `json:"priority"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" || body.Expression == "" {
 		writeErr(w, http.StatusBadRequest, "name and expression required")
@@ -40,7 +42,7 @@ func (s *Server) handleCreatePolicy(w http.ResponseWriter, r *http.Request) {
 	if body.Priority != nil {
 		priority = *body.Priority
 	}
-	p, err := s.app.CreatePolicy(r.Context(), r.PathValue("orgID"), body.Name, body.Expression, enabled, priority)
+	p, err := s.app.CreatePolicy(r.Context(), r.PathValue("orgID"), body.Name, body.Expression, body.Action, body.ActionConfig, enabled, priority)
 	if errors.Is(err, kernel.ErrInvalidRequest) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
@@ -54,20 +56,22 @@ func (s *Server) handleCreatePolicy(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleUpdatePolicy(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Name       *string `json:"name"`
-		Expression *string `json:"expression"`
-		Enabled    *bool   `json:"enabled"`
-		Priority   *int    `json:"priority"`
+		Name         *string         `json:"name"`
+		Expression   *string         `json:"expression"`
+		Action       *string         `json:"action"`
+		ActionConfig json.RawMessage `json:"action_config"`
+		Enabled      *bool           `json:"enabled"`
+		Priority     *int            `json:"priority"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	if body.Name == nil && body.Expression == nil && body.Enabled == nil && body.Priority == nil {
+	if body.Name == nil && body.Expression == nil && body.Action == nil && body.ActionConfig == nil && body.Enabled == nil && body.Priority == nil {
 		writeErr(w, http.StatusBadRequest, "at least one field required")
 		return
 	}
-	p, err := s.app.UpdatePolicy(r.Context(), r.PathValue("policyID"), body.Name, body.Expression, body.Enabled, body.Priority)
+	p, err := s.app.UpdatePolicy(r.Context(), r.PathValue("policyID"), body.Name, body.Expression, body.Action, body.ActionConfig, body.Enabled, body.Priority)
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
