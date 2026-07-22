@@ -87,7 +87,7 @@ Written on first control-plane start (or `make seed`):
 | Seeded providers | `prov_openai`, `prov_anthropic`, `prov_gemini`, `prov_ollama` (`openai_compatible` → `http://127.0.0.1:11434/v1`, no default route) |
 | `OLLAMA_API_KEY` | _(any value if Ollama ignores auth)_ | gateway → openai_compatible |
 | Route `fallbacks` | optional ordered `[{provider_id,target_model}]` for 5xx/timeout/429 failover |
-| Route `retry` | optional `{max_attempts,backoff:{strategy,base_delay,max_delay?,multiplier?}}` — `fixed` or `exponential` same-target retries (stored in snapshot; dataplane does not apply yet) |
+| Route `retry` | optional `{max_attempts,backoff:{strategy,base_delay,max_delay?,multiplier?}}` — `fixed` or `exponential` same-target retries before `fallbacks` (5xx/timeout/429) |
 | Gateway models | `GET /v1/models` lists org route model ids (`supports_streaming` / `supports_tts` / `supports_stt`) |
 | Gateway audio | `POST /v1/audio/speech`, `POST /v1/audio/transcriptions` (openai / openai_compatible) |
 
@@ -184,7 +184,7 @@ Optional same-target retry before ordered `fallbacks` failover. Create/update vi
 
 `fixed` rejects `max_delay` / `multiplier`. Delay before retry index `n` (0 = first retry): fixed → `base_delay`; exponential → `min(base_delay * multiplier^n, max_delay)`.
 
-Compiled into the gateway snapshot. **Dataplane does not apply retries yet** (failover still runs immediately on 5xx/timeout/429).
+Compiled into the gateway snapshot. On chat (`/v1/chat/completions`) and Anthropic messages (`/v1/messages`), the gateway retries the same target up to `max_attempts` with the configured backoff on transport errors, HTTP 5xx, and 429, then walks ordered `fallbacks`.
 
 ### CEL policies
 

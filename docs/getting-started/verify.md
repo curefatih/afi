@@ -111,7 +111,7 @@ curl -sN http://localhost:8080/v1/chat/completions \
   -d '{"model":"gemini-flash","stream":true,"messages":[{"role":"user","content":"ping"}]}'
 ```
 
-Failover: set `"fallbacks":[{"provider_id":"prov_anthropic","target_model":"claude-sonnet-4-20250514"}]` on an OpenAI primary route to fail over on 5xx/timeout/429. Optional same-target `"retry":{"max_attempts":3,"backoff":{"strategy":"fixed","base_delay":"100ms"}}` is accepted and stored in the snapshot (gateway does not sleep/retry yet).
+Failover: set `"fallbacks":[{"provider_id":"prov_anthropic","target_model":"claude-sonnet-4-20250514"}]` on an OpenAI primary route to fail over on 5xx/timeout/429. Optional same-target `"retry":{"max_attempts":3,"backoff":{"strategy":"fixed","base_delay":"100ms"}}` retries the primary that many times (with backoff) before walking fallbacks.
 
 ## TTS / STT (OpenAI)
 
