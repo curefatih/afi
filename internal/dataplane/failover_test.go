@@ -203,6 +203,65 @@ func TestRetryExhaustedThenFailover(t *testing.T) {
 	}
 }
 
+func TestRetryUsesOrgDefaultWhenRouteUnset(t *testing.T) {
+	var primaryHits atomic.Int32
+	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := primaryHits.Add(1)
+		if n < 2 {
+			http.Error(w, "boom", http.StatusInternalServerError)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "chatcmpl-ok",
+			"choices": []map[string]any{
+				{"message": map[string]string{"role": "assistant", "content": "org-default-retry"}},
+			},
+			"usage": map[string]int{"prompt_tokens": 1, "completion_tokens": 1},
+		})
+	}))
+	defer primary.Close()
+
+	t.Setenv("OPENAI_API_KEY", "k")
+
+	holder := NewHolder()
+	holder.Set(snapshot.Compile(snapshot.Source{
+		APIKeys: []snapshot.APIKey{{
+			ID: "key1", KeyHash: snapshot.HashKey("sk-good"), ProjectID: "p1", OrganizationID: "o1",
+		}},
+		Providers: []snapshot.Provider{
+			{ID: "prov_a", Type: "openai", BaseURL: primary.URL, APIKeyEnv: "OPENAI_API_KEY"},
+		},
+		Routes: []snapshot.Route{{
+			OrganizationID: "o1", Model: "m1", ProviderID: "prov_a", TargetModel: "m1",
+		}},
+		DefaultRetries: map[string]*snapshot.RetryConfig{
+			"o1": {
+				MaxAttempts: 2,
+				Backoff:     snapshot.BackoffConfig{Strategy: snapshot.BackoffFixed, BaseDelay: "1ms"},
+			},
+		},
+	}))
+
+	client := llm.NewOpenAIClient(nil)
+	client.HTTP = primary.Client()
+	p := NewPipeline(holder, RegistryWithOpenAI(client), slog.Default())
+
+	body := `{"model":"m1","messages":[{"role":"user","content":"hi"}]}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(body))
+	req.Header.Set("Authorization", "Bearer sk-good")
+	rr := httptest.NewRecorder()
+	p.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if !bytes.Contains(rr.Body.Bytes(), []byte("org-default-retry")) {
+		t.Fatalf("body=%s", rr.Body.String())
+	}
+	if primaryHits.Load() != 2 {
+		t.Fatalf("primary hits=%d want 2", primaryHits.Load())
+	}
+}
+
 func TestRetrySkippedOn400(t *testing.T) {
 	var primaryHits atomic.Int32
 	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

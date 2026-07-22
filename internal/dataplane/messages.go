@@ -88,12 +88,13 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	retryCfg := snap.ResolveRetry(route)
 	log.Info("messages",
 		"project_id", key.ProjectID,
 		"model", reqBody.Model,
 		"provider", attempts[0].Provider.ID,
 		"fallbacks", len(route.Fallbacks),
-		"retry_max_attempts", maxTriesFor(route.Retry),
+		"retry_max_attempts", maxTriesFor(retryCfg),
 		"stream", reqBody.Stream,
 		"snapshot_version", snap.Version,
 	)
@@ -107,12 +108,12 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 		status           = "ok"
 	)
 
-	maxTries := maxTriesFor(route.Retry)
+	maxTries := maxTriesFor(retryCfg)
 targetLoop:
 	for i, attempt := range attempts {
 		for try := 0; try < maxTries; try++ {
 			if try > 0 {
-				if sleepErr := sleepBeforeRetry(ctx, route.Retry, try-1); sleepErr != nil {
+				if sleepErr := sleepBeforeRetry(ctx, retryCfg, try-1); sleepErr != nil {
 					lastErr = sleepErr
 					discardResponse(resp)
 					resp = nil

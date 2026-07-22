@@ -204,13 +204,14 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 	}
 	call.Body = body
 
+	retryCfg := snap.ResolveRetry(route)
 	log.Info("chat.completions",
 		"project_id", key.ProjectID,
 		"model", reqBody.Model,
 		"target_model", route.TargetModel,
 		"provider", provider.ID,
 		"fallbacks", len(route.Fallbacks),
-		"retry_max_attempts", maxTriesFor(route.Retry),
+		"retry_max_attempts", maxTriesFor(retryCfg),
 		"stream", reqBody.Stream,
 		"snapshot_version", snap.Version,
 	)
@@ -226,12 +227,12 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		status           = "ok"
 	)
 
-	maxTries := maxTriesFor(route.Retry)
+	maxTries := maxTriesFor(retryCfg)
 targetLoop:
 	for i, attempt := range attempts {
 		for try := 0; try < maxTries; try++ {
 			if try > 0 {
-				if sleepErr := sleepBeforeRetry(ctx, route.Retry, try-1); sleepErr != nil {
+				if sleepErr := sleepBeforeRetry(ctx, retryCfg, try-1); sleepErr != nil {
 					lastErr = sleepErr
 					discardResponse(resp)
 					resp = nil
