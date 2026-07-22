@@ -91,6 +91,22 @@ func main() {
 	pipeline.Hooks = hooks
 	wasmCache := afiWasm.NewModuleCache(afiWasm.Config{Name: "snap-wasm"})
 	defer func() { _ = wasmCache.Close(context.Background()) }()
+	s3Fetcher, err := afiWasm.NewS3Fetcher(afiWasm.S3Config{
+		Endpoint:  cfg.Gateway.WasmS3.Endpoint,
+		AccessKey: cfg.Gateway.WasmS3.AccessKey,
+		SecretKey: cfg.Gateway.WasmS3.SecretKey,
+		Region:    cfg.Gateway.WasmS3.Region,
+		UseSSL:    cfg.Gateway.WasmS3.UseSSL,
+		PathStyle: cfg.Gateway.WasmS3.PathStyle,
+	})
+	if err != nil {
+		log.Error("wasm s3", "err", err)
+		os.Exit(1)
+	}
+	if s3Fetcher != nil {
+		wasmCache.SetFetcher(s3Fetcher)
+		log.Info("wasm s3 fetcher enabled", "endpoint", cfg.Gateway.WasmS3.Endpoint)
+	}
 	pipeline.Wasm = &dataplane.WasmRunner{Cache: wasmCache, Log: log}
 	var credBox *credentials.Box
 	if cfg.Credentials.MasterKey != "" {

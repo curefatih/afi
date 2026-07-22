@@ -39,22 +39,26 @@ type route struct {
 }
 
 type beforeCallIn struct {
-	Principal principal         `json:"principal"`
-	Route     route             `json:"route"`
-	Tags      map[string]string `json:"tags"`
-	Metadata  map[string]any    `json:"metadata"`
-	BodyB64   string            `json:"body_b64"`
+	Principal       principal         `json:"principal"`
+	Route           route             `json:"route"`
+	Tags            map[string]string `json:"tags"`
+	Metadata        map[string]any    `json:"metadata"`
+	BodyB64         string            `json:"body_b64"`
+	RequestHeaders  map[string]string `json:"request_headers"`
+	ResponseHeaders map[string]string `json:"response_headers"`
 }
 
 type beforeCallOut struct {
-	Allow    bool              `json:"allow"`
-	Status   int               `json:"status,omitempty"`
-	Reason   string            `json:"reason,omitempty"`
-	Message  string            `json:"message,omitempty"`
-	Headers  map[string]string `json:"headers,omitempty"`
-	Tags     map[string]string `json:"tags,omitempty"`
-	Metadata map[string]any    `json:"metadata,omitempty"`
-	BodyB64  *string           `json:"body_b64,omitempty"`
+	Allow           bool              `json:"allow"`
+	Status          int               `json:"status,omitempty"`
+	Reason          string            `json:"reason,omitempty"`
+	Message         string            `json:"message,omitempty"`
+	Headers         map[string]string `json:"headers,omitempty"`
+	Tags            map[string]string `json:"tags,omitempty"`
+	Metadata        map[string]any    `json:"metadata,omitempty"`
+	BodyB64         *string           `json:"body_b64,omitempty"`
+	RequestHeaders  map[string]string `json:"request_headers,omitempty"`
+	ResponseHeaders map[string]string `json:"response_headers,omitempty"`
 }
 
 type beforeChatIn struct {
@@ -94,10 +98,15 @@ func _before_call(ptr, size uint32) uint64 {
 		})
 	}
 	req.Metadata["wasm_hook"] = "1"
+	if req.ResponseHeaders == nil {
+		req.ResponseHeaders = map[string]string{}
+	}
+	req.ResponseHeaders["X-AFI-Wasm"] = "1"
 	return leakJSON(beforeCallOut{
-		Allow:    true,
-		Tags:     req.Tags,
-		Metadata: req.Metadata,
+		Allow:           true,
+		Tags:            req.Tags,
+		Metadata:        req.Metadata,
+		ResponseHeaders: req.ResponseHeaders,
 	})
 }
 
