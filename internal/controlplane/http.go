@@ -109,6 +109,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PATCH /api/v1/platform/policies/{policyID}", s.requireAuth(s.requireOrgAdminViaPolicy(s.handleUpdatePolicy)))
 	mux.HandleFunc("DELETE /api/v1/platform/policies/{policyID}", s.requireAuth(s.requireOrgAdminViaPolicy(s.handleDeletePolicy)))
 
+	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/wasm-hooks", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListWasmHooks)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/wasm-hooks", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateWasmHook)))
+	mux.HandleFunc("PATCH /api/v1/platform/wasm-hooks/{hookID}", s.requireAuth(s.requireOrgAdminViaWasmHook(s.handleUpdateWasmHook)))
+	mux.HandleFunc("DELETE /api/v1/platform/wasm-hooks/{hookID}", s.requireAuth(s.requireOrgAdminViaWasmHook(s.handleDeleteWasmHook)))
+
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/credentials", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListCredentials)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/credentials", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateCredential)))
 	mux.HandleFunc("PATCH /api/v1/platform/credentials/{credentialID}", s.requireAuth(s.requireOrgAdminViaCredential(s.handleUpdateCredential)))

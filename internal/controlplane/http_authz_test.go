@@ -141,6 +141,13 @@ func (f *fakeMembers) GetPolicyOrgID(_ context.Context, policyID string) (string
 	return "", kernel.ErrNotFound
 }
 
+func (f *fakeMembers) GetWasmHookOrgID(_ context.Context, hookID string) (string, error) {
+	if hookID == "wasm_ok" {
+		return "org_a", nil
+	}
+	return "", kernel.ErrNotFound
+}
+
 func (f *fakeMembers) GetCredentialOrgID(_ context.Context, credentialID string) (string, error) {
 	if credentialID == "cred_ok" {
 		return "org_a", nil
@@ -294,6 +301,16 @@ func (f *fakePlatform) ReorderPolicies(context.Context, string, []gatewayconfig.
 	return nil
 }
 func (f *fakePlatform) DeletePolicy(context.Context, string) error { return nil }
+func (f *fakePlatform) ListWasmHooks(context.Context, string) ([]WasmHook, error) {
+	return nil, nil
+}
+func (f *fakePlatform) CreateWasmHook(context.Context, string, string, string, string, string, bool, int, []byte) (*WasmHook, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) UpdateWasmHook(context.Context, string, *string, *string, *string, *string, *bool, *int, []byte) (*WasmHook, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) DeleteWasmHook(context.Context, string) error { return nil }
 func (f *fakePlatform) ListCredentials(context.Context, string) ([]Credential, error) {
 	return nil, nil
 }

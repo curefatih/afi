@@ -1,6 +1,9 @@
 package snapshot
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // Snapshot is an immutable compiled gateway configuration.
 const (
@@ -39,7 +42,28 @@ type Snapshot struct {
 	Assignments map[string]string     `json:"assignments"` // providerType::scopeType::scopeID → credential id
 	Quotas      []Quota               `json:"quotas"`
 	Policies    []Policy              `json:"policies"`
+	WasmHooks   []WasmHook            `json:"wasm_hooks"`
 }
+
+// WasmHook is a compiled sandboxed lifecycle binding for the gateway.
+type WasmHook struct {
+	ID             string          `json:"id"`
+	OrganizationID string          `json:"organization_id"`
+	Name           string          `json:"name"`
+	Phase          string          `json:"phase"` // before_call | before_chat | after_call
+	ModuleURI      string          `json:"module_uri"`
+	Digest         string          `json:"digest,omitempty"` // sha256 hex; empty skips verify
+	Enabled        bool            `json:"enabled"`
+	Priority       int             `json:"priority"`
+	Config         json.RawMessage `json:"config,omitempty"`
+}
+
+// Wasm hook phases in the compiled snapshot.
+const (
+	WasmPhaseBeforeCall = "before_call"
+	WasmPhaseBeforeChat = "before_chat"
+	WasmPhaseAfterCall  = "after_call"
+)
 
 // Credential is a compiled upstream secret reference (never plaintext for encrypted_db).
 type Credential struct {

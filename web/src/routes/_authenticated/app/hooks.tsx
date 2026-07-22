@@ -73,7 +73,7 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Hooks"
-				description="In-process BeforeCall / AfterCall / BeforeChat / AfterChat hooks registered in cmd/gateway at startup. gRPC/WASM runtimes are not shipped yet."
+				description="BeforeCall / AfterCall / BeforeChat / AfterChat hooks registered in cmd/gateway (Go and optional WASM via AFI_WASM_BEFORE_CALL / AFI_WASM_BEFORE_CHAT). gRPC runtimes are not shipped yet."
 			/>
 			<QueryGate
 				isPending={health.isPending}

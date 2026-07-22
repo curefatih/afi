@@ -46,9 +46,18 @@ Seeded demo: [`extensions/demohook`](../../extensions/demohook) prefixes the las
 
 Provider adapters use [`sdk/provider`](../../sdk/provider) + `Registry.RegisterSDK` (see [`extensions/echo`](../../extensions/echo)). Lifecycle types live in [`sdk/hook`](../../sdk/hook).
 
+## WASM (data plane)
+
+Sandboxed TinyGo modules via [`internal/adapters/wasm`](../../internal/adapters/wasm):
+
+* **Env:** `AFI_WASM_BEFORE_CALL` / `AFI_WASM_BEFORE_CHAT` (process-global)
+* **Control plane:** org `wasm-hooks` API → snapshot → gateway module cache (URI + optional SHA-256 digest)
+
+Guest ABI, limits, pooling benchmarks: [wasm.md](wasm.md). Example: [`extensions/wasmhook`](../../extensions/wasmhook).
+
 ## Future
 
 * gRPC extensions — providers, auth, secrets, notifications, remote BeforeCall
-* WASM extensions — prompt/header mutation, PII masking, enrichment
+* Remote / HTTP-backed WASM artifact stores (beyond local `file://` paths)
 
 Redis rate limits and CEL request policies remain available via the built-in BeforeCall gates (see Quotas / Policies in the platform UI).

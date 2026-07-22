@@ -34,6 +34,11 @@ type CallContext struct {
 	Tags      map[string]string
 	Metadata  map[string]any
 	Body      []byte
+	// RequestHeaders are applied to the upstream provider HTTP request after BeforeCall.
+	// Keys are canonicalized with http.CanonicalHeaderKey when applied.
+	RequestHeaders map[string]string
+	// ResponseHeaders are merged onto the client HTTP response (allow and deny paths).
+	ResponseHeaders map[string]string
 }
 
 // CallDecision is returned by BeforeCall. Allow=false stops the request.

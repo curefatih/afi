@@ -22,6 +22,7 @@ internal/
 │   ├── redis/        # Timed quota CounterStore
 │   ├── llm/          # OpenAI / Anthropic / Gemini HTTP clients
 │   ├── secrets/      # SecretResolver (env today)
+│   ├── wasm/         # wazero host for TinyGo lifecycle hooks
 │   ├── natsjs/       # JetStream platform-event publisher
 │   ├── kafka/        # Kafka platform-event publisher
 │   ├── logpub/       # Log stand-in publisher
@@ -33,8 +34,9 @@ internal/
 ├── workers/          # Usage + platform-event ProcessOnce
 └── shared/           # Placeholder
 
-extensions/           # In-process examples (echo provider, demohook); gRPC/WASM later
+extensions/           # Examples: echo, demohook, tagquota, wasmhook (TinyGo .wasm)
 sdk/provider/         # Documented ChatProvider contract
+sdk/hook/             # Lifecycle hook contracts (Go + WASM ABI docs)
 api/                  # Public API contracts (future)
 web/                  # Platform UI (TanStack / Vite)
 configs/              # Local/dev defaults

@@ -71,6 +71,11 @@ type ConfigAPI interface {
 	ReorderPolicies(ctx context.Context, orgID string, items []gatewayconfig.PolicyPriorityUpdate) error
 	DeletePolicy(ctx context.Context, policyID string) error
 
+	ListWasmHooks(ctx context.Context, orgID string) ([]gatewayconfig.WasmHook, error)
+	CreateWasmHook(ctx context.Context, orgID, name, phase, moduleURI, digest string, enabled bool, priority int, config []byte) (*gatewayconfig.WasmHook, error)
+	UpdateWasmHook(ctx context.Context, id string, name, phase, moduleURI, digest *string, enabled *bool, priority *int, config []byte) (*gatewayconfig.WasmHook, error)
+	DeleteWasmHook(ctx context.Context, id string) error
+
 	ListCredentials(ctx context.Context, orgID string) ([]credentials.Credential, error)
 	CreateCredential(ctx context.Context, orgID, name, providerType, storageKind, secretRef, secretValue string) (*credentials.Credential, error)
 	UpdateCredential(ctx context.Context, credentialID, name, status string) (*credentials.Credential, error)

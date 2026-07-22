@@ -95,6 +95,10 @@ func (s *Service) ListPolicies(ctx context.Context, orgID string) ([]gatewayconf
 	return s.API.ListPolicies(ctx, orgID)
 }
 
+func (s *Service) ListWasmHooks(ctx context.Context, orgID string) ([]gatewayconfig.WasmHook, error) {
+	return s.API.ListWasmHooks(ctx, orgID)
+}
+
 func (s *Service) ListCredentials(ctx context.Context, orgID string) ([]credentials.Credential, error) {
 	return s.API.ListCredentials(ctx, orgID)
 }

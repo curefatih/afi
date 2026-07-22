@@ -13,7 +13,7 @@ AFI separates **control plane** and **data plane**.
 
 ## Control plane
 
-Uses pragmatic domain packages (full DDD bounded contexts grow over time).
+Uses pragmatic domain packages.
 
 Responsibilities today:
 
@@ -26,7 +26,7 @@ Responsibilities today:
 
 ## Data plane
 
-Implemented as a **request pipeline**, not DDD:
+Implemented as a **request pipeline**:
 
 ```mermaid
 flowchart TD
@@ -82,9 +82,10 @@ In-process registration is live:
 
 * **Providers** — `sdk/provider.ChatProvider` via `Registry.RegisterSDK` (example: `extensions/echo`)
 * **Hooks** — `BeforeCall` / `AfterCall` (all modalities) plus `BeforeChat` / `AfterChat`; tags via `X-AFI-Tags` (`extensions/demohook`; example-only tag limits in `extensions/tagquota`)
+* **WASM hooks** — sandboxed TinyGo guests via `internal/adapters/wasm` + org `wasm_hooks` in the snapshot (`AFI_WASM_*` env still works for demos). See [WASM hooks](../hooks/wasm.md).
 * **Provider health** — control-plane rollup from `usage_events` for Providers UI
 
-gRPC / WASM plugin runtimes, billing invoices, external HashiCorp Vault, and multi-region snapshot distribution remain future work.
+Control-plane WASM hook bindings are available; gRPC plugin runtimes, billing invoices, external HashiCorp Vault, and multi-region snapshot distribution remain future work.
 
 **Shipped governance:**
 

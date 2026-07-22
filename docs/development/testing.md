@@ -20,6 +20,16 @@ Covered areas:
 * Publish error surfaced on create project
 * Migrate wipe policy (version bumps never wipe)
 
+### WASM vs native hook benchmarks
+
+```bash
+go test ./internal/adapters/wasm/ \
+  -bench='BenchmarkBefore(Call|Chat)_(Native|WASM)' \
+  -benchmem -count=5 -benchtime=300ms
+```
+
+Compares in-process Go hooks to TinyGo WASM with **instance pooling** (and `WASM_NoPool` for the old per-call instantiate path). See [WASM hooks — Performance](../hooks/wasm.md#performance-wasm-vs-native-go).
+
 ## Automated local verify
 
 With Postgres + control plane + gateway already running:

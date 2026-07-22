@@ -57,7 +57,7 @@ Expect assistant content containing `echo:` (and `[hook:demo]` if the demo Befor
 
 ## Hooks (in-process)
 
-`BeforeCall` / `AfterCall` run on all modalities; `ChatHook.BeforeChat` / `AfterChatHook.AfterChat` remain for chat body mutation. Register via `dataplane.NewHookChain().RegisterHook(...)` / `RegisterBeforeCall` (see `extensions/demohook`). Gateway `/healthz` lists hook objects with `before_call` / `after_call` / `before_chat` / `after_chat`. `extensions/tagquota` is an example-only BeforeCall sample for per-tag limits (not registered by default). Full gRPC/WASM plugin runtimes remain future work.
+`BeforeCall` / `AfterCall` run on all modalities; `ChatHook.BeforeChat` / `AfterChatHook.AfterChat` remain for chat body mutation. Register via `dataplane.NewHookChain().RegisterHook(...)` / `RegisterBeforeCall` (see `extensions/demohook`). Gateway `/healthz` lists hook objects with `before_call` / `after_call` / `before_chat` / `after_chat`. `extensions/tagquota` is an example-only BeforeCall sample for per-tag limits (not registered by default). WASM hooks: set `AFI_WASM_BEFORE_CALL` / `AFI_WASM_BEFORE_CHAT` (see [WASM hooks](../hooks/wasm.md)). gRPC plugin runtimes remain future work.
 
 ## Example: local Ollama
 

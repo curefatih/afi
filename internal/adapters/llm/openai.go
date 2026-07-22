@@ -78,6 +78,7 @@ func (c *OpenAIClient) ChatCompletions(ctx context.Context, provider snapshot.Pr
 	if stream {
 		req.Header.Set("Accept", "text/event-stream")
 	}
+	applyExtraHeaders(ctx, req)
 
 	return c.HTTP.Do(req)
 }
@@ -103,6 +104,7 @@ func (c *OpenAIClient) AudioSpeech(ctx context.Context, provider snapshot.Provid
 	}
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
+	applyExtraHeaders(ctx, req)
 	return c.HTTP.Do(req)
 }
 
@@ -122,5 +124,6 @@ func (c *OpenAIClient) AudioTranscriptions(ctx context.Context, provider snapsho
 	}
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", newCT)
+	applyExtraHeaders(ctx, req)
 	return c.HTTP.Do(req)
 }

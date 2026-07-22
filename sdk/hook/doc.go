@@ -1,10 +1,8 @@
-// Package hook is the stable lifecycle API for in-process gateway extensions.
+// Package hook is the stable lifecycle API for gateway extensions.
 //
-// Register implementations on the dataplane HookChain from cmd/gateway:
-//
-//	hooks := dataplane.NewHookChain().
-//	    RegisterHook(demohook.New()).
-//	    RegisterBeforeCall(myBeforeCall)
+// In-process Go hooks register on the dataplane HookChain from cmd/gateway.
+// Sandboxed WASM guests use the same semantics via internal/adapters/wasm
+// (see docs/hooks/wasm.md); they do not import this package.
 //
 // BeforeCall receives a mutable CallContext (principal, route, tags, metadata, body)
 // and may allow, enrich, or deny. AfterCall runs after the provider attempt.

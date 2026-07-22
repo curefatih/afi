@@ -23,6 +23,7 @@ type membershipChecker interface {
 	GetRouteOrgID(ctx context.Context, routeID string) (string, error)
 	GetQuotaOrgID(ctx context.Context, quotaID string) (string, error)
 	GetPolicyOrgID(ctx context.Context, policyID string) (string, error)
+	GetWasmHookOrgID(ctx context.Context, hookID string) (string, error)
 	GetAPIKeyOrgID(ctx context.Context, keyID string) (string, error)
 	GetCredentialOrgID(ctx context.Context, credentialID string) (string, error)
 	GetCredentialAssignmentOrgID(ctx context.Context, assignmentID string) (string, error)

@@ -36,6 +36,7 @@ nav:
       - Testing: development/testing.md
   - Concepts:
       - Plugins (hooks): hooks/usage.md
+      - WASM hooks: hooks/wasm.md
   - Deployment:
       - Overview: deployment.md
       - Customization: deployment/customization.md

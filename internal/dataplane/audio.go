@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/curefatih/afi/internal/adapters/llm"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
 )
@@ -139,7 +140,7 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	resp, err := client.AudioSpeech(ctx, bound, route.TargetModel, body)
+	resp, err := client.AudioSpeech(llm.WithExtraHeaders(ctx, call.RequestHeaders), bound, route.TargetModel, body)
 	status := "ok"
 	if err != nil {
 		log.Error("audio speech upstream", "err", err)
@@ -153,7 +154,7 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			Modality: ModalityTTS, Metrics: ttsMetrics, Tags: cloneTags(call.Tags),
 		})
-		p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+		p.runAfterCall(ctx, snap, call, AfterCallInfo{
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			ProviderType: bound.Type, TargetModel: route.TargetModel,
 		})
@@ -163,6 +164,7 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 	if resp.StatusCode >= 400 {
 		status = "error"
 	}
+	applyResponseHeaders(w, call)
 	if err := CopyResponse(w, resp); err != nil {
 		log.Error("copy speech response", "err", err)
 		status = "error"
@@ -173,7 +175,7 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		Modality: ModalityTTS, Metrics: ttsMetrics, Tags: cloneTags(call.Tags),
 	})
-	p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+	p.runAfterCall(ctx, snap, call, AfterCallInfo{
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		ProviderType: bound.Type, TargetModel: route.TargetModel,
 	})
@@ -271,7 +273,7 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 		})
 		return
 	}
-	resp, err := client.AudioTranscriptions(ctx, bound, route.TargetModel, ct, bytes.NewReader(body))
+	resp, err := client.AudioTranscriptions(llm.WithExtraHeaders(ctx, call.RequestHeaders), bound, route.TargetModel, ct, bytes.NewReader(body))
 	status := "ok"
 	if err != nil {
 		log.Error("audio transcriptions upstream", "err", err)
@@ -285,7 +287,7 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			Modality: ModalitySTT, Tags: cloneTags(call.Tags),
 		})
-		p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+		p.runAfterCall(ctx, snap, call, AfterCallInfo{
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			ProviderType: bound.Type, TargetModel: route.TargetModel,
 		})
@@ -295,6 +297,7 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 	if resp.StatusCode >= 400 {
 		status = "error"
 	}
+	applyResponseHeaders(w, call)
 	if err := CopyResponse(w, resp); err != nil {
 		log.Error("copy transcription response", "err", err)
 		status = "error"
@@ -305,7 +308,7 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		Modality: ModalitySTT, Tags: cloneTags(call.Tags),
 	})
-	p.Hooks.RunAfterCall(ctx, call, AfterCallInfo{
+	p.runAfterCall(ctx, snap, call, AfterCallInfo{
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		ProviderType: bound.Type, TargetModel: route.TargetModel,
 	})
