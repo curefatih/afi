@@ -87,7 +87,7 @@ export function RetryEditor({
 					<Label htmlFor={`${idPrefix}-enabled`}>Retry</Label>
 					<p className="text-muted-foreground text-[11px]">
 						Same-target retries with backoff before fallbacks (5xx / timeout /
-						429).
+						429). Leave off to use the organization default retry.
 					</p>
 				</div>
 				<Switch
@@ -218,11 +218,24 @@ export function RetryEditor({
 	);
 }
 
-export function formatRetrySummary(retry: RetryConfig | null | undefined): string {
-	if (!retry) return "—";
-	const { max_attempts, backoff } = retry;
-	if (backoff.strategy === "exponential") {
-		return `${max_attempts}× exp ${backoff.base_delay}`;
+export function formatRetrySummary(
+	retry: RetryConfig | null | undefined,
+	orgDefault?: RetryConfig | null,
+): string {
+	if (retry) {
+		const { max_attempts, backoff } = retry;
+		if (backoff.strategy === "exponential") {
+			return `${max_attempts}× exp ${backoff.base_delay}`;
+		}
+		return `${max_attempts}× fixed ${backoff.base_delay}`;
 	}
-	return `${max_attempts}× fixed ${backoff.base_delay}`;
+	if (orgDefault) {
+		const { max_attempts, backoff } = orgDefault;
+		const detail =
+			backoff.strategy === "exponential"
+				? `${max_attempts}× exp ${backoff.base_delay}`
+				: `${max_attempts}× fixed ${backoff.base_delay}`;
+		return `org default (${detail})`;
+	}
+	return "—";
 }

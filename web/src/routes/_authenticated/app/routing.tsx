@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PlusIcon, RouteIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { orgMembersQueryOptions } from "#/api/organization";
+import { orgMembersQueryOptions, orgDefaultRetryQueryOptions } from "#/api/organization";
 import { providersQueryOptions } from "#/api/provider";
 import {
 	createRouteMutationOptions,
@@ -78,6 +78,7 @@ function RouteComponent() {
 	const routes = useQuery(routesQueryOptions(orgId));
 	const providers = useQuery(providersQueryOptions(orgId));
 	const members = useQuery(orgMembersQueryOptions(orgId));
+	const orgRetry = useQuery(orgDefaultRetryQueryOptions(orgId));
 	const [createOpen, setCreateOpen] = useState(false);
 	const [edit, setEdit] = useState<RouteConfig | null>(null);
 
@@ -164,7 +165,7 @@ function RouteComponent() {
 			<PageHeader
 				title="Routing"
 				description="Map requested model names to providers."
-				info="Optional retries use the same target with backoff; fallbacks run next on 5xx/timeout/429."
+				info="Optional route retries override the org default; fallbacks run next on 5xx/timeout/429."
 				actions={
 					isOrgAdmin ? (
 						<Button onClick={openCreate} disabled={!canAddRoute}>
@@ -267,7 +268,7 @@ function RouteComponent() {
 											</div>
 										</TableCell>
 										<TableCell className="text-muted-foreground text-xs">
-											{formatRetrySummary(r.retry)}
+											{formatRetrySummary(r.retry, orgRetry.data?.retry)}
 										</TableCell>
 										<TableCell>
 											{(r.fallbacks ?? []).length === 0 ? (
