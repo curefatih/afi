@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
 	ActivityIcon,
 	BoxIcon,
@@ -11,12 +11,13 @@ import {
 	KeyRoundIcon,
 	LayersIcon,
 	type LucideIcon,
+	RefreshCwIcon,
 	ShapesIcon,
 	ShieldIcon,
 	TimerIcon,
 	UserIcon,
 } from "lucide-react";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useMemo } from "react";
 import {
 	Area,
 	AreaChart,
@@ -28,6 +29,7 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { z } from "zod";
 import { orgKeysQueryOptions } from "#/api/keys";
 import { orgProjectsQueryOptions } from "#/api/organization";
 import {
@@ -43,12 +45,15 @@ import {
 } from "#/api/usage";
 import {
 	DateRangePicker,
+	type DateRangePresetId,
 	type DateRangeValue,
 	defaultDateRange,
+	findDateRangePreset,
 } from "#/components/date-range-picker";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
 import { Badge } from "#/components/ui/badge";
+import { Button } from "#/components/ui/button";
 import {
 	type ChartConfig,
 	ChartContainer,
@@ -121,8 +126,34 @@ const costByKeyConfig = {
 	},
 } satisfies ChartConfig;
 
+const DATE_RANGE_PRESETS = [
+	"today",
+	"yesterday",
+	"this_week",
+	"last_week",
+	"this_month",
+	"last_month",
+	"last_7",
+	"last_30",
+	"last_90",
+] as const satisfies readonly DateRangePresetId[];
+
+const usageSearchSchema = z.object({
+	project: z.string().optional(),
+	key: z.string().optional(),
+	modality: z.string().optional(),
+	model: z.string().optional(),
+	byok: z.enum(["all", "exclude", "only"]).optional(),
+	preset: z.enum(DATE_RANGE_PRESETS).optional(),
+	from: z.string().optional(),
+	to: z.string().optional(),
+});
+
+type UsageSearch = z.infer<typeof usageSearchSchema>;
+
 export const Route = createFileRoute("/_authenticated/app/usage")({
 	...pageTitle("Usage"),
+	validateSearch: usageSearchSchema,
 	component: RouteComponent,
 });
 
@@ -136,19 +167,57 @@ const MODALITIES = [
 	"video",
 ];
 
+function dateRangeFromSearch(search: UsageSearch): DateRangeValue {
+	if (search.preset) return defaultDateRange(search.preset);
+	if (search.from && search.to) {
+		const from = new Date(search.from);
+		const to = new Date(search.to);
+		if (!Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime())) {
+			return { from, to };
+		}
+	}
+	return defaultDateRange("last_30");
+}
+
 function RouteComponent() {
 	const org = useActiveOrg();
 	const orgId = org?.id ?? "";
-	const [projectId, setProjectId] = useState("");
-	const [apiKeyId, setApiKeyId] = useState("");
-	const [modality, setModality] = useState("");
-	const [model, setModel] = useState("");
-	const [byokFilter, setByokFilter] = useState<"all" | "exclude" | "only">(
-		"all",
-	);
-	const [dateRange, setDateRange] = useState<DateRangeValue>(() =>
-		defaultDateRange("last_30"),
-	);
+	const navigate = useNavigate({ from: Route.fullPath });
+	const search = Route.useSearch();
+
+	const projectId = search.project ?? "";
+	const apiKeyId = search.key ?? "";
+	const modality = search.modality ?? "";
+	const model = search.model ?? "";
+	const byokFilter = search.byok ?? "all";
+	const dateRange = useMemo(() => dateRangeFromSearch(search), [search]);
+
+	function patchSearch(patch: Partial<UsageSearch>) {
+		void navigate({
+			search: (prev: UsageSearch) => ({
+				...prev,
+				...patch,
+			}),
+			replace: true,
+		});
+	}
+
+	function setDateRange(range: DateRangeValue) {
+		const preset = findDateRangePreset(range);
+		if (preset) {
+			patchSearch({
+				preset,
+				from: undefined,
+				to: undefined,
+			});
+			return;
+		}
+		patchSearch({
+			preset: undefined,
+			from: range.from.toISOString(),
+			to: range.to.toISOString(),
+		});
+	}
 
 	const baseFilters: UsageFilters = useMemo(() => {
 		const f: UsageFilters = {
@@ -188,6 +257,13 @@ function RouteComponent() {
 		byModality.isPending ||
 		byModel.isPending ||
 		byKey.isPending;
+	const refreshing =
+		usage.isFetching ||
+		byDay.isFetching ||
+		byModality.isFetching ||
+		byModel.isFetching ||
+		byKey.isFetching ||
+		modelOptions.isFetching;
 	const error =
 		usage.error ||
 		byDay.error ||
@@ -200,6 +276,15 @@ function RouteComponent() {
 		byModality.isError ||
 		byModel.isError ||
 		byKey.isError;
+
+	function refreshData() {
+		void usage.refetch();
+		void byDay.refetch();
+		void byModality.refetch();
+		void byModel.refetch();
+		void byKey.refetch();
+		void modelOptions.refetch();
+	}
 
 	const totals = useMemo(() => {
 		const days = byDay.data ?? [];
@@ -236,6 +321,12 @@ function RouteComponent() {
 				title="Usage"
 				description="Gateway requests across chat, TTS, STT, and other modalities."
 				info="Events appear after the usage worker drains the outbox."
+				actions={
+					<Button variant="outline" onClick={refreshData} disabled={refreshing}>
+						<RefreshCwIcon className={cn(refreshing && "animate-spin")} />
+						Refresh
+					</Button>
+				}
 			/>
 
 			<div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -255,7 +346,9 @@ function RouteComponent() {
 					<Select
 						value={projectId || "__all__"}
 						onValueChange={(v) =>
-							setProjectId(v === "__all__" ? "" : (v ?? ""))
+							patchSearch({
+								project: v === "__all__" || v == null ? undefined : v,
+							})
 						}
 					>
 						<SelectTrigger className="w-full">
@@ -281,7 +374,11 @@ function RouteComponent() {
 					</Label>
 					<Select
 						value={apiKeyId || "__all__"}
-						onValueChange={(v) => setApiKeyId(v === "__all__" ? "" : (v ?? ""))}
+						onValueChange={(v) =>
+							patchSearch({
+								key: v === "__all__" || v == null ? undefined : v,
+							})
+						}
 					>
 						<SelectTrigger className="w-full">
 							<SelectValue placeholder="All keys" />
@@ -306,9 +403,10 @@ function RouteComponent() {
 					</Label>
 					<Select
 						value={byokFilter}
-						onValueChange={(v) =>
-							setByokFilter((v as "all" | "exclude" | "only") ?? "all")
-						}
+						onValueChange={(v) => {
+							const next = (v as "all" | "exclude" | "only") ?? "all";
+							patchSearch({ byok: next === "all" ? undefined : next });
+						}}
 					>
 						<SelectTrigger className="w-full">
 							<SelectValue />
@@ -330,7 +428,11 @@ function RouteComponent() {
 					</Label>
 					<Select
 						value={modality || "__all__"}
-						onValueChange={(v) => setModality(v === "__all__" ? "" : (v ?? ""))}
+						onValueChange={(v) =>
+							patchSearch({
+								modality: v === "__all__" || v == null ? undefined : v,
+							})
+						}
 					>
 						<SelectTrigger className="w-full">
 							<SelectValue placeholder="All modalities" />
@@ -355,7 +457,11 @@ function RouteComponent() {
 					</Label>
 					<Select
 						value={model || "__all__"}
-						onValueChange={(v) => setModel(v === "__all__" ? "" : (v ?? ""))}
+						onValueChange={(v) =>
+							patchSearch({
+								model: v === "__all__" || v == null ? undefined : v,
+							})
+						}
 					>
 						<SelectTrigger className="w-full">
 							<SelectValue placeholder="All models" />
@@ -376,13 +482,7 @@ function RouteComponent() {
 				isPending={pending}
 				isError={isError}
 				error={error}
-				onRetry={() => {
-					void usage.refetch();
-					void byDay.refetch();
-					void byModality.refetch();
-					void byModel.refetch();
-					void byKey.refetch();
-				}}
+				onRetry={refreshData}
 			>
 				{!hasAny ? (
 					<Empty className="border min-h-64">
@@ -443,6 +543,7 @@ function RouteComponent() {
 										axisLine={false}
 										width={40}
 										tick={{ fontSize: 11 }}
+										domain={[0, "auto"]}
 										allowDecimals={false}
 									/>
 									<ChartTooltip
@@ -669,8 +770,8 @@ function RouteComponent() {
 							</ChartCard>
 						</div>
 
-						<div className="overflow-x-auto rounded-md border">
-							<Table>
+						<div className="rounded-md border">
+							<Table containerClassName="overflow-visible">
 								<TableHeader>
 									<TableRow>
 										<IconHead icon={ClockIcon} label="When" />
@@ -899,7 +1000,7 @@ function withLinearTrend<T extends Record<string, unknown>>(
 
 	return data.map((d, i) => ({
 		...d,
-		trend: Math.round((intercept + slope * i) * 100) / 100,
+		trend: Math.max(0, Math.round((intercept + slope * i) * 100) / 100),
 	}));
 }
 
@@ -988,7 +1089,7 @@ function ChartCard({
 
 function IconHead({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
 	return (
-		<TableHead>
+		<TableHead className="sticky top-0 z-10 bg-background">
 			<span className="inline-flex items-center gap-1.5">
 				<Icon className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
 				{label}
