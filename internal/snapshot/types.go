@@ -125,6 +125,7 @@ type Route struct {
 	ProviderID     string        `json:"provider_id"`
 	TargetModel    string        `json:"target_model"`
 	Fallbacks      []RouteTarget `json:"fallbacks,omitempty"`
+	Retry          *RetryConfig  `json:"retry,omitempty"`
 }
 
 func routeKey(orgID, model string) string {
