@@ -26,23 +26,27 @@ type routeWire struct {
 }
 
 type beforeCallIn struct {
-	Principal principalWire     `json:"principal"`
-	Route     routeWire         `json:"route"`
-	Tags      map[string]string `json:"tags"`
-	Metadata  map[string]any    `json:"metadata"`
-	BodyB64   string            `json:"body_b64"`
-	Config    json.RawMessage   `json:"config,omitempty"`
+	Principal       principalWire     `json:"principal"`
+	Route           routeWire         `json:"route"`
+	Tags            map[string]string `json:"tags"`
+	Metadata        map[string]any    `json:"metadata"`
+	BodyB64         string            `json:"body_b64"`
+	Config          json.RawMessage   `json:"config,omitempty"`
+	RequestHeaders  map[string]string `json:"request_headers"`
+	ResponseHeaders map[string]string `json:"response_headers"`
 }
 
 type beforeCallOut struct {
-	Allow    bool              `json:"allow"`
-	Status   int               `json:"status"`
-	Reason   string            `json:"reason"`
-	Message  string            `json:"message"`
-	Headers  map[string]string `json:"headers"`
-	Tags     map[string]string `json:"tags"`
-	Metadata map[string]any    `json:"metadata"`
-	BodyB64  *string           `json:"body_b64"`
+	Allow           bool              `json:"allow"`
+	Status          int               `json:"status"`
+	Reason          string            `json:"reason"`
+	Message         string            `json:"message"`
+	Headers         map[string]string `json:"headers"` // deny response headers (legacy + CallDecision.Headers)
+	Tags            map[string]string `json:"tags"`
+	Metadata        map[string]any    `json:"metadata"`
+	BodyB64         *string           `json:"body_b64"`
+	RequestHeaders  map[string]string `json:"request_headers"`
+	ResponseHeaders map[string]string `json:"response_headers"`
 }
 
 type beforeChatIn struct {
@@ -84,15 +88,23 @@ func encodeBeforeCallIn(call *sdkhook.CallContext, config json.RawMessage) ([]by
 			Stream:   call.Route.Stream,
 			Modality: call.Route.Modality,
 		},
-		Tags:     call.Tags,
-		Metadata: call.Metadata,
-		Config:   config,
+		Tags:            call.Tags,
+		Metadata:        call.Metadata,
+		Config:          config,
+		RequestHeaders:  call.RequestHeaders,
+		ResponseHeaders: call.ResponseHeaders,
 	}
 	if in.Tags == nil {
 		in.Tags = map[string]string{}
 	}
 	if in.Metadata == nil {
 		in.Metadata = map[string]any{}
+	}
+	if in.RequestHeaders == nil {
+		in.RequestHeaders = map[string]string{}
+	}
+	if in.ResponseHeaders == nil {
+		in.ResponseHeaders = map[string]string{}
 	}
 	if len(call.Body) > 0 {
 		in.BodyB64 = base64.StdEncoding.EncodeToString(call.Body)
@@ -110,6 +122,12 @@ func applyBeforeCallOut(call *sdkhook.CallContext, raw []byte) (sdkhook.CallDeci
 	}
 	if out.Metadata != nil {
 		call.Metadata = out.Metadata
+	}
+	if out.RequestHeaders != nil {
+		call.RequestHeaders = out.RequestHeaders
+	}
+	if out.ResponseHeaders != nil {
+		call.ResponseHeaders = out.ResponseHeaders
 	}
 	if out.BodyB64 != nil {
 		if *out.BodyB64 == "" {
@@ -131,6 +149,17 @@ func applyBeforeCallOut(call *sdkhook.CallContext, raw []byte) (sdkhook.CallDeci
 	}
 	if !d.Allow && d.Status == 0 {
 		d.Status = 403
+	}
+	// Merge ResponseHeaders into deny Headers when denying.
+	if !d.Allow && len(call.ResponseHeaders) > 0 {
+		if d.Headers == nil {
+			d.Headers = map[string]string{}
+		}
+		for k, v := range call.ResponseHeaders {
+			if _, ok := d.Headers[k]; !ok {
+				d.Headers[k] = v
+			}
+		}
 	}
 	return d, nil
 }

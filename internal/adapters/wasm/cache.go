@@ -6,16 +6,16 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 )
 
 // ModuleCache compiles and reuses modules keyed by digest (or URI when digest empty).
 type ModuleCache struct {
-	mu   sync.Mutex
-	mods map[string]*Module
-	cfg  Config // defaults for compiled modules
+	mu      sync.Mutex
+	mods    map[string]*Module
+	cfg     Config // defaults for compiled modules
+	fetcher BlobFetcher
 }
 
 // NewModuleCache builds an empty cache.
@@ -38,51 +38,6 @@ func (c *ModuleCache) Close(ctx context.Context) error {
 		delete(c.mods, k)
 	}
 	return err
-}
-
-// Get loads module bytes from uri, verifies digest when set, compiles once per cache key.
-func (c *ModuleCache) Get(ctx context.Context, moduleURI, digest, name string) (*Module, error) {
-	if c == nil {
-		return nil, fmt.Errorf("wasm: nil cache")
-	}
-	key := cacheKey(moduleURI, digest)
-	c.mu.Lock()
-	if m, ok := c.mods[key]; ok {
-		c.mu.Unlock()
-		return m, nil
-	}
-	c.mu.Unlock()
-
-	path, err := ResolveModulePath(moduleURI)
-	if err != nil {
-		return nil, err
-	}
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("wasm: read %s: %w", path, err)
-	}
-	if err := VerifyDigest(b, digest); err != nil {
-		return nil, err
-	}
-	cfg := c.cfg
-	if name != "" {
-		cfg.Name = name
-	} else if cfg.Name == "" {
-		cfg.Name = "wasm:" + key
-	}
-	mod, err := Compile(ctx, b, cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if existing, ok := c.mods[key]; ok {
-		_ = mod.Close(ctx)
-		return existing, nil
-	}
-	c.mods[key] = mod
-	return mod, nil
 }
 
 func cacheKey(uri, digest string) string {
@@ -110,8 +65,10 @@ func ResolveModulePath(moduleURI string) (string, error) {
 				return "", fmt.Errorf("wasm: empty file path")
 			}
 			return u.Path, nil
+		case "s3":
+			return "", fmt.Errorf("wasm: s3:// must be loaded via ModuleCache (not ResolveModulePath)")
 		default:
-			return "", fmt.Errorf("wasm: unsupported module_uri scheme %q (use file:// or a local path)", u.Scheme)
+			return "", fmt.Errorf("wasm: unsupported module_uri scheme %q (use file://, s3://, or a local path)", u.Scheme)
 		}
 	}
 	return uri, nil
