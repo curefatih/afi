@@ -1,8 +1,8 @@
 import { GripVerticalIcon } from "lucide-react";
 import { Reorder, useDragControls } from "motion/react";
 import {
-	policyActions,
 	type PolicyThen,
+	policyActions,
 	type RequestPolicy,
 } from "#/api/policies";
 import { Button } from "#/components/ui/button";

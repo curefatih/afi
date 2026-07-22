@@ -17,6 +17,7 @@ import {
 import { orgKeysQueryOptions } from "#/api/keys";
 import { orgMembersQueryOptions } from "#/api/organization";
 import { PROVIDER_TYPE_PRESETS } from "#/api/provider";
+import { InfoAlert } from "#/components/info-alert";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
 import { Badge } from "#/components/ui/badge";
@@ -57,7 +58,6 @@ import {
 import { pageTitle } from "#/lib/page-meta";
 import { useAuthUser } from "#/state/auth-state";
 import { useActiveOrg } from "#/state/organization-state";
-import { InfoAlert } from "#/components/info-alert";
 
 export const Route = createFileRoute("/_authenticated/app/secrets")({
 	...pageTitle("Secrets"),

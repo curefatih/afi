@@ -87,6 +87,7 @@ const ACTIONS: Array<{
 ];
 
 type ThenForm = {
+	id: string;
 	action: PolicyActionType;
 	header: string;
 	headerValue: string;
@@ -105,7 +106,14 @@ type FormState = {
 	enabled: boolean;
 };
 
+function newThenId(): string {
+	return typeof crypto !== "undefined" && crypto.randomUUID
+		? crypto.randomUUID()
+		: Math.random().toString(36).substring(2, 15);
+}
+
 const defaultThen = (): ThenForm => ({
+	id: newThenId(),
 	action: "deny",
 	header: "",
 	headerValue: "",
@@ -129,6 +137,7 @@ function thenFromAction(a: PolicyThen): ThenForm {
 	const credExpr = Boolean(cfg.credential_name_expr);
 	const valueExpr = Boolean(cfg.value_expr);
 	return {
+		id: newThenId(),
 		action: a.type || "deny",
 		header: cfg.header ?? "",
 		headerValue: cfg.value ?? "",
@@ -611,7 +620,7 @@ function PolicySheet({
 
 						{form.thens.map((then, index) => (
 							<ThenBlock
-								key={index}
+								key={then.id}
 								index={index}
 								thenCount={form.thens.length}
 								then={then}
