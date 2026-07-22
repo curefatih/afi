@@ -6,6 +6,18 @@ export type RouteFallback = {
 	target_model: string;
 };
 
+export type BackoffConfig = {
+	strategy: "fixed" | "exponential";
+	base_delay: string;
+	max_delay?: string;
+	multiplier?: number;
+};
+
+export type RetryConfig = {
+	max_attempts: number;
+	backoff: BackoffConfig;
+};
+
 export type RouteConfig = {
 	id: string;
 	organization_id: string;
@@ -13,6 +25,7 @@ export type RouteConfig = {
 	provider_id: string;
 	target_model: string;
 	fallbacks: RouteFallback[];
+	retry?: RetryConfig | null;
 	created_at: string;
 };
 
@@ -30,6 +43,7 @@ export type CreateRouteInput = {
 	provider_id: string;
 	target_model?: string;
 	fallbacks?: RouteFallback[];
+	retry?: RetryConfig | null;
 };
 
 export const createRouteMutationOptions = () =>
@@ -47,6 +61,7 @@ export type UpdateRouteInput = {
 	provider_id: string;
 	target_model?: string;
 	fallbacks?: RouteFallback[];
+	retry?: RetryConfig | null;
 };
 
 export const updateRouteMutationOptions = () =>

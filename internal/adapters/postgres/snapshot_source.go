@@ -66,7 +66,7 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	}
 
 	routeRows, err := l.Pool.Query(ctx, `
-		SELECT organization_id, model, provider_id, target_model, fallbacks FROM routes
+		SELECT organization_id, model, provider_id, target_model, fallbacks, retry FROM routes
 	`)
 	if err != nil {
 		return src, err
@@ -74,14 +74,17 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	defer routeRows.Close()
 	for routeRows.Next() {
 		var r snapshot.Route
-		var fb []byte
-		if err := routeRows.Scan(&r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel, &fb); err != nil {
+		var fb, retryRaw []byte
+		if err := routeRows.Scan(&r.OrganizationID, &r.Model, &r.ProviderID, &r.TargetModel, &fb, &retryRaw); err != nil {
 			return src, err
 		}
 		for _, f := range DecodeFallbacks(fb) {
 			r.Fallbacks = append(r.Fallbacks, snapshot.RouteTarget{
 				ProviderID: f.ProviderID, TargetModel: f.TargetModel,
 			})
+		}
+		if rc := DecodeRetry(retryRaw); rc != nil {
+			r.Retry = rc.ToSnapshot()
 		}
 		src.Routes = append(src.Routes, r)
 	}
@@ -200,6 +203,30 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 		src.Assignments = append(src.Assignments, a)
 	}
 	if err := asgRows.Err(); err != nil {
+		return src, err
+	}
+
+	orgRows, err := l.Pool.Query(ctx, `
+		SELECT id, default_retry FROM organizations WHERE default_retry IS NOT NULL
+	`)
+	if err != nil {
+		return src, err
+	}
+	defer orgRows.Close()
+	for orgRows.Next() {
+		var orgID string
+		var raw []byte
+		if err := orgRows.Scan(&orgID, &raw); err != nil {
+			return src, err
+		}
+		if rc := DecodeRetry(raw); rc != nil {
+			if src.DefaultRetries == nil {
+				src.DefaultRetries = make(map[string]*snapshot.RetryConfig)
+			}
+			src.DefaultRetries[orgID] = rc.ToSnapshot()
+		}
+	}
+	if err := orgRows.Err(); err != nil {
 		return src, err
 	}
 

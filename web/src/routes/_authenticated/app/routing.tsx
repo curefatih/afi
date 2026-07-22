@@ -3,11 +3,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PlusIcon, RouteIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { orgMembersQueryOptions } from "#/api/organization";
+import {
+	orgDefaultRetryQueryOptions,
+	orgMembersQueryOptions,
+} from "#/api/organization";
 import { providersQueryOptions } from "#/api/provider";
 import {
 	createRouteMutationOptions,
 	deleteRouteMutationOptions,
+	type RetryConfig,
 	type RouteConfig,
 	routesQueryOptions,
 	updateRouteMutationOptions,
@@ -19,6 +23,12 @@ import {
 	FallbackList,
 	type FallbackRow,
 } from "#/components/routing/fallback-list";
+import {
+	formatRetrySummary,
+	RetryEditor,
+	toRetryPayload,
+	validateRetry,
+} from "#/components/routing/retry-editor";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import {
@@ -71,6 +81,7 @@ function RouteComponent() {
 	const routes = useQuery(routesQueryOptions(orgId));
 	const providers = useQuery(providersQueryOptions(orgId));
 	const members = useQuery(orgMembersQueryOptions(orgId));
+	const orgRetry = useQuery(orgDefaultRetryQueryOptions(orgId));
 	const [createOpen, setCreateOpen] = useState(false);
 	const [edit, setEdit] = useState<RouteConfig | null>(null);
 
@@ -113,13 +124,21 @@ function RouteComponent() {
 	const [targetModel, setTargetModel] = useState("gpt-4o-mini");
 	const [providerId, setProviderId] = useState("");
 	const [fallbacks, setFallbacks] = useState<FallbackRow[]>([]);
+	const [retry, setRetry] = useState<RetryConfig | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
 	const [editModel, setEditModel] = useState("");
 	const [editTargetModel, setEditTargetModel] = useState("");
 	const [editProviderId, setEditProviderId] = useState("");
 	const [editFallbacks, setEditFallbacks] = useState<FallbackRow[]>([]);
+	const [editRetry, setEditRetry] = useState<RetryConfig | null>(null);
 	const [editError, setEditError] = useState<string | null>(null);
+
+	const openCreate = () => {
+		setRetry(null);
+		setError(null);
+		setCreateOpen(true);
+	};
 
 	const openEdit = (r: RouteConfig) => {
 		setEdit(r);
@@ -132,6 +151,7 @@ function RouteComponent() {
 				key: crypto.randomUUID(),
 			})),
 		);
+		setEditRetry(r.retry ?? null);
 		setEditError(null);
 	};
 
@@ -148,10 +168,10 @@ function RouteComponent() {
 			<PageHeader
 				title="Routing"
 				description="Map requested model names to providers."
-				info="Optional fallbacks run on 5xx/timeout/429 before the response body is committed."
+				info="Optional route retries override the org default; fallbacks run next on 5xx/timeout/429."
 				actions={
 					isOrgAdmin ? (
-						<Button onClick={() => setCreateOpen(true)} disabled={!canAddRoute}>
+						<Button onClick={openCreate} disabled={!canAddRoute}>
 							<PlusIcon />
 							Add route
 						</Button>
@@ -210,7 +230,7 @@ function RouteComponent() {
 						</EmptyHeader>
 						{isOrgAdmin ? (
 							<EmptyContent>
-								<Button onClick={() => setCreateOpen(true)}>
+								<Button onClick={openCreate}>
 									<PlusIcon />
 									Add route
 								</Button>
@@ -230,6 +250,7 @@ function RouteComponent() {
 									<TableHead>Model</TableHead>
 									<TableHead>Target</TableHead>
 									<TableHead>Provider</TableHead>
+									<TableHead>Retry</TableHead>
 									<TableHead>Fallbacks</TableHead>
 									{isOrgAdmin ? <TableHead className="w-40" /> : null}
 								</TableRow>
@@ -248,6 +269,9 @@ function RouteComponent() {
 											<div className="text-muted-foreground font-mono text-xs">
 												{r.provider_id}
 											</div>
+										</TableCell>
+										<TableCell className="text-muted-foreground text-xs">
+											{formatRetrySummary(r.retry, orgRetry.data?.retry)}
 										</TableCell>
 										<TableCell>
 											{(r.fallbacks ?? []).length === 0 ? (
@@ -306,10 +330,15 @@ function RouteComponent() {
 						</InfoAlert>
 					</SheetHeader>
 					<form
-						className="flex flex-1 flex-col gap-4 px-4"
+						className="flex flex-1 flex-col gap-4 overflow-y-auto px-4"
 						onSubmit={(e) => {
 							e.preventDefault();
 							if (!orgId || !selectedProvider) return;
+							const retryErr = validateRetry(retry);
+							if (retryErr) {
+								setError(retryErr);
+								return;
+							}
 							setError(null);
 							create.mutate(
 								{
@@ -323,6 +352,7 @@ function RouteComponent() {
 											provider_id,
 											target_model,
 										})),
+									retry: toRetryPayload(retry),
 								},
 								{
 									onError: (err) =>
@@ -369,6 +399,11 @@ function RouteComponent() {
 								</SelectContent>
 							</Select>
 						</div>
+						<RetryEditor
+							value={retry}
+							onChange={setRetry}
+							idPrefix="create-retry"
+						/>
 						<FallbackList
 							fallbacks={fallbacks}
 							onChange={setFallbacks}
@@ -405,16 +440,21 @@ function RouteComponent() {
 					<SheetHeader>
 						<SheetTitle>Edit route</SheetTitle>
 						<SheetDescription>
-							Update model mapping and fallbacks.
+							Update model mapping, retry, and fallbacks.
 						</SheetDescription>
 						<InfoAlert>Publishes a new gateway snapshot.</InfoAlert>
 					</SheetHeader>
 					{edit ? (
 						<form
-							className="flex flex-1 flex-col gap-4 px-4"
+							className="flex flex-1 flex-col gap-4 overflow-y-auto px-4"
 							onSubmit={(e) => {
 								e.preventDefault();
 								if (!editProviderId) return;
+								const retryErr = validateRetry(editRetry);
+								if (retryErr) {
+									setEditError(retryErr);
+									return;
+								}
 								setEditError(null);
 								update.mutate(
 									{
@@ -428,6 +468,7 @@ function RouteComponent() {
 												provider_id,
 												target_model,
 											})),
+										retry: toRetryPayload(editRetry),
 									},
 									{
 										onError: (err) =>
@@ -474,6 +515,11 @@ function RouteComponent() {
 									</SelectContent>
 								</Select>
 							</div>
+							<RetryEditor
+								value={editRetry}
+								onChange={setEditRetry}
+								idPrefix="edit-retry"
+							/>
 							<FallbackList
 								fallbacks={editFallbacks}
 								onChange={setEditFallbacks}

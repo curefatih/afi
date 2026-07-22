@@ -35,16 +35,17 @@ const (
 var RequestWindows = []string{WindowMinute, WindowHour, WindowDay, WindowTotal}
 
 type Snapshot struct {
-	Version     int64                 `json:"version"`
-	CreatedAt   time.Time             `json:"created_at"`
-	APIKeys     map[string]APIKey     `json:"api_keys"`    // keyed by key hash
-	Providers   map[string]Provider   `json:"providers"`   // keyed by provider id
-	Routes      map[string]Route      `json:"routes"`      // keyed by orgID + "::" + model
-	Credentials map[string]Credential `json:"credentials"` // keyed by credential id
-	Assignments map[string]string     `json:"assignments"` // providerType::scopeType::scopeID → credential id
-	Quotas      []Quota               `json:"quotas"`
-	Policies    []Policy              `json:"policies"`
-	WasmHooks   []WasmHook            `json:"wasm_hooks"`
+	Version        int64                   `json:"version"`
+	CreatedAt      time.Time               `json:"created_at"`
+	APIKeys        map[string]APIKey       `json:"api_keys"`    // keyed by key hash
+	Providers      map[string]Provider     `json:"providers"`   // keyed by provider id
+	Routes         map[string]Route        `json:"routes"`      // keyed by orgID + "::" + model
+	Credentials    map[string]Credential   `json:"credentials"` // keyed by credential id
+	Assignments    map[string]string       `json:"assignments"` // providerType::scopeType::scopeID → credential id
+	Quotas         []Quota                 `json:"quotas"`
+	Policies       []Policy                `json:"policies"`
+	WasmHooks      []WasmHook              `json:"wasm_hooks"`
+	DefaultRetries map[string]*RetryConfig `json:"default_retries,omitempty"` // orgID → default retry
 }
 
 // WasmHook is a compiled sandboxed lifecycle binding for the gateway.
@@ -125,6 +126,7 @@ type Route struct {
 	ProviderID     string        `json:"provider_id"`
 	TargetModel    string        `json:"target_model"`
 	Fallbacks      []RouteTarget `json:"fallbacks,omitempty"`
+	Retry          *RetryConfig  `json:"retry,omitempty"`
 }
 
 func routeKey(orgID, model string) string {
@@ -284,4 +286,15 @@ func (s *Snapshot) ResolveQuota(key APIKey, metric, window string) (Quota, bool)
 		}
 	}
 	return found, best > 0
+}
+
+// ResolveRetry returns the effective retry for a route: route-specific, else org default, else nil.
+func (s *Snapshot) ResolveRetry(route Route) *RetryConfig {
+	if route.Retry != nil {
+		return route.Retry
+	}
+	if s == nil || s.DefaultRetries == nil {
+		return nil
+	}
+	return s.DefaultRetries[route.OrganizationID]
 }

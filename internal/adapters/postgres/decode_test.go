@@ -32,3 +32,20 @@ func TestDecodeFallbacks(t *testing.T) {
 		t.Fatalf("bad json fallbacks=%+v", got)
 	}
 }
+
+func TestDecodeRetry(t *testing.T) {
+	t.Parallel()
+	got := DecodeRetry([]byte(`{"max_attempts":3,"backoff":{"strategy":"fixed","base_delay":"100ms"}}`))
+	if got == nil || got.MaxAttempts != 3 || got.Backoff.Strategy != "fixed" || got.Backoff.BaseDelay != "100ms" {
+		t.Fatalf("got=%+v", got)
+	}
+	if DecodeRetry(nil) != nil {
+		t.Fatal("nil raw should decode to nil")
+	}
+	if DecodeRetry([]byte(`null`)) != nil {
+		t.Fatal("null json should decode to nil")
+	}
+	if DecodeRetry([]byte(`not-json`)) != nil {
+		t.Fatal("bad json should decode to nil")
+	}
+}

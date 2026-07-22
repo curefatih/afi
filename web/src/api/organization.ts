@@ -1,4 +1,5 @@
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
+import type { RetryConfig } from "#/api/routing";
 import { apiFetch } from "#/lib/api-client";
 import type { Organization, Project, Team } from "#/state/organization-state";
 
@@ -128,6 +129,35 @@ export const testOrgMailMutationOptions = () =>
 			apiFetch<{ status: string; to: string }>(
 				`/api/v1/platform/organizations/${orgId}/mail/test`,
 				{ method: "POST" },
+			),
+	});
+
+export type OrgDefaultRetrySettings = {
+	retry: RetryConfig | null;
+};
+
+export const orgDefaultRetryQueryOptions = (orgId: string) =>
+	queryOptions({
+		queryKey: ["organizations", orgId, "default-retry"],
+		queryFn: () =>
+			apiFetch<OrgDefaultRetrySettings>(
+				`/api/v1/platform/organizations/${orgId}/default-retry`,
+			),
+		enabled: !!orgId,
+	});
+
+export const updateOrgDefaultRetryMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({
+			orgId,
+			retry,
+		}: {
+			orgId: string;
+			retry: RetryConfig | null;
+		}) =>
+			apiFetch<OrgDefaultRetrySettings>(
+				`/api/v1/platform/organizations/${orgId}/default-retry`,
+				{ method: "PUT", body: { retry } },
 			),
 	});
 

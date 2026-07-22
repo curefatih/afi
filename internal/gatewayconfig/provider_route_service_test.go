@@ -35,7 +35,7 @@ func (m *memRoutes) Insert(_ context.Context, r Route) error {
 	m.inserted = &cp
 	return nil
 }
-func (m *memRoutes) Update(context.Context, string, string, string, string, []RouteFallback) (*Route, error) {
+func (m *memRoutes) Update(context.Context, string, string, string, string, []RouteFallback, *RetryConfig) (*Route, error) {
 	return nil, nil
 }
 func (m *memRoutes) Delete(context.Context, string) error { return nil }
@@ -47,7 +47,7 @@ func TestCreateRouteRejectsCrossOrgProvider(t *testing.T) {
 	t.Parallel()
 	providers := &memProviders{orgByID: map[string]string{"prov_other": "org_b"}}
 	routes := &memRoutes{}
-	_, err := CreateRoute(context.Background(), routes, providers, "route_1", "org_a", "gpt-4o", "prov_other", "gpt-4o", nil)
+	_, err := CreateRoute(context.Background(), routes, providers, "route_1", "org_a", "gpt-4o", "prov_other", "gpt-4o", nil, nil)
 	if !errors.Is(err, kernel.ErrInvalidRequest) {
 		t.Fatalf("err=%v", err)
 	}
@@ -60,7 +60,7 @@ func TestCreateRouteAcceptsSameOrgProvider(t *testing.T) {
 	t.Parallel()
 	providers := &memProviders{orgByID: map[string]string{"prov_ok": "org_a"}}
 	routes := &memRoutes{}
-	r, err := CreateRoute(context.Background(), routes, providers, "route_1", "org_a", "gpt-4o", "prov_ok", "gpt-4o", nil)
+	r, err := CreateRoute(context.Background(), routes, providers, "route_1", "org_a", "gpt-4o", "prov_ok", "gpt-4o", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -18,7 +18,7 @@ func TestNewProviderRequiresNameType(t *testing.T) {
 
 func TestNewRouteRequiresModel(t *testing.T) {
 	t.Parallel()
-	_, err := NewRoute("r1", "o1", "", "prov", "m", nil, timeNowUTC())
+	_, err := NewRoute("r1", "o1", "", "prov", "m", nil, nil, timeNowUTC())
 	if !errors.Is(err, kernel.ErrInvalidRequest) {
 		t.Fatalf("err=%v", err)
 	}

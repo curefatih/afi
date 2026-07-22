@@ -61,7 +61,7 @@ Snapshots contain:
 * Virtual API keys (hashes) → org binding, optional project, kind, owner user id
 * Providers (type, base URL, API key env ref, capabilities)
 * Provider credentials (env ref, encrypted_db ciphertext, or vault secret_ref) + assignments (provider type × org/project/api_key scope)
-* Static model routes (optional fallbacks)
+* Static model routes (optional fallbacks and retry config)
 * Quotas (scope, metric, limit, window) — resolve order per window: api_key → user → project → organization
 * CEL request policies (when/then: CEL when + ordered Then actions allow|deny|set_header|use_credential; vars include `request`, `key`, and `credential`)
 

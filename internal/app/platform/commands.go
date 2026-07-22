@@ -204,8 +204,8 @@ func (s *Service) DeleteProvider(ctx context.Context, providerID string) error {
 	return nil
 }
 
-func (s *Service) CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback) (*gatewayconfig.Route, error) {
-	r, err := s.API.CreateRoute(ctx, orgID, model, providerID, targetModel, fallbacks)
+func (s *Service) CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback, retry *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error) {
+	r, err := s.API.CreateRoute(ctx, orgID, model, providerID, targetModel, fallbacks, retry)
 	if err != nil {
 		return nil, err
 	}
@@ -216,8 +216,8 @@ func (s *Service) CreateRoute(ctx context.Context, orgID, model, providerID, tar
 	return r, nil
 }
 
-func (s *Service) UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback) (*gatewayconfig.Route, error) {
-	r, err := s.API.UpdateRoute(ctx, routeID, model, providerID, targetModel, fallbacks)
+func (s *Service) UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback, retry *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error) {
+	r, err := s.API.UpdateRoute(ctx, routeID, model, providerID, targetModel, fallbacks, retry)
 	if err != nil {
 		return nil, err
 	}
@@ -237,6 +237,25 @@ func (s *Service) DeleteRoute(ctx context.Context, routeID string) error {
 	}
 	s.emit(ctx, EventRouteDeleted, routeID, "")
 	return nil
+}
+
+func (s *Service) GetOrgDefaultRetry(ctx context.Context, orgID string) (*gatewayconfig.RetryConfig, error) {
+	return s.API.GetOrgDefaultRetry(ctx, orgID)
+}
+
+func (s *Service) SetOrgDefaultRetry(ctx context.Context, orgID string, retry *gatewayconfig.RetryConfig) (*gatewayconfig.RetryConfig, error) {
+	if err := s.API.SetOrgDefaultRetry(ctx, orgID, retry); err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "updated"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventOrgDefaultRetryUpdated, orgID, orgID)
+	out, err := s.API.GetOrgDefaultRetry(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (s *Service) CreateQuota(ctx context.Context, orgID, scopeType, scopeID, metric string, limitValue int64, window string) (*gatewayconfig.Quota, error) {
