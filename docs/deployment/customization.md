@@ -165,7 +165,7 @@ These are **not** env vars — configure them after deploy via the control plane
 | **Organizations / members** | Orgs; roles `owner` / `admin` / `member` (invite by existing email — no SMTP) |
 | **API keys** | `personal` or `service_account`; project scope optional |
 | **Providers** | type, base URL, `api_key_env`, health |
-| **Routes** | model id, provider, target model, modality, ordered `fallbacks` |
+| **Routes** | model id, provider, target model, modality, ordered `fallbacks`, optional `retry` (`fixed` / `exponential` backoff) |
 | **Quotas** | scope (`organization`/`project`/`user`/`api_key`), metric (`requests`/`tokens`), window (`total`/`minute`/`hour`/`day`), `limit_value` |
 | **CEL policies** | `expression`, `priority`, `enabled` |
 | **Model prices** | DB overrides for usage `cost_usd` (else embedded catalog) |

@@ -86,7 +86,8 @@ Written on first control-plane start (or `make seed`):
 | Seeded audio routes | `tts-1`, `whisper-1` → `prov_openai` |
 | Seeded providers | `prov_openai`, `prov_anthropic`, `prov_gemini`, `prov_ollama` (`openai_compatible` → `http://127.0.0.1:11434/v1`, no default route) |
 | `OLLAMA_API_KEY` | _(any value if Ollama ignores auth)_ | gateway → openai_compatible |
-| Route `fallbacks` | optional ordered `[{provider_id,target_model}]` for 5xx/timeout/429 retry |
+| Route `fallbacks` | optional ordered `[{provider_id,target_model}]` for 5xx/timeout/429 failover |
+| Route `retry` | optional `{max_attempts,backoff:{strategy,base_delay,max_delay?,multiplier?}}` — `fixed` or `exponential` same-target retries (stored in snapshot; dataplane does not apply yet) |
 | Gateway models | `GET /v1/models` lists org route model ids (`supports_streaming` / `supports_tts` / `supports_stt`) |
 | Gateway audio | `POST /v1/audio/speech`, `POST /v1/audio/transcriptions` (openai / openai_compatible) |
 
@@ -168,6 +169,22 @@ Seed key `sk-project-local-dev-token-12345` is a project **service_account** key
 | `limit_value` | integer ≥ 0 (`0` blocks immediately) |
 
 Most specific scope wins **per window**: api_key → user → project → organization. Timed windows require Redis (`redis_url` / `AFI_REDIS_URL`). Create/update/delete quotas, providers, and routes require org owner/admin.
+
+### Route retry
+
+Optional same-target retry before ordered `fallbacks` failover. Create/update via `POST/PATCH` route bodies (`retry` field). Omitted/`null` means a single attempt per target (current gateway behavior).
+
+| Field | Notes |
+|-------|--------|
+| `max_attempts` | Total tries including the first (≥ 1) |
+| `backoff.strategy` | `fixed` or `exponential` |
+| `backoff.base_delay` | Go duration string (e.g. `100ms`, `1s`) |
+| `backoff.max_delay` | Exponential only; caps delay |
+| `backoff.multiplier` | Exponential only; defaults to `2` when omitted |
+
+`fixed` rejects `max_delay` / `multiplier`. Delay before retry index `n` (0 = first retry): fixed → `base_delay`; exponential → `min(base_delay * multiplier^n, max_delay)`.
+
+Compiled into the gateway snapshot. **Dataplane does not apply retries yet** (failover still runs immediately on 5xx/timeout/429).
 
 ### CEL policies
 
