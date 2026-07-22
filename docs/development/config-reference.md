@@ -186,8 +186,8 @@ Legacy create/update bodies may still send a single `action` + `action_config`; 
 |--------|--------|----------|
 | `deny` | `{}` | Stop; HTTP 403 `policy_violation` |
 | `allow` | `{}` | Stop; allow (skips remaining Then steps and lower-priority rules) |
-| `set_header` | `{ "header", "value"? , "value_expr"? }` | Set outbound upstream header; continue. `value_expr` is CEL → string and wins over `value`. |
-| `use_credential` | `{ "credential_name"? , "credential_name_expr"? }` | Select secret by name; continue. `credential_name_expr` is CEL → string (e.g. header value) and wins over `credential_name`. |
+| `set_header` | `{ "header", "value"? , "value_expr"? }` | Set outbound upstream header; continue. Later writes to the same header overwrite. `value_expr` is CEL → string and wins over `value`. |
+| `use_credential` | `{ "credential_name"? , "credential_name_expr"? }` | Select secret by name; continue. Later Then steps (and later matching policies) overwrite. `credential_name_expr` is CEL → string (e.g. header value) and wins over `credential_name`. |
 
 CEL variables: `request.model`, `request.path`, `request.stream`, `request.tags`, `request.headers` (lowercased; `authorization` / `cookie` omitted), `key.*`, `credential.*`. Owner/admin to create/update/delete.
 
