@@ -53,8 +53,8 @@ type ConfigAPI interface {
 	DeleteProvider(ctx context.Context, providerID string) error
 
 	ListRoutes(ctx context.Context, orgID string) ([]gatewayconfig.Route, error)
-	CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback) (*gatewayconfig.Route, error)
-	UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback) (*gatewayconfig.Route, error)
+	CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback, retry *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error)
+	UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback, retry *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error)
 	DeleteRoute(ctx context.Context, routeID string) error
 
 	ListUsage(ctx context.Context, orgID string, f usage.Filter) ([]usage.Record, error)
