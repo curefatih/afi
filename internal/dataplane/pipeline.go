@@ -74,7 +74,11 @@ func (p *Pipeline) Handler() http.Handler {
 func withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-AFI-Tags")
+		allowHeaders := "Authorization, Content-Type, X-AFI-Tags"
+		if reqHdrs := strings.TrimSpace(r.Header.Get("Access-Control-Request-Headers")); reqHdrs != "" {
+			allowHeaders = reqHdrs
+		}
+		w.Header().Set("Access-Control-Allow-Headers", allowHeaders)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -158,6 +162,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 	}
 
 	call := newCallContext(key, reqBody.Model, "/v1/chat/completions", ModalityChat, reqBody.Stream, body, TagsFromRequest(r))
+	call.Headers = HeadersForPolicy(r.Header)
 	if !p.gateCall(ctx, w, snap, call) {
 		return
 	}
@@ -221,7 +226,13 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 	)
 
 	for i, attempt := range attempts {
-		bound, credID, bindErr := p.bindProviderSecret(ctx, snap, attempt.Provider, key)
+		bound, credID, bindErr := p.bindProviderSecret(ctx, snap, attempt.Provider, key, policy.Request{
+			Model:   reqBody.Model,
+			Path:    call.Route.Path,
+			Stream:  reqBody.Stream,
+			Tags:    call.Tags,
+			Headers: call.Headers,
+		})
 		if bindErr != nil {
 			lastErr = bindErr
 			log.Warn("credential resolve failed", "provider", attempt.Provider.ID, "err", bindErr, "attempt", i)
@@ -550,10 +561,47 @@ func (p *Pipeline) callProvider(ctx context.Context, provider snapshot.Provider,
 	return adapter.Chat(ctx, provider, targetModel, body, stream)
 }
 
-// bindProviderSecret resolves an assigned credential (project → org) or falls back to provider.api_key_env.
-func (p *Pipeline) bindProviderSecret(ctx context.Context, snap *snapshot.Snapshot, provider snapshot.Provider, key snapshot.APIKey) (snapshot.Provider, string, error) {
+// bindProviderSecret resolves BYOK via a matching use_credential policy action,
+// else api_key → project → org assignment, else provider.api_key_env.
+func (p *Pipeline) bindProviderSecret(ctx context.Context, snap *snapshot.Snapshot, provider snapshot.Provider, key snapshot.APIKey, req policy.Request) (snapshot.Provider, string, error) {
 	if snap != nil {
-		if cred, ok := snap.ResolveCredential(provider.Type, key); ok {
+		overrideName := ""
+		if p.Policies != nil && len(snap.Policies) > 0 {
+			d, err := p.Policies.Apply(snap.Policies, key, req, policy.Credential{})
+			if err != nil {
+				return provider, "", err
+			}
+			if !d.Allowed {
+				msg := "request denied by policy"
+				if d.DeniedBy != "" {
+					msg = "request denied by policy: " + d.DeniedBy
+				}
+				return provider, "", fmt.Errorf("%s", msg)
+			}
+			overrideName = d.CredentialName
+		}
+		credMeta := policy.CredentialFromSnapshot(snap, provider.Type, key, overrideName)
+		if p.Policies != nil && len(snap.Policies) > 0 {
+			d, err := p.Policies.Apply(snap.Policies, key, req, credMeta)
+			if err != nil {
+				return provider, "", err
+			}
+			if !d.Allowed {
+				msg := "request denied by policy"
+				if d.DeniedBy != "" {
+					msg = "request denied by policy: " + d.DeniedBy
+				}
+				return provider, "", fmt.Errorf("%s", msg)
+			}
+			if d.CredentialName != "" {
+				overrideName = d.CredentialName
+			}
+		}
+		cred, ok, missingOverride := snap.ResolveCredentialForCall(provider.Type, key, overrideName)
+		if missingOverride {
+			return provider, "", fmt.Errorf("no credential named %q for provider type %q", overrideName, provider.Type)
+		}
+		if ok {
 			if p.Credentials == nil {
 				return provider, "", fmt.Errorf("credential resolver not configured")
 			}
@@ -572,6 +620,7 @@ func (p *Pipeline) bindProviderSecret(ctx context.Context, snap *snapshot.Snapsh
 }
 
 func (p *Pipeline) recordUsage(e UsageEvent) {
+	e.MarkBYOK()
 	if p.Usage != nil {
 		p.Usage(e)
 	}

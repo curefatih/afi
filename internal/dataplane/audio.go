@@ -10,6 +10,7 @@ import (
 
 	"github.com/curefatih/afi/internal/adapters/llm"
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
 )
 
@@ -93,6 +94,7 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 	}
 
 	call := newCallContext(key, reqBody.Model, "/v1/audio/speech", ModalityTTS, false, body, TagsFromRequest(r))
+	call.Headers = HeadersForPolicy(r.Header)
 	if !p.gateCall(ctx, w, snap, call) {
 		return
 	}
@@ -126,7 +128,12 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info("audio.speech", "model", reqBody.Model, "target_model", route.TargetModel, "provider", provider.ID)
-	bound, credID, bindErr := p.bindProviderSecret(ctx, snap, provider, key)
+	bound, credID, bindErr := p.bindProviderSecret(ctx, snap, provider, key, policy.Request{
+		Model:   reqBody.Model,
+		Path:    call.Route.Path,
+		Tags:    call.Tags,
+		Headers: call.Headers,
+	})
 	if bindErr != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]any{
 			"error": map[string]string{"message": bindErr.Error(), "type": "server_error"},
@@ -226,6 +233,7 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 	}
 
 	call := newCallContext(key, model, "/v1/audio/transcriptions", ModalitySTT, false, body, TagsFromRequest(r))
+	call.Headers = HeadersForPolicy(r.Header)
 	if !p.gateCall(ctx, w, snap, call) {
 		return
 	}
@@ -259,7 +267,12 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 	}
 
 	log.Info("audio.transcriptions", "model", model, "target_model", route.TargetModel, "provider", provider.ID)
-	bound, credID, bindErr := p.bindProviderSecret(ctx, snap, provider, key)
+	bound, credID, bindErr := p.bindProviderSecret(ctx, snap, provider, key, policy.Request{
+		Model:   model,
+		Path:    call.Route.Path,
+		Tags:    call.Tags,
+		Headers: call.Headers,
+	})
 	if bindErr != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]any{
 			"error": map[string]string{"message": bindErr.Error(), "type": "server_error"},
