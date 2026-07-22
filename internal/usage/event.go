@@ -7,6 +7,7 @@ type Event struct {
 	ProjectID        string            `json:"project_id"`
 	APIKeyID         string            `json:"api_key_id"`
 	CredentialID     string            `json:"credential_id,omitempty"`
+	UsedBYOK         bool              `json:"used_byok"`
 	Model            string            `json:"model"`
 	ProviderType     string            `json:"provider_type"`
 	TargetModel      string            `json:"target_model"`
@@ -17,4 +18,9 @@ type Event struct {
 	Modality         string            `json:"modality"`
 	Metrics          map[string]any    `json:"metrics,omitempty"`
 	Tags             map[string]string `json:"tags,omitempty"`
+}
+
+// MarkBYOK sets UsedBYOK from whether a stored credential was used (vs platform api_key_env).
+func (e *Event) MarkBYOK() {
+	e.UsedBYOK = e.CredentialID != ""
 }

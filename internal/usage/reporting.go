@@ -4,38 +4,44 @@ import "time"
 
 // Record is a persisted usage row enriched for control-plane list APIs.
 type Record struct {
-	ID               int64          `json:"id"`
-	OrganizationID   string         `json:"organization_id"`
-	ProjectID        string         `json:"project_id"`
-	ProjectName      string         `json:"project_name,omitempty"`
-	APIKeyID         string         `json:"api_key_id"`
-	Model            string         `json:"model"`
-	Status           string         `json:"status"`
-	LatencyMs        int64          `json:"latency_ms"`
-	PromptTokens     int64          `json:"prompt_tokens"`
-	CompletionTokens int64          `json:"completion_tokens"`
+	ID               int64             `json:"id"`
+	OrganizationID   string            `json:"organization_id"`
+	ProjectID        string            `json:"project_id"`
+	ProjectName      string            `json:"project_name,omitempty"`
+	APIKeyID         string            `json:"api_key_id"`
+	CredentialID     string            `json:"credential_id,omitempty"`
+	CredentialName   string            `json:"credential_name,omitempty"`
+	UsedBYOK         bool              `json:"used_byok"`
+	Model            string            `json:"model"`
+	Status           string            `json:"status"`
+	LatencyMs        int64             `json:"latency_ms"`
+	PromptTokens     int64             `json:"prompt_tokens"`
+	CompletionTokens int64             `json:"completion_tokens"`
 	Modality         string            `json:"modality"`
 	Metrics          map[string]any    `json:"metrics"`
 	Tags             map[string]string `json:"tags,omitempty"`
 	CostUSD          *float64          `json:"cost_usd,omitempty"`
-	CreatedAt        time.Time      `json:"created_at"`
-	KeyName          string         `json:"key_name,omitempty"`
-	KeyKind          string         `json:"key_kind,omitempty"`
-	OwnerUserID      string         `json:"owner_user_id,omitempty"`
-	OwnerEmail       string         `json:"owner_email,omitempty"`
-	OwnerName        string         `json:"owner_name,omitempty"`
+	CreatedAt        time.Time         `json:"created_at"`
+	KeyName          string            `json:"key_name,omitempty"`
+	KeyKind          string            `json:"key_kind,omitempty"`
+	OwnerUserID      string            `json:"owner_user_id,omitempty"`
+	OwnerEmail       string            `json:"owner_email,omitempty"`
+	OwnerName        string            `json:"owner_name,omitempty"`
 }
 
 // Filter constrains usage list and summary queries.
 type Filter struct {
-	Limit     int
-	ProjectID string
-	APIKeyID  string
-	Model     string
-	Modality  string
-	From      *time.Time
-	To        *time.Time
-	GroupBy   string // day | model | key | modality (summary only)
+	Limit        int
+	ProjectID    string
+	APIKeyID     string
+	CredentialID string
+	Model        string
+	Modality     string
+	ExcludeBYOK  bool // when true, only rows where used_byok=false
+	BYOKOnly     bool // when true, only rows where used_byok=true
+	From         *time.Time
+	To           *time.Time
+	GroupBy      string // day | model | key | modality | byok (summary only)
 }
 
 // SummaryBucket is one row of a usage summary aggregation.
