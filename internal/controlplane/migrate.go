@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 13
+const schemaVersion = 14
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS platform_event_outbox CASCADE;
@@ -263,8 +263,7 @@ CREATE TABLE IF NOT EXISTS request_policies (
     organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     expression TEXT NOT NULL,
-    action TEXT NOT NULL DEFAULT 'deny',
-    action_config JSONB NOT NULL DEFAULT '{}'::jsonb,
+    actions JSONB NOT NULL DEFAULT '[]'::jsonb,
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
     priority INT NOT NULL DEFAULT 100,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -490,8 +489,7 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
 			name TEXT NOT NULL,
 			expression TEXT NOT NULL,
-			action TEXT NOT NULL DEFAULT 'deny',
-			action_config JSONB NOT NULL DEFAULT '{}'::jsonb,
+			actions JSONB NOT NULL DEFAULT '[]'::jsonb,
 			enabled BOOLEAN NOT NULL DEFAULT TRUE,
 			priority INT NOT NULL DEFAULT 100,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -686,6 +684,36 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			  AND action_config = '{}'::jsonb;
 		`); err != nil {
 			return fmt.Errorf("cycle24 policy when/then data migrate: %w", err)
+		}
+	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE request_policies ADD COLUMN IF NOT EXISTS actions JSONB NOT NULL DEFAULT '[]'::jsonb;
+	`); err != nil {
+		return fmt.Errorf("cycle25 policy actions array: %w", err)
+	}
+
+	// One-time: single action/action_config → actions JSON array.
+	var hasV14 bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM afi_schema_meta WHERE version = 14)`).Scan(&hasV14); err != nil {
+		return err
+	}
+	if !hasV14 {
+		if _, err := pool.Exec(ctx, `
+			UPDATE request_policies
+			SET actions = jsonb_build_array(
+				jsonb_build_object(
+					'type', COALESCE(NULLIF(action, ''), 'deny'),
+					'config', COALESCE(action_config, '{}'::jsonb)
+				)
+			)
+			WHERE COALESCE(jsonb_array_length(actions), 0) = 0
+			  AND EXISTS (
+			    SELECT 1 FROM information_schema.columns
+			    WHERE table_schema = 'public' AND table_name = 'request_policies' AND column_name = 'action'
+			  );
+		`); err != nil {
+			return fmt.Errorf("cycle25 policy actions data migrate: %w", err)
 		}
 	}
 	return nil
