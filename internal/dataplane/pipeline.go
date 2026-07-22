@@ -210,6 +210,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		"target_model", route.TargetModel,
 		"provider", provider.ID,
 		"fallbacks", len(route.Fallbacks),
+		"retry_max_attempts", maxTriesFor(route.Retry),
 		"stream", reqBody.Stream,
 		"snapshot_version", snap.Version,
 	)
@@ -225,44 +226,70 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		status           = "ok"
 	)
 
+	maxTries := maxTriesFor(route.Retry)
+targetLoop:
 	for i, attempt := range attempts {
-		bound, credID, bindErr := p.bindProviderSecret(ctx, snap, attempt.Provider, key, policy.Request{
-			Model:   reqBody.Model,
-			Path:    call.Route.Path,
-			Stream:  reqBody.Stream,
-			Tags:    call.Tags,
-			Headers: call.Headers,
-		})
-		if bindErr != nil {
-			lastErr = bindErr
-			log.Warn("credential resolve failed", "provider", attempt.Provider.ID, "err", bindErr, "attempt", i)
-			if i+1 < len(attempts) {
-				continue
+		for try := 0; try < maxTries; try++ {
+			if try > 0 {
+				if sleepErr := sleepBeforeRetry(ctx, route.Retry, try-1); sleepErr != nil {
+					lastErr = sleepErr
+					discardResponse(resp)
+					resp = nil
+					break targetLoop
+				}
 			}
-			break
-		}
-		usedProvider = bound
-		usedTarget = attempt.TargetModel
-		usedCredentialID = credID
-		resp, lastErr = p.callProvider(ctx, bound, attempt.TargetModel, body, reqBody.Stream, call)
-		if lastErr != nil {
-			log.Warn("upstream attempt failed", "provider", attempt.Provider.ID, "err", lastErr, "attempt", i)
-			if errors.Is(lastErr, ErrStreamUnsupported) {
-				break
+
+			bound, credID, bindErr := p.bindProviderSecret(ctx, snap, attempt.Provider, key, policy.Request{
+				Model:   reqBody.Model,
+				Path:    call.Route.Path,
+				Stream:  reqBody.Stream,
+				Tags:    call.Tags,
+				Headers: call.Headers,
+			})
+			if bindErr != nil {
+				lastErr = bindErr
+				log.Warn("credential resolve failed", "provider", attempt.Provider.ID, "err", bindErr, "attempt", i)
+				// Credential errors are not upstream retries — move to next target.
+				if i+1 < len(attempts) {
+					continue targetLoop
+				}
+				break targetLoop
 			}
-			if i+1 < len(attempts) && shouldFailoverError(lastErr) {
-				continue
+			usedProvider = bound
+			usedTarget = attempt.TargetModel
+			usedCredentialID = credID
+			resp, lastErr = p.callProvider(ctx, bound, attempt.TargetModel, body, reqBody.Stream, call)
+			if lastErr != nil {
+				log.Warn("upstream attempt failed", "provider", attempt.Provider.ID, "err", lastErr, "attempt", i, "try", try)
+				if errors.Is(lastErr, ErrStreamUnsupported) {
+					break targetLoop
+				}
+				if shouldFailoverError(lastErr) {
+					if try+1 < maxTries {
+						logRetry(log, attempt.Provider.ID, try, maxTries, 0, lastErr)
+						continue
+					}
+					if i+1 < len(attempts) {
+						continue targetLoop
+					}
+				}
+				break targetLoop
 			}
-			break
+			if shouldFailoverStatus(resp.StatusCode) {
+				if try+1 < maxTries || i+1 < len(attempts) {
+					log.Warn("upstream attempt status", "provider", attempt.Provider.ID, "status", resp.StatusCode, "attempt", i, "try", try)
+					code := resp.StatusCode
+					discardResponse(resp)
+					resp = nil
+					if try+1 < maxTries {
+						logRetry(log, attempt.Provider.ID, try, maxTries, code, nil)
+						continue
+					}
+					continue targetLoop
+				}
+			}
+			break targetLoop
 		}
-		if shouldFailoverStatus(resp.StatusCode) && i+1 < len(attempts) {
-			log.Warn("upstream attempt status", "provider", attempt.Provider.ID, "status", resp.StatusCode, "attempt", i)
-			_, _ = io.Copy(io.Discard, resp.Body)
-			_ = resp.Body.Close()
-			resp = nil
-			continue
-		}
-		break
 	}
 
 	if lastErr != nil && resp == nil {
