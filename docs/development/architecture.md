@@ -63,7 +63,7 @@ Snapshots contain:
 * Provider credentials (env ref, encrypted_db ciphertext, or vault secret_ref) + assignments (provider type × org/project/api_key scope)
 * Static model routes (optional fallbacks)
 * Quotas (scope, metric, limit, window) — resolve order per window: api_key → user → project → organization
-* CEL request policies (when/then: CEL when + allow|deny|set_header|use_credential; vars include `request`, `key`, and `credential`)
+* CEL request policies (when/then: CEL when + ordered Then actions allow|deny|set_header|use_credential; vars include `request`, `key`, and `credential`)
 
 Stored in Postgres (`gateway_snapshots`). The gateway watches for new versions (poll + `LISTEN/NOTIFY`) and hot-reloads.
 
@@ -90,5 +90,5 @@ Control-plane WASM hook bindings are available; gRPC plugin runtimes, billing in
 **Shipped governance:**
 
 * **Quotas** — `total` windows on Postgres; `minute` / `hour` / `day` rate limits on Redis (`AFI_REDIS_URL`)
-* **CEL policies** — when/then rules in the snapshot. When the expression is true: `deny` stops with 403, `allow` short-circuits allow, `set_header` sets an outbound provider header, `use_credential` selects a secret by name. Credential context: `credential.is_byok`, `credential.id`, `credential.name`, `credential.storage_kind`, `credential.provider_type`.
+* **CEL policies** — when/then rules in the snapshot. When the expression is true, Then `actions` run in order: `deny` stops with 403, `allow` short-circuits allow, `set_header` sets an outbound provider header, `use_credential` selects a secret by name. Credential context: `credential.is_byok`, `credential.id`, `credential.name`, `credential.storage_kind`, `credential.provider_type`.
 * **Provider credentials (BYOK)** — org-owned secrets (`env`, AES-GCM `encrypted_db`, or `vault` refs). Assignable to organization, project, or API key scopes. **Policy override:** `use_credential` action picks a credential by **name**; otherwise resolve **api_key → project → org → provider `api_key_env`**. Usage events persist `credential_id` and `used_byok`.

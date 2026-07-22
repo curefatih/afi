@@ -175,16 +175,17 @@ Most specific scope wins **per window**: api_key → user → project → organi
 |-------|--------|
 | `name` | Display name |
 | `expression` | Boolean CEL **when** clause |
-| `action` | `allow` \| `deny` \| `set_header` \| `use_credential` |
-| `action_config` | Options for the action (see below) |
+| `actions` | Ordered Then steps: `[{ "type", "config"? }, …]` (at least one) |
 | `priority` | Higher first (default 100). Batch-reorder via `POST .../policies/reorder`. |
 | `enabled` | Default true |
 
-**Then actions** (run when expression is true, priority desc):
+Legacy create/update bodies may still send a single `action` + `action_config`; the API stores them as a one-element `actions` array.
+
+**Then actions** (when expression is true: steps run **in order**; policies by priority desc):
 | Action | Config | Behavior |
 |--------|--------|----------|
 | `deny` | `{}` | Stop; HTTP 403 `policy_violation` |
-| `allow` | `{}` | Stop; allow (skips lower-priority rules) |
+| `allow` | `{}` | Stop; allow (skips remaining Then steps and lower-priority rules) |
 | `set_header` | `{ "header", "value"? , "value_expr"? }` | Set outbound upstream header; continue. `value_expr` is CEL → string and wins over `value`. |
 | `use_credential` | `{ "credential_name"? , "credential_name_expr"? }` | Select secret by name; continue. `credential_name_expr` is CEL → string (e.g. header value) and wins over `credential_name`. |
 
@@ -194,7 +195,7 @@ Examples:
 - Deny a model: when `request.model == "blocked-model"` then `deny`
 - Partner key by header value: when `("x-tenant-id" in request.headers) && request.headers["x-tenant-id"] != ""` then `use_credential` with `credential_name_expr: "request.headers[\\"x-tenant-id\\"]"` (secret name = header value)
 - Fixed partner key: when header equals `acme` then `use_credential` with `credential_name: "partner-acme"`
-- Tag upstream dynamically: then `set_header` with `header: "X-Partner"`, `value_expr: "request.headers[\\"x-tenant-id\\"]"`
+- Multi-then: same when → `use_credential` (name from header) **then** `set_header` with `header: "X-Partner"`, `value_expr: "request.headers[\\"x-tenant-id\\"]"`
 
 ### Provider credentials (BYOK)
 
