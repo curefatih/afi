@@ -5,19 +5,19 @@ import "testing"
 func TestDefaultCapabilities(t *testing.T) {
 	t.Parallel()
 	g := DefaultCapabilities("gemini")
-	if !g.Chat || !g.Stream || g.TTS || g.STT {
+	if !g.Chat || !g.Stream || g.TTS || g.STT || g.Embedding {
 		t.Fatalf("gemini=%+v", g)
 	}
 	o := DefaultCapabilities("openai_compatible")
-	if !o.Chat || !o.Stream || !o.TTS || !o.STT {
+	if !o.Chat || !o.Stream || !o.TTS || !o.STT || !o.Embedding {
 		t.Fatalf("compat=%+v", o)
 	}
 	oa := DefaultCapabilities("openai")
-	if !oa.TTS || !oa.STT {
+	if !oa.TTS || !oa.STT || !oa.Embedding {
 		t.Fatalf("openai=%+v", oa)
 	}
 	echo := DefaultCapabilities("echo")
-	if !echo.Chat || echo.Stream || echo.TTS || echo.STT {
+	if !echo.Chat || echo.Stream || echo.TTS || echo.STT || echo.Embedding {
 		t.Fatalf("echo=%+v", echo)
 	}
 }
@@ -34,12 +34,12 @@ func TestNormalizeCapabilitiesPromotesAudioForOpenAI(t *testing.T) {
 	t.Parallel()
 	// Pre-audio snapshot shape: chat+stream only.
 	got := NormalizeCapabilities("openai", ProviderCapabilities{Chat: true, Stream: true})
-	if !got.TTS || !got.STT {
-		t.Fatalf("expected tts/stt promoted: %+v", got)
+	if !got.TTS || !got.STT || !got.Embedding {
+		t.Fatalf("expected tts/stt/embedding promoted: %+v", got)
 	}
 	gem := NormalizeCapabilities("gemini", ProviderCapabilities{Chat: true, Stream: true})
-	if gem.TTS || gem.STT {
-		t.Fatalf("gemini should not gain audio: %+v", gem)
+	if gem.TTS || gem.STT || gem.Embedding {
+		t.Fatalf("gemini should not gain audio/embedding: %+v", gem)
 	}
 }
 
