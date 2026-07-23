@@ -12,7 +12,7 @@ import (
 // SSOProvider is a platform-wide federated IdP configuration entry.
 type SSOProvider struct {
 	ID                   string   `yaml:"id"`
-	Type                 string   `yaml:"type"` // oidc | oauth2 (saml reserved)
+	Type                 string   `yaml:"type"` // oidc | oauth2 | saml
 	DisplayName          string   `yaml:"display_name"`
 	Issuer               string   `yaml:"issuer"`
 	ClientID             string   `yaml:"client_id"`
@@ -22,6 +22,12 @@ type SSOProvider struct {
 	TokenURL             string   `yaml:"token_url"`
 	UserInfoURL          string   `yaml:"userinfo_url"`
 	RequireEmailVerified *bool    `yaml:"require_email_verified"`
+	// SAML fields (type: saml).
+	EntityID       string `yaml:"entity_id"`
+	IDPMetadataURL string `yaml:"idp_metadata_url"`
+	IDPMetadataXML string `yaml:"idp_metadata_xml"`
+	SPCertPEM      string `yaml:"sp_cert_pem"`
+	SPKeyPEM       string `yaml:"sp_key_pem"`
 }
 
 type Config struct {
@@ -225,7 +231,7 @@ func LoadConfig() (*Config, error) {
 			}
 		}
 		if p.RequireEmailVerified == nil {
-			v := strings.EqualFold(p.Type, "oidc")
+			v := strings.EqualFold(p.Type, "oidc") || strings.EqualFold(p.Type, "saml")
 			p.RequireEmailVerified = &v
 		}
 		if p.DisplayName == "" {
