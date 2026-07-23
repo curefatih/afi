@@ -123,7 +123,9 @@ Written on first control-plane start (or `make seed`):
 | GET/POST | `/api/v1/platform/auth/invites/{token}` / `…/accept` (public) |
 | GET | `/api/v1/platform/auth/sso/providers` (public) |
 | GET | `/api/v1/platform/auth/sso/{provider}/start` (public; redirects to IdP) |
-| GET | `/api/v1/platform/auth/sso/{provider}/callback` (public; redirects to web UI) |
+| GET | `/api/v1/platform/auth/sso/{provider}/callback` (public; OAuth/OIDC → web UI) |
+| POST | `/api/v1/platform/auth/sso/{provider}/callback` (public; SAML ACS → web UI) |
+| GET | `/api/v1/platform/auth/sso/{provider}/metadata` (public; SAML SP metadata) |
 | GET/PUT | `/api/v1/platform/organizations/{orgID}/default-retry` (PUT = org admin; publishes snapshot) |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/keys` (personal = member; service_account = org admin) |
 | DELETE | `/api/v1/platform/keys/{keyID}` (admin or personal key owner) |

@@ -1,9 +1,9 @@
 # Single sign-on (SSO)
 
-Platform users can sign in to the AFI control plane with an external identity provider (IdP) using **OAuth 2.0** or **OpenID Connect (OIDC)**. After a successful IdP login, AFI issues the same session JWT used by email/password login.
+Platform users can sign in to the AFI control plane with an external identity provider (IdP) using **OAuth 2.0**, **OpenID Connect (OIDC)**, or **SAML 2.0**. After a successful IdP login, AFI issues the same session JWT used by email/password login.
 
 !!! note
-    SSO authenticates **platform UI / control-plane** users only. Gateway inference still uses **virtual API keys**. SAML 2.0 is reserved for a later release (same federation ports).
+    SSO authenticates **platform UI / control-plane** users only. Gateway inference still uses **virtual API keys**.
 
 ## Sign in (end users)
 
@@ -21,14 +21,17 @@ If your email already has an AFI account, SSO links that account. Otherwise AFI 
 | Purpose | URL |
 |---------|-----|
 | OAuth redirect (callback) | `{auth.public_base_url}/api/v1/platform/auth/sso/{provider_id}/callback` |
+| SAML ACS (POST) | same callback URL (HTTP-POST binding) |
+| SAML SP metadata | `{auth.public_base_url}/api/v1/platform/auth/sso/{provider_id}/metadata` |
 | Web app after login | `{mail.public_app_url}/auth/sso/callback` |
 
 Examples (local):
 
-* Callback: `http://localhost:8081/api/v1/platform/auth/sso/google/callback`
+* OAuth/SAML callback: `http://localhost:8081/api/v1/platform/auth/sso/google/callback`
+* SAML metadata: `http://localhost:8081/api/v1/platform/auth/sso/okta/metadata`
 * App return: `http://localhost:3000/auth/sso/callback`
 
-Register the **callback** URL in your IdP as an allowed redirect URI. `auth.public_base_url` must be the URL clients and the IdP can reach for the control plane (not an internal-only listen address behind NAT without a reverse proxy).
+For OAuth/OIDC, register the **callback** URL in your IdP as an allowed redirect URI. For SAML, register the **ACS** URL and import **SP metadata** (or paste the Entity ID + ACS + signing cert). `auth.public_base_url` must be the URL clients and the IdP can reach for the control plane.
 
 ### 2. Config
 
@@ -102,9 +105,42 @@ For providers without OIDC discovery, set endpoints explicitly:
 
 When `require_email_verified` is `false`, a present email from a successful token exchange is treated as acceptable for JIT.
 
-### SAML 2.0
+### SAML 2.0 (`type: saml`)
 
-Not implemented yet. The identity ports leave room for a future SAML adapter; do not set `type: saml` today.
+SP-initiated login via HTTP-Redirect AuthnRequest; ACS is HTTP-POST to the same callback path used by OAuth.
+
+```yaml
+- id: okta
+  type: saml
+  display_name: Okta
+  # Optional; defaults to the metadata URL below
+  # entity_id: https://afi-control.example.com/api/v1/platform/auth/sso/okta/metadata
+  idp_metadata_url: https://your-org.okta.com/app/exk.../sso/saml/metadata
+  # Or inline: idp_metadata_xml: |
+  #   <EntityDescriptor>...</EntityDescriptor>
+  # Recommended in production (stable SP metadata):
+  # sp_cert_pem: |
+  #   -----BEGIN CERTIFICATE-----
+  #   ...
+  #   -----END CERTIFICATE-----
+  # sp_key_pem: |
+  #   -----BEGIN PRIVATE KEY-----
+  #   ...
+  #   -----END PRIVATE KEY-----
+  require_email_verified: true
+```
+
+IdP checklist (Okta / Entra / similar):
+
+1. Create a SAML app; set ACS / Recipient / Destination to the AFI callback URL.
+2. Set Audience / Entity ID to the AFI metadata URL (or your `entity_id`).
+3. Download IdP metadata and set `idp_metadata_url` (or paste `idp_metadata_xml`).
+4. Import AFI SP metadata from `GET …/sso/{id}/metadata` (or paste signing cert from that document).
+5. Ensure NameID or an email attribute is released (`email` / `mail` / standard email claim URIs).
+
+If `sp_cert_pem` / `sp_key_pem` are omitted, AFI generates an ephemeral RSA key at startup (dev only — re-import metadata after each restart).
+
+Default `require_email_verified: true` for SAML: a successful assertion that includes an email is treated as verified.
 
 ## How provisioning works (JIT)
 
@@ -123,7 +159,9 @@ Password login still works for users that have a password hash. Federated-only u
 |--------|------|---------|
 | `GET` | `/api/v1/platform/auth/sso/providers` | List enabled providers for the login UI |
 | `GET` | `/api/v1/platform/auth/sso/{provider}/start` | Begin SSO (redirects to IdP) |
-| `GET` | `/api/v1/platform/auth/sso/{provider}/callback` | IdP callback → redirect to web with `token` or `error` |
+| `GET` | `/api/v1/platform/auth/sso/{provider}/callback` | OAuth/OIDC callback → redirect to web with `token` or `error` |
+| `POST` | `/api/v1/platform/auth/sso/{provider}/callback` | SAML ACS (`SAMLResponse` + `RelayState`) → same web redirect |
+| `GET` | `/api/v1/platform/auth/sso/{provider}/metadata` | SAML SP metadata XML |
 | `POST` | `/api/v1/platform/auth/login` | Email/password (unchanged) |
 | `GET` | `/api/v1/platform/auth/me` | Current user (Bearer JWT) |
 
@@ -132,7 +170,7 @@ Optional query on start: `?redirect=/app/dashboard` (relative path only) — res
 ## Checklist
 
 1. Set strong `auth.jwt_secret` and production `public_base_url` / `mail.public_app_url`.
-2. Create an OAuth/OIDC app in the IdP; add the AFI callback URL.
+2. Create an OAuth/OIDC app **or** SAML app in the IdP; add the AFI callback (and SAML metadata) URLs.
 3. Enable `auth.sso` with at least one provider and restart control plane.
 4. Confirm Redis is reachable if `state_store=redis`.
 5. Open the web login page and confirm the IdP button appears.
@@ -144,8 +182,9 @@ Optional query on start: `?redirect=/app/dashboard` (relative path only) — res
 |---------|----------------|
 | No SSO buttons on login | `sso.enabled=false`, no valid providers, or control plane not restarted |
 | `redirect_uri_mismatch` at IdP | Callback URL does not exactly match `public_base_url` + `/api/v1/platform/auth/sso/{id}/callback` |
-| `invalid or expired sso state` | State TTL expired (~10m), `state_store=memory` with multiple replicas, or Redis unreachable |
+| `invalid or expired sso state` | State/RelayState TTL expired (~10m), `state_store=memory` with multiple replicas, or Redis unreachable |
 | `email not verified` | IdP did not assert verified email; set `require_email_verified: false` only if you accept that risk |
+| SAML metadata changes every restart | Set fixed `sp_cert_pem` / `sp_key_pem` |
 | User signed in but sees no orgs | Expected for JIT — invite the user or have them create an organization |
 
 Related: [Web UI](web-ui.md), [Customization reference](../deployment/customization.md), [Config reference](../development/config-reference.md).

@@ -40,13 +40,13 @@ export AFI_JWT_SECRET="..."   # overrides auth.jwt_secret in the file
 | `AFI_TOKEN_TTL` | `auth.token_ttl` | `24h` | Control plane | Platform session JWT lifetime |
 | `AFI_INTERNAL_TOKEN` | `auth.internal_token` | `afi-local-internal-token` | Control plane | Header `X-AFI-Internal-Token` for `/internal/v1/*` |
 | `AFI_AUTH_PUBLIC_BASE_URL` | `auth.public_base_url` | `http://localhost:8081` | Control plane | Public control-plane URL (SSO callbacks) |
-| `AFI_SSO_ENABLED` | `auth.sso.enabled` | `false` | Control plane | Enable platform OAuth2/OIDC SSO |
+| `AFI_SSO_ENABLED` | `auth.sso.enabled` | `false` | Control plane | Enable platform OAuth2/OIDC/SAML SSO |
 | `AFI_SSO_STATE_STORE` | `auth.sso.state_store` | `redis` | Control plane | `redis` (multi-node) or `memory` (single-node) |
 
 ### Auth behavior
 
 * Platform login: `POST /api/v1/platform/auth/login` → JWT signed with `jwt_secret`.
-* Platform SSO (OAuth2/OIDC): see **[Single sign-on (SSO)](../getting-started/sso.md)**. Providers are configured under `auth.sso.providers` (YAML). Prefer `state_store: redis` when running multiple control-plane replicas.
+* Platform SSO (OAuth2/OIDC/SAML): see **[Single sign-on (SSO)](../getting-started/sso.md)**. Providers are configured under `auth.sso.providers` (YAML). Prefer `state_store: redis` when running multiple control-plane replicas.
 * Empty `internal_token` fails closed for HTTP internal admin routes.
 * CLI `afi seed` / `afi snapshot publish` run in-process and do not need the header.
 
