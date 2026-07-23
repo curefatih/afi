@@ -78,6 +78,7 @@ const platformNav = [
 			{ title: "TTS", url: "/app/playground/tts" },
 			{ title: "STT", url: "/app/playground/stt" },
 			{ title: "MCP", url: "/app/playground/mcp" },
+			{ title: "A2A", url: "/app/playground/a2a" },
 		],
 	},
 ];

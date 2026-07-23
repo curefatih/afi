@@ -46,6 +46,7 @@ import { Route as AuthenticatedAppPlaygroundTtsRouteImport } from './routes/_aut
 import { Route as AuthenticatedAppPlaygroundSttRouteImport } from './routes/_authenticated/app/playground/stt'
 import { Route as AuthenticatedAppPlaygroundMcpRouteImport } from './routes/_authenticated/app/playground/mcp'
 import { Route as AuthenticatedAppPlaygroundChatRouteImport } from './routes/_authenticated/app/playground/chat'
+import { Route as AuthenticatedAppPlaygroundA2aRouteImport } from './routes/_authenticated/app/playground/a2a'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -247,6 +248,12 @@ const AuthenticatedAppPlaygroundChatRoute =
     path: '/playground/chat',
     getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
+const AuthenticatedAppPlaygroundA2aRoute =
+  AuthenticatedAppPlaygroundA2aRouteImport.update({
+    id: '/playground/a2a',
+    path: '/playground/a2a',
+    getParentRoute: () => AuthenticatedAppRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteRouteWithChildren
@@ -275,6 +282,7 @@ export interface FileRoutesByFullPath {
   '/auth/invite/$token': typeof AuthInviteTokenRoute
   '/auth/sso/callback': typeof AuthSsoCallbackRoute
   '/app/': typeof AuthenticatedAppIndexRoute
+  '/app/playground/a2a': typeof AuthenticatedAppPlaygroundA2aRoute
   '/app/playground/chat': typeof AuthenticatedAppPlaygroundChatRoute
   '/app/playground/mcp': typeof AuthenticatedAppPlaygroundMcpRoute
   '/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
@@ -313,6 +321,7 @@ export interface FileRoutesByTo {
   '/auth/invite/$token': typeof AuthInviteTokenRoute
   '/auth/sso/callback': typeof AuthSsoCallbackRoute
   '/app': typeof AuthenticatedAppIndexRoute
+  '/app/playground/a2a': typeof AuthenticatedAppPlaygroundA2aRoute
   '/app/playground/chat': typeof AuthenticatedAppPlaygroundChatRoute
   '/app/playground/mcp': typeof AuthenticatedAppPlaygroundMcpRoute
   '/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
@@ -353,6 +362,7 @@ export interface FileRoutesById {
   '/auth/invite/$token': typeof AuthInviteTokenRoute
   '/auth/sso/callback': typeof AuthSsoCallbackRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
+  '/_authenticated/app/playground/a2a': typeof AuthenticatedAppPlaygroundA2aRoute
   '/_authenticated/app/playground/chat': typeof AuthenticatedAppPlaygroundChatRoute
   '/_authenticated/app/playground/mcp': typeof AuthenticatedAppPlaygroundMcpRoute
   '/_authenticated/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
@@ -394,6 +404,7 @@ export interface FileRouteTypes {
     | '/auth/invite/$token'
     | '/auth/sso/callback'
     | '/app/'
+    | '/app/playground/a2a'
     | '/app/playground/chat'
     | '/app/playground/mcp'
     | '/app/playground/stt'
@@ -432,6 +443,7 @@ export interface FileRouteTypes {
     | '/auth/invite/$token'
     | '/auth/sso/callback'
     | '/app'
+    | '/app/playground/a2a'
     | '/app/playground/chat'
     | '/app/playground/mcp'
     | '/app/playground/stt'
@@ -471,6 +483,7 @@ export interface FileRouteTypes {
     | '/auth/invite/$token'
     | '/auth/sso/callback'
     | '/_authenticated/app/'
+    | '/_authenticated/app/playground/a2a'
     | '/_authenticated/app/playground/chat'
     | '/_authenticated/app/playground/mcp'
     | '/_authenticated/app/playground/stt'
@@ -752,6 +765,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppPlaygroundChatRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
+    '/_authenticated/app/playground/a2a': {
+      id: '/_authenticated/app/playground/a2a'
+      path: '/playground/a2a'
+      fullPath: '/app/playground/a2a'
+      preLoaderRoute: typeof AuthenticatedAppPlaygroundA2aRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
   }
 }
 
@@ -793,6 +813,7 @@ interface AuthenticatedAppRouteRouteChildren {
   AuthenticatedAppUsageRoute: typeof AuthenticatedAppUsageRoute
   AuthenticatedAppUsersRoute: typeof AuthenticatedAppUsersRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
+  AuthenticatedAppPlaygroundA2aRoute: typeof AuthenticatedAppPlaygroundA2aRoute
   AuthenticatedAppPlaygroundChatRoute: typeof AuthenticatedAppPlaygroundChatRoute
   AuthenticatedAppPlaygroundMcpRoute: typeof AuthenticatedAppPlaygroundMcpRoute
   AuthenticatedAppPlaygroundSttRoute: typeof AuthenticatedAppPlaygroundSttRoute
@@ -824,6 +845,7 @@ const AuthenticatedAppRouteRouteChildren: AuthenticatedAppRouteRouteChildren = {
   AuthenticatedAppUsageRoute: AuthenticatedAppUsageRoute,
   AuthenticatedAppUsersRoute: AuthenticatedAppUsersRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
+  AuthenticatedAppPlaygroundA2aRoute: AuthenticatedAppPlaygroundA2aRoute,
   AuthenticatedAppPlaygroundChatRoute: AuthenticatedAppPlaygroundChatRoute,
   AuthenticatedAppPlaygroundMcpRoute: AuthenticatedAppPlaygroundMcpRoute,
   AuthenticatedAppPlaygroundSttRoute: AuthenticatedAppPlaygroundSttRoute,
