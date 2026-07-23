@@ -163,6 +163,58 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 		return src, err
 	}
 
+	mcpRows, err := l.Pool.Query(ctx, `
+		SELECT id, organization_id, alias, name, base_url, api_key_env, method_allowlist, enabled
+		FROM mcp_backends
+	`)
+	if err != nil {
+		return src, err
+	}
+	defer mcpRows.Close()
+	for mcpRows.Next() {
+		var b snapshot.MCPBackend
+		var allowJSON []byte
+		if err := mcpRows.Scan(
+			&b.ID, &b.OrganizationID, &b.Alias, &b.Name, &b.BaseURL, &b.APIKeyEnv,
+			&allowJSON, &b.Enabled,
+		); err != nil {
+			return src, err
+		}
+		if len(allowJSON) > 0 {
+			_ = json.Unmarshal(allowJSON, &b.MethodAllowlist)
+		}
+		src.MCPBackends = append(src.MCPBackends, b)
+	}
+	if err := mcpRows.Err(); err != nil {
+		return src, err
+	}
+
+	a2aRows, err := l.Pool.Query(ctx, `
+		SELECT id, organization_id, alias, name, upstream_url, card_url, card_cache, api_key_env, auth_scheme, enabled
+		FROM a2a_agents
+	`)
+	if err != nil {
+		return src, err
+	}
+	defer a2aRows.Close()
+	for a2aRows.Next() {
+		var a snapshot.A2AAgent
+		var cardCache []byte
+		if err := a2aRows.Scan(
+			&a.ID, &a.OrganizationID, &a.Alias, &a.Name, &a.UpstreamURL, &a.CardURL,
+			&cardCache, &a.APIKeyEnv, &a.AuthScheme, &a.Enabled,
+		); err != nil {
+			return src, err
+		}
+		if len(cardCache) > 0 {
+			a.CardCache = cardCache
+		}
+		src.A2AAgents = append(src.A2AAgents, a)
+	}
+	if err := a2aRows.Err(); err != nil {
+		return src, err
+	}
+
 	credRows, err := l.Pool.Query(ctx, `
 		SELECT id, organization_id, name, provider_type, storage_kind, secret_ref, encrypted_payload, key_version, status
 		FROM provider_credentials

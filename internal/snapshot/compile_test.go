@@ -36,3 +36,38 @@ func TestCompile(t *testing.T) {
 		t.Fatal("expected missing route")
 	}
 }
+
+func TestCompileMCPBackends(t *testing.T) {
+	snap := Compile(Source{
+		MCPBackends: []MCPBackend{
+			{ID: "mcp_1", OrganizationID: "o1", Alias: "docs", Name: "Docs", BaseURL: "https://mcp.example/mcp", Enabled: true},
+			{ID: "mcp_2", OrganizationID: "o1", Alias: "off", Name: "Off", BaseURL: "https://mcp.example/off", Enabled: false},
+		},
+	})
+	b, ok := snap.LookupMCPBackend("o1", "docs")
+	if !ok || b.ID != "mcp_1" {
+		t.Fatalf("lookup=%v %+v", ok, b)
+	}
+	if _, ok := snap.LookupMCPBackend("o1", "off"); ok {
+		t.Fatal("disabled backend should not route")
+	}
+	if _, ok := snap.LookupMCPBackend("o1", "missing"); ok {
+		t.Fatal("expected missing")
+	}
+}
+
+func TestCompileA2AAgents(t *testing.T) {
+	snap := Compile(Source{
+		A2AAgents: []A2AAgent{
+			{ID: "a2a_1", OrganizationID: "o1", Alias: "helper", Name: "Helper", UpstreamURL: "https://a.example/rpc", Enabled: true},
+			{ID: "a2a_2", OrganizationID: "o1", Alias: "off", Name: "Off", UpstreamURL: "https://a.example/off", Enabled: false},
+		},
+	})
+	a, ok := snap.LookupA2AAgent("o1", "helper")
+	if !ok || a.ID != "a2a_1" {
+		t.Fatalf("lookup=%v %+v", ok, a)
+	}
+	if _, ok := snap.LookupA2AAgent("o1", "off"); ok {
+		t.Fatal("disabled agent should not route")
+	}
+}

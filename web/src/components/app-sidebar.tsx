@@ -2,7 +2,9 @@
 
 import {
 	BarChart3Icon,
+	BotIcon,
 	Building2Icon,
+	CableIcon,
 	FolderKanbanIcon,
 	GaugeIcon,
 	KeyRoundIcon,
@@ -119,6 +121,16 @@ const governanceNav = [
 		icon: <ShieldIcon />,
 	},
 	{
+		title: "MCP",
+		url: "/app/mcp",
+		icon: <CableIcon />,
+	},
+	{
+		title: "A2A",
+		url: "/app/a2a",
+		icon: <BotIcon />,
+	},
+	{
 		title: "Hooks",
 		url: "/app/hooks",
 		icon: <PuzzleIcon />,
@@ -161,10 +173,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				) : (
 					<>
 						<NavMain label="Platform" items={platformNav} />
+						<NavMain label="Governance" items={governanceNav} />
 						{activeOrg && activeOrg.projects.length > 0 ? (
 							<NavProjects projects={activeOrg.projects} />
 						) : null}
-						<NavMain label="Governance" items={governanceNav} />
 					</>
 				)}
 			</SidebarContent>

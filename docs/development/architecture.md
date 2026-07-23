@@ -49,6 +49,8 @@ Also exposes:
 * `POST /v1/chat/completions` — OpenAI-shaped chat via `ChatProvider` (adapters translate native APIs)
 * `POST /v1/messages` — Anthropic-shaped pass-through via `MessagesBackend`
 * `POST /v1/audio/speech` / `POST /v1/audio/transcriptions` — TTS/STT via `AudioBackend`
+* `POST|GET|DELETE /mcp/{alias}` — MCP Streamable HTTP proxy to org-scoped upstream backends (snapshot `MCPBackends`). Platform UI: [MCP and A2A](../getting-started/web-ui/mcp-a2a.md).
+* `POST /a2a/{alias}` — A2A JSON-RPC proxy; `GET /a2a/{alias}/.well-known/agent-card.json` — Agent Card with gateway URL rewrite (snapshot `A2AAgents`). Platform UI: [MCP and A2A](../getting-started/web-ui/mcp-a2a.md).
 
 The playground honors streaming/TTS/STT capabilities per model. Chat failover retries only before the response body is committed to the client (audio has no failover in this build).
 
@@ -86,6 +88,8 @@ In-process registration is live:
 * **Provider health** — control-plane rollup from `usage_events` for Providers UI
 
 Control-plane WASM hook bindings are available; gRPC plugin runtimes, billing invoices, and multi-region snapshot distribution remain future work.
+
+**Protocol gateways:** MCP Streamable HTTP (`/mcp/{alias}`) and A2A JSON-RPC + Agent Card (`/a2a/{alias}`) proxies are shipped. See [`internal-docs/PROJECT.md`](../../internal-docs/PROJECT.md) §16 and [`internal-docs/mcp-a2a-gateway.md`](../../internal-docs/mcp-a2a-gateway.md).
 
 **Shipped governance:**
 

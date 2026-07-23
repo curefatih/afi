@@ -132,6 +132,7 @@ func main() {
 		log.Info("hashicorp vault enabled", "addr", h.Addr)
 	}
 	pipeline.Credentials = secrets.NewCredentialResolver(credBox).WithVault(vaultMulti)
+	pipeline.Secrets = vaultMulti
 
 	var timed dataplane.CounterStore
 	if cfg.RedisURL != "" {

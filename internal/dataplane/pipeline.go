@@ -29,6 +29,8 @@ const (
 	ModalityMessages = "messages"
 	ModalityTTS      = "tts"
 	ModalitySTT      = "stt"
+	ModalityMCP      = "mcp"
+	ModalityA2A      = "a2a"
 )
 
 // UsageEvent is an alias for the canonical usage.Event emitted on the request path.
@@ -44,6 +46,8 @@ type Pipeline struct {
 	Counters    CounterStore
 	Policies    *policy.Evaluator
 	Credentials secrets.CredentialOpener
+	Secrets     secrets.Resolver
+	HTTP        *http.Client
 }
 
 // NewPipeline builds a pipeline with an explicit provider registry.
@@ -68,6 +72,11 @@ func (p *Pipeline) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/messages", p.handleMessages)
 	mux.HandleFunc("POST /v1/audio/speech", p.handleAudioSpeech)
 	mux.HandleFunc("POST /v1/audio/transcriptions", p.handleAudioTranscriptions)
+	mux.HandleFunc("POST /mcp/{alias}", p.handleMCP)
+	mux.HandleFunc("GET /mcp/{alias}", p.handleMCP)
+	mux.HandleFunc("DELETE /mcp/{alias}", p.handleMCP)
+	mux.HandleFunc("POST /a2a/{alias}", p.handleA2AJSONRPC)
+	mux.HandleFunc("GET /a2a/{alias}/.well-known/agent-card.json", p.handleA2AAgentCard)
 	return withCORS(mux)
 }
 

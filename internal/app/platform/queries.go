@@ -99,6 +99,14 @@ func (s *Service) ListWasmHooks(ctx context.Context, orgID string) ([]gatewaycon
 	return s.API.ListWasmHooks(ctx, orgID)
 }
 
+func (s *Service) ListMCPBackends(ctx context.Context, orgID string) ([]gatewayconfig.MCPBackend, error) {
+	return s.API.ListMCPBackends(ctx, orgID)
+}
+
+func (s *Service) ListA2AAgents(ctx context.Context, orgID string) ([]gatewayconfig.A2AAgent, error) {
+	return s.API.ListA2AAgents(ctx, orgID)
+}
+
 func (s *Service) ListCredentials(ctx context.Context, orgID string) ([]credentials.Credential, error) {
 	return s.API.ListCredentials(ctx, orgID)
 }
