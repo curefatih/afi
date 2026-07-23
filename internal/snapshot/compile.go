@@ -15,6 +15,7 @@ type Source struct {
 	Policies       []Policy
 	WasmHooks      []WasmHook
 	MCPBackends    []MCPBackend
+	A2AAgents      []A2AAgent
 	DefaultRetries map[string]*RetryConfig // orgID → default
 }
 
@@ -40,6 +41,8 @@ func Compile(src Source) *Snapshot {
 		WasmHooks:      append([]WasmHook(nil), src.WasmHooks...),
 		MCPBackends:    make(map[string]MCPBackend, len(src.MCPBackends)),
 		MCPRoutes:      make(map[string]string, len(src.MCPBackends)),
+		A2AAgents:      make(map[string]A2AAgent, len(src.A2AAgents)),
+		A2ARoutes:      make(map[string]string, len(src.A2AAgents)),
 		DefaultRetries: make(map[string]*RetryConfig, len(src.DefaultRetries)),
 	}
 	for _, k := range src.APIKeys {
@@ -79,6 +82,19 @@ func Compile(src Source) *Snapshot {
 	if len(s.MCPBackends) == 0 {
 		s.MCPBackends = nil
 		s.MCPRoutes = nil
+	}
+	for _, a := range src.A2AAgents {
+		if a.ID == "" || a.OrganizationID == "" || a.Alias == "" {
+			continue
+		}
+		s.A2AAgents[a.ID] = a
+		if a.Enabled {
+			s.A2ARoutes[a2aRouteKey(a.OrganizationID, a.Alias)] = a.ID
+		}
+	}
+	if len(s.A2AAgents) == 0 {
+		s.A2AAgents = nil
+		s.A2ARoutes = nil
 	}
 	for orgID, retry := range src.DefaultRetries {
 		if orgID == "" || retry == nil {

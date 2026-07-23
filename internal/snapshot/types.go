@@ -47,6 +47,8 @@ type Snapshot struct {
 	WasmHooks      []WasmHook              `json:"wasm_hooks"`
 	MCPBackends    map[string]MCPBackend   `json:"mcp_backends,omitempty"` // keyed by backend id
 	MCPRoutes      map[string]string       `json:"mcp_routes,omitempty"`   // orgID::alias → backend id
+	A2AAgents      map[string]A2AAgent     `json:"a2a_agents,omitempty"`   // keyed by agent id
+	A2ARoutes      map[string]string       `json:"a2a_routes,omitempty"`   // orgID::alias → agent id
 	DefaultRetries map[string]*RetryConfig `json:"default_retries,omitempty"` // orgID → default retry
 }
 
@@ -62,6 +64,21 @@ type MCPBackend struct {
 	Enabled         bool     `json:"enabled"`
 	// InlineAPIKey is request-scoped; set by the gateway after secret resolution.
 	InlineAPIKey string `json:"-"`
+}
+
+// A2AAgent is a compiled A2A upstream agent.
+type A2AAgent struct {
+	ID             string          `json:"id"`
+	OrganizationID string          `json:"organization_id"`
+	Alias          string          `json:"alias"`
+	Name           string          `json:"name"`
+	UpstreamURL    string          `json:"upstream_url"`
+	CardURL        string          `json:"card_url,omitempty"`
+	CardCache      json.RawMessage `json:"card_cache,omitempty"`
+	APIKeyEnv      string          `json:"api_key_env"`
+	AuthScheme     string          `json:"auth_scheme,omitempty"`
+	Enabled        bool            `json:"enabled"`
+	InlineAPIKey   string          `json:"-"`
 }
 
 // WasmHook is a compiled sandboxed lifecycle binding for the gateway.
@@ -153,6 +170,10 @@ func mcpRouteKey(orgID, alias string) string {
 	return orgID + "::" + alias
 }
 
+func a2aRouteKey(orgID, alias string) string {
+	return orgID + "::" + alias
+}
+
 func (s *Snapshot) LookupKey(raw string) (APIKey, bool) {
 	if s == nil || s.APIKeys == nil {
 		return APIKey{}, false
@@ -190,6 +211,22 @@ func (s *Snapshot) LookupMCPBackend(orgID, alias string) (MCPBackend, bool) {
 		return MCPBackend{}, false
 	}
 	return b, true
+}
+
+// LookupA2AAgent resolves an org-scoped A2A alias to a compiled agent.
+func (s *Snapshot) LookupA2AAgent(orgID, alias string) (A2AAgent, bool) {
+	if s == nil || s.A2ARoutes == nil || s.A2AAgents == nil {
+		return A2AAgent{}, false
+	}
+	id, ok := s.A2ARoutes[a2aRouteKey(orgID, alias)]
+	if !ok {
+		return A2AAgent{}, false
+	}
+	a, ok := s.A2AAgents[id]
+	if !ok || !a.Enabled {
+		return A2AAgent{}, false
+	}
+	return a, true
 }
 
 // AssignmentKey builds the snapshot assignment index key.
