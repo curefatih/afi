@@ -369,16 +369,16 @@ func (s *Store) ListRoutes(ctx context.Context, orgID string) ([]Route, error) {
 	return s.routes().ListByOrg(ctx, orgID)
 }
 
-func (s *Store) CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []RouteFallback, retry *RetryConfig) (*Route, error) {
-	return gatewayconfig.CreateRoute(ctx, s.routes(), s.providers(), newPlatformID("route"), orgID, model, providerID, targetModel, fallbacks, retry)
+func (s *Store) CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []RouteFallback, retry *RetryConfig, strategy string, weight int) (*Route, error) {
+	return gatewayconfig.CreateRoute(ctx, s.routes(), s.providers(), newPlatformID("route"), orgID, model, providerID, targetModel, fallbacks, retry, strategy, weight)
 }
 
-func (s *Store) UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []RouteFallback, retry *RetryConfig) (*Route, error) {
+func (s *Store) UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []RouteFallback, retry *RetryConfig, strategy string, weight int) (*Route, error) {
 	orgID, err := s.GetRouteOrgID(ctx, routeID)
 	if err != nil {
 		return nil, err
 	}
-	return gatewayconfig.UpdateRoute(ctx, s.routes(), s.providers(), routeID, orgID, model, providerID, targetModel, fallbacks, retry)
+	return gatewayconfig.UpdateRoute(ctx, s.routes(), s.providers(), routeID, orgID, model, providerID, targetModel, fallbacks, retry, strategy, weight)
 }
 
 func (s *Store) credentialsRepo() *Credentials {

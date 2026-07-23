@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/curefatih/afi/internal/adapters/llm"
 	"github.com/curefatih/afi/internal/adapters/secrets"
 	"github.com/curefatih/afi/internal/dataplane/openaichat"
+	"github.com/curefatih/afi/internal/dataplane/routing"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/modelcatalog"
 	"github.com/curefatih/afi/internal/policy"
@@ -51,6 +53,8 @@ type Pipeline struct {
 	Secrets     secrets.Resolver
 	HTTP        *http.Client
 	Metrics     *telemetry.GatewayMetrics
+	// RouteRand optional RNG for weighted routing (tests); nil uses math/rand global.
+	RouteRand *rand.Rand
 }
 
 // NewPipeline builds a pipeline with an explicit provider registry.
@@ -189,7 +193,7 @@ func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	attempts := buildAttempts(snap, route, provider)
+	attempts := p.buildAttempts(snap, route, provider)
 	if len(attempts) == 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": map[string]string{"message": "no usable providers for route", "type": "invalid_request_error"},
@@ -441,18 +445,30 @@ func tokenMetrics(prompt, completion int64) map[string]any {
 	}
 }
 
-func buildAttempts(snap *snapshot.Snapshot, route snapshot.Route, primary snapshot.Provider) []routeAttempt {
-	out := []routeAttempt{{Provider: primary, TargetModel: route.TargetModel}}
+func (p *Pipeline) buildAttempts(snap *snapshot.Snapshot, route snapshot.Route, primary snapshot.Provider) []routeAttempt {
+	cands := []routing.Candidate{{
+		ProviderID: primary.ID, TargetModel: route.TargetModel, Weight: route.Weight,
+	}}
 	for _, fb := range route.Fallbacks {
-		p, ok := snap.Providers[fb.ProviderID]
-		if !ok {
+		if _, ok := snap.Providers[fb.ProviderID]; !ok {
 			continue
 		}
 		target := fb.TargetModel
 		if target == "" {
 			target = route.TargetModel
 		}
-		out = append(out, routeAttempt{Provider: p, TargetModel: target})
+		cands = append(cands, routing.Candidate{
+			ProviderID: fb.ProviderID, TargetModel: target, Weight: fb.Weight,
+		})
+	}
+	ordered := routing.ForStrategy(route.RoutingStrategy).Order(cands, p.RouteRand)
+	out := make([]routeAttempt, 0, len(ordered))
+	for _, c := range ordered {
+		prov, ok := snap.Providers[c.ProviderID]
+		if !ok {
+			continue
+		}
+		out = append(out, routeAttempt{Provider: prov, TargetModel: c.TargetModel})
 	}
 	return out
 }

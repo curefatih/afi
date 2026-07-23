@@ -13,6 +13,7 @@ import {
 	deleteRouteMutationOptions,
 	type RetryConfig,
 	type RouteConfig,
+	type RoutingStrategy,
 	routesQueryOptions,
 	updateRouteMutationOptions,
 } from "#/api/routing";
@@ -125,6 +126,8 @@ function RouteComponent() {
 	const [providerId, setProviderId] = useState("");
 	const [fallbacks, setFallbacks] = useState<FallbackRow[]>([]);
 	const [retry, setRetry] = useState<RetryConfig | null>(null);
+	const [strategy, setStrategy] = useState<RoutingStrategy>("ordered");
+	const [weight, setWeight] = useState(1);
 	const [error, setError] = useState<string | null>(null);
 
 	const [editModel, setEditModel] = useState("");
@@ -132,10 +135,14 @@ function RouteComponent() {
 	const [editProviderId, setEditProviderId] = useState("");
 	const [editFallbacks, setEditFallbacks] = useState<FallbackRow[]>([]);
 	const [editRetry, setEditRetry] = useState<RetryConfig | null>(null);
+	const [editStrategy, setEditStrategy] = useState<RoutingStrategy>("ordered");
+	const [editWeight, setEditWeight] = useState(1);
 	const [editError, setEditError] = useState<string | null>(null);
 
 	const openCreate = () => {
 		setRetry(null);
+		setStrategy("ordered");
+		setWeight(1);
 		setError(null);
 		setCreateOpen(true);
 	};
@@ -148,10 +155,13 @@ function RouteComponent() {
 		setEditFallbacks(
 			(r.fallbacks ?? []).map((f) => ({
 				...f,
+				weight: f.weight ?? 1,
 				key: crypto.randomUUID(),
 			})),
 		);
 		setEditRetry(r.retry ?? null);
+		setEditStrategy(r.routing_strategy === "weighted" ? "weighted" : "ordered");
+		setEditWeight(r.weight && r.weight > 0 ? r.weight : 1);
 		setEditError(null);
 	};
 
@@ -168,7 +178,7 @@ function RouteComponent() {
 			<PageHeader
 				title="Routing"
 				description="Map requested model names to providers."
-				info="Optional route retries override the org default; fallbacks run next on 5xx/timeout/429."
+				info="Optional route retries override the org default; weighted routes pick the first target by weight, then failover in list order on 5xx/timeout/429."
 				actions={
 					isOrgAdmin ? (
 						<Button onClick={openCreate} disabled={!canAddRoute}>
@@ -250,6 +260,7 @@ function RouteComponent() {
 									<TableHead>Model</TableHead>
 									<TableHead>Target</TableHead>
 									<TableHead>Provider</TableHead>
+									<TableHead>Strategy</TableHead>
 									<TableHead>Retry</TableHead>
 									<TableHead>Fallbacks</TableHead>
 									{isOrgAdmin ? <TableHead className="w-40" /> : null}
@@ -271,6 +282,11 @@ function RouteComponent() {
 											</div>
 										</TableCell>
 										<TableCell className="text-muted-foreground text-xs">
+											{r.routing_strategy === "weighted"
+												? `weighted (w=${r.weight ?? 1})`
+												: "ordered"}
+										</TableCell>
+										<TableCell className="text-muted-foreground text-xs">
 											{formatRetrySummary(r.retry, orgRetry.data?.retry)}
 										</TableCell>
 										<TableCell>
@@ -286,6 +302,9 @@ function RouteComponent() {
 														>
 															{providerName(f.provider_id)} →{" "}
 															{f.target_model || r.target_model}
+															{r.routing_strategy === "weighted"
+																? ` · w${f.weight ?? 1}`
+																: ""}
 														</Badge>
 													))}
 												</div>
@@ -319,7 +338,7 @@ function RouteComponent() {
 			</QueryGate>
 
 			<Sheet open={createOpen} onOpenChange={setCreateOpen}>
-				<SheetContent>
+				<SheetContent className="w-full overflow-y-auto sm:max-w-2xl data-[side=right]:sm:max-w-2xl data-[side=left]:sm:max-w-2xl">
 					<SheetHeader>
 						<SheetTitle>Add route</SheetTitle>
 						<SheetDescription>
@@ -348,11 +367,14 @@ function RouteComponent() {
 									target_model: targetModel || model,
 									fallbacks: fallbacks
 										.filter((f) => f.provider_id)
-										.map(({ provider_id, target_model }) => ({
+										.map(({ provider_id, target_model, weight: w }) => ({
 											provider_id,
 											target_model,
+											weight: w && w > 0 ? w : 1,
 										})),
 									retry: toRetryPayload(retry),
+									routing_strategy: strategy,
+									weight: weight > 0 ? weight : 1,
 								},
 								{
 									onError: (err) =>
@@ -399,6 +421,43 @@ function RouteComponent() {
 								</SelectContent>
 							</Select>
 						</div>
+						<div className="space-y-1">
+							<Label>Routing strategy</Label>
+							<Select
+								value={strategy}
+								onValueChange={(v) =>
+									setStrategy(v === "weighted" ? "weighted" : "ordered")
+								}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="ordered">
+										Ordered (failover list)
+									</SelectItem>
+									<SelectItem value="weighted">
+										Weighted load balance
+									</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+						{strategy === "weighted" ? (
+							<div className="space-y-1">
+								<Label htmlFor="route-weight">Primary weight</Label>
+								<Input
+									id="route-weight"
+									type="number"
+									min={1}
+									step={1}
+									value={weight}
+									onChange={(e) => {
+										const n = Number.parseInt(e.target.value, 10);
+										setWeight(Number.isFinite(n) && n > 0 ? n : 1);
+									}}
+								/>
+							</div>
+						) : null}
 						<RetryEditor
 							value={retry}
 							onChange={setRetry}
@@ -409,6 +468,7 @@ function RouteComponent() {
 							onChange={setFallbacks}
 							providers={providerList}
 							defaultTargetModel={targetModel || model}
+							showWeights={strategy === "weighted"}
 						/>
 						{error ? <p className="text-destructive text-xs">{error}</p> : null}
 						<SheetFooter>
@@ -436,7 +496,7 @@ function RouteComponent() {
 					if (!o) setEdit(null);
 				}}
 			>
-				<SheetContent>
+				<SheetContent className="w-full overflow-y-auto sm:max-w-2xl data-[side=right]:sm:max-w-2xl data-[side=left]:sm:max-w-2xl">
 					<SheetHeader>
 						<SheetTitle>Edit route</SheetTitle>
 						<SheetDescription>
@@ -464,11 +524,14 @@ function RouteComponent() {
 										target_model: editTargetModel || editModel,
 										fallbacks: editFallbacks
 											.filter((f) => f.provider_id)
-											.map(({ provider_id, target_model }) => ({
+											.map(({ provider_id, target_model, weight: w }) => ({
 												provider_id,
 												target_model,
+												weight: w && w > 0 ? w : 1,
 											})),
 										retry: toRetryPayload(editRetry),
+										routing_strategy: editStrategy,
+										weight: editWeight > 0 ? editWeight : 1,
 									},
 									{
 										onError: (err) =>
@@ -515,6 +578,43 @@ function RouteComponent() {
 									</SelectContent>
 								</Select>
 							</div>
+							<div className="space-y-1">
+								<Label>Routing strategy</Label>
+								<Select
+									value={editStrategy}
+									onValueChange={(v) =>
+										setEditStrategy(v === "weighted" ? "weighted" : "ordered")
+									}
+								>
+									<SelectTrigger className="w-full">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="ordered">
+											Ordered (failover list)
+										</SelectItem>
+										<SelectItem value="weighted">
+											Weighted load balance
+										</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+							{editStrategy === "weighted" ? (
+								<div className="space-y-1">
+									<Label htmlFor="edit-route-weight">Primary weight</Label>
+									<Input
+										id="edit-route-weight"
+										type="number"
+										min={1}
+										step={1}
+										value={editWeight}
+										onChange={(e) => {
+											const n = Number.parseInt(e.target.value, 10);
+											setEditWeight(Number.isFinite(n) && n > 0 ? n : 1);
+										}}
+									/>
+								</div>
+							) : null}
 							<RetryEditor
 								value={editRetry}
 								onChange={setEditRetry}
@@ -525,6 +625,7 @@ function RouteComponent() {
 								onChange={setEditFallbacks}
 								providers={providerList}
 								defaultTargetModel={editTargetModel || editModel}
+								showWeights={editStrategy === "weighted"}
 							/>
 							{editError ? (
 								<p className="text-destructive text-xs">{editError}</p>

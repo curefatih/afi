@@ -193,6 +193,8 @@ CREATE TABLE IF NOT EXISTS routes (
     target_model TEXT NOT NULL,
     fallbacks JSONB NOT NULL DEFAULT '[]'::jsonb,
     retry JSONB,
+    routing_strategy TEXT NOT NULL DEFAULT 'ordered',
+    weight INT NOT NULL DEFAULT 1,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (organization_id, model)
 );
@@ -825,6 +827,13 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			ON audit_events (organization_id, name, at DESC);
 	`); err != nil {
 		return fmt.Errorf("cycle31 audit events: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE routes ADD COLUMN IF NOT EXISTS routing_strategy TEXT NOT NULL DEFAULT 'ordered';
+		ALTER TABLE routes ADD COLUMN IF NOT EXISTS weight INT NOT NULL DEFAULT 1;
+	`); err != nil {
+		return fmt.Errorf("cycle32 route routing strategy: %w", err)
 	}
 	return nil
 }

@@ -1,9 +1,12 @@
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "#/lib/api-client";
 
+export type RoutingStrategy = "ordered" | "weighted";
+
 export type RouteFallback = {
 	provider_id: string;
 	target_model: string;
+	weight?: number;
 };
 
 export type BackoffConfig = {
@@ -26,6 +29,8 @@ export type RouteConfig = {
 	target_model: string;
 	fallbacks: RouteFallback[];
 	retry?: RetryConfig | null;
+	routing_strategy?: RoutingStrategy;
+	weight?: number;
 	created_at: string;
 };
 
@@ -44,6 +49,8 @@ export type CreateRouteInput = {
 	target_model?: string;
 	fallbacks?: RouteFallback[];
 	retry?: RetryConfig | null;
+	routing_strategy?: RoutingStrategy;
+	weight?: number;
 };
 
 export const createRouteMutationOptions = () =>
@@ -62,6 +69,8 @@ export type UpdateRouteInput = {
 	target_model?: string;
 	fallbacks?: RouteFallback[];
 	retry?: RetryConfig | null;
+	routing_strategy?: RoutingStrategy;
+	weight?: number;
 };
 
 export const updateRouteMutationOptions = () =>

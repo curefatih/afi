@@ -3,14 +3,15 @@ package dataplane
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/curefatih/afi/internal/adapters/llm"
 	"io"
 	"log/slog"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
 
+	"github.com/curefatih/afi/internal/adapters/llm"
 	"github.com/curefatih/afi/internal/snapshot"
 )
 
@@ -440,5 +441,83 @@ func TestChatCompletionsAnthropicProvider(t *testing.T) {
 	}
 	if !bytes.Contains(rr.Body.Bytes(), []byte("anth-pong")) {
 		t.Fatalf("body=%s", rr.Body.String())
+	}
+}
+
+func TestWeightedRoutingFirstPickThenFailoverOrder(t *testing.T) {
+	var aHits, bHits atomic.Int32
+	a := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		aHits.Add(1)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "chatcmpl-a",
+			"choices": []map[string]any{
+				{"message": map[string]string{"role": "assistant", "content": "from-a"}},
+			},
+			"usage": map[string]int{"prompt_tokens": 1, "completion_tokens": 1},
+		})
+	}))
+	defer a.Close()
+
+	b := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		bHits.Add(1)
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer b.Close()
+
+	t.Setenv("OPENAI_API_KEY", "k")
+
+	holder := NewHolder()
+	holder.Set(snapshot.Compile(snapshot.Source{
+		APIKeys: []snapshot.APIKey{{
+			ID: "key1", KeyHash: snapshot.HashKey("sk-good"), ProjectID: "p1", OrganizationID: "o1",
+		}},
+		Providers: []snapshot.Provider{
+			{ID: "prov_a", Type: "openai", BaseURL: a.URL, APIKeyEnv: "OPENAI_API_KEY"},
+			{ID: "prov_b", Type: "openai", BaseURL: b.URL, APIKeyEnv: "OPENAI_API_KEY"},
+		},
+		Routes: []snapshot.Route{{
+			OrganizationID:  "o1",
+			Model:           "m1",
+			ProviderID:      "prov_a",
+			TargetModel:     "m1",
+			RoutingStrategy: "weighted",
+			Weight:          1,
+			Fallbacks: []snapshot.RouteTarget{
+				{ProviderID: "prov_b", TargetModel: "m1", Weight: 1},
+			},
+		}},
+	}))
+
+	client := llm.NewOpenAIClient(nil)
+	client.HTTP = a.Client()
+	p := NewPipeline(holder, RegistryWithOpenAI(client), slog.Default())
+
+	// Find a seed that picks prov_b first (Intn(2)==1), then failover to prov_a.
+	var seed int64 = -1
+	for s := int64(0); s < 500; s++ {
+		rng := rand.New(rand.NewSource(s))
+		if rng.Intn(2) == 1 {
+			seed = s
+			break
+		}
+	}
+	if seed < 0 {
+		t.Fatal("no seed")
+	}
+	p.RouteRand = rand.New(rand.NewSource(seed))
+
+	body := `{"model":"m1","messages":[{"role":"user","content":"hi"}]}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(body))
+	req.Header.Set("Authorization", "Bearer sk-good")
+	rr := httptest.NewRecorder()
+	p.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if !bytes.Contains(rr.Body.Bytes(), []byte("from-a")) {
+		t.Fatalf("body=%s", rr.Body.String())
+	}
+	if bHits.Load() != 1 || aHits.Load() != 1 {
+		t.Fatalf("hits a=%d b=%d", aHits.Load(), bHits.Load())
 	}
 }

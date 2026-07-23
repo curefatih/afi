@@ -25,6 +25,10 @@ func TestDecodeFallbacks(t *testing.T) {
 	if len(fb) != 1 || fb[0].ProviderID != "p2" || fb[0].TargetModel != "m2" {
 		t.Fatalf("fb=%+v", fb)
 	}
+	weighted := DecodeFallbacks([]byte(`[{"provider_id":"p2","target_model":"m2","weight":3}]`))
+	if len(weighted) != 1 || weighted[0].Weight != 3 {
+		t.Fatalf("weighted=%+v", weighted)
+	}
 	if got := DecodeFallbacks(nil); len(got) != 0 {
 		t.Fatalf("nil fallbacks=%+v", got)
 	}

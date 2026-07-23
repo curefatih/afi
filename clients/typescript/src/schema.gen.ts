@@ -1282,6 +1282,8 @@ export interface components {
         RouteFallback: {
             provider_id: string;
             target_model: string;
+            /** @description Relative weight for weighted routing; omitted or 0 defaults to 1. Ignored when routing_strategy is ordered. */
+            weight?: number;
         };
         Route: {
             id: string;
@@ -1291,6 +1293,13 @@ export interface components {
             target_model: string;
             fallbacks: components["schemas"]["RouteFallback"][];
             retry?: components["schemas"]["RetryConfig"] | null;
+            /**
+             * @description Target selection before retry/failover. Default ordered.
+             * @enum {string}
+             */
+            routing_strategy?: "ordered" | "weighted";
+            /** @description Primary target weight for weighted routing; omitted or 0 defaults to 1. */
+            weight?: number;
             /** Format: date-time */
             created_at: string;
         };
@@ -1300,6 +1309,9 @@ export interface components {
             target_model?: string;
             fallbacks?: components["schemas"]["RouteFallback"][];
             retry?: components["schemas"]["RetryConfig"] | null;
+            /** @enum {string} */
+            routing_strategy?: "ordered" | "weighted";
+            weight?: number;
         };
         Quota: {
             id: string;
