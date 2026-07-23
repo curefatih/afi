@@ -81,6 +81,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/platform/auth/sso/providers", s.handleListSSOProviders)
 	mux.HandleFunc("GET /api/v1/platform/auth/sso/{provider}/start", s.handleSSOStart)
 	mux.HandleFunc("GET /api/v1/platform/auth/sso/{provider}/callback", s.handleSSOCallback)
+	mux.HandleFunc("POST /api/v1/platform/auth/sso/{provider}/callback", s.handleSSOACS)
+	mux.HandleFunc("GET /api/v1/platform/auth/sso/{provider}/metadata", s.handleSSOMetadata)
 	mux.HandleFunc("GET /api/v1/platform/auth/invites/{token}", s.handlePreviewInvite)
 	mux.HandleFunc("POST /api/v1/platform/auth/invites/{token}/accept", s.handleAcceptInvite)
 

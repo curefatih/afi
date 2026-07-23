@@ -100,6 +100,49 @@ func (s *Server) handleSSOCallback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, s.auth.AppSSOCallbackURL(result.Token, result.ReturnTo, ""), http.StatusFound)
 }
 
+// handleSSOACS is the SAML Assertion Consumer Service (HTTP-POST binding).
+func (s *Server) handleSSOACS(w http.ResponseWriter, r *http.Request) {
+	providerID := r.PathValue("provider")
+	if s.auth == nil {
+		http.Redirect(w, r, s.appSSOErrorURL("sso not configured"), http.StatusFound)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, s.auth.AppSSOCallbackURL("", "", "invalid saml form"), http.StatusFound)
+		return
+	}
+	response := r.FormValue("SAMLResponse")
+	relayState := r.FormValue("RelayState")
+	result, err := s.auth.CompleteSSO(r.Context(), providerID, response, relayState)
+	if err != nil {
+		_, msg := mapSSOError(err)
+		http.Redirect(w, r, s.auth.AppSSOCallbackURL("", "", msg), http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, s.auth.AppSSOCallbackURL(result.Token, result.ReturnTo, ""), http.StatusFound)
+}
+
+func (s *Server) handleSSOMetadata(w http.ResponseWriter, r *http.Request) {
+	providerID := r.PathValue("provider")
+	if s.auth == nil {
+		writeErr(w, http.StatusServiceUnavailable, "sso not configured")
+		return
+	}
+	raw, err := s.auth.SSOMetadataXML(providerID)
+	if err != nil {
+		status, msg := mapSSOError(err)
+		if errors.Is(err, kernel.ErrInvalidRequest) {
+			writeErr(w, http.StatusBadRequest, "provider does not expose saml metadata")
+			return
+		}
+		writeErr(w, status, msg)
+		return
+	}
+	w.Header().Set("Content-Type", "application/samlmetadata+xml")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(raw)
+}
+
 func (s *Server) appSSOErrorURL(msg string) string {
 	if s.auth != nil {
 		return s.auth.AppSSOCallbackURL("", "", msg)
