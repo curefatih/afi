@@ -5,6 +5,7 @@ import {
 	BotIcon,
 	Building2Icon,
 	CableIcon,
+	ClipboardListIcon,
 	FolderKanbanIcon,
 	KeyRoundIcon,
 	LayoutDashboardIcon,
@@ -103,6 +104,11 @@ const governanceNav = [
 		title: "Usage",
 		url: "/app/usage",
 		icon: <BarChart3Icon />,
+	},
+	{
+		title: "Audit",
+		url: "/app/audit",
+		icon: <ClipboardListIcon />,
 	},
 	// {
 	// 	title: "Billing",
