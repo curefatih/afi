@@ -45,3 +45,4 @@ nav:
       - Customization: deployment/customization.md
       - Docker Compose: deployment/docker.md
       - Binaries: deployment/binary.md
+      - Observability: deployment/observability.md
