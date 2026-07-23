@@ -305,9 +305,20 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../getting-started/web-ui/" class="md-nav__link">
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -321,7 +332,107 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Web UI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/web-ui/policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Policies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/web-ui/mcp-a2a/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP and A2A
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -722,6 +833,17 @@
     <span class="md-ellipsis">
       
         Quotas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#route-retry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Route retry
       
     </span>
   </a>
@@ -1213,6 +1335,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#route-retry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Route retry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#cel-policies" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1523,7 +1656,15 @@
 </tr>
 <tr>
 <td>Route <code>fallbacks</code></td>
-<td>optional ordered <code>[{provider_id,target_model}]</code> for 5xx/timeout/429 retry</td>
+<td>optional ordered <code>[{provider_id,target_model}]</code> for 5xx/timeout/429 failover</td>
+</tr>
+<tr>
+<td>Route <code>retry</code></td>
+<td>optional per-route override; else org <code>default_retry</code> from Settings → General</td>
+</tr>
+<tr>
+<td>Org <code>default_retry</code></td>
+<td>optional org-wide <code>{max_attempts,backoff…}</code> applied when a route has no <code>retry</code></td>
 </tr>
 <tr>
 <td>Gateway models</td>
@@ -1626,6 +1767,10 @@
 <tr>
 <td>GET</td>
 <td><code>/api/v1/platform/auth/sso/{provider}/callback</code> (public; redirects to web UI)</td>
+</tr>
+<tr>
+<td>GET/PUT</td>
+<td><code>/api/v1/platform/organizations/{orgID}/default-retry</code> (PUT = org admin; publishes snapshot)</td>
 </tr>
 <tr>
 <td>GET/POST</td>
@@ -1781,6 +1926,40 @@
 </tbody>
 </table>
 <p>Most specific scope wins <strong>per window</strong>: api_key → user → project → organization. Timed windows require Redis (<code>redis_url</code> / <code>AFI_REDIS_URL</code>). Create/update/delete quotas, providers, and routes require org owner/admin.</p>
+<h3 id="route-retry">Route retry</h3>
+<p>Optional same-target retry before ordered <code>fallbacks</code> failover. Create/update via <code>POST/PATCH</code> route bodies (<code>retry</code> field). Omitted/<code>null</code> means a single attempt per target (current gateway behavior).</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>max_attempts</code></td>
+<td>Total tries including the first (≥ 1)</td>
+</tr>
+<tr>
+<td><code>backoff.strategy</code></td>
+<td><code>fixed</code> or <code>exponential</code></td>
+</tr>
+<tr>
+<td><code>backoff.base_delay</code></td>
+<td>Go duration string (e.g. <code>100ms</code>, <code>1s</code>)</td>
+</tr>
+<tr>
+<td><code>backoff.max_delay</code></td>
+<td>Exponential only; caps delay</td>
+</tr>
+<tr>
+<td><code>backoff.multiplier</code></td>
+<td>Exponential only; defaults to <code>2</code> when omitted</td>
+</tr>
+</tbody>
+</table>
+<p><code>fixed</code> rejects <code>max_delay</code> / <code>multiplier</code>. Delay before retry index <code>n</code> (0 = first retry): fixed → <code>base_delay</code>; exponential → <code>min(base_delay * multiplier^n, max_delay)</code>.</p>
+<p>Compiled into the gateway snapshot. Resolution order: <strong>route <code>retry</code> → org <code>default_retry</code> → none</strong>. On chat (<code>/v1/chat/completions</code>) and Anthropic messages (<code>/v1/messages</code>), the gateway retries the same target up to <code>max_attempts</code> with the configured backoff on transport errors, HTTP 5xx, and 429, then walks ordered <code>fallbacks</code>.</p>
 <h3 id="cel-policies">CEL policies</h3>
 <table>
 <thead>

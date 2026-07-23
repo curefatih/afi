@@ -307,9 +307,20 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../web-ui/" class="md-nav__link">
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -323,7 +334,107 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Web UI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web-ui/policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Policies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web-ui/mcp-a2a/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP and A2A
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1329,7 +1440,7 @@ curl<span class="w"> </span>-sN<span class="w"> </span>http://localhost:8080/v1/
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;model&quot;:&quot;gemini-flash&quot;,&quot;stream&quot;:true,&quot;messages&quot;:[{&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;ping&quot;}]}&#39;</span>
 </code></pre></div>
-<p>Failover: set <code>"fallbacks":[{"provider_id":"prov_anthropic","target_model":"claude-sonnet-4-20250514"}]</code> on an OpenAI primary route to retry on 5xx/timeout/429.</p>
+<p>Failover: set <code>"fallbacks":[{"provider_id":"prov_anthropic","target_model":"claude-sonnet-4-20250514"}]</code> on an OpenAI primary route to fail over on 5xx/timeout/429. Optional same-target <code>"retry":{"max_attempts":3,"backoff":{"strategy":"fixed","base_delay":"100ms"}}</code> retries the primary that many times (with backoff) before walking fallbacks.</p>
 <h2 id="tts-stt-openai">TTS / STT (OpenAI)</h2>
 <p>Seed includes routes <code>tts-1</code> and <code>whisper-1</code> → <code>prov_openai</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-...&quot;</span>

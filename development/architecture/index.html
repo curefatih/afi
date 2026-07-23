@@ -305,9 +305,20 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../getting-started/web-ui/" class="md-nav__link">
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -321,7 +332,107 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Web UI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/web-ui/policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Policies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/web-ui/mcp-a2a/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP and A2A
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1153,6 +1264,8 @@
 <li><code>POST /v1/chat/completions</code> — OpenAI-shaped chat via <code>ChatProvider</code> (adapters translate native APIs)</li>
 <li><code>POST /v1/messages</code> — Anthropic-shaped pass-through via <code>MessagesBackend</code></li>
 <li><code>POST /v1/audio/speech</code> / <code>POST /v1/audio/transcriptions</code> — TTS/STT via <code>AudioBackend</code></li>
+<li><code>POST|GET|DELETE /mcp/{alias}</code> — MCP Streamable HTTP proxy to org-scoped upstream backends (snapshot <code>MCPBackends</code>). Platform UI: <a href="../../getting-started/web-ui/mcp-a2a/">MCP and A2A</a>.</li>
+<li><code>POST /a2a/{alias}</code> — A2A JSON-RPC proxy; <code>GET /a2a/{alias}/.well-known/agent-card.json</code> — Agent Card with gateway URL rewrite (snapshot <code>A2AAgents</code>). Platform UI: <a href="../../getting-started/web-ui/mcp-a2a/">MCP and A2A</a>.</li>
 </ul>
 <p>The playground honors streaming/TTS/STT capabilities per model. Chat failover retries only before the response body is committed to the client (audio has no failover in this build).</p>
 <p>Pipeline stages stay stateless aside from the in-memory snapshot pointer. Quota counters and the usage outbox use Postgres as operational stores.</p>
@@ -1162,7 +1275,7 @@
 <li>Virtual API keys (hashes) → org binding, optional project, kind, owner user id</li>
 <li>Providers (type, base URL, API key env ref, capabilities)</li>
 <li>Provider credentials (env ref, encrypted_db ciphertext, or vault secret_ref) + assignments (provider type × org/project/api_key scope)</li>
-<li>Static model routes (optional fallbacks)</li>
+<li>Static model routes (optional fallbacks and retry config)</li>
 <li>Quotas (scope, metric, limit, window) — resolve order per window: api_key → user → project → organization</li>
 <li>CEL request policies (when/then: CEL when + ordered Then actions allow|deny|set_header|use_credential; vars include <code>request</code>, <code>key</code>, and <code>credential</code>)</li>
 </ul>
@@ -1180,6 +1293,7 @@
 <li><strong>Provider health</strong> — control-plane rollup from <code>usage_events</code> for Providers UI</li>
 </ul>
 <p>Control-plane WASM hook bindings are available; gRPC plugin runtimes, billing invoices, and multi-region snapshot distribution remain future work.</p>
+<p><strong>Protocol gateways:</strong> MCP Streamable HTTP (<code>/mcp/{alias}</code>) and A2A JSON-RPC + Agent Card (<code>/a2a/{alias}</code>) proxies are shipped. See <a href="../../internal-docs/PROJECT.md"><code>internal-docs/PROJECT.md</code></a> §16 and <a href="../../internal-docs/mcp-a2a-gateway.md"><code>internal-docs/mcp-a2a-gateway.md</code></a>.</p>
 <p><strong>Shipped governance:</strong></p>
 <ul>
 <li><strong>Quotas</strong> — <code>total</code> windows on Postgres; <code>minute</code> / <code>hour</code> / <code>day</code> rate limits on Redis (<code>AFI_REDIS_URL</code>)</li>

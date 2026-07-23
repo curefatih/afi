@@ -8,31 +8,31 @@
       
       
       
-        <link rel="canonical" href="https://afi.fatihcure.com/getting-started/local-dev/">
+        <link rel="canonical" href="https://afi.fatihcure.com/getting-started/web-ui/mcp-a2a/">
       
       
-        <link rel="prev" href="../..">
+        <link rel="prev" href="../policies/">
       
       
-        <link rel="next" href="../web-ui/">
+        <link rel="next" href="../../sso/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/brand/favicon-32.png">
+      <link rel="icon" href="../../../assets/brand/favicon-32.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
-        <title>Local development - AFI Documentation</title>
+        <title>MCP and A2A - AFI Documentation</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -51,7 +51,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#local-development" class="md-skip">
+        <a href="#mcp-and-a2a-web-ui" class="md-skip">
           Skip to content
         </a>
       
@@ -90,9 +90,9 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="AFI Documentation" class="md-header__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
+    <a href="../../.." title="AFI Documentation" class="md-header__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
       
-  <img src="../../assets/brand/logo-mark.svg" alt="logo">
+  <img src="../../../assets/brand/logo-mark.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Local development
+              MCP and A2A
             
           </span>
         </div>
@@ -187,9 +187,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="AFI Documentation" class="md-nav__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
+    <a href="../../.." title="AFI Documentation" class="md-nav__button md-logo" aria-label="AFI Documentation" data-md-component="logo">
       
-  <img src="../../assets/brand/logo-mark.svg" alt="logo">
+  <img src="../../../assets/brand/logo-mark.svg" alt="logo">
 
     </a>
     AFI Documentation
@@ -204,7 +204,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -277,37 +277,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Local development
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../local-dev/" class="md-nav__link">
         
   
   
@@ -323,147 +296,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Prerequisites
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#1-start-infrastructure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Start infrastructure
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-export-provider-credentials" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Export provider credentials
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-run-the-control-plane" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Run the control plane
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-run-the-gateway" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Run the gateway
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-run-the-usage-worker-optional-but-recommended" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Run the usage worker (optional but recommended)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-verify-inference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Verify inference
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-optional-platform-ui" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Optional: platform UI
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#8-optional-docs-site" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Optional: docs site
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cli-helpers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CLI helpers
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#config" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Config
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -473,18 +305,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" checked>
         
           
           <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
@@ -505,7 +339,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -523,7 +357,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../web-ui/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -551,7 +385,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../web-ui/policies/" class="md-nav__link">
+      <a href="../policies/" class="md-nav__link">
         
   
   
@@ -576,10 +410,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../web-ui/mcp-a2a/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP and A2A
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -595,6 +456,170 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP backends
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MCP backends">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-connection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test connection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#try-in-the-playground" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Try in the playground
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-curl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example (curl)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a2a-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A2A agents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="A2A agents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fields_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-connection_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test connection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#try-in-the-playground_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Try in the playground
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#local-echo-upstream" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local echo upstream
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-curl_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example (curl)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#governance-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Governance notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -615,7 +640,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../sso/" class="md-nav__link">
+      <a href="../../sso/" class="md-nav__link">
         
   
   
@@ -643,7 +668,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../verify/" class="md-nav__link">
+      <a href="../../verify/" class="md-nav__link">
         
   
   
@@ -725,7 +750,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/repository-layout/" class="md-nav__link">
+      <a href="../../../development/repository-layout/" class="md-nav__link">
         
   
   
@@ -753,7 +778,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/architecture/" class="md-nav__link">
+      <a href="../../../development/architecture/" class="md-nav__link">
         
   
   
@@ -781,7 +806,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/providers/" class="md-nav__link">
+      <a href="../../../development/providers/" class="md-nav__link">
         
   
   
@@ -809,7 +834,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/platform-events/" class="md-nav__link">
+      <a href="../../../development/platform-events/" class="md-nav__link">
         
   
   
@@ -837,7 +862,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/config-reference/" class="md-nav__link">
+      <a href="../../../development/config-reference/" class="md-nav__link">
         
   
   
@@ -865,7 +890,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/testing/" class="md-nav__link">
+      <a href="../../../development/testing/" class="md-nav__link">
         
   
   
@@ -947,7 +972,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../hooks/usage/" class="md-nav__link">
+      <a href="../../../hooks/usage/" class="md-nav__link">
         
   
   
@@ -975,7 +1000,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../hooks/wasm/" class="md-nav__link">
+      <a href="../../../hooks/wasm/" class="md-nav__link">
         
   
   
@@ -1057,7 +1082,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/" class="md-nav__link">
+      <a href="../../../deployment/" class="md-nav__link">
         
   
   
@@ -1085,7 +1110,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/customization/" class="md-nav__link">
+      <a href="../../../deployment/customization/" class="md-nav__link">
         
   
   
@@ -1113,7 +1138,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/docker/" class="md-nav__link">
+      <a href="../../../deployment/docker/" class="md-nav__link">
         
   
   
@@ -1141,7 +1166,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/binary/" class="md-nav__link">
+      <a href="../../../deployment/binary/" class="md-nav__link">
         
   
   
@@ -1196,120 +1221,143 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
+  <a href="#mcp-backends" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prerequisites
+        MCP backends
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MCP backends">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fields
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#1-start-infrastructure" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#test-connection" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Start infrastructure
+        Test connection
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#2-export-provider-credentials" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#try-in-the-playground" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Export provider credentials
+        Try in the playground
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#3-run-the-control-plane" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#example-curl" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Run the control plane
+        Example (curl)
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#4-run-the-gateway" class="md-nav__link">
+  <a href="#a2a-agents" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Run the gateway
+        A2A agents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="A2A agents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fields_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fields
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#5-run-the-usage-worker-optional-but-recommended" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#test-connection_1" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Run the usage worker (optional but recommended)
+        Test connection
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#6-verify-inference" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#try-in-the-playground_1" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Verify inference
+        Try in the playground
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#7-optional-platform-ui" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#local-echo-upstream" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. Optional: platform UI
+        Local echo upstream
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#8-optional-docs-site" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#example-curl_1" class="md-nav__link">
     <span class="md-ellipsis">
       
-        8. Optional: docs site
+        Example (curl)
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#cli-helpers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CLI helpers
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#config" class="md-nav__link">
+  <a href="#governance-notes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Config
+        Governance notes
       
     </span>
   </a>
@@ -1333,113 +1381,192 @@
 
 
 
-<h1 id="local-development">Local development</h1>
-<p>This is the golden path for running AFI on a developer machine.</p>
-<h2 id="prerequisites">Prerequisites</h2>
-<ul>
-<li>Go (version in <code>go.mod</code>)</li>
-<li>Docker (Compose)</li>
-<li>An OpenAI API key for live chat completions</li>
-<li>Optional: pnpm (web UI), <code>uv</code>/<code>uvx</code> (MkDocs)</li>
-</ul>
-<h2 id="1-start-infrastructure">1. Start infrastructure</h2>
-<div class="highlight"><pre><span></span><code>make<span class="w"> </span>dev-up
-</code></pre></div>
+<h1 id="mcp-and-a2a-web-ui">MCP and A2A (Web UI)</h1>
+<p>Org owners and admins manage protocol gateway upstreams under <strong>Governance → MCP</strong> and <strong>Governance → A2A</strong>. Changes publish a new gateway snapshot so the data plane can proxy traffic on the next request.</p>
+<p>Members can view the lists; only owners and admins can create, edit, delete, or <strong>Test connection</strong>.</p>
+<h2 id="mcp-backends">MCP backends</h2>
+<p>Open <strong>Governance → MCP</strong>.</p>
+<p>Each backend maps an <strong>alias</strong> to a remote <a href="https://modelcontextprotocol.io/">Streamable HTTP</a> MCP server. Clients call the gateway with a virtual API key:</p>
 <table>
 <thead>
 <tr>
-<th>Service</th>
-<th>URL</th>
+<th>Method</th>
+<th>Gateway path</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Postgres</td>
-<td><code>localhost:5433</code> (user/password/db: <code>afi</code>)</td>
-</tr>
-<tr>
-<td>Redis</td>
-<td><code>localhost:6379</code> (rate-limit windows)</td>
-</tr>
-<tr>
-<td>Adminer</td>
-<td>http://localhost:5050</td>
+<td><code>POST</code> / <code>GET</code> / <code>DELETE</code></td>
+<td><code>/mcp/{alias}</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="2-export-provider-credentials">2. Export provider credentials</h2>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-...&quot;</span>
-<span class="c1"># optional — Anthropic / Gemini routes (seeded as prov_anthropic / prov_gemini)</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-ant-...&quot;</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">GEMINI_API_KEY</span><span class="o">=</span><span class="s2">&quot;...&quot;</span>
-</code></pre></div>
-<p>The gateway reads these env vars when calling upstream providers (see snapshot provider <code>api_key_env</code>). Playgrounds load models from <code>GET /v1/models</code> (stream / TTS / STT flags). Seed includes chat route plus <code>tts-1</code> and <code>whisper-1</code> on OpenAI.</p>
-<h2 id="3-run-the-control-plane">3. Run the control plane</h2>
-<div class="highlight"><pre><span></span><code>make<span class="w"> </span>run-controlplane
-</code></pre></div>
-<p>On startup the control plane:</p>
+<h3 id="fields">Fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Alias</strong></td>
+<td>yes</td>
+<td>URL slug (<code>docs</code>, <code>github</code>). Becomes <code>/mcp/{alias}</code>.</td>
+</tr>
+<tr>
+<td><strong>Name</strong></td>
+<td>yes</td>
+<td>Display name in the console</td>
+</tr>
+<tr>
+<td><strong>Base URL</strong></td>
+<td>yes</td>
+<td>Absolute <code>http(s)</code> MCP endpoint</td>
+</tr>
+<tr>
+<td><strong>API key env</strong></td>
+<td>no</td>
+<td>Env var on the gateway process; injected as <code>Authorization: Bearer …</code> upstream</td>
+</tr>
+<tr>
+<td><strong>Method allowlist</strong></td>
+<td>no</td>
+<td>Comma-separated JSON-RPC methods (e.g. <code>tools/list, tools/call</code>). Empty allows all. Supports <code>resources/*</code>-style prefixes.</td>
+</tr>
+<tr>
+<td><strong>Enabled</strong></td>
+<td>—</td>
+<td>Disabled backends are omitted from the snapshot route map</td>
+</tr>
+</tbody>
+</table>
+<h3 id="test-connection">Test connection</h3>
+<p>On <strong>Add</strong> or <strong>Edit</strong>, use <strong>Test connection</strong> to probe the base URL from the control plane (MCP <code>initialize</code>). Optional API key env is resolved on the control plane host. Success means the upstream responded over HTTP (including auth/protocol 4xx); network failures and 5xx fail the test.</p>
+<h3 id="try-in-the-playground">Try in the playground</h3>
+<p>Open <strong>Playground → MCP</strong> to list tools and call them (or send raw JSON-RPC) through the gateway. Pick an enabled backend alias, then <strong>List tools</strong> / <strong>Call tool</strong>. The playground uses the local-dev gateway URL and API key (<code>VITE_GATEWAY_API_*</code>), same as chat/TTS/STT.</p>
+<h3 id="example-curl">Example (curl)</h3>
 <ol>
-<li>Applies migrations (resets incompatible legacy schemas automatically)</li>
-<li>Seeds a local org, project, user, virtual API key, OpenAI provider, and route (if empty)</li>
-<li>Publishes snapshot version 1+</li>
-<li>Listens on <strong><code>:8081</code></strong></li>
+<li>Create a backend with alias <code>docs</code>, base URL <code>https://mcp.example.com/mcp</code>, optional <code>MCP_API_KEY</code>.</li>
+<li>Ensure the gateway process has that env var if set.</li>
+<li>Call:</li>
 </ol>
-<p>Default seed credentials:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8080/mcp/docs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$AFI_API_KEY</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Accept: application/json, text/event-stream&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;tools/list&quot;,&quot;params&quot;:{}}&#39;</span>
+</code></pre></div>
+<h2 id="a2a-agents">A2A agents</h2>
+<p>Open <strong>Governance → A2A</strong>.</p>
+<p>Each agent maps an <strong>alias</strong> to a remote <a href="https://a2a-protocol.org/">Agent2Agent</a> JSON-RPC endpoint. Discovery and messaging go through the gateway:</p>
 <table>
 <thead>
 <tr>
-<th>Item</th>
-<th>Value</th>
+<th>Surface</th>
+<th>Gateway path</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Virtual API key</td>
-<td><code>sk-project-local-dev-token-12345</code></td>
+<td>Agent Card</td>
+<td><code>GET /a2a/{alias}/.well-known/agent-card.json</code></td>
 </tr>
 <tr>
-<td>Platform user</td>
-<td><code>admin@afi.local</code> / <code>admin</code></td>
+<td>JSON-RPC</td>
+<td><code>POST /a2a/{alias}</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="4-run-the-gateway">4. Run the gateway</h2>
-<p>In a second terminal:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-...&quot;</span>
-make<span class="w"> </span>run-gateway
+<p>The Agent Card’s endpoint URL is <strong>rewritten</strong> to the gateway so clients do not bypass auth and quotas.</p>
+<h3 id="fields_1">Fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Alias</strong></td>
+<td>yes</td>
+<td>URL slug; becomes <code>/a2a/{alias}</code></td>
+</tr>
+<tr>
+<td><strong>Name</strong></td>
+<td>yes</td>
+<td>Display name</td>
+</tr>
+<tr>
+<td><strong>Upstream URL</strong></td>
+<td>yes</td>
+<td>Absolute <code>http(s)</code> A2A JSON-RPC endpoint</td>
+</tr>
+<tr>
+<td><strong>Card URL</strong></td>
+<td>no</td>
+<td>Agent Card fetch URL; default <code>{upstream}/.well-known/agent-card.json</code></td>
+</tr>
+<tr>
+<td><strong>Card cache JSON</strong></td>
+<td>no</td>
+<td>Inline card JSON used instead of fetching when set</td>
+</tr>
+<tr>
+<td><strong>API key env</strong></td>
+<td>no</td>
+<td>Env var for Bearer injection to upstream / card fetch</td>
+</tr>
+<tr>
+<td><strong>Auth scheme</strong></td>
+<td>no</td>
+<td>Metadata string (e.g. <code>bearer</code>)</td>
+</tr>
+<tr>
+<td><strong>Enabled</strong></td>
+<td>—</td>
+<td>Disabled agents are not routed</td>
+</tr>
+</tbody>
+</table>
+<h3 id="test-connection_1">Test connection</h3>
+<p><strong>Test connection</strong> on Add/Edit GETs the Agent Card (card URL or derived well-known path) from the control plane, with optional API key env. Same success criteria as MCP.</p>
+<h3 id="try-in-the-playground_1">Try in the playground</h3>
+<p>Open <strong>Playground → A2A</strong> to fetch the Agent Card and send <code>message/send</code> (or raw JSON-RPC) through the gateway. Pick an enabled agent alias. The playground uses the local-dev gateway URL and API key (<code>VITE_GATEWAY_API_*</code>), same as chat/TTS/STT/MCP.</p>
+<h3 id="local-echo-upstream">Local echo upstream</h3>
+<p>For an end-to-end smoke test without a real agent, run the sample echo server (separate process from AFI):</p>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>run-a2a-echo
+<span class="c1"># listens on http://127.0.0.1:8091/</span>
 </code></pre></div>
-<p>The gateway loads the latest snapshot from Postgres, watches for new versions, and listens on <strong><code>:8080</code></strong>.</p>
-<h2 id="5-run-the-usage-worker-optional-but-recommended">5. Run the usage worker (optional but recommended)</h2>
-<p>In a third terminal:</p>
-<div class="highlight"><pre><span></span><code>make<span class="w"> </span>run-worker
+<p>Then in <strong>Governance → A2A</strong> create an agent with alias <code>echo</code>, upstream <code>http://127.0.0.1:8091/</code>, and use <strong>Playground → A2A</strong>. Full flags and curl examples: repository <code>examples/a2a-echo/README.md</code>.</p>
+<h3 id="example-curl_1">Example (curl)</h3>
+<ol>
+<li>Create an agent with alias <code>helper</code> and upstream <code>https://agent.example/rpc</code>.</li>
+<li>Discover:</li>
+</ol>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8080/a2a/helper/.well-known/agent-card.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$AFI_API_KEY</span><span class="s2">&quot;</span>
 </code></pre></div>
-<p>The worker drains <code>usage_outbox</code> into <code>usage_events</code> (Usage page: filters, owner, modality charts). Chat/TTS/STT still work if the worker is stopped; usage just lags.</p>
-<p>Alternatively: <code>make run-all</code> (control plane + worker in background, gateway in foreground). Stop with Ctrl+C then <code>make stop-all</code> if needed.</p>
-<h2 id="6-verify-inference">6. Verify inference</h2>
-<p>See <a href="../verify/">Verify</a> (<code>make verify</code> includes quota → 429).</p>
-<h2 id="7-optional-platform-ui">7. Optional: platform UI</h2>
-<p>Overview of screens and capabilities: <a href="../web-ui/">Web UI</a>.</p>
-<div class="highlight"><pre><span></span><code>pnpm<span class="w"> </span>--dir<span class="w"> </span>web<span class="w"> </span>install
-pnpm<span class="w"> </span>--dir<span class="w"> </span>web<span class="w"> </span>dev
+<ol>
+<li>Send a message (JSON-RPC shape depends on the upstream):</li>
+</ol>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8080/a2a/helper<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$AFI_API_KEY</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;message/send&quot;,&quot;params&quot;:{&quot;message&quot;:{&quot;role&quot;:&quot;user&quot;,&quot;parts&quot;:[{&quot;text&quot;:&quot;hi&quot;}]}}}&#39;</span>
 </code></pre></div>
-<p>Open http://localhost:3000 and sign in with <code>admin@afi.local</code> / <code>admin</code>.</p>
-<p>Use <strong>Users</strong> to invite members by email. Existing users are added immediately; new emails receive an invite link (<code>/auth/invite/…</code>). Local default mail provider is <code>log</code> (messages in the controlplane log). To deliver real mail locally, enable SMTP in <code>configs/local.yaml</code> and point it at Mailpit/Mailhog (<code>localhost:1025</code>).</p>
-<p><strong>API Keys:</strong> create a <strong>personal</strong> key for yourself, or (as org owner/admin) a <strong>service account</strong> key scoped to the org or a project. The seeded <code>sk-project-local-dev-token-12345</code> is a project service-account key. Admins set per-user or per-key quotas under <strong>Quotas</strong> (<code>total</code> or Redis <code>minute</code>/<code>hour</code>/<code>day</code>) and CEL allow-rules under <strong>Policies</strong> (see <a href="../web-ui/policies/">Policies</a>).</p>
-<p>The web app calls the control plane at <code>http://localhost:8081</code> (override with <code>VITE_PLATFORM_API_URL</code>).</p>
-<h2 id="8-optional-docs-site">8. Optional: docs site</h2>
-<div class="highlight"><pre><span></span><code>make<span class="w"> </span>doc-serve
-</code></pre></div>
-<h2 id="cli-helpers">CLI helpers</h2>
-<div class="highlight"><pre><span></span><code>make<span class="w"> </span>seed<span class="w">                 </span><span class="c1"># re-seed + publish</span>
-make<span class="w"> </span>snapshot-publish<span class="w">     </span><span class="c1"># compile config → new snapshot</span>
-make<span class="w"> </span>verify<span class="w">               </span><span class="c1"># automated checks (stack must be running)</span>
-go<span class="w"> </span>run<span class="w"> </span>./cmd/cli<span class="w"> </span>version
-afi<span class="w"> </span>db<span class="w"> </span>reset<span class="w">              </span><span class="c1"># destructive local wipe (type `reset` to confirm)</span>
-</code></pre></div>
-<p>Internal HTTP admin (<code>/internal/v1/*</code>) requires <code>X-AFI-Internal-Token</code> (see config reference). CLI seed/publish do not.</p>
-<h2 id="config">Config</h2>
-<p>Defaults live in <a href="../../configs/local.yaml"><code>configs/local.yaml</code></a>. Override with env vars (see <a href="../../development/config-reference/">Config reference</a>).</p>
-<p>For self-hosted / production-style deployments (Docker Compose or binaries), see <a href="../../deployment/">Deployment</a> and the full <a href="../../deployment/customization/">Customization reference</a>.</p>
+<h2 id="governance-notes">Governance notes</h2>
+<ul>
+<li>Creating, updating, or deleting a backend/agent <strong>publishes a snapshot</strong>; the gateway hot-reloads.</li>
+<li>Quotas, CEL policies, hooks (<code>BeforeCall</code> / <code>AfterCall</code>), and <code>X-AFI-Tags</code> apply with modalities <code>mcp</code> and <code>a2a</code>.</li>
+<li>Credentials today use <strong>API key env</strong> on the gateway (same spirit as LLM providers). BYOK assignment for protocol upstreams is not in the UI yet.</li>
+</ul>
+<p>Architecture and pipeline details: <a href="../../../development/architecture/">Architecture</a>. Design depth: repository <code>internal-docs/mcp-a2a-gateway.md</code>.</p>
+<p>Related: <a href="../">Web UI overview</a>, <a href="../policies/">Policies</a>.</p>
 
 
 
@@ -1489,10 +1616,10 @@ afi<span class="w"> </span>db<span class="w"> </span>reset<span class="w">      
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

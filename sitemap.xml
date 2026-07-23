@@ -2,70 +2,78 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://afi.fatihcure.com/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/deployment/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/deployment/binary/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/deployment/customization/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/deployment/docker/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/development/architecture/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/development/config-reference/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/development/platform-events/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/development/providers/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/development/repository-layout/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/development/testing/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/getting-started/local-dev/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/getting-started/sso/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/getting-started/verify/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/getting-started/web-ui/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
+    </url>
+    <url>
+         <loc>https://afi.fatihcure.com/getting-started/web-ui/mcp-a2a/</loc>
+         <lastmod>2026-07-23</lastmod>
+    </url>
+    <url>
+         <loc>https://afi.fatihcure.com/getting-started/web-ui/policies/</loc>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/hooks/usage/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://afi.fatihcure.com/hooks/wasm/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
 </urlset>
