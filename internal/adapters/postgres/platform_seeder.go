@@ -1,10 +1,11 @@
-package controlplane
+package postgres
 
 import (
 	"context"
 	"time"
 
-	"github.com/curefatih/afi/internal/adapters/postgres"
+	"github.com/curefatih/afi/internal/access"
+	adapterauth "github.com/curefatih/afi/internal/adapters/auth"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,7 +15,7 @@ type Seeder struct {
 	store     *Store
 	snapStore snapshot.Store
 	cfg       *kernel.Config
-	seed      *postgres.SeedWriter
+	seed      *SeedWriter
 }
 
 func NewSeeder(pool *pgxpool.Pool, store *Store, snapStore snapshot.Store, cfg *kernel.Config) *Seeder {
@@ -22,7 +23,7 @@ func NewSeeder(pool *pgxpool.Pool, store *Store, snapStore snapshot.Store, cfg *
 		store:     store,
 		snapStore: snapStore,
 		cfg:       cfg,
-		seed:      postgres.NewSeedWriter(pool),
+		seed:      NewSeedWriter(pool),
 	}
 }
 
@@ -86,11 +87,11 @@ func (s *Seeder) EnsureLocalAudioRoutes(ctx context.Context) error {
 // Seed always inserts (or upserts) the standard local-dev dataset and publishes a snapshot.
 func (s *Seeder) Seed(ctx context.Context) error {
 	cfg := s.cfg.Seed
-	hash, err := HashPassword(cfg.AdminPassword)
+	hash, err := adapterauth.HashPassword(cfg.AdminPassword)
 	if err != nil {
 		return err
 	}
-	err = s.seed.SeedLocalDev(ctx, postgres.LocalDevSeed{
+	err = s.seed.SeedLocalDev(ctx, LocalDevSeed{
 		OrgID:           "org_local",
 		TeamID:          "team_local",
 		ProjectID:       "proj_local",
@@ -104,8 +105,8 @@ func (s *Seeder) Seed(ctx context.Context) error {
 		OpenAIBaseURL:   cfg.OpenAIBaseURL,
 		OpenAIAPIKeyEnv: cfg.OpenAIAPIKeyEnv,
 		DefaultModel:    cfg.DefaultModel,
-		APIKeyHash:      HashAPIKey(cfg.VirtualAPIKey),
-		APIKeyPrefix:    KeyPrefix(cfg.VirtualAPIKey),
+		APIKeyHash:      access.Hash(cfg.VirtualAPIKey),
+		APIKeyPrefix:    access.Prefix(cfg.VirtualAPIKey),
 		Now:             time.Now().UTC(),
 	})
 	if err != nil {

@@ -1,4 +1,4 @@
-package controlplane
+package postgres
 
 import (
 	"context"
@@ -806,6 +806,25 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS provider_type TEXT NOT NULL DEFAULT '';
 	`); err != nil {
 		return fmt.Errorf("cycle30 usage provider_type: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS audit_events (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			organization_id TEXT NOT NULL,
+			resource_id TEXT NOT NULL DEFAULT '',
+			actor_user_id TEXT NOT NULL DEFAULT '',
+			summary TEXT NOT NULL DEFAULT '',
+			meta JSONB NOT NULL DEFAULT '{}'::jsonb,
+			at TIMESTAMPTZ NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS audit_events_org_at_idx
+			ON audit_events (organization_id, at DESC);
+		CREATE INDEX IF NOT EXISTS audit_events_org_name_at_idx
+			ON audit_events (organization_id, name, at DESC);
+	`); err != nil {
+		return fmt.Errorf("cycle31 audit events: %w", err)
 	}
 	return nil
 }

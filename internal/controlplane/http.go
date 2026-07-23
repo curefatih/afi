@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"github.com/curefatih/afi/internal/app/platform"
-	"github.com/curefatih/afi/internal/identity"
+	"github.com/curefatih/afi/internal/audit"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/telemetry"
@@ -22,28 +22,41 @@ type Server struct {
 	auth        *platform.AuthService
 	members     membershipChecker
 	publisher   snapshotPublisher
-	seeder      *Seeder
+	seeder      localSeeder
 	snapStore   snapshot.Store
 	log         *slog.Logger
 	eventOutbox platform.EventEnqueuer
+	auditStore  audit.Store
 	Metrics     *telemetry.ControlPlaneMetrics
 }
 
-func NewServer(cfg *kernel.Config, store *Store, seeder *Seeder, snapStore snapshot.Store, log *slog.Logger, eventOutbox platform.EventEnqueuer, ssoStates identity.SSOStateStore) *Server {
-	app := platform.New(store, seeder)
-	app.Events = newPlatformEventBus(log, eventOutbox)
+// NewServer wires HTTP delivery. Persistence/auth/audit adapters are injected by the composition root.
+func NewServer(
+	cfg *kernel.Config,
+	store Persistence,
+	seeder localSeeder,
+	publisher snapshotPublisher,
+	snapStore snapshot.Store,
+	log *slog.Logger,
+	eventOutbox platform.EventEnqueuer,
+	auditStore audit.Store,
+	auth *platform.AuthService,
+) *Server {
+	app := platform.New(store, publisher)
+	app.Events = newPlatformEventBus(log, auditStore, eventOutbox)
 	return &Server{
 		cfg:         cfg,
 		api:         store,
 		config:      store,
 		app:         app,
-		auth:        newAuthService(cfg, store, ssoStates),
+		auth:        auth,
 		members:     store,
-		publisher:   seeder,
+		publisher:   publisher,
 		seeder:      seeder,
 		snapStore:   snapStore,
 		log:         log,
 		eventOutbox: eventOutbox,
+		auditStore:  auditStore,
 	}
 }
 
@@ -52,7 +65,7 @@ func (s *Server) ensureApp() {
 		return
 	}
 	s.app = platform.New(s.config, s.publisher)
-	s.app.Events = newPlatformEventBus(s.log, s.eventOutbox)
+	s.app.Events = newPlatformEventBus(s.log, s.auditStore, s.eventOutbox)
 }
 
 func (s *Server) Handler() http.Handler {
@@ -102,6 +115,7 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/usage", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListUsage)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/usage/summary", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleUsageSummary)))
+	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/audit", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleListAudit)))
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/quotas", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListQuotas)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/quotas", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateQuota)))

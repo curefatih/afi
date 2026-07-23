@@ -1,4 +1,4 @@
-package controlplane
+package postgres
 
 // schemaDecision captures what Migrate inspected in the database.
 type schemaDecision struct {
