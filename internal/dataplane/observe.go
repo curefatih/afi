@@ -36,6 +36,8 @@ func modalityFromPath(path string) string {
 		return ModalityChat
 	case strings.HasPrefix(path, "/v1/messages"):
 		return ModalityMessages
+	case strings.HasPrefix(path, "/v1/embeddings"):
+		return ModalityEmbedding
 	case strings.HasPrefix(path, "/v1/audio/speech"):
 		return ModalityTTS
 	case strings.HasPrefix(path, "/v1/audio/transcriptions"):

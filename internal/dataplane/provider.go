@@ -12,10 +12,11 @@ import (
 
 // ProviderCaps mirrors snapshot capabilities for adapters.
 type ProviderCaps struct {
-	Chat   bool
-	Stream bool
-	TTS    bool
-	STT    bool
+	Chat      bool
+	Stream    bool
+	TTS       bool
+	STT       bool
+	Embedding bool
 }
 
 // ChatProvider is the in-process adapter contract for gateway chat.
@@ -70,8 +71,8 @@ func RegistryFromClients(c *llm.Clients) *Registry {
 		c = llm.NewClients(nil)
 	}
 	return NewRegistry().
-		Register(newOpenAIChatProvider("openai", c.OpenAI, ProviderCaps{Chat: true, Stream: true, TTS: true, STT: true})).
-		Register(newOpenAIChatProvider("openai_compatible", c.OpenAICompatible, ProviderCaps{Chat: true, Stream: true, TTS: true, STT: true})).
+		Register(newOpenAIChatProvider("openai", c.OpenAI, ProviderCaps{Chat: true, Stream: true, TTS: true, STT: true, Embedding: true})).
+		Register(newOpenAIChatProvider("openai_compatible", c.OpenAICompatible, ProviderCaps{Chat: true, Stream: true, TTS: true, STT: true, Embedding: true})).
 		Register(newAnthropicChatProvider(c.Anthropic)).
 		Register(newGeminiChatProvider(c.Gemini))
 }

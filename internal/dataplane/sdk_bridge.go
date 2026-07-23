@@ -21,7 +21,7 @@ func (b *sdkChatBridge) Type() string { return b.inner.Type() }
 
 func (b *sdkChatBridge) Capabilities() ProviderCaps {
 	c := b.inner.Capabilities()
-	return ProviderCaps{Chat: c.Chat, Stream: c.Stream, TTS: c.TTS, STT: c.STT}
+	return ProviderCaps{Chat: c.Chat, Stream: c.Stream, TTS: c.TTS, STT: c.STT, Embedding: c.Embedding}
 }
 
 func (b *sdkChatBridge) Chat(ctx context.Context, p snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
@@ -29,7 +29,7 @@ func (b *sdkChatBridge) Chat(ctx context.Context, p snapshot.Provider, targetMod
 	cfg := sdkprovider.ConfigFromFields(
 		p.ID, p.Type, p.Name, p.BaseURL, p.APIKeyEnv,
 		sdkprovider.Capabilities{
-			Chat: caps.Chat, Stream: caps.Stream, TTS: caps.TTS, STT: caps.STT,
+			Chat: caps.Chat, Stream: caps.Stream, TTS: caps.TTS, STT: caps.STT, Embedding: caps.Embedding,
 		},
 	)
 	return b.inner.Chat(ctx, cfg, targetModel, body, stream)

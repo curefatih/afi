@@ -9,11 +9,12 @@ import (
 	"github.com/curefatih/afi/internal/snapshot"
 )
 
-// OpenAITransport is the outbound OpenAI-compatible HTTP surface used by chat + audio.
+// OpenAITransport is the outbound OpenAI-compatible HTTP surface used by chat + audio + embeddings.
 type OpenAITransport interface {
 	ChatCompletions(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error)
 	AudioSpeech(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte) (*http.Response, error)
 	AudioTranscriptions(ctx context.Context, provider snapshot.Provider, targetModel, contentType string, body io.Reader) (*http.Response, error)
+	Embeddings(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte) (*http.Response, error)
 }
 
 // AnthropicTransport is the outbound Anthropic HTTP surface used by chat + /v1/messages.
@@ -27,6 +28,11 @@ type AnthropicTransport interface {
 type AudioBackend interface {
 	AudioSpeech(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte) (*http.Response, error)
 	AudioTranscriptions(ctx context.Context, provider snapshot.Provider, targetModel, contentType string, body io.Reader) (*http.Response, error)
+}
+
+// EmbeddingsBackend is the modality port for /v1/embeddings (OpenAI-compatible).
+type EmbeddingsBackend interface {
+	Embeddings(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte) (*http.Response, error)
 }
 
 // MessagesBackend is the modality port for native Anthropic /v1/messages.
@@ -93,6 +99,15 @@ func (r *Registry) AudioBackend(typ string) (AudioBackend, bool) {
 	return t, true
 }
 
+// EmbeddingsBackend returns the /v1/embeddings port for a provider type (OpenAI-compatible only).
+func (r *Registry) EmbeddingsBackend(typ string) (EmbeddingsBackend, bool) {
+	t, ok := r.OpenAITransport(typ)
+	if !ok {
+		return nil, false
+	}
+	return t, true
+}
+
 // MessagesBackend returns the native /v1/messages port for a provider type.
 func (r *Registry) MessagesBackend(typ string) (MessagesBackend, bool) {
 	t, ok := r.AnthropicTransport(typ)
@@ -110,6 +125,18 @@ func (p *Pipeline) audioBackend(providerType string) (AudioBackend, error) {
 	b, ok := p.Providers.AudioBackend(providerType)
 	if !ok {
 		return nil, fmt.Errorf("audio backend not registered for type %q", providerType)
+	}
+	return b, nil
+}
+
+// embeddingsBackend resolves /v1/embeddings by the routed provider's type.
+func (p *Pipeline) embeddingsBackend(providerType string) (EmbeddingsBackend, error) {
+	if p.Providers == nil {
+		return nil, fmt.Errorf("embeddings backend not registered for type %q", providerType)
+	}
+	b, ok := p.Providers.EmbeddingsBackend(providerType)
+	if !ok {
+		return nil, fmt.Errorf("embeddings backend not registered for type %q", providerType)
 	}
 	return b, nil
 }
