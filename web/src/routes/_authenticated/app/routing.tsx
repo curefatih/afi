@@ -339,7 +339,7 @@ function RouteComponent() {
 			</QueryGate>
 
 			<Sheet open={createOpen} onOpenChange={setCreateOpen}>
-				<SheetContent>
+				<SheetContent className="w-full overflow-y-auto sm:max-w-2xl data-[side=right]:sm:max-w-2xl data-[side=left]:sm:max-w-2xl">
 					<SheetHeader>
 						<SheetTitle>Add route</SheetTitle>
 						<SheetDescription>
@@ -493,7 +493,7 @@ function RouteComponent() {
 					if (!o) setEdit(null);
 				}}
 			>
-				<SheetContent>
+				<SheetContent className="w-full overflow-y-auto sm:max-w-2xl data-[side=right]:sm:max-w-2xl data-[side=left]:sm:max-w-2xl">
 					<SheetHeader>
 						<SheetTitle>Edit route</SheetTitle>
 						<SheetDescription>
