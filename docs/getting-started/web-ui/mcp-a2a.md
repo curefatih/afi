@@ -29,7 +29,11 @@ Each backend maps an **alias** to a remote [Streamable HTTP](https://modelcontex
 
 On **Add** or **Edit**, use **Test connection** to probe the base URL from the control plane (MCP `initialize`). Optional API key env is resolved on the control plane host. Success means the upstream responded over HTTP (including auth/protocol 4xx); network failures and 5xx fail the test.
 
-### Example
+### Try in the playground
+
+Open **Playground → MCP** to list tools and call them (or send raw JSON-RPC) through the gateway. Pick an enabled backend alias, then **List tools** / **Call tool**. The playground uses the local-dev gateway URL and API key (`VITE_GATEWAY_API_*`), same as chat/TTS/STT.
+
+### Example (curl)
 
 1. Create a backend with alias `docs`, base URL `https://mcp.example.com/mcp`, optional `MCP_API_KEY`.
 2. Ensure the gateway process has that env var if set.
