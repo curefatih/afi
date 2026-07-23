@@ -14,7 +14,7 @@ The platform UI is the browser console for operating AFI: identity and access, g
 * **Policies** — CEL when/then request rules ([Policies](web-ui/policies.md))
 * **Secrets & hooks** — manage credentials and extension hooks used by the platform
 * **Usage** — filter requests by project, key, modality, and model; inspect volume, tokens, cost, and per-request logs
-* **Playground** — try chat, text-to-speech, and speech-to-text against your live gateway
+* **Playground** — try chat, text-to-speech, speech-to-text, MCP tools, and A2A agents against your live gateway
 
 ## Run locally
 

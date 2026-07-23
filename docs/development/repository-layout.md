@@ -35,6 +35,7 @@ internal/
 └── shared/           # Placeholder
 
 extensions/           # Examples: echo, demohook, tagquota, wasmhook (TinyGo .wasm)
+examples/             # Standalone samples (e.g. a2a-echo upstream for gateway testing)
 sdk/provider/         # Documented ChatProvider contract
 sdk/hook/             # Lifecycle hook contracts (Go + WASM ABI docs)
 api/                  # Public API contracts (future)
@@ -77,6 +78,7 @@ Platform events (bus + durable outbox): [Platform domain events](platform-events
 | `internal/dataplane` | Auth → quota → route → provider registry (+ failover, `/v1/models`) |
 | `sdk/provider` | Documented adapter contract for multi-model extensibility |
 | `extensions/*` | Example SDK providers + hooks registered from `cmd/gateway` |
+| `examples/a2a-echo` | Standalone A2A echo agent for local gateway / playground tests |
 | `internal/modelcatalog` | Curated model metadata (mode, context, pricing) |
 | `internal/workers` | Usage + platform-event outbox ProcessOnce |
 | `internal/kernel` | Logging, request IDs, config loading |

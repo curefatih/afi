@@ -29,7 +29,11 @@ Each backend maps an **alias** to a remote [Streamable HTTP](https://modelcontex
 
 On **Add** or **Edit**, use **Test connection** to probe the base URL from the control plane (MCP `initialize`). Optional API key env is resolved on the control plane host. Success means the upstream responded over HTTP (including auth/protocol 4xx); network failures and 5xx fail the test.
 
-### Example
+### Try in the playground
+
+Open **Playground → MCP** to list tools and call them (or send raw JSON-RPC) through the gateway. Pick an enabled backend alias, then **List tools** / **Call tool**. The playground uses the local-dev gateway URL and API key (`VITE_GATEWAY_API_*`), same as chat/TTS/STT.
+
+### Example (curl)
 
 1. Create a backend with alias `docs`, base URL `https://mcp.example.com/mcp`, optional `MCP_API_KEY`.
 2. Ensure the gateway process has that env var if set.
@@ -73,7 +77,22 @@ The Agent Card’s endpoint URL is **rewritten** to the gateway so clients do no
 
 **Test connection** on Add/Edit GETs the Agent Card (card URL or derived well-known path) from the control plane, with optional API key env. Same success criteria as MCP.
 
-### Example
+### Try in the playground
+
+Open **Playground → A2A** to fetch the Agent Card and send `message/send` (or raw JSON-RPC) through the gateway. Pick an enabled agent alias. The playground uses the local-dev gateway URL and API key (`VITE_GATEWAY_API_*`), same as chat/TTS/STT/MCP.
+
+### Local echo upstream
+
+For an end-to-end smoke test without a real agent, run the sample echo server (separate process from AFI):
+
+```bash
+make run-a2a-echo
+# listens on http://127.0.0.1:8091/
+```
+
+Then in **Governance → A2A** create an agent with alias `echo`, upstream `http://127.0.0.1:8091/`, and use **Playground → A2A**. Full flags and curl examples: repository `examples/a2a-echo/README.md`.
+
+### Example (curl)
 
 1. Create an agent with alias `helper` and upstream `https://agent.example/rpc`.
 2. Discover:

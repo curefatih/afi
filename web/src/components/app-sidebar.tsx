@@ -6,12 +6,10 @@ import {
 	Building2Icon,
 	CableIcon,
 	FolderKanbanIcon,
-	GaugeIcon,
 	KeyRoundIcon,
 	LayoutDashboardIcon,
 	PlugIcon,
 	PuzzleIcon,
-	RouteIcon,
 	ScrollTextIcon,
 	Settings2Icon,
 	ShieldIcon,
@@ -79,6 +77,8 @@ const platformNav = [
 			{ title: "Chat", url: "/app/playground/chat" },
 			{ title: "TTS", url: "/app/playground/tts" },
 			{ title: "STT", url: "/app/playground/stt" },
+			{ title: "MCP", url: "/app/playground/mcp" },
+			{ title: "A2A", url: "/app/playground/a2a" },
 		],
 	},
 ];
@@ -90,19 +90,14 @@ const governanceNav = [
 		icon: <PlugIcon />,
 	},
 	{
-		title: "Routing",
-		url: "/app/routing",
-		icon: <RouteIcon />,
-	},
-	{
-		title: "Quotas",
-		url: "/app/quotas",
-		icon: <GaugeIcon />,
-	},
-	{
-		title: "Policies",
+		title: "Controls",
 		url: "/app/policies",
 		icon: <ScrollTextIcon />,
+		items: [
+			{ title: "Policies", url: "/app/policies" },
+			{ title: "Routing", url: "/app/routing" },
+			{ title: "Quotas", url: "/app/quotas" },
+		],
 	},
 	{
 		title: "Usage",

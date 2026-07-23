@@ -1,7 +1,7 @@
 .PHONY: doc-serve doc-build doc-deploy \
 	dev-up dev-down dev-build dev-restart \
 	build test test-web test-all format format-web format-go tidy tidy-go verify \
-	run-controlplane run-gateway run-worker run-all \
+	run-controlplane run-gateway run-worker run-all run-a2a-echo \
 	seed snapshot-publish \
 	deploy-init deploy-up deploy-down deploy-logs deploy-health \
 	build-release build-images brand-assets
@@ -87,6 +87,10 @@ run-gateway:
 
 run-worker:
 	$(GO) run ./cmd/worker
+
+# Standalone A2A echo upstream for gateway / playground testing (see examples/a2a-echo).
+run-a2a-echo:
+	$(GO) run ./examples/a2a-echo
 
 # Background CP + worker, foreground gateway.
 run-all:

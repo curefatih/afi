@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Loader2Icon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PageBody, PageHeader } from "#/components/page-header";
+import { BowlAudioPlayer } from "#/components/playground/bowl-audio-player";
+import { MagicalBowl } from "#/components/playground/magical-bowl";
 import { Button } from "#/components/ui/button";
 import { Label } from "#/components/ui/label";
 import {
@@ -32,6 +34,7 @@ function RouteComponent() {
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [modelsError, setModelsError] = useState<string | null>(null);
+	const audioRef = useRef<HTMLAudioElement>(null);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -67,6 +70,15 @@ function RouteComponent() {
 		return () => {
 			if (audioUrl) URL.revokeObjectURL(audioUrl);
 		};
+	}, [audioUrl]);
+
+	useEffect(() => {
+		const el = audioRef.current;
+		if (!el || !audioUrl) return;
+		el.load();
+		void el.play().catch(() => {
+			/* Autoplay may be blocked; user can press play. */
+		});
 	}, [audioUrl]);
 
 	const generate = async () => {
@@ -190,20 +202,42 @@ function RouteComponent() {
 						)}
 					</Button>
 				</div>
-				<div className="bg-muted/30 space-y-3 rounded-xl border p-5">
-					<h3 className="text-sm font-medium">Preview</h3>
-					<p className="text-muted-foreground text-sm">
-						Audio plays here after a successful generate.
-					</p>
-					{audioUrl ? (
-						<audio controls src={audioUrl} className="w-full">
-							<track kind="captions" />
-						</audio>
-					) : (
-						<div className="text-muted-foreground flex min-h-32 items-center justify-center rounded-lg border border-dashed text-sm">
-							No audio yet
-						</div>
-					)}
+				<div className="bg-muted/30 relative flex flex-col space-y-4 overflow-hidden rounded-xl border p-5">
+					<div
+						aria-hidden
+						className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_30%,oklch(0.7_0_0/0.12),transparent_65%)] dark:bg-[radial-gradient(ellipse_at_50%_30%,oklch(1_0_0/0.08),transparent_65%)]"
+					/>
+					<div className="relative order-1 space-y-1">
+						<h3 className="text-sm font-medium">Preview</h3>
+						<p className="text-muted-foreground text-sm">
+							{busy
+								? "The bowl gathers a reply…"
+								: audioUrl
+									? "Play to hear the voice — the bowl answers with its shape."
+									: "Generate speech and the bowl will answer."}
+						</p>
+					</div>
+					<audio
+						ref={audioRef}
+						src={audioUrl ?? undefined}
+						className="sr-only"
+						preload="auto"
+						playsInline
+					>
+						<track kind="captions" />
+					</audio>
+					<MagicalBowl
+						audioRef={audioRef}
+						ready={!!audioUrl}
+						busy={busy}
+						className="relative order-2"
+					/>
+					<BowlAudioPlayer
+						audioRef={audioRef}
+						src={audioUrl}
+						busy={busy}
+						className="relative order-3"
+					/>
 				</div>
 			</div>
 		</PageBody>
