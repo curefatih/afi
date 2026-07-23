@@ -117,6 +117,6 @@ curl -s http://localhost:8080/a2a/helper \
 * Quotas, CEL policies, hooks (`BeforeCall` / `AfterCall`), and `X-AFI-Tags` apply with modalities `mcp` and `a2a`.
 * Credentials today use **API key env** on the gateway (same spirit as LLM providers). BYOK assignment for protocol upstreams is not in the UI yet.
 
-Architecture and pipeline details: [Architecture](../../development/architecture.md). Design depth: repository `internal-docs/mcp-a2a-gateway.md`.
+Architecture and pipeline details: [Architecture](../../development/architecture.md).
 
 Related: [Web UI overview](../web-ui.md), [Policies](policies.md).

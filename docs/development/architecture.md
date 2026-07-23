@@ -89,7 +89,7 @@ In-process registration is live:
 
 Control-plane WASM hook bindings are available; gRPC plugin runtimes, billing invoices, and multi-region snapshot distribution remain future work.
 
-**Protocol gateways:** MCP Streamable HTTP (`/mcp/{alias}`) and A2A JSON-RPC + Agent Card (`/a2a/{alias}`) proxies are shipped. See [`internal-docs/PROJECT.md`](../../internal-docs/PROJECT.md) §16 and [`internal-docs/mcp-a2a-gateway.md`](../../internal-docs/mcp-a2a-gateway.md).
+**Protocol gateways:** MCP Streamable HTTP (`/mcp/{alias}`) and A2A JSON-RPC + Agent Card (`/a2a/{alias}`) proxies are shipped. Platform UI: [MCP and A2A](../getting-started/web-ui/mcp-a2a.md).
 
 **Shipped governance:**
 
