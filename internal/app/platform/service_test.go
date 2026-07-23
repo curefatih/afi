@@ -117,10 +117,10 @@ func (m *memAPI) UpdateProvider(context.Context, string, string, string, string)
 func (m *memAPI) GetProviderOrgID(context.Context, string) (string, error)          { return "org_1", nil }
 func (m *memAPI) DeleteProvider(context.Context, string) error                      { panic("unused") }
 func (m *memAPI) ListRoutes(context.Context, string) ([]gatewayconfig.Route, error) { return nil, nil }
-func (m *memAPI) CreateRoute(context.Context, string, string, string, string, []gatewayconfig.RouteFallback, *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error) {
+func (m *memAPI) CreateRoute(context.Context, string, string, string, string, []gatewayconfig.RouteFallback, *gatewayconfig.RetryConfig, string, int) (*gatewayconfig.Route, error) {
 	panic("unused")
 }
-func (m *memAPI) UpdateRoute(context.Context, string, string, string, string, []gatewayconfig.RouteFallback, *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error) {
+func (m *memAPI) UpdateRoute(context.Context, string, string, string, string, []gatewayconfig.RouteFallback, *gatewayconfig.RetryConfig, string, int) (*gatewayconfig.Route, error) {
 	panic("unused")
 }
 func (m *memAPI) GetRouteOrgID(context.Context, string) (string, error) { return "org_1", nil }

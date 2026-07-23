@@ -212,8 +212,8 @@ func (s *Service) DeleteProvider(ctx context.Context, providerID string) error {
 	return nil
 }
 
-func (s *Service) CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback, retry *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error) {
-	r, err := s.API.CreateRoute(ctx, orgID, model, providerID, targetModel, fallbacks, retry)
+func (s *Service) CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback, retry *gatewayconfig.RetryConfig, strategy string, weight int) (*gatewayconfig.Route, error) {
+	r, err := s.API.CreateRoute(ctx, orgID, model, providerID, targetModel, fallbacks, retry, strategy, weight)
 	if err != nil {
 		return nil, err
 	}
@@ -224,8 +224,8 @@ func (s *Service) CreateRoute(ctx context.Context, orgID, model, providerID, tar
 	return r, nil
 }
 
-func (s *Service) UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback, retry *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error) {
-	r, err := s.API.UpdateRoute(ctx, routeID, model, providerID, targetModel, fallbacks, retry)
+func (s *Service) UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback, retry *gatewayconfig.RetryConfig, strategy string, weight int) (*gatewayconfig.Route, error) {
+	r, err := s.API.UpdateRoute(ctx, routeID, model, providerID, targetModel, fallbacks, retry, strategy, weight)
 	if err != nil {
 		return nil, err
 	}
