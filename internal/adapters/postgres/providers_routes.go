@@ -155,7 +155,7 @@ func encodeRetry(c *gatewayconfig.RetryConfig) ([]byte, error) {
 
 func (r *Routes) ListByOrg(ctx context.Context, orgID string) ([]gatewayconfig.Route, error) {
 	rows, err := r.Pool.Query(ctx, `
-		SELECT id, organization_id, model, provider_id, target_model, fallbacks, retry, created_at
+		SELECT id, organization_id, model, provider_id, target_model, fallbacks, retry, routing_strategy, weight, created_at
 		FROM routes WHERE organization_id=$1 ORDER BY created_at
 	`, orgID)
 	if err != nil {
@@ -166,7 +166,10 @@ func (r *Routes) ListByOrg(ctx context.Context, orgID string) ([]gatewayconfig.R
 	for rows.Next() {
 		var item gatewayconfig.Route
 		var fb, retryRaw []byte
-		if err := rows.Scan(&item.ID, &item.OrganizationID, &item.Model, &item.ProviderID, &item.TargetModel, &fb, &retryRaw, &item.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&item.ID, &item.OrganizationID, &item.Model, &item.ProviderID, &item.TargetModel,
+			&fb, &retryRaw, &item.RoutingStrategy, &item.Weight, &item.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		item.Fallbacks = decodeFallbacks(fb)
@@ -186,13 +189,13 @@ func (r *Routes) Insert(ctx context.Context, item gatewayconfig.Route) error {
 		return err
 	}
 	_, err = r.Pool.Exec(ctx, `
-		INSERT INTO routes (id, organization_id, model, provider_id, target_model, fallbacks, retry, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-	`, item.ID, item.OrganizationID, item.Model, item.ProviderID, item.TargetModel, fb, retryRaw, item.CreatedAt)
+		INSERT INTO routes (id, organization_id, model, provider_id, target_model, fallbacks, retry, routing_strategy, weight, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+	`, item.ID, item.OrganizationID, item.Model, item.ProviderID, item.TargetModel, fb, retryRaw, item.RoutingStrategy, item.Weight, item.CreatedAt)
 	return err
 }
 
-func (r *Routes) Update(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback, retry *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error) {
+func (r *Routes) Update(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback, retry *gatewayconfig.RetryConfig, strategy string, weight int) (*gatewayconfig.Route, error) {
 	if fallbacks == nil {
 		fallbacks = []gatewayconfig.RouteFallback{}
 	}
@@ -207,11 +210,12 @@ func (r *Routes) Update(ctx context.Context, routeID, model, providerID, targetM
 	item := &gatewayconfig.Route{}
 	var raw, gotRetry []byte
 	err = r.Pool.QueryRow(ctx, `
-		UPDATE routes SET model=$2, provider_id=$3, target_model=$4, fallbacks=$5, retry=$6
+		UPDATE routes SET model=$2, provider_id=$3, target_model=$4, fallbacks=$5, retry=$6, routing_strategy=$7, weight=$8
 		WHERE id=$1
-		RETURNING id, organization_id, model, provider_id, target_model, fallbacks, retry, created_at
-	`, routeID, model, providerID, targetModel, fb, retryRaw).Scan(
-		&item.ID, &item.OrganizationID, &item.Model, &item.ProviderID, &item.TargetModel, &raw, &gotRetry, &item.CreatedAt,
+		RETURNING id, organization_id, model, provider_id, target_model, fallbacks, retry, routing_strategy, weight, created_at
+	`, routeID, model, providerID, targetModel, fb, retryRaw, strategy, weight).Scan(
+		&item.ID, &item.OrganizationID, &item.Model, &item.ProviderID, &item.TargetModel,
+		&raw, &gotRetry, &item.RoutingStrategy, &item.Weight, &item.CreatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, kernel.ErrNotFound
