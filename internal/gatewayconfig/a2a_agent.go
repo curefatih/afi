@@ -79,10 +79,11 @@ func NewA2AAgent(
 	}
 	cardURL = strings.TrimSpace(cardURL)
 	if cardURL != "" {
-		cardURL, err = ParseA2AURL(cardURL)
+		parsed, err := ParseA2AURL(cardURL)
 		if err != nil {
-			return nil, fmt.Errorf("%w: card_url: %v", kernel.ErrInvalidRequest, err)
+			return nil, fmt.Errorf("%w: card_url must be an absolute http(s) URL", kernel.ErrInvalidRequest)
 		}
+		cardURL = parsed
 	}
 	cache, err := normalizeCardCache(cardCache)
 	if err != nil {

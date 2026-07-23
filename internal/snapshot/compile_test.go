@@ -55,3 +55,19 @@ func TestCompileMCPBackends(t *testing.T) {
 		t.Fatal("expected missing")
 	}
 }
+
+func TestCompileA2AAgents(t *testing.T) {
+	snap := Compile(Source{
+		A2AAgents: []A2AAgent{
+			{ID: "a2a_1", OrganizationID: "o1", Alias: "helper", Name: "Helper", UpstreamURL: "https://a.example/rpc", Enabled: true},
+			{ID: "a2a_2", OrganizationID: "o1", Alias: "off", Name: "Off", UpstreamURL: "https://a.example/off", Enabled: false},
+		},
+	})
+	a, ok := snap.LookupA2AAgent("o1", "helper")
+	if !ok || a.ID != "a2a_1" {
+		t.Fatalf("lookup=%v %+v", ok, a)
+	}
+	if _, ok := snap.LookupA2AAgent("o1", "off"); ok {
+		t.Fatal("disabled agent should not route")
+	}
+}
