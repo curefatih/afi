@@ -81,6 +81,17 @@ The Agent Card’s endpoint URL is **rewritten** to the gateway so clients do no
 
 Open **Playground → A2A** to fetch the Agent Card and send `message/send` (or raw JSON-RPC) through the gateway. Pick an enabled agent alias. The playground uses the local-dev gateway URL and API key (`VITE_GATEWAY_API_*`), same as chat/TTS/STT/MCP.
 
+### Local echo upstream
+
+For an end-to-end smoke test without a real agent, run the sample echo server (separate process from AFI):
+
+```bash
+make run-a2a-echo
+# listens on http://127.0.0.1:8091/
+```
+
+Then in **Governance → A2A** create an agent with alias `echo`, upstream `http://127.0.0.1:8091/`, and use **Playground → A2A**. Full flags and curl examples: repository `examples/a2a-echo/README.md`.
+
 ### Example (curl)
 
 1. Create an agent with alias `helper` and upstream `https://agent.example/rpc`.
