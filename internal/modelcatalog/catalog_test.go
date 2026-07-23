@@ -23,6 +23,10 @@ func TestLookupChatAndAudio(t *testing.T) {
 	if !ok || !stt.IsSTT() {
 		t.Fatalf("stt alias=%+v ok=%v", stt, ok)
 	}
+	emb, ok := Lookup("openai", "text-embedding-3-small")
+	if !ok || !emb.IsEmbedding() || emb.InputCostPerMTok == nil {
+		t.Fatalf("emb=%+v ok=%v", emb, ok)
+	}
 	if _, ok := Lookup("openai", "does-not-exist"); ok {
 		t.Fatal("expected miss")
 	}
@@ -61,6 +65,18 @@ func TestEstimateCostSTT(t *testing.T) {
 	})
 	// 60 * 0.0001 = 0.006
 	if got == nil || *got < 0.0059 || *got > 0.0061 {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestEstimateCostEmbedding(t *testing.T) {
+	t.Parallel()
+	got := EstimateCostUSD(usage.Event{
+		ProviderType: "openai", TargetModel: "text-embedding-3-small",
+		Modality: "embedding", PromptTokens: 1_000_000,
+	})
+	// 1MTok * 0.02 = 0.02
+	if got == nil || *got < 0.019 || *got > 0.021 {
 		t.Fatalf("got %v", got)
 	}
 }

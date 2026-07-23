@@ -12,6 +12,7 @@ const (
 	ModeChat               = "chat"
 	ModeAudioSpeech        = "audio_speech"
 	ModeAudioTranscription = "audio_transcription"
+	ModeEmbedding          = "embedding"
 )
 
 // Entry is curated metadata for a provider target model.
@@ -91,6 +92,11 @@ func (e Entry) IsTTS() bool {
 // IsSTT reports whether the entry is a speech-to-text model.
 func (e Entry) IsSTT() bool {
 	return e.Mode == ModeAudioTranscription
+}
+
+// IsEmbedding reports whether the entry is an embeddings model.
+func (e Entry) IsEmbedding() bool {
+	return e.Mode == ModeEmbedding
 }
 
 // StreamingEnabled returns whether streaming is supported (chat default true).
