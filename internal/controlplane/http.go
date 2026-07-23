@@ -11,6 +11,7 @@ import (
 	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
+	"github.com/curefatih/afi/internal/telemetry"
 )
 
 type Server struct {
@@ -25,6 +26,7 @@ type Server struct {
 	snapStore   snapshot.Store
 	log         *slog.Logger
 	eventOutbox platform.EventEnqueuer
+	Metrics     *telemetry.ControlPlaneMetrics
 }
 
 func NewServer(cfg *kernel.Config, store *Store, seeder *Seeder, snapStore snapshot.Store, log *slog.Logger, eventOutbox platform.EventEnqueuer, ssoStates identity.SSOStateStore) *Server {
@@ -150,7 +152,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/platform/projects/{projectID}/keys", s.requireAuth(s.requireOrgMemberViaProject(s.handleListKeys)))
 	mux.HandleFunc("POST /api/v1/platform/projects/{projectID}/keys", s.requireAuth(s.requireOrgAdminViaProject(s.handleCreateKey)))
 
-	return withCORS(mux)
+	return s.withCPMetrics(withCORS(mux))
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
