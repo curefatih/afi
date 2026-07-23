@@ -30,6 +30,10 @@ nav:
           - MCP and A2A: getting-started/web-ui/mcp-a2a.md
       - Single sign-on (SSO): getting-started/sso.md
       - Verify: getting-started/verify.md
+  - API:
+      - Overview: api/index.md
+      - Platform: api/platform.md
+      - Gateway: api/gateway.md
   - Development:
       - Repository layout: development/repository-layout.md
       - Architecture: development/architecture.md

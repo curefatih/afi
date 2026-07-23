@@ -38,7 +38,8 @@ extensions/           # Examples: echo, demohook, tagquota, wasmhook (TinyGo .wa
 examples/             # Standalone samples (e.g. a2a-echo upstream for gateway testing)
 sdk/provider/         # Documented ChatProvider contract
 sdk/hook/             # Lifecycle hook contracts (Go + WASM ABI docs)
-api/                  # Public API contracts (future)
+api/openapi/          # Public OpenAPI 3.1 (platform + gateway overlay)
+clients/              # Thin TS/Python platform HTTP clients
 web/                  # Platform UI (TanStack / Vite)
 configs/              # Local/dev defaults
 deploy/               # Compose stack, example env/YAML, nginx for web
@@ -77,6 +78,9 @@ Platform events (bus + durable outbox): [Platform domain events](platform-events
 | `internal/controlplane` | HTTP handlers, Store facade, seed, migrate |
 | `internal/dataplane` | Auth → quota → route → provider registry (+ failover, `/v1/models`) |
 | `sdk/provider` | Documented adapter contract for multi-model extensibility |
+| `sdk/hook` | Lifecycle hook contracts (Go + WASM ABI docs) |
+| `api/openapi` | Public OpenAPI contracts (platform + gateway overlay) |
+| `clients/*` | Thin TypeScript / Python platform HTTP clients |
 | `extensions/*` | Example SDK providers + hooks registered from `cmd/gateway` |
 | `examples/a2a-echo` | Standalone A2A echo agent for local gateway / playground tests |
 | `internal/modelcatalog` | Curated model metadata (mode, context, pricing) |

@@ -111,6 +111,8 @@ Written on first control-plane start (or `make seed`):
 
 ## Platform config APIs
 
+Canonical contract: OpenAPI [`api/openapi/platform.openapi.yaml`](../../api/openapi/platform.openapi.yaml) and docs [Platform API](../api/platform.md). Summary of common routes:
+
 | Method | Path |
 |--------|------|
 | GET/POST | `/api/v1/platform/organizations` |
