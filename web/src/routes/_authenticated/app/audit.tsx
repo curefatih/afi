@@ -115,8 +115,7 @@ function actorLabel(r: {
 	actor_email?: string;
 	actor_user_id: string;
 }) {
-	if (r.actor_name && r.actor_email)
-		return `${r.actor_name} (${r.actor_email})`;
+	if (r.actor_name && r.actor_email) return `${r.actor_name} (${r.actor_email})`;
 	if (r.actor_email) return r.actor_email;
 	if (r.actor_name) return r.actor_name;
 	if (r.actor_user_id) return r.actor_user_id;
