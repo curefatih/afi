@@ -115,7 +115,8 @@ function actorLabel(r: {
 	actor_email?: string;
 	actor_user_id: string;
 }) {
-	if (r.actor_name && r.actor_email) return `${r.actor_name} (${r.actor_email})`;
+	if (r.actor_name && r.actor_email)
+		return `${r.actor_name} (${r.actor_email})`;
 	if (r.actor_email) return r.actor_email;
 	if (r.actor_name) return r.actor_name;
 	if (r.actor_user_id) return r.actor_user_id;
@@ -300,9 +301,7 @@ function RouteComponent() {
 													{r.name}
 												</Badge>
 											</TableCell>
-											<TableCell className="text-sm">
-												{actorLabel(r)}
-											</TableCell>
+											<TableCell className="text-sm">{actorLabel(r)}</TableCell>
 											<TableCell className="max-w-[200px] truncate font-mono text-xs text-muted-foreground">
 												{r.resource_id || "—"}
 											</TableCell>
