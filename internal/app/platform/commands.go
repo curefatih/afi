@@ -159,13 +159,17 @@ func (s *Service) CreateAPIKey(ctx context.Context, orgID, kind, ownerUserID, pr
 }
 
 func (s *Service) DeleteAPIKey(ctx context.Context, keyID string) error {
+	orgID, err := s.API.GetAPIKeyOrgID(ctx, keyID)
+	if err != nil {
+		return err
+	}
 	if err := s.API.DeleteAPIKey(ctx, keyID); err != nil {
 		return err
 	}
 	if err := s.publish(ctx, "deleted"); err != nil {
 		return err
 	}
-	s.emit(ctx, EventAPIKeyDeleted, keyID, "")
+	s.emit(ctx, EventAPIKeyDeleted, keyID, orgID)
 	return nil
 }
 
@@ -194,13 +198,17 @@ func (s *Service) UpdateProvider(ctx context.Context, providerID, name, baseURL,
 }
 
 func (s *Service) DeleteProvider(ctx context.Context, providerID string) error {
+	orgID, err := s.API.GetProviderOrgID(ctx, providerID)
+	if err != nil {
+		return err
+	}
 	if err := s.API.DeleteProvider(ctx, providerID); err != nil {
 		return err
 	}
 	if err := s.publish(ctx, "deleted"); err != nil {
 		return err
 	}
-	s.emit(ctx, EventProviderDeleted, providerID, "")
+	s.emit(ctx, EventProviderDeleted, providerID, orgID)
 	return nil
 }
 
@@ -229,13 +237,17 @@ func (s *Service) UpdateRoute(ctx context.Context, routeID, model, providerID, t
 }
 
 func (s *Service) DeleteRoute(ctx context.Context, routeID string) error {
+	orgID, err := s.API.GetRouteOrgID(ctx, routeID)
+	if err != nil {
+		return err
+	}
 	if err := s.API.DeleteRoute(ctx, routeID); err != nil {
 		return err
 	}
 	if err := s.publish(ctx, "deleted"); err != nil {
 		return err
 	}
-	s.emit(ctx, EventRouteDeleted, routeID, "")
+	s.emit(ctx, EventRouteDeleted, routeID, orgID)
 	return nil
 }
 
@@ -283,13 +295,17 @@ func (s *Service) UpdateQuota(ctx context.Context, quotaID string, limitValue in
 }
 
 func (s *Service) DeleteQuota(ctx context.Context, quotaID string) error {
+	orgID, err := s.API.GetQuotaOrgID(ctx, quotaID)
+	if err != nil {
+		return err
+	}
 	if err := s.API.DeleteQuota(ctx, quotaID); err != nil {
 		return err
 	}
 	if err := s.publish(ctx, "deleted"); err != nil {
 		return err
 	}
-	s.emit(ctx, EventQuotaDeleted, quotaID, "")
+	s.emit(ctx, EventQuotaDeleted, quotaID, orgID)
 	return nil
 }
 
@@ -329,13 +345,17 @@ func (s *Service) ReorderPolicies(ctx context.Context, orgID string, items []gat
 }
 
 func (s *Service) DeletePolicy(ctx context.Context, policyID string) error {
+	orgID, err := s.API.GetPolicyOrgID(ctx, policyID)
+	if err != nil {
+		return err
+	}
 	if err := s.API.DeletePolicy(ctx, policyID); err != nil {
 		return err
 	}
 	if err := s.publish(ctx, "deleted"); err != nil {
 		return err
 	}
-	s.emit(ctx, EventPolicyDeleted, policyID, "")
+	s.emit(ctx, EventPolicyDeleted, policyID, orgID)
 	return nil
 }
 
@@ -364,13 +384,17 @@ func (s *Service) UpdateWasmHook(ctx context.Context, id string, name, phase, mo
 }
 
 func (s *Service) DeleteWasmHook(ctx context.Context, id string) error {
+	orgID, err := s.API.GetWasmHookOrgID(ctx, id)
+	if err != nil {
+		return err
+	}
 	if err := s.API.DeleteWasmHook(ctx, id); err != nil {
 		return err
 	}
 	if err := s.publish(ctx, "deleted"); err != nil {
 		return err
 	}
-	s.emit(ctx, EventWasmHookDeleted, id, "")
+	s.emit(ctx, EventWasmHookDeleted, id, orgID)
 	return nil
 }
 
@@ -399,13 +423,17 @@ func (s *Service) UpdateMCPBackend(ctx context.Context, id string, alias, name, 
 }
 
 func (s *Service) DeleteMCPBackend(ctx context.Context, id string) error {
+	orgID, err := s.API.GetMCPBackendOrgID(ctx, id)
+	if err != nil {
+		return err
+	}
 	if err := s.API.DeleteMCPBackend(ctx, id); err != nil {
 		return err
 	}
 	if err := s.publish(ctx, "deleted"); err != nil {
 		return err
 	}
-	s.emit(ctx, EventMCPBackendDeleted, id, "")
+	s.emit(ctx, EventMCPBackendDeleted, id, orgID)
 	return nil
 }
 
@@ -434,13 +462,17 @@ func (s *Service) UpdateA2AAgent(ctx context.Context, id string, alias, name, up
 }
 
 func (s *Service) DeleteA2AAgent(ctx context.Context, id string) error {
+	orgID, err := s.API.GetA2AAgentOrgID(ctx, id)
+	if err != nil {
+		return err
+	}
 	if err := s.API.DeleteA2AAgent(ctx, id); err != nil {
 		return err
 	}
 	if err := s.publish(ctx, "deleted"); err != nil {
 		return err
 	}
-	s.emit(ctx, EventA2AAgentDeleted, id, "")
+	s.emit(ctx, EventA2AAgentDeleted, id, orgID)
 	return nil
 }
 
@@ -481,13 +513,17 @@ func (s *Service) RotateCredential(ctx context.Context, credentialID, secretRef,
 }
 
 func (s *Service) DeleteCredential(ctx context.Context, credentialID string) error {
+	orgID, err := s.API.GetCredentialOrgID(ctx, credentialID)
+	if err != nil {
+		return err
+	}
 	if err := s.API.DeleteCredential(ctx, credentialID); err != nil {
 		return err
 	}
 	if err := s.publish(ctx, "deleted"); err != nil {
 		return err
 	}
-	s.emit(ctx, EventCredentialDeleted, credentialID, "")
+	s.emit(ctx, EventCredentialDeleted, credentialID, orgID)
 	return nil
 }
 
@@ -504,12 +540,16 @@ func (s *Service) AssignCredential(ctx context.Context, credentialID, scopeType,
 }
 
 func (s *Service) DeleteCredentialAssignment(ctx context.Context, assignmentID string) error {
+	orgID, err := s.API.GetCredentialAssignmentOrgID(ctx, assignmentID)
+	if err != nil {
+		return err
+	}
 	if err := s.API.DeleteCredentialAssignment(ctx, assignmentID); err != nil {
 		return err
 	}
 	if err := s.publish(ctx, "deleted"); err != nil {
 		return err
 	}
-	s.emit(ctx, EventCredentialUnassigned, assignmentID, "")
+	s.emit(ctx, EventCredentialUnassigned, assignmentID, orgID)
 	return nil
 }

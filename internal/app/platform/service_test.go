@@ -7,6 +7,7 @@ import (
 
 	"github.com/curefatih/afi/internal/access"
 	"github.com/curefatih/afi/internal/app/platform"
+	"github.com/curefatih/afi/internal/audit"
 	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/identity"
@@ -99,7 +100,8 @@ func (m *memAPI) ListOrgAPIKeys(context.Context, string) ([]access.APIKey, error
 func (m *memAPI) CreateAPIKey(context.Context, string, string, string, string, string, string) (*access.APIKey, error) {
 	panic("unused")
 }
-func (m *memAPI) DeleteAPIKey(context.Context, string) error { panic("unused") }
+func (m *memAPI) GetAPIKeyOrgID(context.Context, string) (string, error) { return "org_1", nil }
+func (m *memAPI) DeleteAPIKey(context.Context, string) error             { panic("unused") }
 func (m *memAPI) ListProviders(context.Context, string) ([]gatewayconfig.Provider, error) {
 	return nil, nil
 }
@@ -112,7 +114,8 @@ func (m *memAPI) CreateProvider(context.Context, string, string, string, string,
 func (m *memAPI) UpdateProvider(context.Context, string, string, string, string) (*gatewayconfig.Provider, error) {
 	panic("unused")
 }
-func (m *memAPI) DeleteProvider(context.Context, string) error                      { panic("unused") }
+func (m *memAPI) GetProviderOrgID(context.Context, string) (string, error) { return "org_1", nil }
+func (m *memAPI) DeleteProvider(context.Context, string) error              { panic("unused") }
 func (m *memAPI) ListRoutes(context.Context, string) ([]gatewayconfig.Route, error) { return nil, nil }
 func (m *memAPI) CreateRoute(context.Context, string, string, string, string, []gatewayconfig.RouteFallback, *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error) {
 	panic("unused")
@@ -120,7 +123,8 @@ func (m *memAPI) CreateRoute(context.Context, string, string, string, string, []
 func (m *memAPI) UpdateRoute(context.Context, string, string, string, string, []gatewayconfig.RouteFallback, *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error) {
 	panic("unused")
 }
-func (m *memAPI) DeleteRoute(context.Context, string) error { panic("unused") }
+func (m *memAPI) GetRouteOrgID(context.Context, string) (string, error) { return "org_1", nil }
+func (m *memAPI) DeleteRoute(context.Context, string) error            { panic("unused") }
 func (m *memAPI) GetOrgDefaultRetry(context.Context, string) (*gatewayconfig.RetryConfig, error) {
 	panic("unused")
 }
@@ -131,6 +135,9 @@ func (m *memAPI) ListUsage(context.Context, string, usage.Filter) ([]usage.Recor
 	return nil, nil
 }
 func (m *memAPI) SummarizeUsage(context.Context, string, usage.Filter) ([]usage.SummaryBucket, error) {
+	return nil, nil
+}
+func (m *memAPI) ListAudit(context.Context, string, audit.Filter) ([]audit.Record, error) {
 	return nil, nil
 }
 func (m *memAPI) ListQuotas(context.Context, string) ([]gatewayconfig.Quota, error) { return nil, nil }
@@ -144,7 +151,8 @@ func (m *memAPI) CreateQuota(_ context.Context, orgID, scopeType, scopeID, metri
 func (m *memAPI) UpdateQuota(context.Context, string, int64) (*gatewayconfig.Quota, error) {
 	panic("unused")
 }
-func (m *memAPI) DeleteQuota(context.Context, string) error { panic("unused") }
+func (m *memAPI) GetQuotaOrgID(context.Context, string) (string, error) { return "org_1", nil }
+func (m *memAPI) DeleteQuota(context.Context, string) error            { panic("unused") }
 func (m *memAPI) ListPolicies(context.Context, string) ([]gatewayconfig.RequestPolicy, error) {
 	return nil, nil
 }
@@ -157,7 +165,8 @@ func (m *memAPI) UpdatePolicy(context.Context, string, *string, *string, []gatew
 func (m *memAPI) ReorderPolicies(context.Context, string, []gatewayconfig.PolicyPriorityUpdate) error {
 	panic("unused")
 }
-func (m *memAPI) DeletePolicy(context.Context, string) error { panic("unused") }
+func (m *memAPI) GetPolicyOrgID(context.Context, string) (string, error) { return "org_1", nil }
+func (m *memAPI) DeletePolicy(context.Context, string) error             { panic("unused") }
 func (m *memAPI) ListWasmHooks(context.Context, string) ([]gatewayconfig.WasmHook, error) {
 	return nil, nil
 }
@@ -167,7 +176,8 @@ func (m *memAPI) CreateWasmHook(context.Context, string, string, string, string,
 func (m *memAPI) UpdateWasmHook(context.Context, string, *string, *string, *string, *string, *bool, *int, []byte) (*gatewayconfig.WasmHook, error) {
 	panic("unused")
 }
-func (m *memAPI) DeleteWasmHook(context.Context, string) error { panic("unused") }
+func (m *memAPI) GetWasmHookOrgID(context.Context, string) (string, error) { return "org_1", nil }
+func (m *memAPI) DeleteWasmHook(context.Context, string) error              { panic("unused") }
 func (m *memAPI) ListMCPBackends(context.Context, string) ([]gatewayconfig.MCPBackend, error) {
 	return nil, nil
 }
@@ -177,7 +187,8 @@ func (m *memAPI) CreateMCPBackend(context.Context, string, string, string, strin
 func (m *memAPI) UpdateMCPBackend(context.Context, string, *string, *string, *string, *string, []byte, *bool) (*gatewayconfig.MCPBackend, error) {
 	panic("unused")
 }
-func (m *memAPI) DeleteMCPBackend(context.Context, string) error { panic("unused") }
+func (m *memAPI) GetMCPBackendOrgID(context.Context, string) (string, error) { return "org_1", nil }
+func (m *memAPI) DeleteMCPBackend(context.Context, string) error              { panic("unused") }
 func (m *memAPI) ListA2AAgents(context.Context, string) ([]gatewayconfig.A2AAgent, error) {
 	return nil, nil
 }
@@ -187,7 +198,8 @@ func (m *memAPI) CreateA2AAgent(context.Context, string, string, string, string,
 func (m *memAPI) UpdateA2AAgent(context.Context, string, *string, *string, *string, *string, *string, *string, []byte, *bool) (*gatewayconfig.A2AAgent, error) {
 	panic("unused")
 }
-func (m *memAPI) DeleteA2AAgent(context.Context, string) error { panic("unused") }
+func (m *memAPI) GetA2AAgentOrgID(context.Context, string) (string, error) { return "org_1", nil }
+func (m *memAPI) DeleteA2AAgent(context.Context, string) error              { panic("unused") }
 func (m *memAPI) ListCredentials(context.Context, string) ([]credentials.Credential, error) {
 	return nil, nil
 }
@@ -200,12 +212,16 @@ func (m *memAPI) UpdateCredential(context.Context, string, string, string) (*cre
 func (m *memAPI) RotateCredential(context.Context, string, string, string) (*credentials.Credential, error) {
 	panic("unused")
 }
-func (m *memAPI) DeleteCredential(context.Context, string) error { panic("unused") }
+func (m *memAPI) GetCredentialOrgID(context.Context, string) (string, error) { return "org_1", nil }
+func (m *memAPI) DeleteCredential(context.Context, string) error              { panic("unused") }
 func (m *memAPI) ListCredentialAssignments(context.Context, string) ([]credentials.Assignment, error) {
 	return nil, nil
 }
 func (m *memAPI) AssignCredential(context.Context, string, string, string, string) (*credentials.Assignment, error) {
 	panic("unused")
+}
+func (m *memAPI) GetCredentialAssignmentOrgID(context.Context, string) (string, error) {
+	return "org_1", nil
 }
 func (m *memAPI) DeleteCredentialAssignment(context.Context, string) error { panic("unused") }
 

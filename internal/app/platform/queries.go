@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/access"
+	"github.com/curefatih/afi/internal/audit"
 	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/snapshot"
@@ -113,4 +114,8 @@ func (s *Service) ListCredentials(ctx context.Context, orgID string) ([]credenti
 
 func (s *Service) ListCredentialAssignments(ctx context.Context, orgID string) ([]credentials.Assignment, error) {
 	return s.API.ListCredentialAssignments(ctx, orgID)
+}
+
+func (s *Service) ListAudit(ctx context.Context, orgID string, f audit.Filter) ([]audit.Record, error) {
+	return s.API.ListAudit(ctx, orgID, f)
 }
