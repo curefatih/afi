@@ -8,10 +8,11 @@ import (
 // Capabilities describes what an adapter supports on the OpenAI-compatible
 // gateway surface.
 type Capabilities struct {
-	Chat   bool `json:"chat"`
-	Stream bool `json:"stream"`
-	TTS    bool `json:"tts"`
-	STT    bool `json:"stt"`
+	Chat      bool `json:"chat"`
+	Stream    bool `json:"stream"`
+	TTS       bool `json:"tts"`
+	STT       bool `json:"stt"`
+	Embedding bool `json:"embedding"`
 }
 
 // ProviderConfig is the snapshot view passed into Chat (IDs, base URL, key env).
