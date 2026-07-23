@@ -1,0 +1,393 @@
+openapi: 3.1.0
+info:
+  title: AFI Gateway API (overlay)
+  description: |
+    Data-plane overlay for the AFI gateway (default `:8080`).
+
+    **Do not treat this as a full OpenAI/Anthropic/MCP/A2A schema.** Point official
+    vendor SDKs at the gateway base URL. This document covers AFI-specific auth,
+    headers, path map, and `/healthz`.
+
+    External references:
+    - OpenAI API: https://platform.openai.com/docs/api-reference
+    - Anthropic Messages: https://docs.anthropic.com/en/api/messages
+    - MCP Streamable HTTP: https://modelcontextprotocol.io
+    - A2A protocol: https://a2a-protocol.org
+  version: 1.0.0
+
+externalDocs:
+  description: AFI public documentation
+  url: https://afi.fatihcure.com
+
+servers:
+  - url: http://localhost:8080
+    description: Local gateway
+
+security:
+  - virtualKeyAuth: []
+
+tags:
+  - name: Health
+  - name: OpenAICompatible
+    description: OpenAI-shaped paths; request/response bodies follow OpenAI (or AFI-enriched models list).
+  - name: Anthropic
+    description: Native Anthropic Messages shape.
+  - name: MCP
+    description: MCP Streamable HTTP proxy by alias.
+  - name: A2A
+    description: A2A JSON-RPC and Agent Card proxy by alias.
+
+paths:
+  /healthz:
+    get:
+      tags: [Health]
+      operationId: gatewayHealthz
+      security: []
+      summary: Gateway liveness
+      description: Returns status, snapshot_version, and registered provider/hook info.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /v1/models:
+    get:
+      tags: [OpenAICompatible]
+      operationId: listModels
+      summary: List routable models
+      description: |
+        OpenAI-shaped model list enriched from org routes and the model catalog.
+        See OpenAI Models API for the general shape.
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      responses:
+        "200":
+          description: Model list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/chat/completions:
+    post:
+      tags: [OpenAICompatible]
+      operationId: chatCompletions
+      summary: Chat completions
+      description: |
+        OpenAI-compatible chat completions with AFI routing, quotas, policies, hooks,
+        and optional streaming. Body follows the OpenAI Chat Completions schema.
+      externalDocs:
+        url: https://platform.openai.com/docs/api-reference/chat
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: OpenAI chat completion request (passthrough).
+      responses:
+        "200":
+          description: Completion or SSE stream
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/embeddings:
+    post:
+      tags: [OpenAICompatible]
+      operationId: createEmbeddings
+      summary: Embeddings
+      description: OpenAI-compatible embeddings. Body follows the OpenAI Embeddings schema.
+      externalDocs:
+        url: https://platform.openai.com/docs/api-reference/embeddings
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Embedding response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/audio/speech:
+    post:
+      tags: [OpenAICompatible]
+      operationId: audioSpeech
+      summary: Text-to-speech
+      description: OpenAI-compatible TTS.
+      externalDocs:
+        url: https://platform.openai.com/docs/api-reference/audio/createSpeech
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Audio bytes
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/audio/transcriptions:
+    post:
+      tags: [OpenAICompatible]
+      operationId: audioTranscriptions
+      summary: Speech-to-text
+      description: OpenAI-compatible transcriptions (multipart).
+      externalDocs:
+        url: https://platform.openai.com/docs/api-reference/audio/createTranscription
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Transcription
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/messages:
+    post:
+      tags: [Anthropic]
+      operationId: anthropicMessages
+      summary: Anthropic Messages
+      description: |
+        Native Anthropic Messages API shape (not OpenAI chat). Requires an Anthropic
+        (or compatible) provider route.
+      externalDocs:
+        url: https://docs.anthropic.com/en/api/messages
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Message response or stream
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /mcp/{alias}:
+    parameters:
+      - name: alias
+        in: path
+        required: true
+        schema:
+          type: string
+        description: MCP backend alias configured in the platform.
+      - $ref: "#/components/parameters/AFITags"
+    post:
+      tags: [MCP]
+      operationId: mcpProxyPost
+      summary: MCP Streamable HTTP (POST)
+      description: Proxies MCP Streamable HTTP to the configured upstream for `alias`.
+      externalDocs:
+        url: https://modelcontextprotocol.io
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Upstream MCP response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    get:
+      tags: [MCP]
+      operationId: mcpProxyGet
+      summary: MCP Streamable HTTP (GET)
+      description: Proxies MCP Streamable HTTP GET for session resume / SSE as supported upstream.
+      responses:
+        "200":
+          description: Upstream MCP response
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [MCP]
+      operationId: mcpProxyDelete
+      summary: MCP Streamable HTTP (DELETE)
+      description: Proxies MCP Streamable HTTP DELETE to end a session when supported upstream.
+      responses:
+        "200":
+          description: Upstream MCP response
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /a2a/{alias}:
+    post:
+      tags: [A2A]
+      operationId: a2aJSONRPC
+      summary: A2A JSON-RPC
+      description: Proxies A2A JSON-RPC to the configured agent upstream for `alias`.
+      externalDocs:
+        url: https://a2a-protocol.org
+      parameters:
+        - name: alias
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: JSON-RPC response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /a2a/{alias}/.well-known/agent-card.json:
+    get:
+      tags: [A2A]
+      operationId: a2aAgentCard
+      summary: A2A Agent Card
+      description: |
+        Fetches the upstream agent card and rewrites URLs to the gateway public path
+        for this alias.
+      security: []
+      parameters:
+        - name: alias
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Agent Card JSON
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+components:
+  securitySchemes:
+    virtualKeyAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API key
+      description: Virtual API key issued by the platform (typically `sk-…`).
+
+  parameters:
+    AFITags:
+      name: X-AFI-Tags
+      in: header
+      required: false
+      description: |
+        Optional external tags as `key:value` pairs, comma-separated.
+        Example: `env:prod,team:billing`. Keys/values are trimmed; last duplicate key wins.
+      schema:
+        type: string
+        example: "env:prod,team:billing"
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid virtual API key
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    RateLimited:
+      description: Quota exceeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

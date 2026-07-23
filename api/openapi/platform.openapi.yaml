@@ -1,0 +1,3509 @@
+openapi: 3.1.0
+info:
+  title: AFI Platform API
+  description: 'Control plane admin API (`/api/v1/platform`).
+
+
+    Auth: JWT Bearer from login / invite accept / SSO.
+
+    Errors: JSON `{"error":"..."}`.
+
+    RBAC is enforced server-side (org member/admin/owner, team roles); see operation descriptions.
+
+    '
+  version: 1.0.0
+servers:
+- url: http://localhost:8081
+  description: Local control plane
+security:
+- bearerAuth: []
+tags:
+- name: Health
+- name: Auth
+- name: Organizations
+- name: Teams
+- name: Projects
+- name: Keys
+- name: Providers
+- name: Routes
+- name: Quotas
+- name: Policies
+- name: WasmHooks
+- name: MCP
+- name: A2A
+- name: Credentials
+- name: Usage
+- name: Audit
+paths:
+  /healthz:
+    get:
+      operationId: platformHealthz
+      summary: Control plane liveness
+      tags:
+      - Health
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security: []
+  /api/v1/platform/auth/login:
+    post:
+      operationId: login
+      summary: Password login
+      tags:
+      - Auth
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+  /api/v1/platform/auth/me:
+    get:
+      operationId: me
+      summary: Current user
+      tags:
+      - Auth
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/platform/auth/sso/providers:
+    get:
+      operationId: listSSOProviders
+      summary: List SSO providers
+      tags:
+      - Auth
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SSOProvidersResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security: []
+  /api/v1/platform/auth/sso/{provider}/start:
+    get:
+      operationId: ssoStart
+      summary: Start SSO
+      tags:
+      - Auth
+      responses:
+        '302':
+          description: Redirect to IdP
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security: []
+      parameters:
+      - &id001
+        name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: redirect
+        in: query
+        schema:
+          type: string
+  /api/v1/platform/auth/sso/{provider}/callback:
+    get:
+      operationId: ssoCallback
+      summary: SSO OAuth/OIDC callback
+      tags:
+      - Auth
+      responses:
+        '302':
+          description: Redirect to web UI
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security: []
+      parameters: &id002
+      - *id001
+    post:
+      operationId: ssoACS
+      summary: SAML ACS callback
+      tags:
+      - Auth
+      responses:
+        '302':
+          description: Redirect to web UI
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security: []
+      parameters: *id002
+  /api/v1/platform/auth/sso/{provider}/metadata:
+    get:
+      operationId: ssoMetadata
+      summary: SAML SP metadata
+      tags:
+      - Auth
+      responses:
+        '200':
+          description: XML metadata
+          content:
+            application/xml:
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security: []
+      parameters: *id002
+  /api/v1/platform/auth/invites/{token}:
+    get:
+      operationId: previewInvite
+      summary: Preview invite
+      tags:
+      - Auth
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitePreview'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security: []
+      parameters: &id003
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+  /api/v1/platform/auth/invites/{token}/accept:
+    post:
+      operationId: acceptInvite
+      summary: Accept invite
+      tags:
+      - Auth
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptInviteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security: []
+      parameters: *id003
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInviteRequest'
+  /api/v1/platform/organizations:
+    get:
+      operationId: listOrganizations
+      summary: List organizations
+      tags:
+      - Organizations
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      operationId: createOrganization
+      summary: Create organization
+      tags:
+      - Organizations
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNamed'
+  /api/v1/platform/organizations/{orgID}/members:
+    get:
+      operationId: listOrgMembers
+      summary: List org members
+      tags:
+      - Organizations
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrgMember'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org member.
+      parameters: &id004
+      - &id005
+        name: orgID
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: inviteOrgMember
+      summary: Invite org member
+      tags:
+      - Organizations
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteOutcome'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteMember'
+  /api/v1/platform/organizations/{orgID}/members/{userID}:
+    patch:
+      operationId: updateOrgMemberRole
+      summary: Update member role
+      tags:
+      - Organizations
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgMember'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org owner.
+      parameters:
+      - *id005
+      - name: userID
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleUpdate'
+  /api/v1/platform/organizations/{orgID}/invites:
+    get:
+      operationId: listOrgInvites
+      summary: List pending invites
+      tags:
+      - Organizations
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrgInvite'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+  /api/v1/platform/organizations/{orgID}/invites/{inviteID}:
+    delete:
+      operationId: revokeOrgInvite
+      summary: Revoke invite
+      tags:
+      - Organizations
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters:
+      - *id005
+      - name: inviteID
+        in: path
+        required: true
+        schema:
+          type: string
+  /api/v1/platform/organizations/{orgID}/invites/{inviteID}/resend:
+    post:
+      operationId: resendOrgInvite
+      summary: Resend invite
+      tags:
+      - Organizations
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgInvite'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters:
+      - *id005
+      - name: inviteID
+        in: path
+        required: true
+        schema:
+          type: string
+  /api/v1/platform/organizations/{orgID}/mail:
+    get:
+      operationId: getOrgMail
+      summary: Get mail settings
+      tags:
+      - Organizations
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgMailSettings'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+    patch:
+      operationId: updateOrgMail
+      summary: Update mail settings
+      tags:
+      - Organizations
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgMailSettings'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrgMail'
+  /api/v1/platform/organizations/{orgID}/mail/test:
+    post:
+      operationId: testOrgMail
+      summary: Send test email
+      tags:
+      - Organizations
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailTestResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+  /api/v1/platform/organizations/{orgID}/default-retry:
+    get:
+      operationId: getOrgDefaultRetry
+      summary: Get default retry
+      tags:
+      - Organizations
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgDefaultRetrySettings'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+    put:
+      operationId: updateOrgDefaultRetry
+      summary: Update default retry
+      tags:
+      - Organizations
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgDefaultRetrySettings'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin; publishes snapshot.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrgDefaultRetrySettings'
+  /api/v1/platform/organizations/{orgID}/teams:
+    get:
+      operationId: listTeams
+      summary: List teams
+      tags:
+      - Teams
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Team'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+    post:
+      operationId: createTeam
+      summary: Create team
+      tags:
+      - Teams
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNamed'
+  /api/v1/platform/organizations/{orgID}/projects:
+    get:
+      operationId: listProjects
+      summary: List projects
+      tags:
+      - Projects
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+    post:
+      operationId: createProject
+      summary: Create project
+      tags:
+      - Projects
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProject'
+  /api/v1/platform/organizations/{orgID}/providers:
+    get:
+      operationId: listProviders
+      summary: List providers
+      tags:
+      - Providers
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Provider'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+    post:
+      operationId: createProvider
+      summary: Create provider
+      tags:
+      - Providers
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Provider'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProvider'
+  /api/v1/platform/organizations/{orgID}/providers/health:
+    get:
+      operationId: providerHealth
+      summary: Provider health rollup
+      tags:
+      - Providers
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProviderHealth'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+  /api/v1/platform/providers/{providerID}:
+    patch:
+      operationId: updateProvider
+      summary: Update provider
+      tags:
+      - Providers
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Provider'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: &id006
+      - name: providerID
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProvider'
+    delete:
+      operationId: deleteProvider
+      summary: Delete provider
+      tags:
+      - Providers
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id006
+  /api/v1/platform/organizations/{orgID}/routes:
+    get:
+      operationId: listRoutes
+      summary: List routes
+      tags:
+      - Routes
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Route'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+    post:
+      operationId: createRoute
+      summary: Create route
+      tags:
+      - Routes
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Route'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoute'
+  /api/v1/platform/routes/{routeID}:
+    patch:
+      operationId: updateRoute
+      summary: Update route
+      tags:
+      - Routes
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Route'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: &id007
+      - name: routeID
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoute'
+    delete:
+      operationId: deleteRoute
+      summary: Delete route
+      tags:
+      - Routes
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id007
+  /api/v1/platform/organizations/{orgID}/usage:
+    get:
+      operationId: listUsage
+      summary: List usage events
+      tags:
+      - Usage
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UsageEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - *id005
+      - &id008
+        name: limit
+        in: query
+        schema:
+          type: integer
+        required: false
+      - &id009
+        name: project_id
+        in: query
+        schema:
+          type: string
+        required: false
+      - &id010
+        name: api_key_id
+        in: query
+        schema:
+          type: string
+        required: false
+      - &id011
+        name: credential_id
+        in: query
+        schema:
+          type: string
+        required: false
+      - &id012
+        name: model
+        in: query
+        schema:
+          type: string
+        required: false
+      - &id013
+        name: modality
+        in: query
+        schema:
+          type: string
+        required: false
+      - &id014
+        name: from
+        in: query
+        schema:
+          type: string
+        required: false
+      - &id015
+        name: to
+        in: query
+        schema:
+          type: string
+        required: false
+      - &id016
+        name: exclude_byok
+        in: query
+        schema:
+          type: boolean
+        required: false
+      - &id017
+        name: byok_only
+        in: query
+        schema:
+          type: boolean
+        required: false
+  /api/v1/platform/organizations/{orgID}/usage/summary:
+    get:
+      operationId: usageSummary
+      summary: Usage summary
+      tags:
+      - Usage
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UsageSummaryBucket'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - *id005
+      - *id008
+      - *id009
+      - *id010
+      - *id011
+      - *id012
+      - *id013
+      - *id014
+      - *id015
+      - *id016
+      - *id017
+      - name: group_by
+        in: query
+        schema:
+          type: string
+          enum:
+          - day
+          - model
+          - key
+          - modality
+          - byok
+  /api/v1/platform/organizations/{orgID}/audit:
+    get:
+      operationId: listAudit
+      summary: List audit events
+      tags:
+      - Audit
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditRecord'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters:
+      - *id005
+      - name: limit
+        in: query
+        schema:
+          type: integer
+      - name: from
+        in: query
+        schema:
+          type: string
+      - name: to
+        in: query
+        schema:
+          type: string
+      - name: name
+        in: query
+        schema:
+          type: string
+  /api/v1/platform/organizations/{orgID}/quotas:
+    get:
+      operationId: listQuotas
+      summary: List quotas
+      tags:
+      - Quotas
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Quota'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+    post:
+      operationId: createQuota
+      summary: Create quota
+      tags:
+      - Quotas
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quota'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQuota'
+  /api/v1/platform/quotas/{quotaID}:
+    patch:
+      operationId: updateQuota
+      summary: Update quota
+      tags:
+      - Quotas
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quota'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: &id018
+      - name: quotaID
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateQuota'
+    delete:
+      operationId: deleteQuota
+      summary: Delete quota
+      tags:
+      - Quotas
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id018
+  /api/v1/platform/organizations/{orgID}/policies:
+    get:
+      operationId: listPolicies
+      summary: List policies
+      tags:
+      - Policies
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RequestPolicy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+    post:
+      operationId: createPolicy
+      summary: Create policy
+      tags:
+      - Policies
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestPolicy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePolicy'
+  /api/v1/platform/organizations/{orgID}/policies/reorder:
+    post:
+      operationId: reorderPolicies
+      summary: Reorder policies
+      tags:
+      - Policies
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RequestPolicy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderPolicies'
+  /api/v1/platform/policies/{policyID}:
+    patch:
+      operationId: updatePolicy
+      summary: Update policy
+      tags:
+      - Policies
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestPolicy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: &id019
+      - name: policyID
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePolicy'
+    delete:
+      operationId: deletePolicy
+      summary: Delete policy
+      tags:
+      - Policies
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id019
+  /api/v1/platform/organizations/{orgID}/wasm-hooks:
+    get:
+      operationId: listWasmHooks
+      summary: List WASM hooks
+      tags:
+      - WasmHooks
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WasmHook'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+    post:
+      operationId: createWasmHook
+      summary: Create WASM hook
+      tags:
+      - WasmHooks
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WasmHook'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWasmHook'
+  /api/v1/platform/wasm-hooks/{hookID}:
+    patch:
+      operationId: updateWasmHook
+      summary: Update WASM hook
+      tags:
+      - WasmHooks
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WasmHook'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: &id020
+      - name: hookID
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWasmHook'
+    delete:
+      operationId: deleteWasmHook
+      summary: Delete WASM hook
+      tags:
+      - WasmHooks
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id020
+  /api/v1/platform/organizations/{orgID}/mcp-backends:
+    get:
+      operationId: listMCPBackends
+      summary: List MCP backends
+      tags:
+      - MCP
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MCPBackend'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+    post:
+      operationId: createMCPBackend
+      summary: Create MCP backend
+      tags:
+      - MCP
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPBackend'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMCPBackend'
+  /api/v1/platform/organizations/{orgID}/mcp-backends/test:
+    post:
+      operationId: testMCPBackend
+      summary: Probe MCP backend
+      tags:
+      - MCP
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProtocolProbeResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestMCPBackend'
+  /api/v1/platform/mcp-backends/{backendID}:
+    patch:
+      operationId: updateMCPBackend
+      summary: Update MCP backend
+      tags:
+      - MCP
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPBackend'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: &id021
+      - name: backendID
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMCPBackend'
+    delete:
+      operationId: deleteMCPBackend
+      summary: Delete MCP backend
+      tags:
+      - MCP
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id021
+  /api/v1/platform/organizations/{orgID}/a2a-agents:
+    get:
+      operationId: listA2AAgents
+      summary: List A2A agents
+      tags:
+      - A2A
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/A2AAgent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+    post:
+      operationId: createA2AAgent
+      summary: Create A2A agent
+      tags:
+      - A2A
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/A2AAgent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateA2AAgent'
+  /api/v1/platform/organizations/{orgID}/a2a-agents/test:
+    post:
+      operationId: testA2AAgent
+      summary: Probe A2A agent
+      tags:
+      - A2A
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProtocolProbeResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestA2AAgent'
+  /api/v1/platform/a2a-agents/{agentID}:
+    patch:
+      operationId: updateA2AAgent
+      summary: Update A2A agent
+      tags:
+      - A2A
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/A2AAgent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: &id022
+      - name: agentID
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateA2AAgent'
+    delete:
+      operationId: deleteA2AAgent
+      summary: Delete A2A agent
+      tags:
+      - A2A
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id022
+  /api/v1/platform/organizations/{orgID}/credentials:
+    get:
+      operationId: listCredentials
+      summary: List credentials
+      tags:
+      - Credentials
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Credential'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+    post:
+      operationId: createCredential
+      summary: Create credential
+      tags:
+      - Credentials
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Credential'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCredential'
+  /api/v1/platform/credentials/{credentialID}:
+    patch:
+      operationId: updateCredential
+      summary: Update credential
+      tags:
+      - Credentials
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Credential'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: &id023
+      - name: credentialID
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCredential'
+    delete:
+      operationId: deleteCredential
+      summary: Delete credential
+      tags:
+      - Credentials
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id023
+  /api/v1/platform/credentials/{credentialID}/rotate:
+    post:
+      operationId: rotateCredential
+      summary: Rotate credential secret
+      tags:
+      - Credentials
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Credential'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id023
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RotateCredential'
+  /api/v1/platform/organizations/{orgID}/credential-assignments:
+    get:
+      operationId: listCredentialAssignments
+      summary: List credential assignments
+      tags:
+      - Credentials
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CredentialAssignment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+    put:
+      operationId: assignCredential
+      summary: Assign credential
+      tags:
+      - Credentials
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialAssignment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignCredential'
+  /api/v1/platform/credential-assignments/{assignmentID}:
+    delete:
+      operationId: deleteCredentialAssignment
+      summary: Delete credential assignment
+      tags:
+      - Credentials
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin.
+      parameters:
+      - name: assignmentID
+        in: path
+        required: true
+        schema:
+          type: string
+  /api/v1/platform/teams/{teamID}:
+    get:
+      operationId: getTeam
+      summary: Get team
+      tags:
+      - Teams
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: &id024
+      - &id025
+        name: teamID
+        in: path
+        required: true
+        schema:
+          type: string
+  /api/v1/platform/teams/{teamID}/members:
+    get:
+      operationId: listTeamMembers
+      summary: List team members
+      tags:
+      - Teams
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamMember'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id024
+    post:
+      operationId: addTeamMember
+      summary: Add team member
+      tags:
+      - Teams
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMember'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires team manager.
+      parameters: *id024
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTeamMember'
+  /api/v1/platform/teams/{teamID}/members/{userID}:
+    patch:
+      operationId: updateTeamMemberRole
+      summary: Update team member role
+      tags:
+      - Teams
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMember'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires team role-changer.
+      parameters:
+      - *id025
+      - &id026
+        name: userID
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleUpdate'
+    delete:
+      operationId: removeTeamMember
+      summary: Remove team member
+      tags:
+      - Teams
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires team manager.
+      parameters:
+      - *id025
+      - *id026
+  /api/v1/platform/organizations/{orgID}/keys:
+    get:
+      operationId: listOrgKeys
+      summary: List org API keys
+      tags:
+      - Keys
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiKey'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+    post:
+      operationId: createOrgKey
+      summary: Create org API key
+      tags:
+      - Keys
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKey'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: 'Personal keys: any member (self). Service account: org admin.'
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrgKey'
+  /api/v1/platform/keys/{keyID}:
+    delete:
+      operationId: deleteKey
+      summary: Delete API key
+      tags:
+      - Keys
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Admin or personal key owner.
+      parameters:
+      - name: keyID
+        in: path
+        required: true
+        schema:
+          type: string
+  /api/v1/platform/projects/{projectID}/keys:
+    get:
+      operationId: listProjectKeys
+      summary: List project API keys
+      tags:
+      - Keys
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiKey'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: &id027
+      - name: projectID
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: createProjectKey
+      summary: Create project API key
+      tags:
+      - Keys
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKey'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin. Creates service_account key.
+      parameters: *id027
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectKey'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Platform session JWT from POST /auth/login or invite accept.
+  schemas:
+    Error:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: string
+    Organization:
+      type: object
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        mail_provider:
+          type: string
+        byok_selector_header:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    OrgMember:
+      type: object
+      required:
+      - user_id
+      - email
+      - name
+      - role
+      properties:
+        user_id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum:
+          - owner
+          - admin
+          - member
+    OrgInvite:
+      type: object
+      required:
+      - id
+      - organization_id
+      - email
+      - role
+      - invited_by_user_id
+      - status
+      - expires_at
+      - created_at
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        invited_by_user_id:
+          type: string
+        status:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        accepted_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    InviteOutcome:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - added
+          - invited
+        member:
+          $ref: '#/components/schemas/OrgMember'
+        invite:
+          $ref: '#/components/schemas/OrgInvite'
+    OrgMailSettings:
+      type: object
+      required:
+      - selected
+      - default_provider
+      - enabled_providers
+      properties:
+        selected:
+          type: string
+        default_provider:
+          type: string
+        enabled_providers:
+          type: array
+          items:
+            type: string
+        from:
+          type: string
+        public_app_url:
+          type: string
+    BackoffConfig:
+      type: object
+      required:
+      - strategy
+      - base_delay
+      properties:
+        strategy:
+          type: string
+          enum:
+          - fixed
+          - exponential
+        base_delay:
+          type: string
+        max_delay:
+          type: string
+        multiplier:
+          type: number
+    RetryConfig:
+      type: object
+      required:
+      - max_attempts
+      - backoff
+      properties:
+        max_attempts:
+          type: integer
+          minimum: 1
+        backoff:
+          $ref: '#/components/schemas/BackoffConfig'
+    OrgDefaultRetrySettings:
+      type: object
+      properties:
+        retry:
+          oneOf:
+          - $ref: '#/components/schemas/RetryConfig'
+          - type: 'null'
+    InvitePreview:
+      type: object
+      required:
+      - email
+      - organization_id
+      - organization_name
+      - expires_at
+      - user_exists
+      properties:
+        email:
+          type: string
+        organization_id:
+          type: string
+        organization_name:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        user_exists:
+          type: boolean
+    MeResponse:
+      type: object
+      required:
+      - id
+      - name
+      - email
+      - role
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+    LoginRequest:
+      type: object
+      required:
+      - email
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      required:
+      - token
+      properties:
+        token:
+          type: string
+    SSOProvider:
+      type: object
+      required:
+      - id
+      - display_name
+      - type
+      properties:
+        id:
+          type: string
+        display_name:
+          type: string
+        type:
+          type: string
+    SSOProvidersResponse:
+      type: object
+      required:
+      - providers
+      properties:
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/SSOProvider'
+    AcceptInviteRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        password:
+          type: string
+          format: password
+    AcceptInviteUser:
+      type: object
+      required:
+      - id
+      - email
+      - name
+      - role
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+    AcceptInviteResponse:
+      type: object
+      required:
+      - member
+      - user
+      - token
+      properties:
+        member:
+          $ref: '#/components/schemas/OrgMember'
+        user:
+          $ref: '#/components/schemas/AcceptInviteUser'
+        token:
+          type: string
+    Team:
+      type: object
+      required:
+      - id
+      - organization_id
+      - name
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    Project:
+      type: object
+      required:
+      - id
+      - organization_id
+      - team_id
+      - name
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        team_id:
+          type: string
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    TeamMember:
+      type: object
+      required:
+      - user_id
+      - name
+      - email
+      - role
+      properties:
+        user_id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+    RoleUpdate:
+      type: object
+      required:
+      - role
+      properties:
+        role:
+          type: string
+    CreateNamed:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+    CreateProject:
+      type: object
+      required:
+      - name
+      - team_id
+      properties:
+        name:
+          type: string
+        team_id:
+          type: string
+    InviteMember:
+      type: object
+      required:
+      - email
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+    UpdateOrgMail:
+      type: object
+      required:
+      - provider
+      properties:
+        provider:
+          type: string
+    MailTestResult:
+      type: object
+      properties:
+        status:
+          type: string
+        to:
+          type: string
+    ApiKey:
+      type: object
+      required:
+      - id
+      - organization_id
+      - name
+      - kind
+      - key_prefix
+      - created_at
+      properties:
+        id:
+          type: string
+        project_id:
+          type: string
+        organization_id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - personal
+          - service_account
+        owner_user_id:
+          type: string
+        key_prefix:
+          type: string
+        key:
+          type: string
+          description: Present only on create responses
+        created_at:
+          type: string
+          format: date-time
+    CreateOrgKey:
+      type: object
+      required:
+      - name
+      - kind
+      properties:
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - personal
+          - service_account
+        project_id:
+          type: string
+        key:
+          type: string
+    CreateProjectKey:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+        key:
+          type: string
+    ProviderCapabilities:
+      type: object
+      properties:
+        chat:
+          type: boolean
+        stream:
+          type: boolean
+        tts:
+          type: boolean
+        stt:
+          type: boolean
+        embedding:
+          type: boolean
+    Provider:
+      type: object
+      required:
+      - id
+      - organization_id
+      - name
+      - type
+      - base_url
+      - api_key_env
+      - capabilities
+      - created_at
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        base_url:
+          type: string
+        api_key_env:
+          type: string
+        capabilities:
+          $ref: '#/components/schemas/ProviderCapabilities'
+        created_at:
+          type: string
+          format: date-time
+    CreateProvider:
+      type: object
+      required:
+      - name
+      - base_url
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        base_url:
+          type: string
+        api_key_env:
+          type: string
+        capabilities:
+          $ref: '#/components/schemas/ProviderCapabilities'
+    UpdateProvider:
+      type: object
+      required:
+      - name
+      - base_url
+      - api_key_env
+      properties:
+        name:
+          type: string
+        base_url:
+          type: string
+        api_key_env:
+          type: string
+    ProviderHealth:
+      type: object
+      properties:
+        provider_id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        requests:
+          type: integer
+        errors:
+          type: integer
+        error_rate:
+          type: number
+        avg_latency_ms:
+          type: number
+        status:
+          type: string
+          enum:
+          - healthy
+          - degraded
+          - down
+          - unknown
+    RouteFallback:
+      type: object
+      required:
+      - provider_id
+      - target_model
+      properties:
+        provider_id:
+          type: string
+        target_model:
+          type: string
+    Route:
+      type: object
+      required:
+      - id
+      - organization_id
+      - model
+      - provider_id
+      - target_model
+      - fallbacks
+      - created_at
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        model:
+          type: string
+        provider_id:
+          type: string
+        target_model:
+          type: string
+        fallbacks:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteFallback'
+        retry:
+          oneOf:
+          - $ref: '#/components/schemas/RetryConfig'
+          - type: 'null'
+        created_at:
+          type: string
+          format: date-time
+    CreateRoute:
+      type: object
+      required:
+      - model
+      - provider_id
+      properties:
+        model:
+          type: string
+        provider_id:
+          type: string
+        target_model:
+          type: string
+        fallbacks:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteFallback'
+        retry:
+          oneOf:
+          - $ref: '#/components/schemas/RetryConfig'
+          - type: 'null'
+    Quota:
+      type: object
+      required:
+      - id
+      - organization_id
+      - scope_type
+      - scope_id
+      - metric
+      - limit_value
+      - window
+      - created_at
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        scope_type:
+          type: string
+        scope_id:
+          type: string
+        metric:
+          type: string
+        limit_value:
+          type: integer
+        window:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    CreateQuota:
+      type: object
+      required:
+      - scope_type
+      - scope_id
+      - metric
+      - limit_value
+      properties:
+        scope_type:
+          type: string
+        scope_id:
+          type: string
+        metric:
+          type: string
+        limit_value:
+          type: integer
+        window:
+          type: string
+    UpdateQuota:
+      type: object
+      required:
+      - limit_value
+      properties:
+        limit_value:
+          type: integer
+    PolicyActionConfig:
+      type: object
+      properties:
+        header:
+          type: string
+        value:
+          type: string
+        value_expr:
+          type: string
+        credential_name:
+          type: string
+        credential_name_expr:
+          type: string
+    PolicyThen:
+      type: object
+      required:
+      - type
+      properties:
+        type:
+          type: string
+          enum:
+          - allow
+          - deny
+          - set_header
+          - use_credential
+        config:
+          $ref: '#/components/schemas/PolicyActionConfig'
+    RequestPolicy:
+      type: object
+      required:
+      - id
+      - organization_id
+      - name
+      - expression
+      - actions
+      - enabled
+      - priority
+      - created_at
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        name:
+          type: string
+        expression:
+          type: string
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PolicyThen'
+        enabled:
+          type: boolean
+        priority:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+    CreatePolicy:
+      type: object
+      required:
+      - name
+      - expression
+      - actions
+      properties:
+        name:
+          type: string
+        expression:
+          type: string
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PolicyThen'
+        enabled:
+          type: boolean
+        priority:
+          type: integer
+    UpdatePolicy:
+      type: object
+      properties:
+        name:
+          type: string
+        expression:
+          type: string
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PolicyThen'
+        enabled:
+          type: boolean
+        priority:
+          type: integer
+    ReorderPolicies:
+      type: object
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required:
+            - id
+            - priority
+            properties:
+              id:
+                type: string
+              priority:
+                type: integer
+    WasmHook:
+      type: object
+      required:
+      - id
+      - organization_id
+      - name
+      - phase
+      - module_uri
+      - enabled
+      - priority
+      - created_at
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        name:
+          type: string
+        phase:
+          type: string
+        module_uri:
+          type: string
+        digest:
+          type: string
+        enabled:
+          type: boolean
+        priority:
+          type: integer
+        config:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+    CreateWasmHook:
+      type: object
+      required:
+      - name
+      - phase
+      - module_uri
+      properties:
+        name:
+          type: string
+        phase:
+          type: string
+        module_uri:
+          type: string
+        digest:
+          type: string
+        enabled:
+          type: boolean
+        priority:
+          type: integer
+        config:
+          type: object
+          additionalProperties: true
+    UpdateWasmHook:
+      type: object
+      properties:
+        name:
+          type: string
+        phase:
+          type: string
+        module_uri:
+          type: string
+        digest:
+          type: string
+        enabled:
+          type: boolean
+        priority:
+          type: integer
+        config:
+          type: object
+          additionalProperties: true
+    MCPBackend:
+      type: object
+      required:
+      - id
+      - organization_id
+      - alias
+      - name
+      - base_url
+      - api_key_env
+      - enabled
+      - created_at
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        alias:
+          type: string
+        name:
+          type: string
+        base_url:
+          type: string
+        api_key_env:
+          type: string
+        method_allowlist:
+          type:
+          - array
+          - 'null'
+          items:
+            type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+    CreateMCPBackend:
+      type: object
+      required:
+      - alias
+      - name
+      - base_url
+      properties:
+        alias:
+          type: string
+        name:
+          type: string
+        base_url:
+          type: string
+        api_key_env:
+          type: string
+        method_allowlist:
+          type: array
+          items:
+            type: string
+        enabled:
+          type: boolean
+    UpdateMCPBackend:
+      type: object
+      properties:
+        alias:
+          type: string
+        name:
+          type: string
+        base_url:
+          type: string
+        api_key_env:
+          type: string
+        method_allowlist:
+          type: array
+          items:
+            type: string
+        enabled:
+          type: boolean
+    TestMCPBackend:
+      type: object
+      required:
+      - base_url
+      properties:
+        base_url:
+          type: string
+        api_key_env:
+          type: string
+    A2AAgent:
+      type: object
+      required:
+      - id
+      - organization_id
+      - alias
+      - name
+      - upstream_url
+      - card_url
+      - api_key_env
+      - auth_scheme
+      - enabled
+      - created_at
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        alias:
+          type: string
+        name:
+          type: string
+        upstream_url:
+          type: string
+        card_url:
+          type: string
+        card_cache:
+          description: Cached agent card JSON
+        api_key_env:
+          type: string
+        auth_scheme:
+          type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+    CreateA2AAgent:
+      type: object
+      required:
+      - alias
+      - name
+      - upstream_url
+      properties:
+        alias:
+          type: string
+        name:
+          type: string
+        upstream_url:
+          type: string
+        card_url:
+          type: string
+        card_cache: {}
+        api_key_env:
+          type: string
+        auth_scheme:
+          type: string
+        enabled:
+          type: boolean
+    UpdateA2AAgent:
+      type: object
+      properties:
+        alias:
+          type: string
+        name:
+          type: string
+        upstream_url:
+          type: string
+        card_url:
+          type: string
+        card_cache: {}
+        api_key_env:
+          type: string
+        auth_scheme:
+          type: string
+        enabled:
+          type: boolean
+    TestA2AAgent:
+      type: object
+      required:
+      - upstream_url
+      properties:
+        upstream_url:
+          type: string
+        card_url:
+          type: string
+        api_key_env:
+          type: string
+    ProtocolProbeResult:
+      type: object
+      required:
+      - ok
+      - latency_ms
+      properties:
+        ok:
+          type: boolean
+        status_code:
+          type: integer
+        latency_ms:
+          type: integer
+        error:
+          type: string
+        detail:
+          type: string
+    Credential:
+      type: object
+      required:
+      - id
+      - organization_id
+      - name
+      - provider_type
+      - storage_kind
+      - status
+      - has_secret
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        name:
+          type: string
+        provider_type:
+          type: string
+        storage_kind:
+          type: string
+          enum:
+          - env
+          - encrypted_db
+          - vault
+        secret_ref:
+          type: string
+        key_version:
+          type: integer
+        status:
+          type: string
+          enum:
+          - active
+          - disabled
+        has_secret:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CreateCredential:
+      type: object
+      required:
+      - name
+      - provider_type
+      - storage_kind
+      properties:
+        name:
+          type: string
+        provider_type:
+          type: string
+        storage_kind:
+          type: string
+          enum:
+          - env
+          - encrypted_db
+          - vault
+        secret_ref:
+          type: string
+        secret_value:
+          type: string
+    UpdateCredential:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum:
+          - active
+          - disabled
+        secret_ref:
+          type: string
+        secret_value:
+          type: string
+    RotateCredential:
+      type: object
+      properties:
+        secret_ref:
+          type: string
+        secret_value:
+          type: string
+    CredentialAssignment:
+      type: object
+      required:
+      - id
+      - credential_id
+      - organization_id
+      - provider_type
+      - scope_type
+      - scope_id
+      - created_at
+      properties:
+        id:
+          type: string
+        credential_id:
+          type: string
+        organization_id:
+          type: string
+        provider_type:
+          type: string
+        scope_type:
+          type: string
+          enum:
+          - organization
+          - project
+          - api_key
+        scope_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+    AssignCredential:
+      type: object
+      required:
+      - credential_id
+      - scope_type
+      - scope_id
+      properties:
+        credential_id:
+          type: string
+        scope_type:
+          type: string
+          enum:
+          - organization
+          - project
+          - api_key
+        scope_id:
+          type: string
+    UsageEvent:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: integer
+        organization_id:
+          type: string
+        project_id:
+          type: string
+        project_name:
+          type: string
+        api_key_id:
+          type: string
+        credential_id:
+          type: string
+        credential_name:
+          type: string
+        used_byok:
+          type: boolean
+        model:
+          type: string
+        provider_type:
+          type: string
+        status:
+          type: string
+        latency_ms:
+          type: integer
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        modality:
+          type: string
+        metrics:
+          type: object
+          additionalProperties: true
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+        cost_usd:
+          type:
+          - number
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        key_name:
+          type: string
+        key_kind:
+          type: string
+        owner_user_id:
+          type: string
+        owner_email:
+          type: string
+        owner_name:
+          type: string
+    UsageSummaryBucket:
+      type: object
+      properties:
+        bucket:
+          type: string
+        label:
+          type: string
+        requests:
+          type: integer
+        cost_usd:
+          type: number
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        metrics_totals:
+          type: object
+          additionalProperties:
+            type: number
+        key_kind:
+          type: string
+        owner_email:
+          type: string
+        owner_name:
+          type: string
+    AuditRecord:
+      type: object
+      required:
+      - id
+      - name
+      - organization_id
+      - resource_id
+      - actor_user_id
+      - summary
+      - at
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        organization_id:
+          type: string
+        resource_id:
+          type: string
+        actor_user_id:
+          type: string
+        actor_email:
+          type: string
+        actor_name:
+          type: string
+        summary:
+          type: string
+        meta:
+          type: object
+          additionalProperties:
+            type: string
+        at:
+          type: string
+          format: date-time
+    AddTeamMember:
+      type: object
+      required:
+      - user_id
+      properties:
+        user_id:
+          type: string
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

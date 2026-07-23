@@ -1,0 +1,45 @@
+# Shared OpenAPI fragments (referenced by platform + gateway specs).
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Platform session JWT from POST /auth/login or invite accept.
+    virtualKeyAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API key
+      description: Gateway virtual API key (sk-…).
+
+  parameters:
+    OrgID:
+      name: orgID
+      in: path
+      required: true
+      schema:
+        type: string
+    TeamID:
+      name: teamID
+      in: path
+      required: true
+      schema:
+        type: string
+    ProjectID:
+      name: projectID
+      in: path
+      required: true
+      schema:
+        type: string
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    Healthz:
+      type: object
+      additionalProperties: true
+      description: Liveness payload (status and service-specific fields).
