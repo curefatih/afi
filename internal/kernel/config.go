@@ -112,6 +112,20 @@ type Config struct {
 		} `yaml:"kafka"`
 	} `yaml:"events"`
 
+	// Telemetry configures OpenTelemetry metrics and traces (OTLP + optional Prometheus).
+	Telemetry struct {
+		Enabled           bool    `yaml:"enabled" env:"AFI_TELEMETRY_ENABLED"`
+		ServiceName       string  `yaml:"service_name" env:"AFI_TELEMETRY_SERVICE_NAME"`
+		Environment       string  `yaml:"environment" env:"AFI_TELEMETRY_ENVIRONMENT"`
+		OTLPEndpoint      string  `yaml:"otlp_endpoint" env:"AFI_TELEMETRY_OTLP_ENDPOINT"`
+		OTLPProtocol      string  `yaml:"otlp_protocol" env:"AFI_TELEMETRY_OTLP_PROTOCOL" env-default:"http"`
+		OTLPHeaders       string  `yaml:"otlp_headers" env:"AFI_TELEMETRY_OTLP_HEADERS"`
+		OTLPInsecure      bool    `yaml:"otlp_insecure" env:"AFI_TELEMETRY_OTLP_INSECURE"`
+		MetricsPrometheus bool    `yaml:"metrics_prometheus" env:"AFI_TELEMETRY_METRICS_PROMETHEUS"`
+		TracesSampler     string  `yaml:"traces_sampler" env:"AFI_TELEMETRY_TRACES_SAMPLER" env-default:"parentbased_always_on"`
+		TracesSamplerArg  float64 `yaml:"traces_sampler_arg" env:"AFI_TELEMETRY_TRACES_SAMPLER_ARG" env-default:"1.0"`
+	} `yaml:"telemetry"`
+
 	// Mail configures outbound email for org member invites.
 	Mail struct {
 		PublicAppURL    string `yaml:"public_app_url" env:"AFI_MAIL_PUBLIC_APP_URL"`
@@ -257,6 +271,31 @@ func LoadConfig() (*Config, error) {
 	}
 	if cfg.Events.Kafka.Topic == "" {
 		cfg.Events.Kafka.Topic = "afi.platform.events"
+	}
+
+	if cfg.Telemetry.OTLPProtocol == "" {
+		cfg.Telemetry.OTLPProtocol = "http"
+	}
+	switch strings.ToLower(strings.TrimSpace(cfg.Telemetry.OTLPProtocol)) {
+	case "http", "grpc":
+		cfg.Telemetry.OTLPProtocol = strings.ToLower(strings.TrimSpace(cfg.Telemetry.OTLPProtocol))
+	default:
+		return nil, fmt.Errorf("telemetry.otlp_protocol: must be http or grpc, got %q", cfg.Telemetry.OTLPProtocol)
+	}
+	if cfg.Telemetry.TracesSampler == "" {
+		cfg.Telemetry.TracesSampler = "parentbased_always_on"
+	}
+	switch strings.ToLower(strings.TrimSpace(cfg.Telemetry.TracesSampler)) {
+	case "parentbased_always_on", "parentbased_traceidratio":
+		cfg.Telemetry.TracesSampler = strings.ToLower(strings.TrimSpace(cfg.Telemetry.TracesSampler))
+	default:
+		return nil, fmt.Errorf("telemetry.traces_sampler: must be parentbased_always_on or parentbased_traceidratio, got %q", cfg.Telemetry.TracesSampler)
+	}
+	if cfg.Telemetry.TracesSamplerArg <= 0 {
+		cfg.Telemetry.TracesSamplerArg = 1.0
+	}
+	if cfg.Telemetry.TracesSamplerArg > 1 {
+		cfg.Telemetry.TracesSamplerArg = 1.0
 	}
 
 	if cfg.Mail.PublicAppURL == "" {
