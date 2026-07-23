@@ -25,18 +25,21 @@ type Provider struct {
 type RouteFallback struct {
 	ProviderID  string `json:"provider_id"`
 	TargetModel string `json:"target_model"`
+	Weight      int    `json:"weight,omitempty"`
 }
 
 // Route maps a virtual model to a provider target (+ optional fallbacks / retry).
 type Route struct {
-	ID             string          `json:"id"`
-	OrganizationID string          `json:"organization_id"`
-	Model          string          `json:"model"`
-	ProviderID     string          `json:"provider_id"`
-	TargetModel    string          `json:"target_model"`
-	Fallbacks      []RouteFallback `json:"fallbacks"`
-	Retry          *RetryConfig    `json:"retry,omitempty"`
-	CreatedAt      time.Time       `json:"created_at"`
+	ID              string          `json:"id"`
+	OrganizationID  string          `json:"organization_id"`
+	Model           string          `json:"model"`
+	ProviderID      string          `json:"provider_id"`
+	TargetModel     string          `json:"target_model"`
+	Fallbacks       []RouteFallback `json:"fallbacks"`
+	Retry           *RetryConfig    `json:"retry,omitempty"`
+	RoutingStrategy string          `json:"routing_strategy,omitempty"`
+	Weight          int             `json:"weight,omitempty"`
+	CreatedAt       time.Time       `json:"created_at"`
 }
 
 // NewProvider builds a validated provider entity.
@@ -66,7 +69,7 @@ func NewProvider(id, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.
 }
 
 // NewRoute builds a validated route entity.
-func NewRoute(id, orgID, model, providerID, targetModel string, fallbacks []RouteFallback, retry *RetryConfig, now time.Time) (*Route, error) {
+func NewRoute(id, orgID, model, providerID, targetModel string, fallbacks []RouteFallback, retry *RetryConfig, strategy string, weight int, now time.Time) (*Route, error) {
 	model = strings.TrimSpace(model)
 	providerID = strings.TrimSpace(providerID)
 	if id == "" || orgID == "" {
@@ -75,10 +78,11 @@ func NewRoute(id, orgID, model, providerID, targetModel string, fallbacks []Rout
 	if model == "" || providerID == "" {
 		return nil, fmt.Errorf("%w: model and provider_id required", kernel.ErrInvalidRequest)
 	}
-	if fallbacks == nil {
-		fallbacks = []RouteFallback{}
+	strategy, weight, fallbacks, err := NormalizeRouteRouting(strategy, weight, fallbacks)
+	if err != nil {
+		return nil, err
 	}
-	retry, err := NormalizeRetry(retry)
+	retry, err = NormalizeRetry(retry)
 	if err != nil {
 		return nil, err
 	}
@@ -86,13 +90,15 @@ func NewRoute(id, orgID, model, providerID, targetModel string, fallbacks []Rout
 		now = time.Now().UTC()
 	}
 	return &Route{
-		ID:             id,
-		OrganizationID: orgID,
-		Model:          model,
-		ProviderID:     providerID,
-		TargetModel:    targetModel,
-		Fallbacks:      fallbacks,
-		Retry:          retry,
-		CreatedAt:      now.UTC(),
+		ID:              id,
+		OrganizationID:  orgID,
+		Model:           model,
+		ProviderID:      providerID,
+		TargetModel:     targetModel,
+		Fallbacks:       fallbacks,
+		Retry:           retry,
+		RoutingStrategy: strategy,
+		Weight:          weight,
+		CreatedAt:       now.UTC(),
 	}, nil
 }

@@ -93,7 +93,7 @@ func TestNewRouteWithRetry(t *testing.T) {
 	r, err := NewRoute("r1", "o1", "m", "prov", "m", nil, &RetryConfig{
 		MaxAttempts: 2,
 		Backoff:     BackoffConfig{Strategy: BackoffFixed, BaseDelay: "50ms"},
-	}, timeNowUTC())
+	}, "", 0, timeNowUTC())
 	if err != nil {
 		t.Fatal(err)
 	}
