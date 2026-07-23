@@ -28,6 +28,20 @@ func EstimateCostUSD(e usage.Event) *float64 {
 		}
 		cost := secs * *entry.InputCostPerSecond
 		return &cost
+	case ModeEmbedding:
+		if entry.InputCostPerMTok == nil {
+			return nil
+		}
+		if e.PromptTokens == 0 && e.CompletionTokens == 0 {
+			return nil
+		}
+		outRate := 0.0
+		if entry.OutputCostPerMTok != nil {
+			outRate = *entry.OutputCostPerMTok
+		}
+		cost := (float64(e.PromptTokens)/1_000_000.0)**entry.InputCostPerMTok +
+			(float64(e.CompletionTokens)/1_000_000.0)*outRate
+		return &cost
 	default:
 		// chat / messages / unknown treated as token pricing
 		if entry.InputCostPerMTok == nil || entry.OutputCostPerMTok == nil {

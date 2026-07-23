@@ -109,6 +109,31 @@ func (c *OpenAIClient) AudioSpeech(ctx context.Context, provider snapshot.Provid
 	return c.HTTP.Do(req)
 }
 
+func (c *OpenAIClient) Embeddings(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte) (*http.Response, error) {
+	apiKey, err := c.apiKey(ctx, provider)
+	if err != nil {
+		return nil, err
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, fmt.Errorf("invalid request body: %w", err)
+	}
+	payload["model"] = targetModel
+	rewritten, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	base := strings.TrimRight(provider.BaseURL, "/")
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/embeddings", bytes.NewReader(rewritten))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	applyExtraHeaders(ctx, req)
+	return c.HTTP.Do(req)
+}
+
 func (c *OpenAIClient) AudioTranscriptions(ctx context.Context, provider snapshot.Provider, targetModel, contentType string, body io.Reader) (*http.Response, error) {
 	apiKey, err := c.apiKey(ctx, provider)
 	if err != nil {

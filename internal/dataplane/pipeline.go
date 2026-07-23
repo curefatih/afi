@@ -26,12 +26,13 @@ import (
 var ErrStreamUnsupported = errors.New("streaming is not supported for this provider")
 
 const (
-	ModalityChat     = "chat"
-	ModalityMessages = "messages"
-	ModalityTTS      = "tts"
-	ModalitySTT      = "stt"
-	ModalityMCP      = "mcp"
-	ModalityA2A      = "a2a"
+	ModalityChat      = "chat"
+	ModalityMessages  = "messages"
+	ModalityTTS       = "tts"
+	ModalitySTT       = "stt"
+	ModalityEmbedding = "embedding"
+	ModalityMCP       = "mcp"
+	ModalityA2A       = "a2a"
 )
 
 // UsageEvent is an alias for the canonical usage.Event emitted on the request path.
@@ -72,6 +73,7 @@ func (p *Pipeline) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/models", p.handleModels)
 	mux.HandleFunc("POST /v1/chat/completions", p.handleChatCompletions)
 	mux.HandleFunc("POST /v1/messages", p.handleMessages)
+	mux.HandleFunc("POST /v1/embeddings", p.handleEmbeddings)
 	mux.HandleFunc("POST /v1/audio/speech", p.handleAudioSpeech)
 	mux.HandleFunc("POST /v1/audio/transcriptions", p.handleAudioTranscriptions)
 	mux.HandleFunc("POST /mcp/{alias}", p.handleMCP)
@@ -513,6 +515,7 @@ func modelListItem(virtualModel, targetModel, providerType string, caps snapshot
 	stream := caps.Stream && caps.Chat
 	tts := caps.TTS && modelLooksLikeTTS(virtualModel, targetModel)
 	stt := caps.STT && modelLooksLikeSTT(virtualModel, targetModel)
+	embedding := caps.Embedding && modelLooksLikeEmbedding(virtualModel, targetModel)
 	var maxIn, maxOut int
 	var supportsVision, supportsTools bool
 
@@ -527,25 +530,30 @@ func modelListItem(virtualModel, targetModel, providerType string, caps snapshot
 		supportsTools = entry.SupportsTools
 		switch {
 		case entry.IsTTS():
-			chat, stream, tts, stt = false, false, caps.TTS, false
+			chat, stream, tts, stt, embedding = false, false, caps.TTS, false, false
 		case entry.IsSTT():
-			chat, stream, tts, stt = false, false, false, caps.STT
+			chat, stream, tts, stt, embedding = false, false, false, caps.STT, false
+		case entry.IsEmbedding():
+			chat, stream, tts, stt, embedding = false, false, false, false, caps.Embedding
 		default:
 			chat = caps.Chat
 			stream = caps.Stream && caps.Chat && entry.StreamingEnabled()
-			tts, stt = false, false
+			tts, stt, embedding = false, false, false
 		}
 	} else {
 		switch {
 		case tts:
 			mode = modelcatalog.ModeAudioSpeech
-			chat, stream, stt = false, false, false
+			chat, stream, stt, embedding = false, false, false, false
 		case stt:
 			mode = modelcatalog.ModeAudioTranscription
-			chat, stream, tts = false, false, false
+			chat, stream, tts, embedding = false, false, false, false
+		case embedding:
+			mode = modelcatalog.ModeEmbedding
+			chat, stream, tts, stt = false, false, false, false
 		default:
 			mode = modelcatalog.ModeChat
-			tts, stt = false, false
+			tts, stt, embedding = false, false, false
 		}
 	}
 
@@ -557,11 +565,13 @@ func modelListItem(virtualModel, targetModel, providerType string, caps snapshot
 		"supports_streaming": stream,
 		"supports_tts":       tts,
 		"supports_stt":       stt,
+		"supports_embedding": embedding,
 		"capabilities": map[string]bool{
-			"chat":   chat,
-			"stream": stream,
-			"tts":    tts,
-			"stt":    stt,
+			"chat":      chat,
+			"stream":    stream,
+			"tts":       tts,
+			"stt":       stt,
+			"embedding": embedding,
 		},
 	}
 	if maxIn > 0 {

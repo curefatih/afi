@@ -34,6 +34,24 @@
     "input_cost_per_second": 0.0001,
     "supports_streaming": false
   },
+  "openai/text-embedding-3-small": {
+    "mode": "embedding",
+    "max_input_tokens": 8191,
+    "input_cost_per_mtok": 0.02,
+    "supports_streaming": false
+  },
+  "openai/text-embedding-3-large": {
+    "mode": "embedding",
+    "max_input_tokens": 8191,
+    "input_cost_per_mtok": 0.13,
+    "supports_streaming": false
+  },
+  "openai/text-embedding-ada-002": {
+    "mode": "embedding",
+    "max_input_tokens": 8191,
+    "input_cost_per_mtok": 0.1,
+    "supports_streaming": false
+  },
   "anthropic/claude-sonnet-4-20250514": {
     "mode": "chat",
     "max_input_tokens": 200000,

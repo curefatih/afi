@@ -42,7 +42,21 @@ func TestOpenAIProviderCapsIncludeAudio(t *testing.T) {
 		t.Fatal("missing openai")
 	}
 	caps := cp.Capabilities()
-	if !caps.TTS || !caps.STT {
+	if !caps.TTS || !caps.STT || !caps.Embedding {
 		t.Fatalf("caps=%+v", caps)
+	}
+}
+
+func TestRegistryEmbeddingsBackendByType(t *testing.T) {
+	t.Parallel()
+	reg := RegistryFromClients(llm.NewClients(nil))
+	if _, ok := reg.EmbeddingsBackend("openai"); !ok {
+		t.Fatal("expected openai embeddings backend")
+	}
+	if _, ok := reg.EmbeddingsBackend("openai_compatible"); !ok {
+		t.Fatal("expected openai_compatible embeddings backend")
+	}
+	if _, ok := reg.EmbeddingsBackend("anthropic"); ok {
+		t.Fatal("anthropic must not expose embeddings backend")
 	}
 }
