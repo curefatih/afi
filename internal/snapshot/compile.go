@@ -14,6 +14,7 @@ type Source struct {
 	Quotas         []Quota
 	Policies       []Policy
 	WasmHooks      []WasmHook
+	MCPBackends    []MCPBackend
 	DefaultRetries map[string]*RetryConfig // orgID → default
 }
 
@@ -37,6 +38,8 @@ func Compile(src Source) *Snapshot {
 		Quotas:         append([]Quota(nil), src.Quotas...),
 		Policies:       append([]Policy(nil), src.Policies...),
 		WasmHooks:      append([]WasmHook(nil), src.WasmHooks...),
+		MCPBackends:    make(map[string]MCPBackend, len(src.MCPBackends)),
+		MCPRoutes:      make(map[string]string, len(src.MCPBackends)),
 		DefaultRetries: make(map[string]*RetryConfig, len(src.DefaultRetries)),
 	}
 	for _, k := range src.APIKeys {
@@ -63,6 +66,19 @@ func Compile(src Source) *Snapshot {
 			continue
 		}
 		s.Assignments[AssignmentKey(a.ProviderType, a.ScopeType, a.ScopeID)] = a.CredentialID
+	}
+	for _, b := range src.MCPBackends {
+		if b.ID == "" || b.OrganizationID == "" || b.Alias == "" {
+			continue
+		}
+		s.MCPBackends[b.ID] = b
+		if b.Enabled {
+			s.MCPRoutes[mcpRouteKey(b.OrganizationID, b.Alias)] = b.ID
+		}
+	}
+	if len(s.MCPBackends) == 0 {
+		s.MCPBackends = nil
+		s.MCPRoutes = nil
 	}
 	for orgID, retry := range src.DefaultRetries {
 		if orgID == "" || retry == nil {

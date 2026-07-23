@@ -45,7 +45,23 @@ type Snapshot struct {
 	Quotas         []Quota                 `json:"quotas"`
 	Policies       []Policy                `json:"policies"`
 	WasmHooks      []WasmHook              `json:"wasm_hooks"`
+	MCPBackends    map[string]MCPBackend   `json:"mcp_backends,omitempty"` // keyed by backend id
+	MCPRoutes      map[string]string       `json:"mcp_routes,omitempty"`   // orgID::alias → backend id
 	DefaultRetries map[string]*RetryConfig `json:"default_retries,omitempty"` // orgID → default retry
+}
+
+// MCPBackend is a compiled MCP Streamable HTTP upstream.
+type MCPBackend struct {
+	ID              string   `json:"id"`
+	OrganizationID  string   `json:"organization_id"`
+	Alias           string   `json:"alias"`
+	Name            string   `json:"name"`
+	BaseURL         string   `json:"base_url"`
+	APIKeyEnv       string   `json:"api_key_env"`
+	MethodAllowlist []string `json:"method_allowlist,omitempty"`
+	Enabled         bool     `json:"enabled"`
+	// InlineAPIKey is request-scoped; set by the gateway after secret resolution.
+	InlineAPIKey string `json:"-"`
 }
 
 // WasmHook is a compiled sandboxed lifecycle binding for the gateway.
@@ -133,6 +149,10 @@ func routeKey(orgID, model string) string {
 	return orgID + "::" + model
 }
 
+func mcpRouteKey(orgID, alias string) string {
+	return orgID + "::" + alias
+}
+
 func (s *Snapshot) LookupKey(raw string) (APIKey, bool) {
 	if s == nil || s.APIKeys == nil {
 		return APIKey{}, false
@@ -154,6 +174,22 @@ func (s *Snapshot) LookupRoute(orgID, model string) (Route, Provider, bool) {
 		return Route{}, Provider{}, false
 	}
 	return r, p, true
+}
+
+// LookupMCPBackend resolves an org-scoped MCP alias to a compiled backend.
+func (s *Snapshot) LookupMCPBackend(orgID, alias string) (MCPBackend, bool) {
+	if s == nil || s.MCPRoutes == nil || s.MCPBackends == nil {
+		return MCPBackend{}, false
+	}
+	id, ok := s.MCPRoutes[mcpRouteKey(orgID, alias)]
+	if !ok {
+		return MCPBackend{}, false
+	}
+	b, ok := s.MCPBackends[id]
+	if !ok || !b.Enabled {
+		return MCPBackend{}, false
+	}
+	return b, true
 }
 
 // AssignmentKey builds the snapshot assignment index key.
