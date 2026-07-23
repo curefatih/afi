@@ -1,4 +1,4 @@
-package controlplane
+package postgres
 
 import "testing"
 

@@ -50,6 +50,14 @@ func (f *keysFake) GetAPIKey(_ context.Context, keyID string) (*APIKey, error) {
 	return &cp, nil
 }
 
+func (f *keysFake) GetAPIKeyOrgID(_ context.Context, keyID string) (string, error) {
+	k, ok := f.keys[keyID]
+	if !ok {
+		return "", kernel.ErrNotFound
+	}
+	return k.OrganizationID, nil
+}
+
 func (f *keysFake) CreateAPIKey(_ context.Context, orgID, kind, ownerUserID, projectID, name, rawKey string) (*APIKey, error) {
 	k := &APIKey{
 		ID: "key_" + name, OrganizationID: orgID, Kind: kind, OwnerUserID: ownerUserID,

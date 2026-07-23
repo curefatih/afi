@@ -68,6 +68,7 @@ type Event struct {
 	Name           EventName         `json:"name"`
 	ResourceID     string            `json:"resource_id,omitempty"`
 	OrganizationID string            `json:"organization_id,omitempty"`
+	ActorUserID    string            `json:"actor_user_id,omitempty"`
 	At             time.Time         `json:"at"`
 	Meta           map[string]string `json:"meta,omitempty"`
 }
@@ -233,6 +234,7 @@ func (s *Service) emit(ctx context.Context, name EventName, resourceID, orgID st
 		Name:           name,
 		ResourceID:     resourceID,
 		OrganizationID: orgID,
+		ActorUserID:    ActorFrom(ctx),
 		At:             time.Now().UTC(),
 	})
 }

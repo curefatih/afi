@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/adapters/postgres"
-	"github.com/curefatih/afi/internal/controlplane"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -90,12 +89,12 @@ func runSeed() error {
 	defer cancel()
 	defer pool.Close()
 
-	if err := controlplane.Migrate(ctx, pool); err != nil {
+	if err := postgres.Migrate(ctx, pool); err != nil {
 		return err
 	}
-	store := controlplane.NewStore(pool)
+	store := postgres.NewStore(pool)
 	snapStore := postgres.NewSnapshotStore(pool)
-	seeder := controlplane.NewSeeder(pool, store, snapStore, cfg)
+	seeder := postgres.NewSeeder(pool, store, snapStore, cfg)
 	return seeder.Seed(ctx)
 }
 
@@ -107,12 +106,12 @@ func runPublish() error {
 	defer cancel()
 	defer pool.Close()
 
-	if err := controlplane.Migrate(ctx, pool); err != nil {
+	if err := postgres.Migrate(ctx, pool); err != nil {
 		return err
 	}
-	store := controlplane.NewStore(pool)
+	store := postgres.NewStore(pool)
 	snapStore := postgres.NewSnapshotStore(pool)
-	seeder := controlplane.NewSeeder(pool, store, snapStore, cfg)
+	seeder := postgres.NewSeeder(pool, store, snapStore, cfg)
 	return seeder.PublishSnapshot(ctx)
 }
 
@@ -131,5 +130,5 @@ func runDBReset() error {
 	}
 	defer cancel()
 	defer pool.Close()
-	return controlplane.ResetDatabase(ctx, pool)
+	return postgres.ResetDatabase(ctx, pool)
 }

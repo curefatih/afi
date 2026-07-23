@@ -9,7 +9,6 @@ import (
 	adapterauth "github.com/curefatih/afi/internal/adapters/auth"
 	"github.com/curefatih/afi/internal/adapters/memory"
 	"github.com/curefatih/afi/internal/adapters/oauthoidc"
-	"github.com/curefatih/afi/internal/adapters/postgres"
 	afiredis "github.com/curefatih/afi/internal/adapters/redis"
 	"github.com/curefatih/afi/internal/app/platform"
 	"github.com/curefatih/afi/internal/identity"
@@ -39,8 +38,9 @@ func NewSSOStateStore(cfg *kernel.Config, rdb *goredis.Client) (identity.SSOStat
 	}
 }
 
-func newAuthService(cfg *kernel.Config, store *Store, states identity.SSOStateStore) *platform.AuthService {
-	if cfg == nil || store == nil {
+// NewAuthService wires password + SSO auth against identity ports (composition root supplies adapters).
+func NewAuthService(cfg *kernel.Config, users identity.UserRepository, identities identity.ExternalIdentityRepository, states identity.SSOStateStore) *platform.AuthService {
+	if cfg == nil || users == nil {
 		return nil
 	}
 	if states == nil && cfg.Auth.SSO.Enabled {
@@ -49,8 +49,8 @@ func newAuthService(cfg *kernel.Config, store *Store, states identity.SSOStateSt
 	}
 	authAdapter := adapterauth.NewService(cfg.Auth.JWTSecret, cfg.Auth.TokenTTL)
 	svc := &platform.AuthService{
-		Users:         postgres.NewUsers(store.pool),
-		Identities:    postgres.NewExternalIdentities(store.pool),
+		Users:         users,
+		Identities:    identities,
 		Tokens:        authAdapter,
 		Passwords:     authAdapter,
 		States:        states,

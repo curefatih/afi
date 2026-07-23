@@ -1,19 +1,22 @@
-package controlplane
+package postgres
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/curefatih/afi/internal/access"
-	"github.com/curefatih/afi/internal/adapters/postgres"
+	"github.com/curefatih/afi/internal/audit"
 	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/mail"
+	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
 	"github.com/curefatih/afi/internal/usage"
@@ -87,20 +90,20 @@ func (s *Store) SetCredentialsMasterKey(raw string) error {
 	return nil
 }
 
-func (s *Store) users() *postgres.Users {
-	return postgres.NewUsers(s.pool)
+func (s *Store) users() *Users {
+	return NewUsers(s.pool)
 }
 
-func (s *Store) organizations() *postgres.Organizations {
-	return postgres.NewOrganizations(s.pool)
+func (s *Store) organizations() *Organizations {
+	return NewOrganizations(s.pool)
 }
 
-func (s *Store) teamsRepo() *postgres.Teams {
-	return postgres.NewTeams(s.pool)
+func (s *Store) teamsRepo() *Teams {
+	return NewTeams(s.pool)
 }
 
-func (s *Store) projectsRepo() *postgres.Projects {
-	return postgres.NewProjects(s.pool)
+func (s *Store) projectsRepo() *Projects {
+	return NewProjects(s.pool)
 }
 
 func (s *Store) CountOrgs(ctx context.Context) (int64, error) {
@@ -131,7 +134,7 @@ func (s *Store) ListOrganizationsForUser(ctx context.Context, userID string) ([]
 }
 
 func (s *Store) CreateOrganization(ctx context.Context, name, creatorUserID string) (*Organization, error) {
-	return tenancy.CreateOrganization(ctx, s.organizations(), newID("org"), name, creatorUserID)
+	return tenancy.CreateOrganization(ctx, s.organizations(), newPlatformID("org"), name, creatorUserID)
 }
 
 func (s *Store) ListOrgMembers(ctx context.Context, orgID string) ([]OrgMember, error) {
@@ -150,8 +153,8 @@ func (s *Store) AddOrgMemberByEmail(ctx context.Context, orgID, email string) (*
 	return tenancy.AddOrgMemberByEmail(ctx, s.organizations(), s, orgID, email)
 }
 
-func (s *Store) invitesRepo() *postgres.Invites {
-	return postgres.NewInvites(s.pool)
+func (s *Store) invitesRepo() *Invites {
+	return NewInvites(s.pool)
 }
 
 func (s *Store) GetOrganization(ctx context.Context, orgID string) (*Organization, error) {
@@ -181,7 +184,7 @@ func (s *Store) SetOrgDefaultRetry(ctx context.Context, orgID string, retry *Ret
 }
 
 func (s *Store) InviteOrgMember(ctx context.Context, orgID, email, invitedByUserID string) (*InviteOutcome, string, error) {
-	return tenancy.InviteOrgMember(ctx, s.organizations(), s.invitesRepo(), s, newID("inv"), orgID, email, invitedByUserID)
+	return tenancy.InviteOrgMember(ctx, s.organizations(), s.invitesRepo(), s, newPlatformID("inv"), orgID, email, invitedByUserID)
 }
 
 func (s *Store) ListOrgInvites(ctx context.Context, orgID string) ([]OrgInvite, error) {
@@ -216,7 +219,7 @@ func (s *Store) AcceptOrgInvite(ctx context.Context, rawToken, name, passwordHas
 		ctx, s.organizations(), s.invitesRepo(), s, s,
 		rawToken,
 		tenancy.AcceptInviteInput{Name: name, PasswordHash: passwordHash},
-		newID("user"),
+		newPlatformID("user"),
 	)
 }
 
@@ -243,7 +246,7 @@ func (s *Store) ListTeams(ctx context.Context, orgID, userID string) ([]Team, er
 }
 
 func (s *Store) CreateTeam(ctx context.Context, orgID, name, creatorUserID string) (*Team, error) {
-	return tenancy.CreateTeam(ctx, s.teamsRepo(), newID("team"), orgID, name, creatorUserID)
+	return tenancy.CreateTeam(ctx, s.teamsRepo(), newPlatformID("team"), orgID, name, creatorUserID)
 }
 
 func (s *Store) GetTeam(ctx context.Context, teamID string) (*Team, error) {
@@ -287,11 +290,11 @@ func (s *Store) ListProjects(ctx context.Context, orgID, userID string) ([]Proje
 }
 
 func (s *Store) CreateProject(ctx context.Context, orgID, teamID, name string) (*Project, error) {
-	return tenancy.CreateProject(ctx, s.projectsRepo(), newID("proj"), orgID, teamID, name)
+	return tenancy.CreateProject(ctx, s.projectsRepo(), newPlatformID("proj"), orgID, teamID, name)
 }
 
-func (s *Store) apiKeys() *postgres.APIKeys {
-	return postgres.NewAPIKeys(s.pool)
+func (s *Store) apiKeys() *APIKeys {
+	return NewAPIKeys(s.pool)
 }
 
 func (s *Store) ListAPIKeys(ctx context.Context, projectID string) ([]APIKey, error) {
@@ -322,23 +325,23 @@ func (s *Store) GetProjectOrgID(ctx context.Context, projectID string) (string, 
 // Personal: ownerUserID required, projectID must be empty.
 // Service account: ownerUserID empty, projectID optional (empty = org-wide).
 func (s *Store) CreateAPIKey(ctx context.Context, orgID, kind, ownerUserID, projectID, name, rawKey string) (*APIKey, error) {
-	return access.CreateAPIKey(ctx, s.apiKeys(), s, newID("key"), orgID, kind, ownerUserID, projectID, name, rawKey)
+	return access.CreateAPIKey(ctx, s.apiKeys(), s, newPlatformID("key"), orgID, kind, ownerUserID, projectID, name, rawKey)
 }
 
-func (s *Store) providers() *postgres.Providers {
-	return postgres.NewProviders(s.pool)
+func (s *Store) providers() *Providers {
+	return NewProviders(s.pool)
 }
 
-func (s *Store) routes() *postgres.Routes {
-	return postgres.NewRoutes(s.pool)
+func (s *Store) routes() *Routes {
+	return NewRoutes(s.pool)
 }
 
 func (s *Store) ListProviders(ctx context.Context, orgID string) ([]Provider, error) {
 	return s.providers().ListByOrg(ctx, orgID)
 }
 
-func (s *Store) usageQueries() *postgres.UsageQueries {
-	return postgres.NewUsageQueries(s.pool)
+func (s *Store) usageQueries() *UsageQueries {
+	return NewUsageQueries(s.pool)
 }
 
 // ListProviderHealth aggregates usage_events for models routed to each org provider.
@@ -347,7 +350,7 @@ func (s *Store) ListProviderHealth(ctx context.Context, orgID string, from, to t
 }
 
 func (s *Store) CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities) (*Provider, error) {
-	return gatewayconfig.CreateProvider(ctx, s.providers(), newID("prov"), orgID, name, typ, baseURL, apiKeyEnv, caps)
+	return gatewayconfig.CreateProvider(ctx, s.providers(), newPlatformID("prov"), orgID, name, typ, baseURL, apiKeyEnv, caps)
 }
 
 func (s *Store) UpdateProvider(ctx context.Context, providerID, name, baseURL, apiKeyEnv string) (*Provider, error) {
@@ -367,7 +370,7 @@ func (s *Store) ListRoutes(ctx context.Context, orgID string) ([]Route, error) {
 }
 
 func (s *Store) CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []RouteFallback, retry *RetryConfig) (*Route, error) {
-	return gatewayconfig.CreateRoute(ctx, s.routes(), s.providers(), newID("route"), orgID, model, providerID, targetModel, fallbacks, retry)
+	return gatewayconfig.CreateRoute(ctx, s.routes(), s.providers(), newPlatformID("route"), orgID, model, providerID, targetModel, fallbacks, retry)
 }
 
 func (s *Store) UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []RouteFallback, retry *RetryConfig) (*Route, error) {
@@ -378,8 +381,8 @@ func (s *Store) UpdateRoute(ctx context.Context, routeID, model, providerID, tar
 	return gatewayconfig.UpdateRoute(ctx, s.routes(), s.providers(), routeID, orgID, model, providerID, targetModel, fallbacks, retry)
 }
 
-func (s *Store) credentialsRepo() *postgres.Credentials {
-	return postgres.NewCredentials(s.pool)
+func (s *Store) credentialsRepo() *Credentials {
+	return NewCredentials(s.pool)
 }
 
 func (s *Store) ListCredentials(ctx context.Context, orgID string) ([]Credential, error) {
@@ -397,7 +400,7 @@ func (s *Store) GetCredential(ctx context.Context, credentialID string) (*Creden
 
 func (s *Store) CreateCredential(ctx context.Context, orgID, name, providerType, storageKind, secretRef, secretValue string) (*Credential, error) {
 	return credentials.Create(ctx, s.credentialsRepo(), s.credBox, credentials.CreateInput{
-		ID: newID("cred"), OrgID: orgID, Name: name, ProviderType: providerType,
+		ID: newPlatformID("cred"), OrgID: orgID, Name: name, ProviderType: providerType,
 		StorageKind: storageKind, SecretRef: secretRef, SecretValue: secretValue,
 	})
 }
@@ -424,7 +427,7 @@ func (s *Store) ListCredentialAssignments(ctx context.Context, orgID string) ([]
 
 func (s *Store) AssignCredential(ctx context.Context, credentialID, scopeType, scopeID, createdBy string) (*CredentialAssignment, error) {
 	return credentials.Assign(ctx, s.credentialsRepo(), s, credentials.AssignInput{
-		ID: newID("casg"), CredentialID: credentialID, ScopeType: scopeType, ScopeID: scopeID, CreatedBy: createdBy,
+		ID: newPlatformID("casg"), CredentialID: credentialID, ScopeType: scopeType, ScopeID: scopeID, CreatedBy: createdBy,
 	})
 }
 
@@ -456,6 +459,10 @@ func (s *Store) SummarizeUsage(ctx context.Context, orgID string, f UsageFilter)
 	return s.usageQueries().Summarize(ctx, orgID, f)
 }
 
+func (s *Store) ListAudit(ctx context.Context, orgID string, f audit.Filter) ([]audit.Record, error) {
+	return (&AuditEvents{Pool: s.pool}).List(ctx, orgID, f)
+}
+
 func (s *Store) LookupModelPrice(ctx context.Context, providerType, model string) (ModelPrice, bool, error) {
 	return s.usageQueries().LookupModelPrice(ctx, providerType, model)
 }
@@ -463,8 +470,8 @@ func (s *Store) LookupModelPrice(ctx context.Context, providerType, model string
 // Quota is the platform write-model quota (canonical type in gatewayconfig).
 type Quota = gatewayconfig.Quota
 
-func (s *Store) quotas() *postgres.Quotas {
-	return postgres.NewQuotas(s.pool)
+func (s *Store) quotas() *Quotas {
+	return NewQuotas(s.pool)
 }
 
 func (s *Store) ListQuotas(ctx context.Context, orgID string) ([]Quota, error) {
@@ -472,7 +479,7 @@ func (s *Store) ListQuotas(ctx context.Context, orgID string) ([]Quota, error) {
 }
 
 func (s *Store) CreateQuota(ctx context.Context, orgID, scopeType, scopeID, metric string, limitValue int64, window string) (*Quota, error) {
-	return gatewayconfig.CreateQuota(ctx, s.quotas(), s, newID("quota"), orgID, scopeType, scopeID, metric, limitValue, window)
+	return gatewayconfig.CreateQuota(ctx, s.quotas(), s, newPlatformID("quota"), orgID, scopeType, scopeID, metric, limitValue, window)
 }
 
 func (s *Store) ProjectBelongsToOrg(ctx context.Context, projectID, orgID string) error {
@@ -532,26 +539,26 @@ func (s *Store) GetQuotaOrgID(ctx context.Context, quotaID string) (string, erro
 // GetCounter / IncrCounter / EnqueueUsage remain for transitional callers.
 // Prefer internal/adapters/postgres for new gateway/worker wiring.
 func (s *Store) GetCounter(ctx context.Context, scopeType, scopeID, metric, window string) (int64, error) {
-	return (&postgres.Counters{Pool: s.pool}).Get(ctx, scopeType, scopeID, metric, window)
+	return (&Counters{Pool: s.pool}).Get(ctx, scopeType, scopeID, metric, window)
 }
 
 func (s *Store) IncrCounter(ctx context.Context, scopeType, scopeID, metric, window string, delta int64) (int64, error) {
-	return (&postgres.Counters{Pool: s.pool}).Incr(ctx, scopeType, scopeID, metric, window, delta)
+	return (&Counters{Pool: s.pool}).Incr(ctx, scopeType, scopeID, metric, window, delta)
 }
 
 func (s *Store) EnqueueUsage(ctx context.Context, payload []byte) error {
-	return (&postgres.UsageOutbox{Pool: s.pool}).Enqueue(ctx, payload)
+	return (&UsageOutbox{Pool: s.pool}).Enqueue(ctx, payload)
 }
 
 func (s *Store) LoadSnapshotSource(ctx context.Context) (snapshot.Source, error) {
-	return postgres.NewSnapshotSourceLoader(s.pool).Load(ctx)
+	return NewSnapshotSourceLoader(s.pool).Load(ctx)
 }
 
 // RequestPolicy is the platform write-model CEL policy (canonical in gatewayconfig).
 type RequestPolicy = gatewayconfig.RequestPolicy
 
-func (s *Store) policies() *postgres.Policies {
-	return postgres.NewPolicies(s.pool)
+func (s *Store) policies() *Policies {
+	return NewPolicies(s.pool)
 }
 
 func (s *Store) ListPolicies(ctx context.Context, orgID string) ([]RequestPolicy, error) {
@@ -559,7 +566,7 @@ func (s *Store) ListPolicies(ctx context.Context, orgID string) ([]RequestPolicy
 }
 
 func (s *Store) CreatePolicy(ctx context.Context, orgID, name, expression string, actions []gatewayconfig.PolicyAction, enabled bool, priority int) (*RequestPolicy, error) {
-	return gatewayconfig.CreatePolicy(ctx, s.policies(), celValidator{}, newID("pol"), orgID, name, expression, actions, enabled, priority)
+	return gatewayconfig.CreatePolicy(ctx, s.policies(), celValidator{}, newPlatformID("pol"), orgID, name, expression, actions, enabled, priority)
 }
 
 func (s *Store) UpdatePolicy(ctx context.Context, policyID string, name, expression *string, actions []gatewayconfig.PolicyAction, enabled *bool, priority *int) (*RequestPolicy, error) {
@@ -581,8 +588,8 @@ func (s *Store) GetPolicyOrgID(ctx context.Context, policyID string) (string, er
 // WasmHook is the platform write-model WASM lifecycle binding.
 type WasmHook = gatewayconfig.WasmHook
 
-func (s *Store) wasmHooks() *postgres.WasmHooks {
-	return postgres.NewWasmHooks(s.pool)
+func (s *Store) wasmHooks() *WasmHooks {
+	return NewWasmHooks(s.pool)
 }
 
 func (s *Store) ListWasmHooks(ctx context.Context, orgID string) ([]WasmHook, error) {
@@ -590,7 +597,7 @@ func (s *Store) ListWasmHooks(ctx context.Context, orgID string) ([]WasmHook, er
 }
 
 func (s *Store) CreateWasmHook(ctx context.Context, orgID, name, phase, moduleURI, digest string, enabled bool, priority int, config []byte) (*WasmHook, error) {
-	return gatewayconfig.CreateWasmHook(ctx, s.wasmHooks(), newID("wasm"), orgID, name, phase, moduleURI, digest, enabled, priority, config)
+	return gatewayconfig.CreateWasmHook(ctx, s.wasmHooks(), newPlatformID("wasm"), orgID, name, phase, moduleURI, digest, enabled, priority, config)
 }
 
 func (s *Store) UpdateWasmHook(ctx context.Context, id string, name, phase, moduleURI, digest *string, enabled *bool, priority *int, config []byte) (*WasmHook, error) {
@@ -608,8 +615,8 @@ func (s *Store) GetWasmHookOrgID(ctx context.Context, id string) (string, error)
 // MCPBackend is the platform write-model MCP Streamable HTTP upstream.
 type MCPBackend = gatewayconfig.MCPBackend
 
-func (s *Store) mcpBackends() *postgres.MCPBackends {
-	return postgres.NewMCPBackends(s.pool)
+func (s *Store) mcpBackends() *MCPBackends {
+	return NewMCPBackends(s.pool)
 }
 
 func (s *Store) ListMCPBackends(ctx context.Context, orgID string) ([]MCPBackend, error) {
@@ -617,7 +624,7 @@ func (s *Store) ListMCPBackends(ctx context.Context, orgID string) ([]MCPBackend
 }
 
 func (s *Store) CreateMCPBackend(ctx context.Context, orgID, alias, name, baseURL, apiKeyEnv string, methodAllowlist []byte, enabled bool) (*MCPBackend, error) {
-	return gatewayconfig.CreateMCPBackend(ctx, s.mcpBackends(), newID("mcp"), orgID, alias, name, baseURL, apiKeyEnv, methodAllowlist, enabled)
+	return gatewayconfig.CreateMCPBackend(ctx, s.mcpBackends(), newPlatformID("mcp"), orgID, alias, name, baseURL, apiKeyEnv, methodAllowlist, enabled)
 }
 
 func (s *Store) UpdateMCPBackend(ctx context.Context, id string, alias, name, baseURL, apiKeyEnv *string, methodAllowlist []byte, enabled *bool) (*MCPBackend, error) {
@@ -635,8 +642,8 @@ func (s *Store) GetMCPBackendOrgID(ctx context.Context, id string) (string, erro
 // A2AAgent is the platform write-model A2A upstream agent.
 type A2AAgent = gatewayconfig.A2AAgent
 
-func (s *Store) a2aAgents() *postgres.A2AAgents {
-	return postgres.NewA2AAgents(s.pool)
+func (s *Store) a2aAgents() *A2AAgents {
+	return NewA2AAgents(s.pool)
 }
 
 func (s *Store) ListA2AAgents(ctx context.Context, orgID string) ([]A2AAgent, error) {
@@ -644,7 +651,7 @@ func (s *Store) ListA2AAgents(ctx context.Context, orgID string) ([]A2AAgent, er
 }
 
 func (s *Store) CreateA2AAgent(ctx context.Context, orgID, alias, name, upstreamURL, cardURL, apiKeyEnv, authScheme string, cardCache []byte, enabled bool) (*A2AAgent, error) {
-	return gatewayconfig.CreateA2AAgent(ctx, s.a2aAgents(), newID("a2a"), orgID, alias, name, upstreamURL, cardURL, apiKeyEnv, authScheme, cardCache, enabled)
+	return gatewayconfig.CreateA2AAgent(ctx, s.a2aAgents(), newPlatformID("a2a"), orgID, alias, name, upstreamURL, cardURL, apiKeyEnv, authScheme, cardCache, enabled)
 }
 
 func (s *Store) UpdateA2AAgent(ctx context.Context, id string, alias, name, upstreamURL, cardURL, apiKeyEnv, authScheme *string, cardCache []byte, enabled *bool) (*A2AAgent, error) {
@@ -657,4 +664,20 @@ func (s *Store) DeleteA2AAgent(ctx context.Context, id string) error {
 
 func (s *Store) GetA2AAgentOrgID(ctx context.Context, id string) (string, error) {
 	return s.a2aAgents().OrgID(ctx, id)
+}
+
+func newPlatformID(prefix string) string {
+	var b [8]byte
+	_, _ = rand.Read(b[:])
+	return fmt.Sprintf("%s_%s", prefix, hex.EncodeToString(b[:]))
+}
+
+type celValidator struct{}
+
+func (celValidator) Validate(expression string) error {
+	return policy.Validate(expression)
+}
+
+func (celValidator) ValidateString(expression string) error {
+	return policy.ValidateString(expression)
 }

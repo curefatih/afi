@@ -51,18 +51,18 @@ func main() {
 	}
 	defer pool.Close()
 
-	if err := controlplane.Migrate(ctx, pool); err != nil {
+	if err := postgres.Migrate(ctx, pool); err != nil {
 		log.Error("migrate", "err", err)
 		os.Exit(1)
 	}
 
-	store := controlplane.NewStore(pool)
+	store := postgres.NewStore(pool)
 	if err := store.SetCredentialsMasterKey(cfg.Credentials.MasterKey); err != nil {
 		log.Error("credentials master key", "err", err)
 		os.Exit(1)
 	}
 	snapStore := postgres.NewSnapshotStore(pool)
-	seeder := controlplane.NewSeeder(pool, store, snapStore, cfg)
+	seeder := postgres.NewSeeder(pool, store, snapStore, cfg)
 
 	if err := seeder.SeedIfEmpty(ctx); err != nil {
 		log.Error("seed", "err", err)
@@ -95,7 +95,13 @@ func main() {
 		log.Info("sso state store", "backend", cfg.Auth.SSO.StateStore)
 	}
 
-	srv := controlplane.NewServer(cfg, store, seeder, snapStore, log, eventOutbox, ssoStates)
+	auth := controlplane.NewAuthService(cfg, postgres.NewUsers(pool), postgres.NewExternalIdentities(pool), ssoStates)
+	if err := controlplane.EnsureSSOConfigured(cfg, auth); err != nil {
+		log.Error("sso", "err", err)
+		os.Exit(1)
+	}
+	auditStore := &postgres.AuditEvents{Pool: pool}
+	srv := controlplane.NewServer(cfg, store, seeder, seeder, snapStore, log, eventOutbox, auditStore, auth)
 	if cfg.Telemetry.Enabled {
 		cm, err := telemetry.NewControlPlaneMetrics()
 		if err != nil {

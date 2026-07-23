@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/app/platform"
+	"github.com/curefatih/afi/internal/audit"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
@@ -298,6 +299,9 @@ func (f *fakePlatform) ListUsage(context.Context, string, UsageFilter) ([]UsageE
 	return nil, nil
 }
 func (f *fakePlatform) SummarizeUsage(context.Context, string, UsageFilter) ([]UsageSummaryBucket, error) {
+	return nil, nil
+}
+func (f *fakePlatform) ListAudit(context.Context, string, audit.Filter) ([]audit.Record, error) {
 	return nil, nil
 }
 func (f *fakePlatform) ListQuotas(context.Context, string) ([]Quota, error) { return nil, nil }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/access"
+	"github.com/curefatih/afi/internal/audit"
 	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/identity"
@@ -44,57 +45,68 @@ type ConfigAPI interface {
 	ListAPIKeys(ctx context.Context, projectID string) ([]access.APIKey, error)
 	ListOrgAPIKeys(ctx context.Context, orgID string) ([]access.APIKey, error)
 	CreateAPIKey(ctx context.Context, orgID, kind, ownerUserID, projectID, name, rawKey string) (*access.APIKey, error)
+	GetAPIKeyOrgID(ctx context.Context, keyID string) (string, error)
 	DeleteAPIKey(ctx context.Context, keyID string) error
 
 	ListProviders(ctx context.Context, orgID string) ([]gatewayconfig.Provider, error)
 	ListProviderHealth(ctx context.Context, orgID string, from, to time.Time) ([]usage.ProviderHealth, error)
 	CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities) (*gatewayconfig.Provider, error)
 	UpdateProvider(ctx context.Context, providerID, name, baseURL, apiKeyEnv string) (*gatewayconfig.Provider, error)
+	GetProviderOrgID(ctx context.Context, providerID string) (string, error)
 	DeleteProvider(ctx context.Context, providerID string) error
 
 	ListRoutes(ctx context.Context, orgID string) ([]gatewayconfig.Route, error)
 	CreateRoute(ctx context.Context, orgID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback, retry *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error)
 	UpdateRoute(ctx context.Context, routeID, model, providerID, targetModel string, fallbacks []gatewayconfig.RouteFallback, retry *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error)
+	GetRouteOrgID(ctx context.Context, routeID string) (string, error)
 	DeleteRoute(ctx context.Context, routeID string) error
 	GetOrgDefaultRetry(ctx context.Context, orgID string) (*gatewayconfig.RetryConfig, error)
 	SetOrgDefaultRetry(ctx context.Context, orgID string, retry *gatewayconfig.RetryConfig) error
 
 	ListUsage(ctx context.Context, orgID string, f usage.Filter) ([]usage.Record, error)
 	SummarizeUsage(ctx context.Context, orgID string, f usage.Filter) ([]usage.SummaryBucket, error)
+	ListAudit(ctx context.Context, orgID string, f audit.Filter) ([]audit.Record, error)
 
 	ListQuotas(ctx context.Context, orgID string) ([]gatewayconfig.Quota, error)
 	CreateQuota(ctx context.Context, orgID, scopeType, scopeID, metric string, limitValue int64, window string) (*gatewayconfig.Quota, error)
 	UpdateQuota(ctx context.Context, quotaID string, limitValue int64) (*gatewayconfig.Quota, error)
+	GetQuotaOrgID(ctx context.Context, quotaID string) (string, error)
 	DeleteQuota(ctx context.Context, quotaID string) error
 
 	ListPolicies(ctx context.Context, orgID string) ([]gatewayconfig.RequestPolicy, error)
 	CreatePolicy(ctx context.Context, orgID, name, expression string, actions []gatewayconfig.PolicyAction, enabled bool, priority int) (*gatewayconfig.RequestPolicy, error)
 	UpdatePolicy(ctx context.Context, policyID string, name, expression *string, actions []gatewayconfig.PolicyAction, enabled *bool, priority *int) (*gatewayconfig.RequestPolicy, error)
 	ReorderPolicies(ctx context.Context, orgID string, items []gatewayconfig.PolicyPriorityUpdate) error
+	GetPolicyOrgID(ctx context.Context, policyID string) (string, error)
 	DeletePolicy(ctx context.Context, policyID string) error
 
 	ListWasmHooks(ctx context.Context, orgID string) ([]gatewayconfig.WasmHook, error)
 	CreateWasmHook(ctx context.Context, orgID, name, phase, moduleURI, digest string, enabled bool, priority int, config []byte) (*gatewayconfig.WasmHook, error)
 	UpdateWasmHook(ctx context.Context, id string, name, phase, moduleURI, digest *string, enabled *bool, priority *int, config []byte) (*gatewayconfig.WasmHook, error)
+	GetWasmHookOrgID(ctx context.Context, id string) (string, error)
 	DeleteWasmHook(ctx context.Context, id string) error
 
 	ListMCPBackends(ctx context.Context, orgID string) ([]gatewayconfig.MCPBackend, error)
 	CreateMCPBackend(ctx context.Context, orgID, alias, name, baseURL, apiKeyEnv string, methodAllowlist []byte, enabled bool) (*gatewayconfig.MCPBackend, error)
 	UpdateMCPBackend(ctx context.Context, id string, alias, name, baseURL, apiKeyEnv *string, methodAllowlist []byte, enabled *bool) (*gatewayconfig.MCPBackend, error)
+	GetMCPBackendOrgID(ctx context.Context, id string) (string, error)
 	DeleteMCPBackend(ctx context.Context, id string) error
 
 	ListA2AAgents(ctx context.Context, orgID string) ([]gatewayconfig.A2AAgent, error)
 	CreateA2AAgent(ctx context.Context, orgID, alias, name, upstreamURL, cardURL, apiKeyEnv, authScheme string, cardCache []byte, enabled bool) (*gatewayconfig.A2AAgent, error)
 	UpdateA2AAgent(ctx context.Context, id string, alias, name, upstreamURL, cardURL, apiKeyEnv, authScheme *string, cardCache []byte, enabled *bool) (*gatewayconfig.A2AAgent, error)
+	GetA2AAgentOrgID(ctx context.Context, id string) (string, error)
 	DeleteA2AAgent(ctx context.Context, id string) error
 
 	ListCredentials(ctx context.Context, orgID string) ([]credentials.Credential, error)
 	CreateCredential(ctx context.Context, orgID, name, providerType, storageKind, secretRef, secretValue string) (*credentials.Credential, error)
 	UpdateCredential(ctx context.Context, credentialID, name, status string) (*credentials.Credential, error)
 	RotateCredential(ctx context.Context, credentialID, secretRef, secretValue string) (*credentials.Credential, error)
+	GetCredentialOrgID(ctx context.Context, credentialID string) (string, error)
 	DeleteCredential(ctx context.Context, credentialID string) error
 	ListCredentialAssignments(ctx context.Context, orgID string) ([]credentials.Assignment, error)
 	AssignCredential(ctx context.Context, credentialID, scopeType, scopeID, createdBy string) (*credentials.Assignment, error)
+	GetCredentialAssignmentOrgID(ctx context.Context, assignmentID string) (string, error)
 	DeleteCredentialAssignment(ctx context.Context, assignmentID string) error
 }
 

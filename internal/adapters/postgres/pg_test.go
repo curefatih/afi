@@ -10,7 +10,6 @@ import (
 
 	"github.com/curefatih/afi/internal/access"
 	"github.com/curefatih/afi/internal/adapters/postgres"
-	"github.com/curefatih/afi/internal/controlplane"
 	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
@@ -49,7 +48,7 @@ func testPool(t *testing.T) *pgxpool.Pool {
 			pgErr = err
 			return
 		}
-		if err := controlplane.ResetDatabase(ctx, pool); err != nil {
+		if err := postgres.ResetDatabase(ctx, pool); err != nil {
 			pool.Close()
 			pgErr = err
 			return
@@ -93,7 +92,7 @@ func ensureTestDatabase(ctx context.Context, dsn string) error {
 
 func resetDB(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
-	if err := controlplane.ResetDatabase(t.Context(), pool); err != nil {
+	if err := postgres.ResetDatabase(t.Context(), pool); err != nil {
 		t.Fatal(err)
 	}
 }

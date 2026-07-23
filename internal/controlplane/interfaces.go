@@ -2,11 +2,25 @@ package controlplane
 
 import (
 	"context"
+
+	"github.com/curefatih/afi/internal/app/platform"
 )
 
-// snapshotPublisher is implemented by *Seeder.
+// snapshotPublisher is implemented by *postgres.Seeder.
 type snapshotPublisher interface {
 	PublishSnapshot(ctx context.Context) error
+}
+
+// localSeeder is the internal seed endpoint surface.
+type localSeeder interface {
+	Seed(ctx context.Context) error
+}
+
+// Persistence is the control-plane DB facade (implemented by adapters/postgres.Store).
+type Persistence interface {
+	platformAPI
+	membershipChecker
+	platform.ConfigAPI
 }
 
 // membershipChecker resolves org membership for authorization.

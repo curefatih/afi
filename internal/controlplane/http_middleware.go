@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/curefatih/afi/internal/app/platform"
 	"github.com/curefatih/afi/internal/kernel"
 )
 
@@ -31,7 +32,9 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 			writeErr(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
-		next(w, r.WithContext(context.WithValue(r.Context(), claimsKey, claims)))
+		ctx := context.WithValue(r.Context(), claimsKey, claims)
+		ctx = platform.WithActor(ctx, claims.UserID)
+		next(w, r.WithContext(ctx))
 	}
 }
 
