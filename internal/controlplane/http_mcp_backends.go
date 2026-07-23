@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/curefatih/afi/internal/kernel"
 )
@@ -92,4 +93,25 @@ func (s *Server) handleDeleteMCPBackend(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleTestMCPBackend(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		BaseURL   string `json:"base_url"`
+		APIKeyEnv string `json:"api_key_env"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.BaseURL) == "" {
+		writeErr(w, http.StatusBadRequest, "base_url required")
+		return
+	}
+	result, err := probeMCP(r.Context(), body.BaseURL, body.APIKeyEnv)
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
 }

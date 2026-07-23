@@ -118,11 +118,13 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/mcp-backends", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListMCPBackends)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/mcp-backends", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateMCPBackend)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/mcp-backends/test", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleTestMCPBackend)))
 	mux.HandleFunc("PATCH /api/v1/platform/mcp-backends/{backendID}", s.requireAuth(s.requireOrgAdminViaMCPBackend(s.handleUpdateMCPBackend)))
 	mux.HandleFunc("DELETE /api/v1/platform/mcp-backends/{backendID}", s.requireAuth(s.requireOrgAdminViaMCPBackend(s.handleDeleteMCPBackend)))
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/a2a-agents", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListA2AAgents)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/a2a-agents", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateA2AAgent)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/a2a-agents/test", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleTestA2AAgent)))
 	mux.HandleFunc("PATCH /api/v1/platform/a2a-agents/{agentID}", s.requireAuth(s.requireOrgAdminViaA2AAgent(s.handleUpdateA2AAgent)))
 	mux.HandleFunc("DELETE /api/v1/platform/a2a-agents/{agentID}", s.requireAuth(s.requireOrgAdminViaA2AAgent(s.handleDeleteA2AAgent)))
 

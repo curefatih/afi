@@ -2,7 +2,9 @@
 
 import {
 	BarChart3Icon,
+	BotIcon,
 	Building2Icon,
+	CableIcon,
 	FolderKanbanIcon,
 	GaugeIcon,
 	KeyRoundIcon,
@@ -117,6 +119,16 @@ const governanceNav = [
 		title: "Secrets",
 		url: "/app/secrets",
 		icon: <ShieldIcon />,
+	},
+	{
+		title: "MCP",
+		url: "/app/mcp",
+		icon: <CableIcon />,
+	},
+	{
+		title: "A2A",
+		url: "/app/a2a",
+		icon: <BotIcon />,
 	},
 	{
 		title: "Hooks",

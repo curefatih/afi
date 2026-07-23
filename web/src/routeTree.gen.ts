@@ -27,11 +27,13 @@ import { Route as AuthenticatedAppQuotasRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAppProvidersRouteImport } from './routes/_authenticated/app/providers'
 import { Route as AuthenticatedAppPoliciesRouteImport } from './routes/_authenticated/app/policies'
 import { Route as AuthenticatedAppOrganizationsRouteImport } from './routes/_authenticated/app/organizations'
+import { Route as AuthenticatedAppMcpRouteImport } from './routes/_authenticated/app/mcp'
 import { Route as AuthenticatedAppKeysRouteImport } from './routes/_authenticated/app/keys'
 import { Route as AuthenticatedAppHooksRouteImport } from './routes/_authenticated/app/hooks'
 import { Route as AuthenticatedAppDashboardRouteImport } from './routes/_authenticated/app/dashboard'
 import { Route as AuthenticatedAppBillingRouteImport } from './routes/_authenticated/app/billing'
 import { Route as AuthenticatedAppAccountRouteImport } from './routes/_authenticated/app/account'
+import { Route as AuthenticatedAppA2aRouteImport } from './routes/_authenticated/app/a2a'
 import { Route as AuthenticatedAppSplatRouteImport } from './routes/_authenticated/app/$'
 import { Route as AuthenticatedAppTeamsIndexRouteImport } from './routes/_authenticated/app/teams/index'
 import { Route as AuthenticatedAppProjectsIndexRouteImport } from './routes/_authenticated/app/projects/index'
@@ -137,6 +139,11 @@ const AuthenticatedAppOrganizationsRoute =
     path: '/organizations',
     getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
+const AuthenticatedAppMcpRoute = AuthenticatedAppMcpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => AuthenticatedAppRouteRoute,
+} as any)
 const AuthenticatedAppKeysRoute = AuthenticatedAppKeysRouteImport.update({
   id: '/keys',
   path: '/keys',
@@ -161,6 +168,11 @@ const AuthenticatedAppBillingRoute = AuthenticatedAppBillingRouteImport.update({
 const AuthenticatedAppAccountRoute = AuthenticatedAppAccountRouteImport.update({
   id: '/account',
   path: '/account',
+  getParentRoute: () => AuthenticatedAppRouteRoute,
+} as any)
+const AuthenticatedAppA2aRoute = AuthenticatedAppA2aRouteImport.update({
+  id: '/a2a',
+  path: '/a2a',
   getParentRoute: () => AuthenticatedAppRouteRoute,
 } as any)
 const AuthenticatedAppSplatRoute = AuthenticatedAppSplatRouteImport.update({
@@ -238,11 +250,13 @@ export interface FileRoutesByFullPath {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/$': typeof AuthenticatedAppSplatRoute
+  '/app/a2a': typeof AuthenticatedAppA2aRoute
   '/app/account': typeof AuthenticatedAppAccountRoute
   '/app/billing': typeof AuthenticatedAppBillingRoute
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/app/hooks': typeof AuthenticatedAppHooksRoute
   '/app/keys': typeof AuthenticatedAppKeysRoute
+  '/app/mcp': typeof AuthenticatedAppMcpRoute
   '/app/organizations': typeof AuthenticatedAppOrganizationsRoute
   '/app/policies': typeof AuthenticatedAppPoliciesRoute
   '/app/providers': typeof AuthenticatedAppProvidersRoute
@@ -273,11 +287,13 @@ export interface FileRoutesByTo {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/$': typeof AuthenticatedAppSplatRoute
+  '/app/a2a': typeof AuthenticatedAppA2aRoute
   '/app/account': typeof AuthenticatedAppAccountRoute
   '/app/billing': typeof AuthenticatedAppBillingRoute
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/app/hooks': typeof AuthenticatedAppHooksRoute
   '/app/keys': typeof AuthenticatedAppKeysRoute
+  '/app/mcp': typeof AuthenticatedAppMcpRoute
   '/app/organizations': typeof AuthenticatedAppOrganizationsRoute
   '/app/policies': typeof AuthenticatedAppPoliciesRoute
   '/app/providers': typeof AuthenticatedAppProvidersRoute
@@ -310,11 +326,13 @@ export interface FileRoutesById {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/_authenticated/app/$': typeof AuthenticatedAppSplatRoute
+  '/_authenticated/app/a2a': typeof AuthenticatedAppA2aRoute
   '/_authenticated/app/account': typeof AuthenticatedAppAccountRoute
   '/_authenticated/app/billing': typeof AuthenticatedAppBillingRoute
   '/_authenticated/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/_authenticated/app/hooks': typeof AuthenticatedAppHooksRoute
   '/_authenticated/app/keys': typeof AuthenticatedAppKeysRoute
+  '/_authenticated/app/mcp': typeof AuthenticatedAppMcpRoute
   '/_authenticated/app/organizations': typeof AuthenticatedAppOrganizationsRoute
   '/_authenticated/app/policies': typeof AuthenticatedAppPoliciesRoute
   '/_authenticated/app/providers': typeof AuthenticatedAppProvidersRoute
@@ -348,11 +366,13 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/app/$'
+    | '/app/a2a'
     | '/app/account'
     | '/app/billing'
     | '/app/dashboard'
     | '/app/hooks'
     | '/app/keys'
+    | '/app/mcp'
     | '/app/organizations'
     | '/app/policies'
     | '/app/providers'
@@ -383,11 +403,13 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/app/$'
+    | '/app/a2a'
     | '/app/account'
     | '/app/billing'
     | '/app/dashboard'
     | '/app/hooks'
     | '/app/keys'
+    | '/app/mcp'
     | '/app/organizations'
     | '/app/policies'
     | '/app/providers'
@@ -419,11 +441,13 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/_authenticated/app/$'
+    | '/_authenticated/app/a2a'
     | '/_authenticated/app/account'
     | '/_authenticated/app/billing'
     | '/_authenticated/app/dashboard'
     | '/_authenticated/app/hooks'
     | '/_authenticated/app/keys'
+    | '/_authenticated/app/mcp'
     | '/_authenticated/app/organizations'
     | '/_authenticated/app/policies'
     | '/_authenticated/app/providers'
@@ -582,6 +606,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppOrganizationsRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
+    '/_authenticated/app/mcp': {
+      id: '/_authenticated/app/mcp'
+      path: '/mcp'
+      fullPath: '/app/mcp'
+      preLoaderRoute: typeof AuthenticatedAppMcpRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
     '/_authenticated/app/keys': {
       id: '/_authenticated/app/keys'
       path: '/keys'
@@ -615,6 +646,13 @@ declare module '@tanstack/react-router' {
       path: '/account'
       fullPath: '/app/account'
       preLoaderRoute: typeof AuthenticatedAppAccountRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/_authenticated/app/a2a': {
+      id: '/_authenticated/app/a2a'
+      path: '/a2a'
+      fullPath: '/app/a2a'
+      preLoaderRoute: typeof AuthenticatedAppA2aRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
     '/_authenticated/app/$': {
@@ -719,11 +757,13 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
 
 interface AuthenticatedAppRouteRouteChildren {
   AuthenticatedAppSplatRoute: typeof AuthenticatedAppSplatRoute
+  AuthenticatedAppA2aRoute: typeof AuthenticatedAppA2aRoute
   AuthenticatedAppAccountRoute: typeof AuthenticatedAppAccountRoute
   AuthenticatedAppBillingRoute: typeof AuthenticatedAppBillingRoute
   AuthenticatedAppDashboardRoute: typeof AuthenticatedAppDashboardRoute
   AuthenticatedAppHooksRoute: typeof AuthenticatedAppHooksRoute
   AuthenticatedAppKeysRoute: typeof AuthenticatedAppKeysRoute
+  AuthenticatedAppMcpRoute: typeof AuthenticatedAppMcpRoute
   AuthenticatedAppOrganizationsRoute: typeof AuthenticatedAppOrganizationsRoute
   AuthenticatedAppPoliciesRoute: typeof AuthenticatedAppPoliciesRoute
   AuthenticatedAppProvidersRoute: typeof AuthenticatedAppProvidersRoute
@@ -747,11 +787,13 @@ interface AuthenticatedAppRouteRouteChildren {
 
 const AuthenticatedAppRouteRouteChildren: AuthenticatedAppRouteRouteChildren = {
   AuthenticatedAppSplatRoute: AuthenticatedAppSplatRoute,
+  AuthenticatedAppA2aRoute: AuthenticatedAppA2aRoute,
   AuthenticatedAppAccountRoute: AuthenticatedAppAccountRoute,
   AuthenticatedAppBillingRoute: AuthenticatedAppBillingRoute,
   AuthenticatedAppDashboardRoute: AuthenticatedAppDashboardRoute,
   AuthenticatedAppHooksRoute: AuthenticatedAppHooksRoute,
   AuthenticatedAppKeysRoute: AuthenticatedAppKeysRoute,
+  AuthenticatedAppMcpRoute: AuthenticatedAppMcpRoute,
   AuthenticatedAppOrganizationsRoute: AuthenticatedAppOrganizationsRoute,
   AuthenticatedAppPoliciesRoute: AuthenticatedAppPoliciesRoute,
   AuthenticatedAppProvidersRoute: AuthenticatedAppProvidersRoute,

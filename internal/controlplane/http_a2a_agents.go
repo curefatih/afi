@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/curefatih/afi/internal/kernel"
 )
@@ -96,4 +97,26 @@ func (s *Server) handleDeleteA2AAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleTestA2AAgent(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		UpstreamURL string `json:"upstream_url"`
+		CardURL     string `json:"card_url"`
+		APIKeyEnv   string `json:"api_key_env"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.UpstreamURL) == "" {
+		writeErr(w, http.StatusBadRequest, "upstream_url required")
+		return
+	}
+	result, err := probeA2A(r.Context(), body.UpstreamURL, body.CardURL, body.APIKeyEnv)
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
 }
