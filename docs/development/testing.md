@@ -8,6 +8,14 @@ make test
 go test ./...
 ```
 
+## OpenAPI contract checks
+
+```bash
+make openapi-check   # Spectral lint + Handler()↔spec drift + schema.gen.ts freshness
+```
+
+Requires Node (npx) and Python with PyYAML (`pip install pyyaml`).
+
 Covered areas:
 
 * Snapshot compile + org-scoped `LookupRoute` + hashed `LookupKey` + quota resolve

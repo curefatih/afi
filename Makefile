@@ -5,12 +5,15 @@
 	run-controlplane run-gateway run-worker run-all run-a2a-echo \
 	seed snapshot-publish \
 	deploy-init deploy-up deploy-down deploy-logs deploy-health \
-	build-release build-images brand-assets
+	build-release build-images brand-assets \
+	openapi-lint openapi-drift openapi-gen openapi-check
 
 GO ?= go
 BIN_DIR ?= bin
 DEPLOY_COMPOSE ?= deploy/docker-compose.yml
 DEPLOY_ENV ?= deploy/.env
+NPX ?= npx
+PYTHON ?= python3
 
 brand-assets:
 	./scripts/generate-brand-assets.sh
@@ -87,6 +90,35 @@ tidy: tidy-go
 
 verify:
 	bash scripts/verify-local.sh
+
+openapi-lint:
+	$(NPX) --yes @stoplight/spectral-cli@6 lint \
+		--fail-severity error \
+		-r api/openapi/.spectral.yaml \
+		api/openapi/platform.openapi.yaml \
+		api/openapi/gateway.openapi.yaml
+
+openapi-drift:
+	$(PYTHON) scripts/openapi-drift-check.py \
+		--go-file internal/controlplane/http.go \
+		--openapi api/openapi/platform.openapi.yaml \
+		--include-prefix /api/v1/platform \
+		--also /healthz \
+		--exclude-prefix /internal/
+	$(PYTHON) scripts/openapi-drift-check.py \
+		--go-file internal/dataplane/pipeline.go \
+		--openapi api/openapi/gateway.openapi.yaml \
+		--exclude-prefix /metrics
+
+openapi-gen:
+	$(NPX) --yes openapi-typescript@7 api/openapi/platform.openapi.yaml -o clients/typescript/src/schema.gen.ts
+	@echo "Generated clients/typescript/src/schema.gen.ts"
+	@echo "Python client is hand-maintained against platform.openapi.yaml (see clients/python)."
+
+openapi-check: openapi-lint openapi-drift
+	$(MAKE) openapi-gen
+	@git diff --exit-code -- clients/typescript/src/schema.gen.ts \
+		|| (echo "ERROR: schema.gen.ts is stale — run make openapi-gen and commit" >&2; exit 1)
 
 run-controlplane:
 	$(GO) run ./cmd/controlplane
