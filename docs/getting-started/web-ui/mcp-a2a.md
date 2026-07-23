@@ -77,7 +77,11 @@ The Agent Card’s endpoint URL is **rewritten** to the gateway so clients do no
 
 **Test connection** on Add/Edit GETs the Agent Card (card URL or derived well-known path) from the control plane, with optional API key env. Same success criteria as MCP.
 
-### Example
+### Try in the playground
+
+Open **Playground → A2A** to fetch the Agent Card and send `message/send` (or raw JSON-RPC) through the gateway. Pick an enabled agent alias. The playground uses the local-dev gateway URL and API key (`VITE_GATEWAY_API_*`), same as chat/TTS/STT/MCP.
+
+### Example (curl)
 
 1. Create an agent with alias `helper` and upstream `https://agent.example/rpc`.
 2. Discover:
