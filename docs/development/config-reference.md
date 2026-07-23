@@ -91,7 +91,9 @@ Written on first control-plane start (or `make seed`):
 | Seeded audio routes | `tts-1`, `whisper-1` → `prov_openai` |
 | Seeded providers | `prov_openai`, `prov_anthropic`, `prov_gemini`, `prov_ollama` (`openai_compatible` → `http://127.0.0.1:11434/v1`, no default route) |
 | `OLLAMA_API_KEY` | _(any value if Ollama ignores auth)_ | gateway → openai_compatible |
-| Route `fallbacks` | optional ordered `[{provider_id,target_model}]` for 5xx/timeout/429 failover |
+| Route `fallbacks` | optional `[{provider_id,target_model,weight?}]` for 5xx/timeout/429 failover (list order after first pick) |
+| Route `routing_strategy` | `ordered` (default) or `weighted` — first-target selection before retry/failover |
+| Route `weight` | primary target weight for `weighted` (default `1`); each fallback may set `weight` |
 | Route `retry` | optional per-route override; else org `default_retry` from Settings → General |
 | Org `default_retry` | optional org-wide `{max_attempts,backoff…}` applied when a route has no `retry` |
 | Gateway models | `GET /v1/models` lists org route model ids (`supports_streaming` / `supports_tts` / `supports_stt`) |
@@ -195,7 +197,16 @@ Optional same-target retry before ordered `fallbacks` failover. Create/update vi
 
 `fixed` rejects `max_delay` / `multiplier`. Delay before retry index `n` (0 = first retry): fixed → `base_delay`; exponential → `min(base_delay * multiplier^n, max_delay)`.
 
-Compiled into the gateway snapshot. Resolution order: **route `retry` → org `default_retry` → none**. On chat (`/v1/chat/completions`) and Anthropic messages (`/v1/messages`), the gateway retries the same target up to `max_attempts` with the configured backoff on transport errors, HTTP 5xx, and 429, then walks ordered `fallbacks`.
+Compiled into the gateway snapshot. Resolution order: **route `retry` → org `default_retry` → none**. On chat (`/v1/chat/completions`) and Anthropic messages (`/v1/messages`), the gateway selects the attempt list (`ordered` = primary then `fallbacks`; `weighted` = weighted random first pick, then remaining in config order), retries the same target up to `max_attempts` with the configured backoff on transport errors, HTTP 5xx, and 429, then walks the remainder.
+
+### Route routing strategy
+
+| `routing_strategy` | First attempt | Failover order |
+| ------------------ | ------------- | -------------- |
+| `ordered` (default) | Primary | Config list order of `fallbacks` |
+| `weighted` | Weighted random among primary + fallbacks (`weight`, default `1`) | Remaining candidates in original config order |
+
+Unknown strategies are rejected at write time. Latency/cost-aware strategies are planned (see `internal-docs/weighted-adaptive-routing.md`).
 
 ### CEL policies
 
