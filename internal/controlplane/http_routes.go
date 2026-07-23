@@ -22,11 +22,13 @@ func (s *Server) handleListRoutes(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCreateRoute(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Model       string          `json:"model"`
-		ProviderID  string          `json:"provider_id"`
-		TargetModel string          `json:"target_model"`
-		Fallbacks   []RouteFallback `json:"fallbacks"`
-		Retry       *RetryConfig    `json:"retry"`
+		Model           string          `json:"model"`
+		ProviderID      string          `json:"provider_id"`
+		TargetModel     string          `json:"target_model"`
+		Fallbacks       []RouteFallback `json:"fallbacks"`
+		Retry           *RetryConfig    `json:"retry"`
+		RoutingStrategy string          `json:"routing_strategy"`
+		Weight          int             `json:"weight"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Model == "" || body.ProviderID == "" {
 		writeErr(w, http.StatusBadRequest, "model and provider_id required")
@@ -35,7 +37,7 @@ func (s *Server) handleCreateRoute(w http.ResponseWriter, r *http.Request) {
 	if body.TargetModel == "" {
 		body.TargetModel = body.Model
 	}
-	route, err := s.app.CreateRoute(r.Context(), r.PathValue("orgID"), body.Model, body.ProviderID, body.TargetModel, body.Fallbacks, body.Retry)
+	route, err := s.app.CreateRoute(r.Context(), r.PathValue("orgID"), body.Model, body.ProviderID, body.TargetModel, body.Fallbacks, body.Retry, body.RoutingStrategy, body.Weight)
 	if errors.Is(err, kernel.ErrInvalidRequest) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
@@ -49,11 +51,13 @@ func (s *Server) handleCreateRoute(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleUpdateRoute(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Model       string          `json:"model"`
-		ProviderID  string          `json:"provider_id"`
-		TargetModel string          `json:"target_model"`
-		Fallbacks   []RouteFallback `json:"fallbacks"`
-		Retry       *RetryConfig    `json:"retry"`
+		Model           string          `json:"model"`
+		ProviderID      string          `json:"provider_id"`
+		TargetModel     string          `json:"target_model"`
+		Fallbacks       []RouteFallback `json:"fallbacks"`
+		Retry           *RetryConfig    `json:"retry"`
+		RoutingStrategy string          `json:"routing_strategy"`
+		Weight          int             `json:"weight"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Model == "" || body.ProviderID == "" {
 		writeErr(w, http.StatusBadRequest, "model and provider_id required")
@@ -62,7 +66,7 @@ func (s *Server) handleUpdateRoute(w http.ResponseWriter, r *http.Request) {
 	if body.TargetModel == "" {
 		body.TargetModel = body.Model
 	}
-	route, err := s.app.UpdateRoute(r.Context(), r.PathValue("routeID"), body.Model, body.ProviderID, body.TargetModel, body.Fallbacks, body.Retry)
+	route, err := s.app.UpdateRoute(r.Context(), r.PathValue("routeID"), body.Model, body.ProviderID, body.TargetModel, body.Fallbacks, body.Retry, body.RoutingStrategy, body.Weight)
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
