@@ -18,7 +18,7 @@ internal/
 ├── usage/            # usage.Event (emit/outbox) + reporting read models
 ├── adapters/
 │   ├── auth/         # JWT + bcrypt
-│   ├── postgres/     # Persistence + usage/platform event outboxes
+│   ├── postgres/     # Persistence, migrate/seed, Store facade, outboxes
 │   ├── redis/        # Timed quota CounterStore
 │   ├── llm/          # OpenAI / Anthropic / Gemini HTTP clients
 │   ├── secrets/      # SecretResolver (env today)
@@ -28,7 +28,7 @@ internal/
 │   ├── logpub/       # Log stand-in publisher
 │   └── eventpub/     # Publisher factory (log|nats|kafka|noop)
 ├── app/platform/     # Queries, commands, event bus + outbox handler
-├── controlplane/     # HTTP transport, Store facade, seed, migrate
+├── controlplane/     # HTTP transport + auth wiring (no DB driver)
 ├── dataplane/        # Request pipeline + ChatProvider registry
 ├── snapshot/         # Snapshot types, compile, Store port
 ├── workers/          # Usage + platform-event ProcessOnce

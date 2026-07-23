@@ -7,9 +7,21 @@ Control-plane mutations emit in-process `platform.Event` values on `platform.Bus
 ```text
 HTTP mutate → app/platform command → Bus
                                  ├─ slog debug (always)
+                                 ├─ audit_events (always, org-scoped; admin API/UI)
                                  └─ platform_event_outbox (if events.outbox_enabled)
 worker → ClaimBatch → EventPublisher (log | nats | kafka | noop)
 ```
+
+## Audit trail vs outbox
+
+| Surface | Purpose | Always on? |
+|---------|---------|------------|
+| `audit_events` | Org-admin forensics (`GET …/organizations/{orgID}/audit`, Web **Audit**) | Yes |
+| `platform_event_outbox` | Cross-process publish to brokers | Only when `events.outbox_enabled` |
+
+The audit bounded context (`internal/audit`) owns entry/record models and the `Store` port. Postgres implements the port; the application layer (`platform.AuditHandler`) maps `platform.Event` → `audit.Entry`. Domains stay free of DB/HTTP/broker tech.
+
+Audit rows include `actor_user_id` (from JWT context via `platform.WithActor`) and a short `summary` string.
 
 ## Publish vs emit-only
 
@@ -63,6 +75,7 @@ JSON body matches `platform.Event`:
   "name": "quota.created",
   "resource_id": "quota_…",
   "organization_id": "org_…",
+  "actor_user_id": "user_…",
   "at": "2026-07-19T12:00:00Z",
   "meta": {}
 }
