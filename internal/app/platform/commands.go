@@ -409,6 +409,41 @@ func (s *Service) DeleteMCPBackend(ctx context.Context, id string) error {
 	return nil
 }
 
+func (s *Service) CreateA2AAgent(ctx context.Context, orgID, alias, name, upstreamURL, cardURL, apiKeyEnv, authScheme string, cardCache []byte, enabled bool) (*gatewayconfig.A2AAgent, error) {
+	a, err := s.API.CreateA2AAgent(ctx, orgID, alias, name, upstreamURL, cardURL, apiKeyEnv, authScheme, cardCache, enabled)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "created"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventA2AAgentCreated, a.ID, orgID)
+	return a, nil
+}
+
+func (s *Service) UpdateA2AAgent(ctx context.Context, id string, alias, name, upstreamURL, cardURL, apiKeyEnv, authScheme *string, cardCache []byte, enabled *bool) (*gatewayconfig.A2AAgent, error) {
+	a, err := s.API.UpdateA2AAgent(ctx, id, alias, name, upstreamURL, cardURL, apiKeyEnv, authScheme, cardCache, enabled)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "updated"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventA2AAgentUpdated, id, a.OrganizationID)
+	return a, nil
+}
+
+func (s *Service) DeleteA2AAgent(ctx context.Context, id string) error {
+	if err := s.API.DeleteA2AAgent(ctx, id); err != nil {
+		return err
+	}
+	if err := s.publish(ctx, "deleted"); err != nil {
+		return err
+	}
+	s.emit(ctx, EventA2AAgentDeleted, id, "")
+	return nil
+}
+
 func (s *Service) CreateCredential(ctx context.Context, orgID, name, providerType, storageKind, secretRef, secretValue string) (*credentials.Credential, error) {
 	c, err := s.API.CreateCredential(ctx, orgID, name, providerType, storageKind, secretRef, secretValue)
 	if err != nil {
