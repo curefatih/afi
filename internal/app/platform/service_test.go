@@ -114,8 +114,8 @@ func (m *memAPI) CreateProvider(context.Context, string, string, string, string,
 func (m *memAPI) UpdateProvider(context.Context, string, string, string, string) (*gatewayconfig.Provider, error) {
 	panic("unused")
 }
-func (m *memAPI) GetProviderOrgID(context.Context, string) (string, error) { return "org_1", nil }
-func (m *memAPI) DeleteProvider(context.Context, string) error              { panic("unused") }
+func (m *memAPI) GetProviderOrgID(context.Context, string) (string, error)          { return "org_1", nil }
+func (m *memAPI) DeleteProvider(context.Context, string) error                      { panic("unused") }
 func (m *memAPI) ListRoutes(context.Context, string) ([]gatewayconfig.Route, error) { return nil, nil }
 func (m *memAPI) CreateRoute(context.Context, string, string, string, string, []gatewayconfig.RouteFallback, *gatewayconfig.RetryConfig) (*gatewayconfig.Route, error) {
 	panic("unused")
@@ -124,7 +124,7 @@ func (m *memAPI) UpdateRoute(context.Context, string, string, string, string, []
 	panic("unused")
 }
 func (m *memAPI) GetRouteOrgID(context.Context, string) (string, error) { return "org_1", nil }
-func (m *memAPI) DeleteRoute(context.Context, string) error            { panic("unused") }
+func (m *memAPI) DeleteRoute(context.Context, string) error             { panic("unused") }
 func (m *memAPI) GetOrgDefaultRetry(context.Context, string) (*gatewayconfig.RetryConfig, error) {
 	panic("unused")
 }
@@ -152,7 +152,7 @@ func (m *memAPI) UpdateQuota(context.Context, string, int64) (*gatewayconfig.Quo
 	panic("unused")
 }
 func (m *memAPI) GetQuotaOrgID(context.Context, string) (string, error) { return "org_1", nil }
-func (m *memAPI) DeleteQuota(context.Context, string) error            { panic("unused") }
+func (m *memAPI) DeleteQuota(context.Context, string) error             { panic("unused") }
 func (m *memAPI) ListPolicies(context.Context, string) ([]gatewayconfig.RequestPolicy, error) {
 	return nil, nil
 }
@@ -177,7 +177,7 @@ func (m *memAPI) UpdateWasmHook(context.Context, string, *string, *string, *stri
 	panic("unused")
 }
 func (m *memAPI) GetWasmHookOrgID(context.Context, string) (string, error) { return "org_1", nil }
-func (m *memAPI) DeleteWasmHook(context.Context, string) error              { panic("unused") }
+func (m *memAPI) DeleteWasmHook(context.Context, string) error             { panic("unused") }
 func (m *memAPI) ListMCPBackends(context.Context, string) ([]gatewayconfig.MCPBackend, error) {
 	return nil, nil
 }
@@ -188,7 +188,7 @@ func (m *memAPI) UpdateMCPBackend(context.Context, string, *string, *string, *st
 	panic("unused")
 }
 func (m *memAPI) GetMCPBackendOrgID(context.Context, string) (string, error) { return "org_1", nil }
-func (m *memAPI) DeleteMCPBackend(context.Context, string) error              { panic("unused") }
+func (m *memAPI) DeleteMCPBackend(context.Context, string) error             { panic("unused") }
 func (m *memAPI) ListA2AAgents(context.Context, string) ([]gatewayconfig.A2AAgent, error) {
 	return nil, nil
 }
@@ -199,7 +199,7 @@ func (m *memAPI) UpdateA2AAgent(context.Context, string, *string, *string, *stri
 	panic("unused")
 }
 func (m *memAPI) GetA2AAgentOrgID(context.Context, string) (string, error) { return "org_1", nil }
-func (m *memAPI) DeleteA2AAgent(context.Context, string) error              { panic("unused") }
+func (m *memAPI) DeleteA2AAgent(context.Context, string) error             { panic("unused") }
 func (m *memAPI) ListCredentials(context.Context, string) ([]credentials.Credential, error) {
 	return nil, nil
 }
@@ -213,7 +213,7 @@ func (m *memAPI) RotateCredential(context.Context, string, string, string) (*cre
 	panic("unused")
 }
 func (m *memAPI) GetCredentialOrgID(context.Context, string) (string, error) { return "org_1", nil }
-func (m *memAPI) DeleteCredential(context.Context, string) error              { panic("unused") }
+func (m *memAPI) DeleteCredential(context.Context, string) error             { panic("unused") }
 func (m *memAPI) ListCredentialAssignments(context.Context, string) ([]credentials.Assignment, error) {
 	return nil, nil
 }
