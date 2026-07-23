@@ -374,6 +374,41 @@ func (s *Service) DeleteWasmHook(ctx context.Context, id string) error {
 	return nil
 }
 
+func (s *Service) CreateMCPBackend(ctx context.Context, orgID, alias, name, baseURL, apiKeyEnv string, methodAllowlist []byte, enabled bool) (*gatewayconfig.MCPBackend, error) {
+	b, err := s.API.CreateMCPBackend(ctx, orgID, alias, name, baseURL, apiKeyEnv, methodAllowlist, enabled)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "created"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventMCPBackendCreated, b.ID, orgID)
+	return b, nil
+}
+
+func (s *Service) UpdateMCPBackend(ctx context.Context, id string, alias, name, baseURL, apiKeyEnv *string, methodAllowlist []byte, enabled *bool) (*gatewayconfig.MCPBackend, error) {
+	b, err := s.API.UpdateMCPBackend(ctx, id, alias, name, baseURL, apiKeyEnv, methodAllowlist, enabled)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "updated"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventMCPBackendUpdated, id, b.OrganizationID)
+	return b, nil
+}
+
+func (s *Service) DeleteMCPBackend(ctx context.Context, id string) error {
+	if err := s.API.DeleteMCPBackend(ctx, id); err != nil {
+		return err
+	}
+	if err := s.publish(ctx, "deleted"); err != nil {
+		return err
+	}
+	s.emit(ctx, EventMCPBackendDeleted, id, "")
+	return nil
+}
+
 func (s *Service) CreateCredential(ctx context.Context, orgID, name, providerType, storageKind, secretRef, secretValue string) (*credentials.Credential, error) {
 	c, err := s.API.CreateCredential(ctx, orgID, name, providerType, storageKind, secretRef, secretValue)
 	if err != nil {

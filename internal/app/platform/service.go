@@ -78,6 +78,11 @@ type ConfigAPI interface {
 	UpdateWasmHook(ctx context.Context, id string, name, phase, moduleURI, digest *string, enabled *bool, priority *int, config []byte) (*gatewayconfig.WasmHook, error)
 	DeleteWasmHook(ctx context.Context, id string) error
 
+	ListMCPBackends(ctx context.Context, orgID string) ([]gatewayconfig.MCPBackend, error)
+	CreateMCPBackend(ctx context.Context, orgID, alias, name, baseURL, apiKeyEnv string, methodAllowlist []byte, enabled bool) (*gatewayconfig.MCPBackend, error)
+	UpdateMCPBackend(ctx context.Context, id string, alias, name, baseURL, apiKeyEnv *string, methodAllowlist []byte, enabled *bool) (*gatewayconfig.MCPBackend, error)
+	DeleteMCPBackend(ctx context.Context, id string) error
+
 	ListCredentials(ctx context.Context, orgID string) ([]credentials.Credential, error)
 	CreateCredential(ctx context.Context, orgID, name, providerType, storageKind, secretRef, secretValue string) (*credentials.Credential, error)
 	UpdateCredential(ctx context.Context, credentialID, name, status string) (*credentials.Credential, error)

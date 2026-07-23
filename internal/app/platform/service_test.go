@@ -168,6 +168,16 @@ func (m *memAPI) UpdateWasmHook(context.Context, string, *string, *string, *stri
 	panic("unused")
 }
 func (m *memAPI) DeleteWasmHook(context.Context, string) error { panic("unused") }
+func (m *memAPI) ListMCPBackends(context.Context, string) ([]gatewayconfig.MCPBackend, error) {
+	return nil, nil
+}
+func (m *memAPI) CreateMCPBackend(context.Context, string, string, string, string, string, []byte, bool) (*gatewayconfig.MCPBackend, error) {
+	panic("unused")
+}
+func (m *memAPI) UpdateMCPBackend(context.Context, string, *string, *string, *string, *string, []byte, *bool) (*gatewayconfig.MCPBackend, error) {
+	panic("unused")
+}
+func (m *memAPI) DeleteMCPBackend(context.Context, string) error { panic("unused") }
 func (m *memAPI) ListCredentials(context.Context, string) ([]credentials.Credential, error) {
 	return nil, nil
 }
