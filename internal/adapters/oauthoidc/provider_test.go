@@ -47,8 +47,8 @@ func TestSAMLRejected(t *testing.T) {
 	_, err := oauthoidc.New(oauthoidc.Config{
 		ID: "saml1", Type: "saml", ClientID: "x", ClientSecret: "y",
 	})
-	if err == nil {
-		t.Fatal("expected error")
+	if err == nil || !strings.Contains(err.Error(), "saml adapter") {
+		t.Fatalf("expected saml adapter rejection, got %v", err)
 	}
 }
 
