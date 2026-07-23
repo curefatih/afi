@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/curefatih/afi/internal/telemetry"
 	"github.com/curefatih/afi/internal/usage"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type OutboxRow struct {
@@ -36,28 +39,61 @@ type UsageSink interface {
 }
 
 // ProcessOnce claims pending outbox rows and writes usage_events.
-func ProcessOnce(ctx context.Context, src OutboxSource, sink UsageSink, prices PriceLookup) (int, error) {
+// Optional metrics argument records worker counters when non-nil.
+func ProcessOnce(ctx context.Context, src OutboxSource, sink UsageSink, prices PriceLookup, metrics ...*telemetry.WorkerMetrics) (int, error) {
+	var m *telemetry.WorkerMetrics
+	if len(metrics) > 0 {
+		m = metrics[0]
+	}
+	start := time.Now()
+	ctx, span := telemetry.Tracer("afi.worker").Start(ctx, "afi.worker.process_usage")
+	defer span.End()
+
 	rows, err := src.ClaimBatch(ctx, 50)
 	if err != nil {
+		if m != nil {
+			m.UsageErrors.Add(ctx, 1)
+		}
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return 0, err
 	}
 	n := 0
 	for _, row := range rows {
 		var payload UsagePayload
 		if err := json.Unmarshal(row.Payload, &payload); err != nil {
+			if m != nil {
+				m.UsageErrors.Add(ctx, 1)
+			}
 			return n, err
 		}
 		cost, err := estimateUsageCost(ctx, payload, prices)
 		if err != nil {
+			if m != nil {
+				m.UsageErrors.Add(ctx, 1)
+			}
 			return n, err
 		}
 		if err := sink.InsertUsage(ctx, payload, cost); err != nil {
+			if m != nil {
+				m.UsageErrors.Add(ctx, 1)
+			}
 			return n, err
 		}
 		if err := src.MarkProcessed(ctx, row.ID); err != nil {
+			if m != nil {
+				m.UsageErrors.Add(ctx, 1)
+			}
 			return n, err
 		}
 		n++
 	}
+	if m != nil {
+		if n > 0 {
+			m.UsageProcessed.Add(ctx, int64(n))
+		}
+		m.ProcessDuration.Record(ctx, time.Since(start).Seconds())
+	}
+	span.SetAttributes(attribute.Int("afi.worker.batch_size", n))
 	return n, nil
 }
