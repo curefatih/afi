@@ -27,11 +27,11 @@ auth:
   token_ttl: "24h"
   internal_token: "afi-local-internal-token"
   public_base_url: "http://localhost:8081"
-  # Platform-wide SSO (OAuth2 / OIDC). Leave enabled:false until providers are configured.
+  # Platform-wide SSO (OAuth2 / OIDC / SAML). Leave enabled:false until providers are configured.
   sso:
     enabled: false
     providers: []
-    # Example:
+    # Example OIDC:
     # providers:
     #   - id: google
     #     type: oidc
@@ -40,6 +40,13 @@ auth:
     #     client_id: "..."
     #     client_secret: "..."
     #     scopes: ["openid", "email", "profile"]
+    #     require_email_verified: true
+    # Example SAML:
+    #   - id: okta
+    #     type: saml
+    #     display_name: Okta
+    #     idp_metadata_url: https://example.okta.com/app/.../sso/saml/metadata
+    #     # sp_cert_pem / sp_key_pem recommended in production
     #     require_email_verified: true
 
 

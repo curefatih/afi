@@ -79,7 +79,7 @@ func (a *AuthService) LoginWithPassword(ctx context.Context, email, password str
 	return a.Tokens.Issue(user.ID, user.Email, user.Role)
 }
 
-// BeginSSO starts an OAuth/OIDC login and returns the IdP redirect URL.
+// BeginSSO starts an OAuth/OIDC/SAML login and returns the IdP redirect URL.
 func (a *AuthService) BeginSSO(ctx context.Context, providerID, returnTo string) (authURL string, err error) {
 	if a == nil || !a.SSOEnabled {
 		return "", identity.ErrSSODisabled
@@ -102,15 +102,25 @@ func (a *AuthService) BeginSSO(ctx context.Context, providerID, returnTo string)
 	if a.Now != nil {
 		now = a.Now().UTC()
 	}
+	redirectURI := ssoCallbackURL(a.PublicBaseURL, providerID)
+	var requestID string
+	if starter, ok := p.(identity.AuthStarter); ok {
+		authURL, requestID, err = starter.AuthURLWithID(state, redirectURI)
+	} else {
+		authURL, err = p.AuthURL(state, redirectURI)
+	}
+	if err != nil {
+		return "", err
+	}
 	if err := a.States.Put(ctx, state, identity.SSOState{
 		Provider:  providerID,
 		ReturnTo:  sanitizeReturnTo(returnTo),
+		RequestID: requestID,
 		ExpiresAt: now.Add(10 * time.Minute),
 	}); err != nil {
 		return "", err
 	}
-	redirectURI := ssoCallbackURL(a.PublicBaseURL, providerID)
-	return p.AuthURL(state, redirectURI)
+	return authURL, nil
 }
 
 // CompleteSSOResult is returned after a successful federated login.
@@ -119,7 +129,7 @@ type CompleteSSOResult struct {
 	ReturnTo string
 }
 
-// CompleteSSO finishes OAuth/OIDC login, JIT-provisions the user, and issues a JWT.
+// CompleteSSO finishes OAuth/OIDC/SAML login, JIT-provisions the user, and issues a JWT.
 func (a *AuthService) CompleteSSO(ctx context.Context, providerID, code, state string) (*CompleteSSOResult, error) {
 	if a == nil || !a.SSOEnabled {
 		return nil, identity.ErrSSODisabled
@@ -142,7 +152,17 @@ func (a *AuthService) CompleteSSO(ctx context.Context, providerID, code, state s
 		return nil, identity.ErrInvalidSSOState
 	}
 	redirectURI := ssoCallbackURL(a.PublicBaseURL, providerID)
-	claims, err := p.Exchange(ctx, code, redirectURI)
+	var claims identity.FederatedClaims
+	if exchanger, ok := p.(identity.AssertionExchanger); ok {
+		ids := make([]string, 0, 2)
+		if st.RequestID != "" {
+			ids = append(ids, st.RequestID)
+		}
+		ids = append(ids, "")
+		claims, err = exchanger.ExchangeAssertion(ctx, code, redirectURI, ids)
+	} else {
+		claims, err = p.Exchange(ctx, code, redirectURI)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -163,6 +183,22 @@ func (a *AuthService) CompleteSSO(ctx context.Context, providerID, code, state s
 		return nil, err
 	}
 	return &CompleteSSOResult{Token: tok, ReturnTo: st.ReturnTo}, nil
+}
+
+// SSOMetadataXML returns SP metadata for a SAML provider, or ErrUnknownProvider / not supported.
+func (a *AuthService) SSOMetadataXML(providerID string) ([]byte, error) {
+	if a == nil || !a.SSOEnabled {
+		return nil, identity.ErrSSODisabled
+	}
+	p, ok := a.Providers[providerID]
+	if !ok {
+		return nil, identity.ErrUnknownProvider
+	}
+	meta, ok := p.(identity.ServiceProviderMeta)
+	if !ok {
+		return nil, kernel.ErrInvalidRequest
+	}
+	return meta.MetadataXML()
 }
 
 // AppSSOCallbackURL builds the web UI URL that receives the session token.

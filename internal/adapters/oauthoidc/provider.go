@@ -19,7 +19,7 @@ import (
 // Config describes a platform-wide OAuth2 or OIDC IdP.
 type Config struct {
 	ID                   string
-	Type                 string // oidc | oauth2 (saml reserved for a future adapter)
+	Type                 string // oidc | oauth2 (saml uses adapters/saml)
 	DisplayName          string
 	Issuer               string
 	ClientID             string
@@ -54,7 +54,7 @@ func New(cfg Config) (*Provider, error) {
 		}
 	}
 	if cfg.Type == "saml" {
-		return nil, fmt.Errorf("sso provider %q: saml is not implemented yet; use oidc or oauth2", cfg.ID)
+		return nil, fmt.Errorf("sso provider %q: saml belongs in the saml adapter; use type oidc or oauth2 here", cfg.ID)
 	}
 	if cfg.Type != "oidc" && cfg.Type != "oauth2" {
 		return nil, fmt.Errorf("sso provider %q: unsupported type %q", cfg.ID, cfg.Type)

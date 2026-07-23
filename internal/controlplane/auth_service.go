@@ -10,6 +10,7 @@ import (
 	"github.com/curefatih/afi/internal/adapters/memory"
 	"github.com/curefatih/afi/internal/adapters/oauthoidc"
 	afiredis "github.com/curefatih/afi/internal/adapters/redis"
+	afisaml "github.com/curefatih/afi/internal/adapters/saml"
 	"github.com/curefatih/afi/internal/app/platform"
 	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/kernel"
@@ -64,27 +65,59 @@ func NewAuthService(cfg *kernel.Config, users identity.UserRepository, identitie
 	if !cfg.Auth.SSO.Enabled {
 		return svc
 	}
+	log := slog.Default()
 	for _, p := range cfg.Auth.SSO.Providers {
 		requireVerified := true
 		if p.RequireEmailVerified != nil {
 			requireVerified = *p.RequireEmailVerified
 		}
-		prov, err := oauthoidc.New(oauthoidc.Config{
-			ID:                   p.ID,
-			Type:                 p.Type,
-			DisplayName:          p.DisplayName,
-			Issuer:               p.Issuer,
-			ClientID:             p.ClientID,
-			ClientSecret:         p.ClientSecret,
-			Scopes:               p.Scopes,
-			AuthURL:              p.AuthURL,
-			TokenURL:             p.TokenURL,
-			UserInfoURL:          p.UserInfoURL,
-			RequireEmailVerified: requireVerified,
-		})
+		typ := strings.ToLower(strings.TrimSpace(p.Type))
+		var (
+			prov identity.FederationProvider
+			err  error
+		)
+		switch typ {
+		case "saml":
+			metaURL := strings.TrimRight(cfg.Auth.PublicBaseURL, "/") + "/api/v1/platform/auth/sso/" + p.ID + "/metadata"
+			acsURL := strings.TrimRight(cfg.Auth.PublicBaseURL, "/") + "/api/v1/platform/auth/sso/" + p.ID + "/callback"
+			var sp *afisaml.Provider
+			sp, err = afisaml.New(afisaml.Config{
+				ID:                   p.ID,
+				DisplayName:          p.DisplayName,
+				EntityID:             p.EntityID,
+				MetadataURL:          metaURL,
+				ACSURL:               acsURL,
+				IDPMetadataURL:       p.IDPMetadataURL,
+				IDPMetadataXML:       p.IDPMetadataXML,
+				SPCertPEM:            p.SPCertPEM,
+				SPKeyPEM:             p.SPKeyPEM,
+				RequireEmailVerified: requireVerified,
+				AllowIDPInitiated:    true,
+			})
+			if err == nil {
+				prov = sp
+				if sp.EphemeralKey() && log != nil {
+					log.Warn("sso saml sp key is ephemeral; set sp_cert_pem/sp_key_pem for stable metadata", "id", p.ID)
+				}
+			}
+		default:
+			prov, err = oauthoidc.New(oauthoidc.Config{
+				ID:                   p.ID,
+				Type:                 p.Type,
+				DisplayName:          p.DisplayName,
+				Issuer:               p.Issuer,
+				ClientID:             p.ClientID,
+				ClientSecret:         p.ClientSecret,
+				Scopes:               p.Scopes,
+				AuthURL:              p.AuthURL,
+				TokenURL:             p.TokenURL,
+				UserInfoURL:          p.UserInfoURL,
+				RequireEmailVerified: requireVerified,
+			})
+		}
 		if err != nil {
-			if log := slog.Default(); log != nil {
-				log.Error("sso provider skipped", "id", p.ID, "err", err)
+			if log != nil {
+				log.Error("sso provider skipped", "id", p.ID, "type", typ, "err", err)
 			}
 			continue
 		}
