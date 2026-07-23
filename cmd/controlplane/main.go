@@ -14,6 +14,7 @@ import (
 	"github.com/curefatih/afi/internal/controlplane"
 	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/telemetry"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -29,6 +30,19 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+
+	tel, err := telemetry.Init(ctx, cfg, "afi-controlplane")
+	if err != nil {
+		log.Error("telemetry", "err", err)
+		os.Exit(1)
+	}
+	defer func() {
+		shutdownCtx, c := context.WithTimeout(context.Background(), 5*time.Second)
+		defer c()
+		if err := tel.Shutdown(shutdownCtx); err != nil {
+			log.Error("telemetry shutdown", "err", err)
+		}
+	}()
 
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -82,9 +96,22 @@ func main() {
 	}
 
 	srv := controlplane.NewServer(cfg, store, seeder, snapStore, log, eventOutbox, ssoStates)
+	if cfg.Telemetry.Enabled {
+		cm, err := telemetry.NewControlPlaneMetrics()
+		if err != nil {
+			log.Error("controlplane metrics", "err", err)
+			os.Exit(1)
+		}
+		srv.Metrics = cm
+	}
+
+	root := http.NewServeMux()
+	root.Handle("/", telemetry.HTTPHandler(srv.Handler(), "afi-controlplane"))
+	telemetry.MountMetrics(root, tel.MetricsHandler)
+
 	httpServer := &http.Server{
 		Addr:              cfg.ControlPlane.Addr,
-		Handler:           srv.Handler(),
+		Handler:           root,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

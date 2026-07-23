@@ -11,6 +11,7 @@ import (
 	"github.com/curefatih/afi/internal/adapters/postgres"
 	"github.com/curefatih/afi/internal/controlplane"
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/telemetry"
 	"github.com/curefatih/afi/internal/workers"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -26,6 +27,28 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+
+	tel, err := telemetry.Init(ctx, cfg, "afi-worker")
+	if err != nil {
+		log.Error("telemetry", "err", err)
+		os.Exit(1)
+	}
+	defer func() {
+		shutdownCtx, c := context.WithTimeout(context.Background(), 5*time.Second)
+		defer c()
+		if err := tel.Shutdown(shutdownCtx); err != nil {
+			log.Error("telemetry shutdown", "err", err)
+		}
+	}()
+
+	var workerMetrics *telemetry.WorkerMetrics
+	if cfg.Telemetry.Enabled {
+		workerMetrics, err = telemetry.NewWorkerMetrics()
+		if err != nil {
+			log.Error("worker metrics", "err", err)
+			os.Exit(1)
+		}
+	}
 
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -58,7 +81,7 @@ func main() {
 		log.Info("platform event drain enabled", "publisher", cfg.Events.Publisher)
 	}
 
-	log.Info("worker started", "poll", "2s")
+	log.Info("worker started", "poll", "2s", "telemetry", cfg.Telemetry.Enabled)
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
@@ -68,7 +91,7 @@ func main() {
 			log.Info("stopped")
 			return
 		case <-ticker.C:
-			n, err := workers.ProcessOnce(ctx, usageSrc, usageSink, prices)
+			n, err := workers.ProcessOnce(ctx, usageSrc, usageSink, prices, workerMetrics)
 			if err != nil {
 				log.Error("process usage", "err", err)
 			} else if n > 0 {
@@ -76,7 +99,7 @@ func main() {
 			}
 
 			if eventPub != nil {
-				en, err := workers.ProcessPlatformEventsOnce(ctx, eventSrc, eventPub)
+				en, err := workers.ProcessPlatformEventsOnce(ctx, eventSrc, eventPub, workerMetrics)
 				if err != nil {
 					log.Error("process platform events", "err", err)
 				} else if en > 0 {
