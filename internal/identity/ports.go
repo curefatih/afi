@@ -30,18 +30,18 @@ type PasswordHasher interface {
 }
 
 // FederationProvider is a protocol-agnostic SSO IdP adapter.
-// OAuth2/OIDC implement this now; SAML 2.0 can implement the same port later
-// (ACS would call Exchange with an assertion payload mapped at the HTTP edge).
+// OAuth2/OIDC and SAML 2.0 implement this port. SAML ACS maps the assertion
+// payload at the HTTP edge into Exchange / AssertionExchanger.
 type FederationProvider interface {
 	// Name returns the configured provider id (e.g. "google").
 	Name() string
 	// DisplayName is a human-readable label for the login UI.
 	DisplayName() string
-	// Type is the protocol kind: "oidc", "oauth2", or later "saml".
+	// Type is the protocol kind: "oidc", "oauth2", or "saml".
 	Type() string
 	// AuthURL builds the IdP authorization redirect URL for the given CSRF state.
 	AuthURL(state, redirectURI string) (string, error)
-	// Exchange trades an authorization code for FederatedClaims.
+	// Exchange trades an authorization code (or mapped SAMLResponse) for FederatedClaims.
 	Exchange(ctx context.Context, code, redirectURI string) (FederatedClaims, error)
 }
 
@@ -49,6 +49,7 @@ type FederationProvider interface {
 type SSOState struct {
 	Provider  string
 	ReturnTo  string
+	RequestID string // SAML AuthnRequest ID (empty for OAuth/OIDC)
 	ExpiresAt time.Time
 }
 
@@ -58,4 +59,21 @@ type SSOStateStore interface {
 	Put(ctx context.Context, state string, value SSOState) error
 	// Take atomically loads and deletes state. Returns kernel.ErrNotFound when missing/expired.
 	Take(ctx context.Context, state string) (SSOState, error)
+}
+
+// AuthStarter is an optional FederationProvider extension used by SAML to return
+// the AuthnRequest ID for InResponseTo validation on ACS.
+type AuthStarter interface {
+	AuthURLWithID(state, redirectURI string) (authURL, requestID string, err error)
+}
+
+// AssertionExchanger is an optional FederationProvider extension for SAML ACS.
+// possibleRequestIDs should include the AuthnRequest ID from BeginSSO (and "" when IdP-initiated is allowed).
+type AssertionExchanger interface {
+	ExchangeAssertion(ctx context.Context, response, redirectURI string, possibleRequestIDs []string) (FederatedClaims, error)
+}
+
+// ServiceProviderMeta is implemented by SAML adapters that expose SP metadata XML.
+type ServiceProviderMeta interface {
+	MetadataXML() ([]byte, error)
 }
