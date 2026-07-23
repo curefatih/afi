@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
 	ArrowUpIcon,
@@ -7,6 +8,7 @@ import {
 	Settings2Icon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { ApiKey } from "#/api/keys";
 import { PageBody } from "#/components/page-header";
 import { Button } from "#/components/ui/button";
 import {
@@ -66,10 +68,21 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "#/components/ui/tooltip";
-import { GATEWAY_API_KEY, GATEWAY_API_URL } from "#/lib/gateway-base";
+import { ApiError, apiFetch } from "#/lib/api-client";
+import {
+	GATEWAY_API_URL,
+	isSeededPlaygroundProject,
+	PLAYGROUND_SEEDED_KEY,
+	resolvePlaygroundApiKey,
+	storePlaygroundApiKey,
+} from "#/lib/gateway-base";
 import { type GatewayModel, isChatModel } from "#/lib/gateway-models";
 import { pageTitle } from "#/lib/page-meta";
-import { useActiveOrg, useOrgActions } from "#/state/organization-state";
+import {
+	useActiveOrg,
+	useActiveProject,
+	useOrgActions,
+} from "#/state/organization-state";
 
 export const Route = createFileRoute("/_authenticated/app/playground/chat")({
 	...pageTitle("Chat"),
@@ -95,6 +108,8 @@ const DEFAULT_JSON_SCHEMA = `{
   "required": ["answer"],
   "additionalProperties": false
 }`;
+
+const PLAYGROUND_KEY_NAME = "Playground";
 
 async function readSSEContent(
 	res: Response,
@@ -146,12 +161,22 @@ function sliderValue(
 	return value[0] ?? fallback;
 }
 
+function projectKeyErrorMessage(error: unknown): string {
+	if (error instanceof ApiError && error.status === 403) {
+		return "Org admin required to provision a project key for the playground";
+	}
+	if (error instanceof Error && error.message) return error.message;
+	return "Failed to provision playground key";
+}
+
 function SettingsFields({
 	model,
 	models,
 	modelsError,
 	projectId,
 	projects,
+	keyStatus,
+	keyError,
 	systemPrompt,
 	temperature,
 	topP,
@@ -177,6 +202,8 @@ function SettingsFields({
 	modelsError: string | null;
 	projectId: string;
 	projects: Array<{ id: string; name: string }>;
+	keyStatus: "ready" | "provisioning" | "error";
+	keyError: string | null;
 	systemPrompt: string;
 	temperature: number;
 	topP: number;
@@ -197,6 +224,8 @@ function SettingsFields({
 	onJsonSchemaStrictChange: (value: boolean) => void;
 	onJsonSchemaTextChange: (value: string) => void;
 }) {
+	const usingSeededKey = isSeededPlaygroundProject(projectId);
+
 	return (
 		<div className="space-y-4">
 			<div className="space-y-2">
@@ -230,13 +259,17 @@ function SettingsFields({
 				<Label htmlFor="chat-project">Project context</Label>
 				<Select
 					value={projectId}
-					onValueChange={(value) => onProjectChange(value ?? "seeded")}
+					onValueChange={(value) =>
+						onProjectChange(value ?? PLAYGROUND_SEEDED_KEY)
+					}
 				>
 					<SelectTrigger id="chat-project" className="w-full">
 						<SelectValue placeholder="Seeded key" />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value="seeded">Seeded local key</SelectItem>
+						<SelectItem value={PLAYGROUND_SEEDED_KEY}>
+							Seeded local key
+						</SelectItem>
 						{projects.map((project) => (
 							<SelectItem key={project.id} value={project.id}>
 								{project.name}
@@ -244,10 +277,20 @@ function SettingsFields({
 						))}
 					</SelectContent>
 				</Select>
-				<p className="text-muted-foreground text-xs">
-					Requests currently use the seeded gateway key. Create project keys
-					under API Keys for production-like auth.
-				</p>
+				{keyStatus === "provisioning" ? (
+					<p className="flex items-center gap-1.5 text-muted-foreground text-xs">
+						<Loader2Icon className="size-3 animate-spin" />
+						Provisioning project key…
+					</p>
+				) : keyError ? (
+					<p className="text-destructive text-xs">{keyError}</p>
+				) : (
+					<p className="text-muted-foreground text-xs">
+						{usingSeededKey
+							? "Uses the seeded local-dev key (Local Project)."
+							: "Auto-provisions a project service-account key for this session (org admin). Usage follows that project."}
+					</p>
+				)}
 			</div>
 
 			<Separator />
@@ -410,7 +453,9 @@ function SettingsFields({
 
 function RouteComponent() {
 	const activeOrg = useActiveOrg();
+	const activeProject = useActiveProject();
 	const { setActiveProjectById } = useOrgActions();
+	const queryClient = useQueryClient();
 	const [input, setInput] = useState("");
 	const [models, setModels] = useState<GatewayModel[]>([]);
 	const [model, setModel] = useState("");
@@ -418,7 +463,25 @@ function RouteComponent() {
 	const [isBusy, setIsBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [messages, setMessages] = useState<Message[]>([]);
-	const [projectId, setProjectId] = useState<string>("seeded");
+	const [projectId, setProjectId] = useState<string>(() => {
+		if (activeProject?.id) return activeProject.id;
+		return PLAYGROUND_SEEDED_KEY;
+	});
+	const [apiKey, setApiKey] = useState(() =>
+		resolvePlaygroundApiKey(
+			activeProject?.id ? activeProject.id : PLAYGROUND_SEEDED_KEY,
+		),
+	);
+	const [keyStatus, setKeyStatus] = useState<
+		"ready" | "provisioning" | "error"
+	>(() =>
+		resolvePlaygroundApiKey(
+			activeProject?.id ? activeProject.id : PLAYGROUND_SEEDED_KEY,
+		)
+			? "ready"
+			: "provisioning",
+	);
+	const [keyError, setKeyError] = useState<string | null>(null);
 	const [systemPrompt, setSystemPrompt] = useState("");
 	const [temperature, setTemperature] = useState(1);
 	const [topP, setTopP] = useState(1);
@@ -429,8 +492,11 @@ function RouteComponent() {
 	const [jsonSchemaText, setJsonSchemaText] = useState(DEFAULT_JSON_SCHEMA);
 	const [jsonSchemaError, setJsonSchemaError] = useState<string | null>(null);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const provisionGen = useRef(0);
 
 	const projects = activeOrg?.projects ?? [];
+	const orgId = activeOrg?.id ?? "";
+	const resolvedApiKey = apiKey.trim();
 
 	const waitingForFirstToken =
 		isBusy &&
@@ -439,11 +505,94 @@ function RouteComponent() {
 		!(messages[messages.length - 1]?.parts[0]?.text ?? "");
 
 	useEffect(() => {
+		const gen = ++provisionGen.current;
 		let cancelled = false;
+
+		const applyKey = (nextKey: string) => {
+			if (cancelled || gen !== provisionGen.current) return;
+			setApiKey(nextKey);
+			setKeyStatus("ready");
+			setKeyError(null);
+		};
+
+		const failKey = (message: string) => {
+			if (cancelled || gen !== provisionGen.current) return;
+			setApiKey("");
+			setKeyStatus("error");
+			setKeyError(message);
+		};
+
+		if (isSeededPlaygroundProject(projectId)) {
+			applyKey(resolvePlaygroundApiKey(projectId));
+			return () => {
+				cancelled = true;
+			};
+		}
+
+		const cached = resolvePlaygroundApiKey(projectId);
+		if (cached) {
+			applyKey(cached);
+			return () => {
+				cancelled = true;
+			};
+		}
+
+		setKeyStatus("provisioning");
+		setKeyError(null);
+		setApiKey("");
+
+		void (async () => {
+			try {
+				const created = await apiFetch<ApiKey>(
+					`/api/v1/platform/projects/${projectId}/keys`,
+					{
+						method: "POST",
+						body: { name: PLAYGROUND_KEY_NAME },
+					},
+				);
+				const secret = created.key?.trim();
+				if (!secret) {
+					failKey("Playground key created but secret was not returned");
+					return;
+				}
+				storePlaygroundApiKey(projectId, secret);
+				if (orgId) {
+					void queryClient.invalidateQueries({
+						queryKey: ["organizations", orgId, "keys"],
+					});
+				}
+				void queryClient.invalidateQueries({
+					queryKey: ["projects", projectId, "keys"],
+				});
+				applyKey(secret);
+			} catch (e: unknown) {
+				failKey(projectKeyErrorMessage(e));
+			}
+		})();
+
+		return () => {
+			cancelled = true;
+		};
+	}, [projectId, queryClient, orgId]);
+
+	useEffect(() => {
+		let cancelled = false;
+		if (keyStatus === "provisioning") {
+			setModels([]);
+			setModel("");
+			setModelsError(null);
+			return;
+		}
+		if (!resolvedApiKey) {
+			setModels([]);
+			setModel("");
+			setModelsError(keyError ?? "Project key unavailable");
+			return;
+		}
 		(async () => {
 			try {
 				const res = await fetch(`${GATEWAY_API_URL}/v1/models`, {
-					headers: { Authorization: `Bearer ${GATEWAY_API_KEY}` },
+					headers: { Authorization: `Bearer ${resolvedApiKey}` },
 				});
 				if (!res.ok) {
 					throw new Error(`models HTTP ${res.status}`);
@@ -474,7 +623,7 @@ function RouteComponent() {
 		return () => {
 			cancelled = true;
 		};
-	}, []);
+	}, [resolvedApiKey, keyStatus, keyError]);
 
 	useEffect(() => {
 		if (responseFormat !== "json_schema") {
@@ -503,6 +652,11 @@ function RouteComponent() {
 	const send = async () => {
 		const text = input.trim();
 		if (!text || isBusy || !model) return;
+
+		if (!resolvedApiKey || keyStatus !== "ready") {
+			setError(keyError ?? "Project key unavailable");
+			return;
+		}
 
 		if (responseFormat === "json_schema") {
 			if (jsonSchemaError) {
@@ -596,7 +750,7 @@ function RouteComponent() {
 			const res = await fetch(`${GATEWAY_API_URL}/v1/chat/completions`, {
 				method: "POST",
 				headers: {
-					Authorization: `Bearer ${GATEWAY_API_KEY}`,
+					Authorization: `Bearer ${resolvedApiKey}`,
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify(body),
@@ -631,7 +785,7 @@ function RouteComponent() {
 
 	const onProjectChange = (next: string) => {
 		setProjectId(next);
-		setActiveProjectById(next === "seeded" ? undefined : next);
+		setActiveProjectById(next === PLAYGROUND_SEEDED_KEY ? undefined : next);
 	};
 
 	const settingsProps = {
@@ -640,6 +794,8 @@ function RouteComponent() {
 		modelsError,
 		projectId,
 		projects,
+		keyStatus,
+		keyError,
 		systemPrompt,
 		temperature,
 		topP,
@@ -667,6 +823,9 @@ function RouteComponent() {
 			: responseFormat === "json_object"
 				? "json"
 				: "schema";
+
+	const composerDisabled =
+		isBusy || !model || keyStatus !== "ready" || !resolvedApiKey;
 
 	return (
 		<PageBody className="min-h-0 flex-1 gap-3 overflow-hidden">
@@ -811,7 +970,7 @@ function RouteComponent() {
 										value={input}
 										onChange={(e) => setInput(e.target.value)}
 										placeholder="Message the gateway…"
-										disabled={isBusy || !model}
+										disabled={composerDisabled}
 										rows={1}
 										className="max-h-40 min-h-10 field-sizing-content"
 										onKeyDown={(e) => {
@@ -827,15 +986,14 @@ function RouteComponent() {
 											variant="default"
 											size="icon-sm"
 											disabled={
-												isBusy ||
+												composerDisabled ||
 												!input.trim() ||
-												!model ||
 												(responseFormat === "json_schema" &&
 													Boolean(jsonSchemaError))
 											}
 											aria-label="Send"
 										>
-											{isBusy ? (
+											{isBusy || keyStatus === "provisioning" ? (
 												<Loader2Icon className="animate-spin" />
 											) : (
 												<ArrowUpIcon />

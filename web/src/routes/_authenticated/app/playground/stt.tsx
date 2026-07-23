@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Loader2Icon, MicIcon, SquareIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PageBody, PageHeader } from "#/components/page-header";
+import { BowlAudioPlayer } from "#/components/playground/bowl-audio-player";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
@@ -71,6 +72,7 @@ function RouteComponent() {
 	const startedAtRef = useRef<number>(0);
 	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const audioRef = useRef<HTMLAudioElement>(null);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -144,6 +146,7 @@ function RouteComponent() {
 	};
 
 	const setAudioFile = (next: File | null) => {
+		audioRef.current?.pause();
 		setFile(next);
 		setPreviewUrl(next ? URL.createObjectURL(next) : null);
 		if (!next && fileInputRef.current) {
@@ -153,6 +156,7 @@ function RouteComponent() {
 
 	const startRecording = async () => {
 		if (!micSupported || recording || busy) return;
+		audioRef.current?.pause();
 		setError(null);
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -299,9 +303,7 @@ function RouteComponent() {
 									accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg,.flac"
 									className="cursor-pointer"
 									disabled={recording || busy}
-									onChange={(e) =>
-										setAudioFile(e.target.files?.[0] ?? null)
-									}
+									onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
 								/>
 								<p className="text-muted-foreground text-sm">
 									mp3, wav, m4a, webm, and other OpenAI-supported formats.
@@ -349,19 +351,25 @@ function RouteComponent() {
 							</TabsContent>
 						</Tabs>
 						{file ? (
-							<div className="max-w-md space-y-2">
+							<div className="max-w-md space-y-3">
 								<p className="text-muted-foreground text-sm">
 									{file.name} · {(file.size / 1024).toFixed(1)} KB
 								</p>
+								<audio
+									ref={audioRef}
+									src={previewUrl ?? undefined}
+									className="sr-only"
+									preload="metadata"
+									playsInline
+								>
+									<track kind="captions" />
+								</audio>
 								{previewUrl ? (
-									<audio
-										controls
+									<BowlAudioPlayer
+										audioRef={audioRef}
 										src={previewUrl}
-										className="h-10 w-full"
-										preload="metadata"
-									>
-										<track kind="captions" />
-									</audio>
+										busy={busy || recording}
+									/>
 								) : null}
 								{!recording ? (
 									<Button
