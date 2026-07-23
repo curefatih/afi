@@ -163,6 +163,32 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 		return src, err
 	}
 
+	mcpRows, err := l.Pool.Query(ctx, `
+		SELECT id, organization_id, alias, name, base_url, api_key_env, method_allowlist, enabled
+		FROM mcp_backends
+	`)
+	if err != nil {
+		return src, err
+	}
+	defer mcpRows.Close()
+	for mcpRows.Next() {
+		var b snapshot.MCPBackend
+		var allowJSON []byte
+		if err := mcpRows.Scan(
+			&b.ID, &b.OrganizationID, &b.Alias, &b.Name, &b.BaseURL, &b.APIKeyEnv,
+			&allowJSON, &b.Enabled,
+		); err != nil {
+			return src, err
+		}
+		if len(allowJSON) > 0 {
+			_ = json.Unmarshal(allowJSON, &b.MethodAllowlist)
+		}
+		src.MCPBackends = append(src.MCPBackends, b)
+	}
+	if err := mcpRows.Err(); err != nil {
+		return src, err
+	}
+
 	credRows, err := l.Pool.Query(ctx, `
 		SELECT id, organization_id, name, provider_type, storage_kind, secret_ref, encrypted_payload, key_version, status
 		FROM provider_credentials
