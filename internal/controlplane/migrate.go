@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 16
+const schemaVersion = 17
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS platform_event_outbox CASCADE;
@@ -18,6 +18,7 @@ DROP TABLE IF EXISTS usage_outbox CASCADE;
 DROP TABLE IF EXISTS quota_counters CASCADE;
 DROP TABLE IF EXISTS quotas CASCADE;
 DROP TABLE IF EXISTS request_policies CASCADE;
+DROP TABLE IF EXISTS mcp_backends CASCADE;
 DROP TABLE IF EXISTS wasm_hooks CASCADE;
 DROP TABLE IF EXISTS model_prices CASCADE;
 DROP TABLE IF EXISTS usage_events CASCADE;
@@ -285,6 +286,20 @@ CREATE TABLE IF NOT EXISTS wasm_hooks (
 );
 CREATE INDEX IF NOT EXISTS wasm_hooks_org_phase_idx
     ON wasm_hooks (organization_id, phase, priority DESC);
+
+CREATE TABLE IF NOT EXISTS mcp_backends (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    alias TEXT NOT NULL,
+    name TEXT NOT NULL,
+    base_url TEXT NOT NULL,
+    api_key_env TEXT NOT NULL DEFAULT '',
+    method_allowlist JSONB NOT NULL DEFAULT '[]'::jsonb,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (organization_id, alias)
+);
+CREATE INDEX IF NOT EXISTS mcp_backends_org_idx ON mcp_backends (organization_id);
 `
 
 // Migrate applies the schema. Legacy UUID installs are wiped once.
@@ -729,6 +744,24 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		ALTER TABLE organizations ADD COLUMN IF NOT EXISTS default_retry JSONB;
 	`); err != nil {
 		return fmt.Errorf("cycle27 org default retry: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS mcp_backends (
+			id TEXT PRIMARY KEY,
+			organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+			alias TEXT NOT NULL,
+			name TEXT NOT NULL,
+			base_url TEXT NOT NULL,
+			api_key_env TEXT NOT NULL DEFAULT '',
+			method_allowlist JSONB NOT NULL DEFAULT '[]'::jsonb,
+			enabled BOOLEAN NOT NULL DEFAULT TRUE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			UNIQUE (organization_id, alias)
+		);
+		CREATE INDEX IF NOT EXISTS mcp_backends_org_idx ON mcp_backends (organization_id);
+	`); err != nil {
+		return fmt.Errorf("cycle28 mcp backends: %w", err)
 	}
 	return nil
 }

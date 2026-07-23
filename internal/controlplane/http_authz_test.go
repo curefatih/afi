@@ -148,6 +148,13 @@ func (f *fakeMembers) GetWasmHookOrgID(_ context.Context, hookID string) (string
 	return "", kernel.ErrNotFound
 }
 
+func (f *fakeMembers) GetMCPBackendOrgID(_ context.Context, backendID string) (string, error) {
+	if backendID == "mcp_ok" {
+		return "org_a", nil
+	}
+	return "", kernel.ErrNotFound
+}
+
 func (f *fakeMembers) GetCredentialOrgID(_ context.Context, credentialID string) (string, error) {
 	if credentialID == "cred_ok" {
 		return "org_a", nil
@@ -317,6 +324,16 @@ func (f *fakePlatform) UpdateWasmHook(context.Context, string, *string, *string,
 	return nil, errors.New("unused")
 }
 func (f *fakePlatform) DeleteWasmHook(context.Context, string) error { return nil }
+func (f *fakePlatform) ListMCPBackends(context.Context, string) ([]MCPBackend, error) {
+	return nil, nil
+}
+func (f *fakePlatform) CreateMCPBackend(context.Context, string, string, string, string, string, []byte, bool) (*MCPBackend, error) {
+	return nil, kernel.ErrInvalidRequest
+}
+func (f *fakePlatform) UpdateMCPBackend(context.Context, string, *string, *string, *string, *string, []byte, *bool) (*MCPBackend, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *fakePlatform) DeleteMCPBackend(context.Context, string) error { return nil }
 func (f *fakePlatform) ListCredentials(context.Context, string) ([]Credential, error) {
 	return nil, nil
 }

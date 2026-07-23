@@ -24,6 +24,7 @@ type membershipChecker interface {
 	GetQuotaOrgID(ctx context.Context, quotaID string) (string, error)
 	GetPolicyOrgID(ctx context.Context, policyID string) (string, error)
 	GetWasmHookOrgID(ctx context.Context, hookID string) (string, error)
+	GetMCPBackendOrgID(ctx context.Context, backendID string) (string, error)
 	GetAPIKeyOrgID(ctx context.Context, keyID string) (string, error)
 	GetCredentialOrgID(ctx context.Context, credentialID string) (string, error)
 	GetCredentialAssignmentOrgID(ctx context.Context, assignmentID string) (string, error)
