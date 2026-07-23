@@ -13,6 +13,7 @@ type Record struct {
 	CredentialName   string            `json:"credential_name,omitempty"`
 	UsedBYOK         bool              `json:"used_byok"`
 	Model            string            `json:"model"`
+	ProviderType     string            `json:"provider_type,omitempty"`
 	Status           string            `json:"status"`
 	LatencyMs        int64             `json:"latency_ms"`
 	PromptTokens     int64             `json:"prompt_tokens"`

@@ -211,6 +211,7 @@ CREATE TABLE IF NOT EXISTS usage_events (
     credential_id TEXT,
     used_byok BOOLEAN NOT NULL DEFAULT FALSE,
     model TEXT NOT NULL,
+    provider_type TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL,
     latency_ms BIGINT NOT NULL DEFAULT 0,
     prompt_tokens BIGINT NOT NULL DEFAULT 0,
@@ -799,6 +800,12 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		CREATE INDEX IF NOT EXISTS a2a_agents_org_idx ON a2a_agents (organization_id);
 	`); err != nil {
 		return fmt.Errorf("cycle29 a2a agents: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS provider_type TEXT NOT NULL DEFAULT '';
+	`); err != nil {
+		return fmt.Errorf("cycle30 usage provider_type: %w", err)
 	}
 	return nil
 }
