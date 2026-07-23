@@ -1,0 +1,59 @@
+# AFI
+
+> AFI is a self-hostable, cloud-native LLM gateway: a control plane owns configuration and compiles immutable snapshots; a data plane (gateway) runs inference and protocol proxies from those snapshots without querying the config database on the request path.
+
+AFI is inspired by Kubernetes (control/data plane), Envoy (request pipeline), and HashiCorp (plugin runtime).
+
+Important notes for assistants:
+
+- Control plane uses pragmatic domain packages. Data plane is a **stateless request pipeline**.
+- Config reaches the gateway only via versioned snapshots (watch / hot reload). Do not assume config-DB reads on the request path.
+- LLM providers and protocol gateways (MCP / A2A) share auth, snapshot, policy, quota, and usage — they do **not** share the LLM `Provider` registry.
+- AFI is a **protocol gateway/proxy** for MCP and A2A: clients talk to AFI; AFI governs and forwards to upstream MCP servers and A2A agents. AFI is not an MCP server or an A2A agent.
+- External end-user metadata uses the `X-AFI-Tags` header (parsed into `CallContext`, available to BeforeCall hooks, persisted with usage).
+
+## Docs
+
+- [Documentation home](https://afi.fatihcure.com/): Product overview and what works locally
+- [Local development](https://afi.fatihcure.com/getting-started/local-dev/): Golden path to run the stack
+- [Architecture](https://afi.fatihcure.com/development/architecture/): Control/data plane, pipeline, snapshots, extensions
+- [Repository layout](https://afi.fatihcure.com/development/repository-layout/): `cmd/`, `internal/`, `sdk/`, `extensions/`, `web/` ownership
+- [Providers](https://afi.fatihcure.com/development/providers/): ChatProvider and modality adapters
+- [Config reference](https://afi.fatihcure.com/development/config-reference/): Env and config knobs
+- [WASM hooks](https://afi.fatihcure.com/hooks/wasm/): Data-plane wazero host; control plane stores manifests only
+- [MCP and A2A](https://afi.fatihcure.com/getting-started/web-ui/mcp-a2a/): Protocol upstreams in the platform console
+- [Deployment](https://afi.fatihcure.com/deployment/): Self-hosting overview
+
+## Guiding principles
+
+1. The control plane owns business rules.
+2. The data plane only executes requests.
+3. Configuration is immutable at runtime (snapshots).
+4. Every request should complete without configuration database access.
+5. Extensions integrate through stable capability contracts (gRPC + WASM).
+6. Business domains stay independent and explicitly bounded.
+7. New providers and integrations should not require editing the pipeline core.
+8. Performance and operational simplicity beat architectural purity.
+9. New protocols (MCP, A2A) integrate as gateway surfaces without breaking the chat pipeline core.
+
+## Core processes
+
+| Process | Typical port | Role |
+|---------|--------------|------|
+| `controlplane` | `:8081` | Admin, platform API, migrate/seed, snapshot publish |
+| `gateway` | `:8080` | OpenAI-compatible inference + MCP/A2A proxy + quotas |
+| `worker` | — | Drains usage / platform-event outboxes |
+| Platform UI (`web/`) | `:3000` | Console for providers, routing, keys, quotas, playground |
+
+## Optional
+
+- [Verify](https://afi.fatihcure.com/getting-started/verify/): Smoke checks against a running local stack
+- [Web UI](https://afi.fatihcure.com/getting-started/web-ui/): Platform console overview
+- [Policies](https://afi.fatihcure.com/getting-started/web-ui/policies/): CEL request policies in the UI
+- [SSO](https://afi.fatihcure.com/getting-started/sso/): Platform single sign-on
+- [Platform events](https://afi.fatihcure.com/development/platform-events/): Outbox → broker event flow
+- [Testing](https://afi.fatihcure.com/development/testing/): Test expectations
+- [Usage hooks](https://afi.fatihcure.com/hooks/usage/): Usage / lifecycle hooks
+- [Docker Compose](https://afi.fatihcure.com/deployment/docker/): Compose-based deploy
+- [Binaries](https://afi.fatihcure.com/deployment/binary/): Binary deploy
+- [Customization](https://afi.fatihcure.com/deployment/customization/): Deploy customization
