@@ -44,10 +44,10 @@ func (q *UsageQueries) InsertRecord(ctx context.Context, e usage.Record) error {
 	}
 	_, err = q.Pool.Exec(ctx, `
 		INSERT INTO usage_events (
-			organization_id, project_id, api_key_id, credential_id, used_byok, model, status,
+			organization_id, project_id, api_key_id, credential_id, used_byok, model, provider_type, status,
 			latency_ms, prompt_tokens, completion_tokens, cost_usd, modality, metrics, tags
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-	`, e.OrganizationID, e.ProjectID, e.APIKeyID, nullIfEmpty(e.CredentialID), e.UsedBYOK, e.Model, e.Status,
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+	`, e.OrganizationID, e.ProjectID, e.APIKeyID, nullIfEmpty(e.CredentialID), e.UsedBYOK, e.Model, e.ProviderType, e.Status,
 		e.LatencyMs, e.PromptTokens, e.CompletionTokens, e.CostUSD, modality, metricsJSON, tagsJSON)
 	return err
 }
@@ -111,7 +111,7 @@ func (q *UsageQueries) List(ctx context.Context, orgID string, f usage.Filter) (
 	rows, err := q.Pool.Query(ctx, fmt.Sprintf(`
 		SELECT e.id, e.organization_id, e.project_id, e.api_key_id,
 			COALESCE(e.credential_id, ''), e.used_byok,
-			e.model, e.status,
+			e.model, COALESCE(e.provider_type, ''), e.status,
 			e.latency_ms, e.prompt_tokens, e.completion_tokens, e.cost_usd, e.created_at,
 			e.modality, e.metrics, e.tags,
 			COALESCE(k.name, ''), COALESCE(k.kind, ''),
@@ -137,7 +137,7 @@ func (q *UsageQueries) List(ctx context.Context, orgID string, f usage.Filter) (
 		if err := rows.Scan(
 			&e.ID, &e.OrganizationID, &e.ProjectID, &e.APIKeyID,
 			&e.CredentialID, &e.UsedBYOK,
-			&e.Model, &e.Status,
+			&e.Model, &e.ProviderType, &e.Status,
 			&e.LatencyMs, &e.PromptTokens, &e.CompletionTokens, &e.CostUSD, &e.CreatedAt,
 			&e.Modality, &metricsJSON, &tagsJSON,
 			&e.KeyName, &e.KeyKind, &e.OwnerUserID, &e.OwnerEmail, &e.OwnerName,

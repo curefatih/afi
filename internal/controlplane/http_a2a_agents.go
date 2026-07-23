@@ -23,14 +23,14 @@ func (s *Server) handleListA2AAgents(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCreateA2AAgent(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Alias      string          `json:"alias"`
-		Name       string          `json:"name"`
-		UpstreamURL string         `json:"upstream_url"`
-		CardURL    string          `json:"card_url"`
-		CardCache  json.RawMessage `json:"card_cache"`
-		APIKeyEnv  string          `json:"api_key_env"`
-		AuthScheme string          `json:"auth_scheme"`
-		Enabled    *bool           `json:"enabled"`
+		Alias       string          `json:"alias"`
+		Name        string          `json:"name"`
+		UpstreamURL string          `json:"upstream_url"`
+		CardURL     string          `json:"card_url"`
+		CardCache   json.RawMessage `json:"card_cache"`
+		APIKeyEnv   string          `json:"api_key_env"`
+		AuthScheme  string          `json:"auth_scheme"`
+		Enabled     *bool           `json:"enabled"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Alias == "" || body.Name == "" || body.UpstreamURL == "" {
 		writeErr(w, http.StatusBadRequest, "alias, name, and upstream_url required")

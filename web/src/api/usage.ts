@@ -11,6 +11,7 @@ export type UsageEvent = {
 	credential_name?: string;
 	used_byok?: boolean;
 	model: string;
+	provider_type?: string;
 	status: string;
 	latency_ms: number;
 	prompt_tokens: number;
