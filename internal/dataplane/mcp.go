@@ -201,7 +201,7 @@ func parseMCPJSONRPCMeta(body []byte) (method, tool string) {
 		return "", ""
 	}
 	var msg struct {
-		Method string `json:"method"`
+		Method string          `json:"method"`
 		Params json.RawMessage `json:"params"`
 	}
 	if err := json.Unmarshal(body, &msg); err != nil {

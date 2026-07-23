@@ -45,10 +45,10 @@ type Snapshot struct {
 	Quotas         []Quota                 `json:"quotas"`
 	Policies       []Policy                `json:"policies"`
 	WasmHooks      []WasmHook              `json:"wasm_hooks"`
-	MCPBackends    map[string]MCPBackend   `json:"mcp_backends,omitempty"` // keyed by backend id
-	MCPRoutes      map[string]string       `json:"mcp_routes,omitempty"`   // orgID::alias → backend id
-	A2AAgents      map[string]A2AAgent     `json:"a2a_agents,omitempty"`   // keyed by agent id
-	A2ARoutes      map[string]string       `json:"a2a_routes,omitempty"`   // orgID::alias → agent id
+	MCPBackends    map[string]MCPBackend   `json:"mcp_backends,omitempty"`    // keyed by backend id
+	MCPRoutes      map[string]string       `json:"mcp_routes,omitempty"`      // orgID::alias → backend id
+	A2AAgents      map[string]A2AAgent     `json:"a2a_agents,omitempty"`      // keyed by agent id
+	A2ARoutes      map[string]string       `json:"a2a_routes,omitempty"`      // orgID::alias → agent id
 	DefaultRetries map[string]*RetryConfig `json:"default_retries,omitempty"` // orgID → default retry
 }
 

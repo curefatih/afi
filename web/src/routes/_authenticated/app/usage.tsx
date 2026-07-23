@@ -848,10 +848,7 @@ function RouteComponent() {
 												</TableCell>
 												<TableCell>
 													{e.provider_type ? (
-														<Badge
-															variant="outline"
-															className="font-normal"
-														>
+														<Badge variant="outline" className="font-normal">
 															{e.provider_type}
 														</Badge>
 													) : (
