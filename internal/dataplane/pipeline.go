@@ -18,6 +18,7 @@ import (
 	"github.com/curefatih/afi/internal/modelcatalog"
 	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
+	"github.com/curefatih/afi/internal/telemetry"
 	"github.com/curefatih/afi/internal/usage"
 )
 
@@ -48,6 +49,7 @@ type Pipeline struct {
 	Credentials secrets.CredentialOpener
 	Secrets     secrets.Resolver
 	HTTP        *http.Client
+	Metrics     *telemetry.GatewayMetrics
 }
 
 // NewPipeline builds a pipeline with an explicit provider registry.
@@ -77,7 +79,7 @@ func (p *Pipeline) Handler() http.Handler {
 	mux.HandleFunc("DELETE /mcp/{alias}", p.handleMCP)
 	mux.HandleFunc("POST /a2a/{alias}", p.handleA2AJSONRPC)
 	mux.HandleFunc("GET /a2a/{alias}/.well-known/agent-card.json", p.handleA2AAgentCard)
-	return withCORS(mux)
+	return p.withGatewayMetrics(withCORS(mux))
 }
 
 func withCORS(next http.Handler) http.Handler {
@@ -660,6 +662,12 @@ func (p *Pipeline) recordUsage(e UsageEvent) {
 	e.MarkBYOK()
 	if p.Usage != nil {
 		p.Usage(e)
+	}
+	if p.Metrics != nil {
+		p.Metrics.RecordTokens(context.Background(), e.Modality, e.PromptTokens, e.CompletionTokens)
+		if e.LatencyMs > 0 && e.ProviderType != "" {
+			p.Metrics.RecordUpstream(context.Background(), e.Modality, e.ProviderType, float64(e.LatencyMs)/1000)
+		}
 	}
 	p.Log.Info("usage",
 		"organization_id", e.OrganizationID,
