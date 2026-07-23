@@ -92,7 +92,7 @@ Open http://localhost:3000 and sign in with `admin@afi.local` / `admin`.
 
 Use **Users** to invite members by email. Existing users are added immediately; new emails receive an invite link (`/auth/invite/…`). Local default mail provider is `log` (messages in the controlplane log). To deliver real mail locally, enable SMTP in `configs/local.yaml` and point it at Mailpit/Mailhog (`localhost:1025`).
 
-**API Keys:** create a **personal** key for yourself, or (as org owner/admin) a **service account** key scoped to the org or a project. The seeded `sk-project-local-dev-token-12345` is a project service-account key. Admins set per-user or per-key quotas under **Quotas** (`total` or Redis `minute`/`hour`/`day`) and CEL allow-rules under **Policies**.
+**API Keys:** create a **personal** key for yourself, or (as org owner/admin) a **service account** key scoped to the org or a project. The seeded `sk-project-local-dev-token-12345` is a project service-account key. Admins set per-user or per-key quotas under **Quotas** (`total` or Redis `minute`/`hour`/`day`) and CEL allow-rules under **Policies** (see [Policies](web-ui/policies.md)).
 
 The web app calls the control plane at `http://localhost:8081` (override with `VITE_PLATFORM_API_URL`).
 
