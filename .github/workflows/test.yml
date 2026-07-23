@@ -26,6 +26,7 @@ jobs:
     outputs:
       go: ${{ steps.filter.outputs.go }}
       web: ${{ steps.filter.outputs.web }}
+      openapi: ${{ steps.filter.outputs.openapi }}
     steps:
       - uses: actions/checkout@v4
 
@@ -43,6 +44,7 @@ jobs:
               - 'extensions/**'
               - 'sdk/**'
               - 'api/**'
+              - 'clients/**'
               - 'configs/**'
               - 'scripts/**'
               - 'Dockerfile'
@@ -50,6 +52,12 @@ jobs:
             web:
               - 'web/**'
               - 'Dockerfile.web'
+              - '.github/workflows/test.yml'
+            openapi:
+              - 'api/**'
+              - 'clients/**'
+              - 'scripts/openapi-drift-check.py'
+              - 'Makefile'
               - '.github/workflows/test.yml'
 
   go:
@@ -100,3 +108,37 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+  openapi:
+    name: OpenAPI
+    needs: changes
+    if: needs.changes.outputs.openapi == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: OpenAPI check
+        run: make openapi-check
+
+      - name: TypeScript client tests
+        working-directory: clients/typescript
+        run: |
+          npm install
+          node --experimental-strip-types --test src/client.test.ts
+
+      - name: Python client tests
+        working-directory: clients/python
+        run: |
+          pip install -e ".[dev]"
+          pytest -q
