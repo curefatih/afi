@@ -21,6 +21,15 @@ make dev-up
 | Redis | `localhost:6379` (rate-limit windows) |
 | Adminer | http://localhost:5050 |
 
+Optional local observability (Grafana + OTLP):
+
+```bash
+make obs-up
+set -a && source .env.observability && set +a
+```
+
+Grafana UI: http://localhost:3000 — see [Observability](../deployment/observability.md).
+
 ## 2. Export provider credentials
 
 ```bash

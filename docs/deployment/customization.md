@@ -81,8 +81,22 @@ Also seeded in code (not YAML-configurable): Anthropic, Gemini, Ollama (`openai_
 | `AFI_EVENTS_NATS_SUBJECT_PREFIX` | `events.nats.subject_prefix` | `afi.platform` | Subjects: `{prefix}.{event.name}` |
 | `AFI_EVENTS_KAFKA_BROKERS` | `events.kafka.brokers` | `127.0.0.1:9092` | CSV broker list |
 | `AFI_EVENTS_KAFKA_TOPIC` | `events.kafka.topic` | `afi.platform.events` | Topic name |
+| `AFI_TELEMETRY_ENABLED` | `telemetry.enabled` | `false` | Enable OTel metrics + traces |
+| `AFI_TELEMETRY_SERVICE_NAME` | `telemetry.service_name` | _(binary default)_ | OTel `service.name` override |
+| `AFI_TELEMETRY_ENVIRONMENT` | `telemetry.environment` | _(empty)_ | `deployment.environment` |
+| `AFI_TELEMETRY_OTLP_ENDPOINT` | `telemetry.otlp_endpoint` | _(empty)_ | OTLP host:port or URL |
+| `AFI_TELEMETRY_OTLP_PROTOCOL` | `telemetry.otlp_protocol` | `http` | `http` \| `grpc` |
+| `AFI_TELEMETRY_OTLP_HEADERS` | `telemetry.otlp_headers` | _(empty)_ | `k=v,k=v` vendor auth |
+| `AFI_TELEMETRY_OTLP_INSECURE` | `telemetry.otlp_insecure` | `false` | Disable TLS for local OTLP |
+| `AFI_TELEMETRY_METRICS_PROMETHEUS` | `telemetry.metrics_prometheus` | `false` | Expose `GET /metrics` (gateway/CP) |
+| `AFI_TELEMETRY_TRACES_SAMPLER` | `telemetry.traces_sampler` | `parentbased_always_on` | Or `parentbased_traceidratio` |
+| `AFI_TELEMETRY_TRACES_SAMPLER_ARG` | `telemetry.traces_sampler_arg` | `1.0` | Sampler ratio |
 
 Details: [Platform domain events](../development/platform-events.md).
+
+### OpenTelemetry
+
+See [Observability](observability.md) for OTLP / Prometheus / local Grafana (`make obs-up`).
 
 ---
 

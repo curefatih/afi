@@ -14,6 +14,7 @@ import (
 	"github.com/curefatih/afi/internal/adapters/secrets"
 	"github.com/curefatih/afi/internal/dataplane/openaichat"
 	"github.com/curefatih/afi/internal/snapshot"
+	"github.com/curefatih/afi/internal/telemetry"
 )
 
 const anthropicVersion = "2023-06-01"
@@ -28,7 +29,7 @@ func NewAnthropicClient(sec secrets.Resolver) *AnthropicClient {
 		sec = secrets.Default()
 	}
 	return &AnthropicClient{
-		HTTP:    &http.Client{Timeout: 120 * time.Second},
+		HTTP:    &http.Client{Timeout: 120 * time.Second, Transport: telemetry.WrapTransport(http.DefaultTransport)},
 		Secrets: sec,
 	}
 }

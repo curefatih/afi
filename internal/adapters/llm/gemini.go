@@ -15,6 +15,7 @@ import (
 	"github.com/curefatih/afi/internal/adapters/secrets"
 	"github.com/curefatih/afi/internal/dataplane/openaichat"
 	"github.com/curefatih/afi/internal/snapshot"
+	"github.com/curefatih/afi/internal/telemetry"
 )
 
 type GeminiClient struct {
@@ -27,7 +28,7 @@ func NewGeminiClient(sec secrets.Resolver) *GeminiClient {
 		sec = secrets.Default()
 	}
 	return &GeminiClient{
-		HTTP:    &http.Client{Timeout: 120 * time.Second},
+		HTTP:    &http.Client{Timeout: 120 * time.Second, Transport: telemetry.WrapTransport(http.DefaultTransport)},
 		Secrets: sec,
 	}
 }

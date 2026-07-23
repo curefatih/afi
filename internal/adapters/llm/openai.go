@@ -12,6 +12,7 @@ import (
 
 	"github.com/curefatih/afi/internal/adapters/secrets"
 	"github.com/curefatih/afi/internal/snapshot"
+	"github.com/curefatih/afi/internal/telemetry"
 )
 
 type OpenAIClient struct {
@@ -24,7 +25,7 @@ func NewOpenAIClient(sec secrets.Resolver) *OpenAIClient {
 		sec = secrets.Default()
 	}
 	return &OpenAIClient{
-		HTTP:    &http.Client{Timeout: 120 * time.Second},
+		HTTP:    &http.Client{Timeout: 120 * time.Second, Transport: telemetry.WrapTransport(http.DefaultTransport)},
 		Secrets: sec,
 	}
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
+	"github.com/curefatih/afi/internal/telemetry"
 	"github.com/curefatih/afi/internal/workers"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -35,6 +36,19 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+
+	tel, err := telemetry.Init(ctx, cfg, "afi-gateway")
+	if err != nil {
+		log.Error("telemetry", "err", err)
+		os.Exit(1)
+	}
+	defer func() {
+		shutdownCtx, c := context.WithTimeout(context.Background(), 5*time.Second)
+		defer c()
+		if err := tel.Shutdown(shutdownCtx); err != nil {
+			log.Error("telemetry shutdown", "err", err)
+		}
+	}()
 
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -89,6 +103,15 @@ func main() {
 
 	pipeline := dataplane.NewPipelineWithRegistry(holder, reg, log)
 	pipeline.Hooks = hooks
+	pipeline.HTTP = telemetry.HTTPClient(120 * time.Second)
+	if cfg.Telemetry.Enabled {
+		gm, err := telemetry.NewGatewayMetrics()
+		if err != nil {
+			log.Error("gateway metrics", "err", err)
+			os.Exit(1)
+		}
+		pipeline.Metrics = gm
+	}
 	wasmCache := afiWasm.NewModuleCache(afiWasm.Config{Name: "snap-wasm"})
 	defer func() { _ = wasmCache.Close(context.Background()) }()
 	s3Fetcher, err := afiWasm.NewS3Fetcher(afiWasm.S3Config{
@@ -178,6 +201,9 @@ func main() {
 	go func() {
 		err := snapStore.Watch(ctx, cfg.Gateway.SnapshotPollInterval, func(s *snapshot.Snapshot) {
 			holder.Set(s)
+			if pipeline.Metrics != nil {
+				pipeline.Metrics.SetSnapshotVersion(s.Version)
+			}
 			log.Info("snapshot loaded", "version", s.Version, "keys", len(s.APIKeys), "routes", len(s.Routes), "quotas", len(s.Quotas), "policies", len(s.Policies))
 		})
 		if err != nil && ctx.Err() == nil {
@@ -186,9 +212,13 @@ func main() {
 		}
 	}()
 
+	root := http.NewServeMux()
+	root.Handle("/", telemetry.HTTPHandler(pipeline.Handler(), "afi-gateway"))
+	telemetry.MountMetrics(root, tel.MetricsHandler)
+
 	httpServer := &http.Server{
 		Addr:              cfg.Gateway.Addr,
-		Handler:           pipeline.Handler(),
+		Handler:           root,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

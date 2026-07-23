@@ -6,7 +6,9 @@ import (
 
 	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
+	"github.com/curefatih/afi/internal/telemetry"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 func newCallContext(key snapshot.APIKey, model, path, modality string, stream bool, body []byte, tags map[string]string) *CallContext {
@@ -42,16 +44,25 @@ func newCallContext(key snapshot.APIKey, model, path, modality string, stream bo
 // Quota runs last among BeforeCall gates so a later deny does not consume request quota.
 // ok=false means the response was already written. call.Body may be mutated.
 func (p *Pipeline) gateCall(ctx context.Context, w http.ResponseWriter, snap *snapshot.Snapshot, call *CallContext) bool {
+	ctx, span := startPipelineSpan(ctx, "afi.gateway.gate_call",
+		attribute.String(telemetry.AttrModality, call.Route.Modality),
+		attribute.String(telemetry.AttrOrgID, call.Principal.OrganizationID),
+		attribute.String(telemetry.AttrRouteModel, call.Route.Model),
+	)
+	defer span.End()
+
 	if call.Metadata == nil {
 		call.Metadata = map[string]any{}
 	}
 
 	// Policy → user hooks → quota (quota last: checkAndIncr has side effects).
 	if !p.applyBeforeCall(ctx, w, &policyCallHook{p: p, snap: snap}, call) {
+		span.SetAttributes(attribute.String(telemetry.AttrOutcome, telemetry.OutcomeDeny))
 		return false
 	}
 	d, err := p.Hooks.RunBeforeCall(ctx, call)
 	if err != nil {
+		spanError(span, err)
 		if p.Log != nil {
 			p.Log.Error("before_call hook", "err", err)
 		}
@@ -63,11 +74,13 @@ func (p *Pipeline) gateCall(ctx context.Context, w http.ResponseWriter, snap *sn
 	if !d.Allow {
 		applyResponseHeaders(w, call)
 		writeCallDeny(w, d)
+		span.SetAttributes(attribute.String(telemetry.AttrOutcome, telemetry.OutcomeDeny))
 		return false
 	}
 	if p.Wasm != nil {
 		d, err = p.Wasm.RunBeforeCall(ctx, snap, call)
 		if err != nil {
+			spanError(span, err)
 			if p.Log != nil {
 				p.Log.Error("wasm before_call", "err", err)
 			}
@@ -79,10 +92,15 @@ func (p *Pipeline) gateCall(ctx context.Context, w http.ResponseWriter, snap *sn
 		if !d.Allow {
 			applyResponseHeaders(w, call)
 			writeCallDeny(w, d)
+			span.SetAttributes(attribute.String(telemetry.AttrOutcome, telemetry.OutcomeDeny))
 			return false
 		}
 	}
-	return p.applyBeforeCall(ctx, w, &quotaCallHook{p: p, snap: snap}, call)
+	ok := p.applyBeforeCall(ctx, w, &quotaCallHook{p: p, snap: snap}, call)
+	if !ok {
+		span.SetAttributes(attribute.String(telemetry.AttrOutcome, telemetry.OutcomeQuota))
+	}
+	return ok
 }
 
 func (p *Pipeline) applyBeforeCall(ctx context.Context, w http.ResponseWriter, h BeforeCallHook, call *CallContext) bool {

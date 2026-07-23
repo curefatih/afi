@@ -45,6 +45,11 @@ Full operator table (defaults, required vs optional, which process): [Customizat
 | `AFI_EVENTS_NATS_SUBJECT_PREFIX` | `afi.platform` | subject prefix |
 | `AFI_EVENTS_KAFKA_BROKERS` | `127.0.0.1:9092` | Kafka brokers (CSV) |
 | `AFI_EVENTS_KAFKA_TOPIC` | `afi.platform.events` | Kafka topic |
+| `AFI_TELEMETRY_ENABLED` | `false` | OpenTelemetry metrics + traces |
+| `AFI_TELEMETRY_OTLP_ENDPOINT` | _(empty)_ | OTLP host:port (e.g. `127.0.0.1:4318`) |
+| `AFI_TELEMETRY_OTLP_PROTOCOL` | `http` | `http` \| `grpc` |
+| `AFI_TELEMETRY_OTLP_INSECURE` | `false` | Disable TLS for local OTLP |
+| `AFI_TELEMETRY_METRICS_PROMETHEUS` | `false` | Expose `GET /metrics` on gateway/CP |
 | `AFI_MAIL_PUBLIC_APP_URL` | `http://localhost:3000` | Invite accept links (web origin) |
 | `AFI_MAIL_FROM` | `AFI <noreply@afi.local>` | From header |
 | `AFI_MAIL_DEFAULT_PROVIDER` | `log` | `log` \| `smtp` \| `resend` |
@@ -53,7 +58,7 @@ Full operator table (defaults, required vs optional, which process): [Customizat
 | `AFI_MAIL_RESEND_ENABLED` | `false` | Enable Resend API |
 | `AFI_MAIL_RESEND_API_KEY` | _(empty)_ | Resend API key |
 
-See [Platform domain events](platform-events.md) for the outbox flow.
+See [Platform domain events](platform-events.md) for the outbox flow. See [Observability](../deployment/observability.md) for OTel / Grafana.
 
 ## Internal admin HTTP
 
