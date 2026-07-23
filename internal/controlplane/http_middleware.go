@@ -240,6 +240,40 @@ func (s *Server) requireOrgAdminViaMCPBackend(next http.HandlerFunc) http.Handle
 	}
 }
 
+func (s *Server) requireOrgAdminViaA2AAgent(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := s.members.GetA2AAgentOrgID(r.Context(), r.PathValue("agentID"))
+		if errors.Is(err, kernel.ErrNotFound) {
+			writeErr(w, http.StatusNotFound, "not found")
+			return
+		}
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		claims := claimsFrom(r.Context())
+		ok, err := s.members.IsOrgMember(r.Context(), claims.UserID, orgID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !ok {
+			writeErr(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		ok, err = s.members.IsOrgAdmin(r.Context(), claims.UserID, orgID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !ok {
+			writeErr(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next(w, r)
+	}
+}
+
 func (s *Server) requireOrgAdminViaCredential(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		orgID, err := s.members.GetCredentialOrgID(r.Context(), r.PathValue("credentialID"))

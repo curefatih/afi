@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 17
+const schemaVersion = 18
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS platform_event_outbox CASCADE;
@@ -18,6 +18,7 @@ DROP TABLE IF EXISTS usage_outbox CASCADE;
 DROP TABLE IF EXISTS quota_counters CASCADE;
 DROP TABLE IF EXISTS quotas CASCADE;
 DROP TABLE IF EXISTS request_policies CASCADE;
+DROP TABLE IF EXISTS a2a_agents CASCADE;
 DROP TABLE IF EXISTS mcp_backends CASCADE;
 DROP TABLE IF EXISTS wasm_hooks CASCADE;
 DROP TABLE IF EXISTS model_prices CASCADE;
@@ -300,6 +301,22 @@ CREATE TABLE IF NOT EXISTS mcp_backends (
     UNIQUE (organization_id, alias)
 );
 CREATE INDEX IF NOT EXISTS mcp_backends_org_idx ON mcp_backends (organization_id);
+
+CREATE TABLE IF NOT EXISTS a2a_agents (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    alias TEXT NOT NULL,
+    name TEXT NOT NULL,
+    upstream_url TEXT NOT NULL,
+    card_url TEXT NOT NULL DEFAULT '',
+    card_cache JSONB,
+    api_key_env TEXT NOT NULL DEFAULT '',
+    auth_scheme TEXT NOT NULL DEFAULT '',
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (organization_id, alias)
+);
+CREATE INDEX IF NOT EXISTS a2a_agents_org_idx ON a2a_agents (organization_id);
 `
 
 // Migrate applies the schema. Legacy UUID installs are wiped once.
@@ -762,6 +779,26 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		CREATE INDEX IF NOT EXISTS mcp_backends_org_idx ON mcp_backends (organization_id);
 	`); err != nil {
 		return fmt.Errorf("cycle28 mcp backends: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS a2a_agents (
+			id TEXT PRIMARY KEY,
+			organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+			alias TEXT NOT NULL,
+			name TEXT NOT NULL,
+			upstream_url TEXT NOT NULL,
+			card_url TEXT NOT NULL DEFAULT '',
+			card_cache JSONB,
+			api_key_env TEXT NOT NULL DEFAULT '',
+			auth_scheme TEXT NOT NULL DEFAULT '',
+			enabled BOOLEAN NOT NULL DEFAULT TRUE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			UNIQUE (organization_id, alias)
+		);
+		CREATE INDEX IF NOT EXISTS a2a_agents_org_idx ON a2a_agents (organization_id);
+	`); err != nil {
+		return fmt.Errorf("cycle29 a2a agents: %w", err)
 	}
 	return nil
 }

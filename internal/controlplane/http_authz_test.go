@@ -155,6 +155,13 @@ func (f *fakeMembers) GetMCPBackendOrgID(_ context.Context, backendID string) (s
 	return "", kernel.ErrNotFound
 }
 
+func (f *fakeMembers) GetA2AAgentOrgID(_ context.Context, agentID string) (string, error) {
+	if agentID == "a2a_ok" {
+		return "org_a", nil
+	}
+	return "", kernel.ErrNotFound
+}
+
 func (f *fakeMembers) GetCredentialOrgID(_ context.Context, credentialID string) (string, error) {
 	if credentialID == "cred_ok" {
 		return "org_a", nil
@@ -334,6 +341,16 @@ func (f *fakePlatform) UpdateMCPBackend(context.Context, string, *string, *strin
 	return nil, kernel.ErrNotFound
 }
 func (f *fakePlatform) DeleteMCPBackend(context.Context, string) error { return nil }
+func (f *fakePlatform) ListA2AAgents(context.Context, string) ([]A2AAgent, error) {
+	return nil, nil
+}
+func (f *fakePlatform) CreateA2AAgent(context.Context, string, string, string, string, string, string, string, []byte, bool) (*A2AAgent, error) {
+	return nil, kernel.ErrInvalidRequest
+}
+func (f *fakePlatform) UpdateA2AAgent(context.Context, string, *string, *string, *string, *string, *string, *string, []byte, *bool) (*A2AAgent, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *fakePlatform) DeleteA2AAgent(context.Context, string) error { return nil }
 func (f *fakePlatform) ListCredentials(context.Context, string) ([]Credential, error) {
 	return nil, nil
 }

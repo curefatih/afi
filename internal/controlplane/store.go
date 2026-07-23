@@ -631,3 +631,30 @@ func (s *Store) DeleteMCPBackend(ctx context.Context, id string) error {
 func (s *Store) GetMCPBackendOrgID(ctx context.Context, id string) (string, error) {
 	return s.mcpBackends().OrgID(ctx, id)
 }
+
+// A2AAgent is the platform write-model A2A upstream agent.
+type A2AAgent = gatewayconfig.A2AAgent
+
+func (s *Store) a2aAgents() *postgres.A2AAgents {
+	return postgres.NewA2AAgents(s.pool)
+}
+
+func (s *Store) ListA2AAgents(ctx context.Context, orgID string) ([]A2AAgent, error) {
+	return s.a2aAgents().ListByOrg(ctx, orgID)
+}
+
+func (s *Store) CreateA2AAgent(ctx context.Context, orgID, alias, name, upstreamURL, cardURL, apiKeyEnv, authScheme string, cardCache []byte, enabled bool) (*A2AAgent, error) {
+	return gatewayconfig.CreateA2AAgent(ctx, s.a2aAgents(), newID("a2a"), orgID, alias, name, upstreamURL, cardURL, apiKeyEnv, authScheme, cardCache, enabled)
+}
+
+func (s *Store) UpdateA2AAgent(ctx context.Context, id string, alias, name, upstreamURL, cardURL, apiKeyEnv, authScheme *string, cardCache []byte, enabled *bool) (*A2AAgent, error) {
+	return gatewayconfig.UpdateA2AAgent(ctx, s.a2aAgents(), id, alias, name, upstreamURL, cardURL, apiKeyEnv, authScheme, cardCache, enabled)
+}
+
+func (s *Store) DeleteA2AAgent(ctx context.Context, id string) error {
+	return s.a2aAgents().Delete(ctx, id)
+}
+
+func (s *Store) GetA2AAgentOrgID(ctx context.Context, id string) (string, error) {
+	return s.a2aAgents().OrgID(ctx, id)
+}
