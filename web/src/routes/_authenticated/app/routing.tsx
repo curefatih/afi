@@ -135,8 +135,7 @@ function RouteComponent() {
 	const [editProviderId, setEditProviderId] = useState("");
 	const [editFallbacks, setEditFallbacks] = useState<FallbackRow[]>([]);
 	const [editRetry, setEditRetry] = useState<RetryConfig | null>(null);
-	const [editStrategy, setEditStrategy] =
-		useState<RoutingStrategy>("ordered");
+	const [editStrategy, setEditStrategy] = useState<RoutingStrategy>("ordered");
 	const [editWeight, setEditWeight] = useState(1);
 	const [editError, setEditError] = useState<string | null>(null);
 
@@ -434,8 +433,12 @@ function RouteComponent() {
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="ordered">Ordered (failover list)</SelectItem>
-									<SelectItem value="weighted">Weighted load balance</SelectItem>
+									<SelectItem value="ordered">
+										Ordered (failover list)
+									</SelectItem>
+									<SelectItem value="weighted">
+										Weighted load balance
+									</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
