@@ -173,10 +173,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				) : (
 					<>
 						<NavMain label="Platform" items={platformNav} />
+						<NavMain label="Governance" items={governanceNav} />
 						{activeOrg && activeOrg.projects.length > 0 ? (
 							<NavProjects projects={activeOrg.projects} />
 						) : null}
-						<NavMain label="Governance" items={governanceNav} />
 					</>
 				)}
 			</SidebarContent>
