@@ -151,15 +151,18 @@ type Provider struct {
 type RouteTarget struct {
 	ProviderID  string `json:"provider_id"`
 	TargetModel string `json:"target_model"`
+	Weight      int    `json:"weight,omitempty"`
 }
 
 type Route struct {
-	OrganizationID string        `json:"organization_id"`
-	Model          string        `json:"model"`
-	ProviderID     string        `json:"provider_id"`
-	TargetModel    string        `json:"target_model"`
-	Fallbacks      []RouteTarget `json:"fallbacks,omitempty"`
-	Retry          *RetryConfig  `json:"retry,omitempty"`
+	OrganizationID  string        `json:"organization_id"`
+	Model           string        `json:"model"`
+	ProviderID      string        `json:"provider_id"`
+	TargetModel     string        `json:"target_model"`
+	Fallbacks       []RouteTarget `json:"fallbacks,omitempty"`
+	Retry           *RetryConfig  `json:"retry,omitempty"`
+	RoutingStrategy string        `json:"routing_strategy,omitempty"`
+	Weight          int           `json:"weight,omitempty"`
 }
 
 func routeKey(orgID, model string) string {
