@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/adapters/llm"
+	"github.com/curefatih/afi/internal/dataplane/routing"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
@@ -77,7 +78,7 @@ func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	attempts := buildAnthropicAttempts(snap, route, provider)
+	attempts := p.buildAnthropicAttempts(snap, route, provider)
 	if len(attempts) == 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": map[string]string{
@@ -266,21 +267,34 @@ targetLoop:
 	})
 }
 
-func buildAnthropicAttempts(snap *snapshot.Snapshot, route snapshot.Route, primary snapshot.Provider) []routeAttempt {
-	var out []routeAttempt
+func (p *Pipeline) buildAnthropicAttempts(snap *snapshot.Snapshot, route snapshot.Route, primary snapshot.Provider) []routeAttempt {
+	var cands []routing.Candidate
 	if primary.Type == "anthropic" {
-		out = append(out, routeAttempt{Provider: primary, TargetModel: route.TargetModel})
+		cands = append(cands, routing.Candidate{
+			ProviderID: primary.ID, TargetModel: route.TargetModel, Weight: route.Weight,
+		})
 	}
 	for _, fb := range route.Fallbacks {
-		p, ok := snap.Providers[fb.ProviderID]
-		if !ok || p.Type != "anthropic" {
+		prov, ok := snap.Providers[fb.ProviderID]
+		if !ok || prov.Type != "anthropic" {
 			continue
 		}
 		target := fb.TargetModel
 		if target == "" {
 			target = route.TargetModel
 		}
-		out = append(out, routeAttempt{Provider: p, TargetModel: target})
+		cands = append(cands, routing.Candidate{
+			ProviderID: fb.ProviderID, TargetModel: target, Weight: fb.Weight,
+		})
+	}
+	ordered := routing.ForStrategy(route.RoutingStrategy).Order(cands, p.RouteRand)
+	out := make([]routeAttempt, 0, len(ordered))
+	for _, c := range ordered {
+		prov, ok := snap.Providers[c.ProviderID]
+		if !ok {
+			continue
+		}
+		out = append(out, routeAttempt{Provider: prov, TargetModel: c.TargetModel})
 	}
 	return out
 }
