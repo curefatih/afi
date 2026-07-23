@@ -32,6 +32,7 @@ import { Route as AuthenticatedAppHooksRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAppDashboardRouteImport } from './routes/_authenticated/app/dashboard'
 import { Route as AuthenticatedAppBillingRouteImport } from './routes/_authenticated/app/billing'
 import { Route as AuthenticatedAppAccountRouteImport } from './routes/_authenticated/app/account'
+import { Route as AuthenticatedAppSplatRouteImport } from './routes/_authenticated/app/$'
 import { Route as AuthenticatedAppTeamsIndexRouteImport } from './routes/_authenticated/app/teams/index'
 import { Route as AuthenticatedAppProjectsIndexRouteImport } from './routes/_authenticated/app/projects/index'
 import { Route as AuthenticatedAppTeamsTeamIdRouteImport } from './routes/_authenticated/app/teams/$teamId'
@@ -162,6 +163,11 @@ const AuthenticatedAppAccountRoute = AuthenticatedAppAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => AuthenticatedAppRouteRoute,
 } as any)
+const AuthenticatedAppSplatRoute = AuthenticatedAppSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => AuthenticatedAppRouteRoute,
+} as any)
 const AuthenticatedAppTeamsIndexRoute =
   AuthenticatedAppTeamsIndexRouteImport.update({
     id: '/teams/',
@@ -231,6 +237,7 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/app/$': typeof AuthenticatedAppSplatRoute
   '/app/account': typeof AuthenticatedAppAccountRoute
   '/app/billing': typeof AuthenticatedAppBillingRoute
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
@@ -265,6 +272,7 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/app/$': typeof AuthenticatedAppSplatRoute
   '/app/account': typeof AuthenticatedAppAccountRoute
   '/app/billing': typeof AuthenticatedAppBillingRoute
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
@@ -301,6 +309,7 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/_authenticated/app/$': typeof AuthenticatedAppSplatRoute
   '/_authenticated/app/account': typeof AuthenticatedAppAccountRoute
   '/_authenticated/app/billing': typeof AuthenticatedAppBillingRoute
   '/_authenticated/app/dashboard': typeof AuthenticatedAppDashboardRoute
@@ -338,6 +347,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/reset-password'
     | '/auth/signup'
+    | '/app/$'
     | '/app/account'
     | '/app/billing'
     | '/app/dashboard'
@@ -372,6 +382,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/reset-password'
     | '/auth/signup'
+    | '/app/$'
     | '/app/account'
     | '/app/billing'
     | '/app/dashboard'
@@ -407,6 +418,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/reset-password'
     | '/auth/signup'
+    | '/_authenticated/app/$'
     | '/_authenticated/app/account'
     | '/_authenticated/app/billing'
     | '/_authenticated/app/dashboard'
@@ -605,6 +617,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppAccountRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
+    '/_authenticated/app/$': {
+      id: '/_authenticated/app/$'
+      path: '/$'
+      fullPath: '/app/$'
+      preLoaderRoute: typeof AuthenticatedAppSplatRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
     '/_authenticated/app/teams/': {
       id: '/_authenticated/app/teams/'
       path: '/teams'
@@ -699,6 +718,7 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
 )
 
 interface AuthenticatedAppRouteRouteChildren {
+  AuthenticatedAppSplatRoute: typeof AuthenticatedAppSplatRoute
   AuthenticatedAppAccountRoute: typeof AuthenticatedAppAccountRoute
   AuthenticatedAppBillingRoute: typeof AuthenticatedAppBillingRoute
   AuthenticatedAppDashboardRoute: typeof AuthenticatedAppDashboardRoute
@@ -726,6 +746,7 @@ interface AuthenticatedAppRouteRouteChildren {
 }
 
 const AuthenticatedAppRouteRouteChildren: AuthenticatedAppRouteRouteChildren = {
+  AuthenticatedAppSplatRoute: AuthenticatedAppSplatRoute,
   AuthenticatedAppAccountRoute: AuthenticatedAppAccountRoute,
   AuthenticatedAppBillingRoute: AuthenticatedAppBillingRoute,
   AuthenticatedAppDashboardRoute: AuthenticatedAppDashboardRoute,

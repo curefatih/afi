@@ -18,6 +18,32 @@ type RequestOptions = Omit<RequestInit, "body"> & {
 	auth?: boolean;
 };
 
+let redirectingToLogin = false;
+
+/** Clears the session and sends the user to login when a session JWT is rejected. */
+function handleSessionExpired() {
+	useAuthStore.getState().actions.logout();
+
+	if (typeof window === "undefined") {
+		return;
+	}
+
+	// Already on an auth page (e.g. login) — avoid a reload loop.
+	if (window.location.pathname.startsWith("/auth")) {
+		return;
+	}
+
+	if (redirectingToLogin) {
+		return;
+	}
+	redirectingToLogin = true;
+
+	// Relative path only — absolute URLs break TanStack navigate({ to }).
+	const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+	const params = new URLSearchParams({ redirect: returnTo });
+	window.location.assign(`/auth/login?${params.toString()}`);
+}
+
 async function parseError(res: Response): Promise<ApiError> {
 	let body: unknown;
 	let message = res.statusText || "Request failed";
@@ -51,6 +77,7 @@ export async function apiFetch<T>(
 	if (auth) {
 		const token = useAuthStore.getState().user?.accessToken;
 		if (!token) {
+			handleSessionExpired();
 			throw new ApiError("Not authenticated", 401);
 		}
 		headers.set("Authorization", `Bearer ${token}`);
@@ -63,6 +90,9 @@ export async function apiFetch<T>(
 	});
 
 	if (!res.ok) {
+		if (res.status === 401 && auth) {
+			handleSessionExpired();
+		}
 		throw await parseError(res);
 	}
 
@@ -71,4 +101,9 @@ export async function apiFetch<T>(
 	}
 
 	return (await res.json()) as T;
+}
+
+/** @internal — reset redirect latch between tests */
+export function __resetSessionRedirectForTests() {
+	redirectingToLogin = false;
 }

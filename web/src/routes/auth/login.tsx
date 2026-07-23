@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
 	createFileRoute,
 	Link,
-	useNavigate,
+	useRouter,
 	useSearch,
 } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -28,6 +28,7 @@ import {
 	FieldLabel,
 } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
+import { safeRedirectPath } from "#/lib/auth-redirect";
 import { pageTitle } from "#/lib/page-meta";
 import { cn } from "#/lib/utils";
 import { loginFormSchema } from "#/schemas/login-form.schema";
@@ -36,12 +37,15 @@ export const Route = createFileRoute("/auth/login")({
 	...pageTitle("Login", {
 		description: "Sign in to the AFI control plane.",
 	}),
+	validateSearch: (search: Record<string, unknown>) => ({
+		redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+	}),
 	component: RouteComponent,
 });
 
 function RouteComponent() {
-	const navigate = useNavigate();
-	const search = useSearch({ strict: false }) as { redirect?: string };
+	const router = useRouter();
+	const search = useSearch({ from: "/auth/login" });
 
 	const loginMutation = useMutation({
 		...loginMutationOptions(),
@@ -65,9 +69,7 @@ function RouteComponent() {
 				{
 					onSuccess: () => {
 						toast.success("Welcome back");
-						navigate({
-							to: search.redirect || "/app/dashboard",
-						});
+						router.history.push(safeRedirectPath(search.redirect));
 					},
 					onError: (error) => {
 						toast.error(error.message || "Login failed");
