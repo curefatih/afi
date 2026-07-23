@@ -4,9 +4,7 @@ import { safeRedirectPath } from "./auth-redirect";
 describe("safeRedirectPath", () => {
 	it("returns in-app paths", () => {
 		expect(safeRedirectPath("/app/organizations")).toBe("/app/organizations");
-		expect(safeRedirectPath("/app/projects?x=1#y")).toBe(
-			"/app/projects?x=1#y",
-		);
+		expect(safeRedirectPath("/app/projects?x=1#y")).toBe("/app/projects?x=1#y");
 	});
 
 	it("rejects absolute and protocol-relative URLs", () => {

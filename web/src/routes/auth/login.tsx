@@ -38,8 +38,7 @@ export const Route = createFileRoute("/auth/login")({
 		description: "Sign in to the AFI control plane.",
 	}),
 	validateSearch: (search: Record<string, unknown>) => ({
-		redirect:
-			typeof search.redirect === "string" ? search.redirect : undefined,
+		redirect: typeof search.redirect === "string" ? search.redirect : undefined,
 	}),
 	component: RouteComponent,
 });
