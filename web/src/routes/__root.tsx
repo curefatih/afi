@@ -2,6 +2,7 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRoute, HeadContent, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import { NotFoundPage } from "#/components/not-found-page";
 import { TooltipProvider } from "#/components/ui/tooltip";
 import { defaultAppDescription } from "#/lib/page-meta";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -44,6 +45,7 @@ export const Route = createRootRoute({
 			{ rel: "manifest", href: "/manifest.json" },
 		],
 	}),
+	notFoundComponent: NotFoundPage,
 	component: RootComponent,
 });
 
