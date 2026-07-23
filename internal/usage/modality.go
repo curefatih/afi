@@ -9,6 +9,7 @@ const (
 	ModalityTTS      Modality = "tts"
 	ModalitySTT      Modality = "stt"
 	ModalityMCP      Modality = "mcp"
+	ModalityA2A      Modality = "a2a"
 )
 
 func (m Modality) String() string {
