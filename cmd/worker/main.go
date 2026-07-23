@@ -9,7 +9,6 @@ import (
 
 	"github.com/curefatih/afi/internal/adapters/eventpub"
 	"github.com/curefatih/afi/internal/adapters/postgres"
-	"github.com/curefatih/afi/internal/controlplane"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/telemetry"
 	"github.com/curefatih/afi/internal/workers"
@@ -57,7 +56,7 @@ func main() {
 	}
 	defer pool.Close()
 
-	if err := controlplane.Migrate(ctx, pool); err != nil {
+	if err := postgres.Migrate(ctx, pool); err != nil {
 		log.Error("migrate", "err", err)
 		os.Exit(1)
 	}
