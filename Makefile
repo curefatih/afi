@@ -1,5 +1,6 @@
 .PHONY: doc-serve doc-build doc-deploy \
 	dev-up dev-down dev-build dev-restart \
+	obs-up obs-down \
 	build test test-web test-all format format-web format-go tidy tidy-go verify \
 	run-controlplane run-gateway run-worker run-all run-a2a-echo \
 	seed snapshot-publish \
@@ -34,6 +35,14 @@ dev-build:
 
 dev-restart:
 	docker compose -f docker-compose.yml restart
+
+# Local Grafana/OTLP stack (grafana/otel-lgtm). Opt-in; not started by dev-up.
+obs-up:
+	docker compose -f docker-compose.yml --profile observability up -d otel-lgtm
+
+obs-down:
+	docker compose -f docker-compose.yml --profile observability stop otel-lgtm
+	docker compose -f docker-compose.yml --profile observability rm -f otel-lgtm
 
 fmt:
 	$(GO) fmt ./...
