@@ -2,11 +2,13 @@ import {
 	createFileRoute,
 	Link,
 	useNavigate,
+	useRouter,
 	useSearch,
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { bootstrapSessionFromToken } from "#/api/auth";
+import { safeRedirectPath } from "#/lib/auth-redirect";
 import { pageTitle } from "#/lib/page-meta";
 import { cn } from "#/lib/utils";
 
@@ -24,6 +26,7 @@ export const Route = createFileRoute("/auth/sso/callback")({
 
 function RouteComponent() {
 	const navigate = useNavigate();
+	const router = useRouter();
 	const search = useSearch({ from: "/auth/sso/callback" });
 	const [message, setMessage] = useState("Completing sign-in…");
 
@@ -46,9 +49,7 @@ function RouteComponent() {
 				await bootstrapSessionFromToken(search.token);
 				if (cancelled) return;
 				toast.success("Welcome back");
-				navigate({
-					to: search.redirect || "/app/dashboard",
-				});
+				router.history.push(safeRedirectPath(search.redirect));
 			} catch (err) {
 				if (cancelled) return;
 				const msg = err instanceof Error ? err.message : "SSO login failed";
@@ -61,7 +62,7 @@ function RouteComponent() {
 		return () => {
 			cancelled = true;
 		};
-	}, [navigate, search.error, search.redirect, search.token]);
+	}, [navigate, router.history, search.error, search.redirect, search.token]);
 
 	return (
 		<div className={cn("flex flex-col items-center gap-2 py-12 text-center")}>
