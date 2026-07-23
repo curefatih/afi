@@ -11,6 +11,7 @@ import {
 	KeyRoundIcon,
 	LayersIcon,
 	type LucideIcon,
+	PlugIcon,
 	RefreshCwIcon,
 	ShapesIcon,
 	ShieldIcon,
@@ -779,6 +780,7 @@ function RouteComponent() {
 										<IconHead icon={UserIcon} label="Owner / scope" />
 										<IconHead icon={KeyRoundIcon} label="Key" />
 										<IconHead icon={ShieldIcon} label="Credential" />
+										<IconHead icon={PlugIcon} label="Provider" />
 										<IconHead icon={BoxIcon} label="Model" />
 										<IconHead icon={CircleDotIcon} label="Status" />
 										<IconHead icon={TimerIcon} label="Latency" />
@@ -842,6 +844,18 @@ function RouteComponent() {
 														<span className="text-muted-foreground text-sm">
 															Platform
 														</span>
+													)}
+												</TableCell>
+												<TableCell>
+													{e.provider_type ? (
+														<Badge
+															variant="outline"
+															className="font-normal"
+														>
+															{e.provider_type}
+														</Badge>
+													) : (
+														<span className="text-muted-foreground">—</span>
 													)}
 												</TableCell>
 												<TableCell>
