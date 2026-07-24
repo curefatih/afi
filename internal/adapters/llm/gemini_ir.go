@@ -16,6 +16,17 @@ import (
 )
 
 func irToGemini(req ir.ChatRequest) ([]byte, error) {
+	if len(req.Tools) > 0 || req.ToolChoice != nil {
+		return nil, ir.Unsupported("tools", "the selected provider (gemini) does not support tools through the gateway yet")
+	}
+	for _, m := range req.Messages {
+		if len(m.Parts) > 0 {
+			return nil, ir.Unsupported("vision", "the selected provider (gemini) does not support image input through the gateway yet")
+		}
+		if len(m.ToolCalls) > 0 || m.Role == "tool" {
+			return nil, ir.Unsupported("tools", "the selected provider (gemini) does not support tool messages through the gateway yet")
+		}
+	}
 	var contents []map[string]any
 	for _, m := range req.Messages {
 		switch m.Role {

@@ -8,8 +8,8 @@ import (
 // Gateway dialect IR capabilities for the current chat IR version.
 // Catalog advertising and request validation must stay in sync with these.
 const (
-	DialectSupportsTools  = false
-	DialectSupportsVision = false
+	DialectSupportsTools  = true
+	DialectSupportsVision = true
 )
 
 // UnsupportedError is returned when a client request uses a feature chat IR cannot serve yet.

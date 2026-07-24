@@ -28,9 +28,15 @@ func (Anthropic) WriteStream(w io.Writer, events <-chan ir.StreamEvent) (prompt,
 	flusher, _ := w.(http.Flusher)
 	id := "msg_afi"
 	model := ""
-	index := 0
 	started := false
-	blockStarted := false
+
+	// Content block bookkeeping: Anthropic uses sequential integer indices and
+	// requires the currently-open block to be closed before the next opens.
+	nextIndex := 0
+	curKind := "" // "" | "text" | "tool"
+	curToolIR := -1
+	curAnthIndex := -1
+	toolAnthIndex := map[int]int{}
 
 	writeEvent := func(typ string, payload any) error {
 		b, err := json.Marshal(payload)
@@ -42,6 +48,31 @@ func (Anthropic) WriteStream(w io.Writer, events <-chan ir.StreamEvent) (prompt,
 			flusher.Flush()
 		}
 		return err
+	}
+
+	ensureStarted := func(role string) error {
+		if started {
+			return nil
+		}
+		started = true
+		if role == "" {
+			role = "assistant"
+		}
+		return writeEvent("message_start", map[string]any{
+			"type": "message_start",
+			"message": map[string]any{
+				"id": id, "type": "message", "role": role, "model": model, "content": []any{},
+			},
+		})
+	}
+
+	closeCur := func() error {
+		if curKind == "" {
+			return nil
+		}
+		idx := curAnthIndex
+		curKind, curToolIR, curAnthIndex = "", -1, -1
+		return writeEvent("content_block_stop", map[string]any{"type": "content_block_stop", "index": idx})
 	}
 
 	for ev := range events {
@@ -58,44 +89,24 @@ func (Anthropic) WriteStream(w io.Writer, events <-chan ir.StreamEvent) (prompt,
 			if ev.Model != "" {
 				model = ev.Model
 			}
-			role := ev.Role
-			if role == "" {
-				role = "assistant"
-			}
-			started = true
-			if err := writeEvent("message_start", map[string]any{
-				"type": "message_start",
-				"message": map[string]any{
-					"id":      id,
-					"type":    "message",
-					"role":    role,
-					"model":   model,
-					"content": []any{},
-				},
-			}); err != nil {
+			if err := ensureStarted(ev.Role); err != nil {
 				return prompt, completion, err
 			}
 		case ir.StreamTextDelta:
-			if !started {
-				started = true
-				if err := writeEvent("message_start", map[string]any{
-					"type": "message_start",
-					"message": map[string]any{
-						"id": id, "type": "message", "role": "assistant", "model": model, "content": []any{},
-					},
-				}); err != nil {
+			if err := ensureStarted(""); err != nil {
+				return prompt, completion, err
+			}
+			if curKind != "text" {
+				if err := closeCur(); err != nil {
 					return prompt, completion, err
 				}
-			}
-			if !blockStarted {
-				blockStarted = true
+				curKind = "text"
+				curAnthIndex = nextIndex
+				nextIndex++
 				if err := writeEvent("content_block_start", map[string]any{
-					"type":  "content_block_start",
-					"index": index,
-					"content_block": map[string]any{
-						"type": "text",
-						"text": "",
-					},
+					"type":          "content_block_start",
+					"index":         curAnthIndex,
+					"content_block": map[string]any{"type": "text", "text": ""},
 				}); err != nil {
 					return prompt, completion, err
 				}
@@ -105,26 +116,56 @@ func (Anthropic) WriteStream(w io.Writer, events <-chan ir.StreamEvent) (prompt,
 			}
 			if err := writeEvent("content_block_delta", map[string]any{
 				"type":  "content_block_delta",
-				"index": index,
+				"index": curAnthIndex,
 				"delta": map[string]any{"type": "text_delta", "text": ev.Text},
 			}); err != nil {
 				return prompt, completion, err
 			}
+		case ir.StreamToolCallStart:
+			if err := ensureStarted(""); err != nil {
+				return prompt, completion, err
+			}
+			if err := closeCur(); err != nil {
+				return prompt, completion, err
+			}
+			curKind = "tool"
+			curToolIR = ev.ToolIndex
+			curAnthIndex = nextIndex
+			nextIndex++
+			toolAnthIndex[ev.ToolIndex] = curAnthIndex
+			if err := writeEvent("content_block_start", map[string]any{
+				"type":  "content_block_start",
+				"index": curAnthIndex,
+				"content_block": map[string]any{
+					"type": "tool_use", "id": ev.ToolID, "name": ev.ToolName, "input": map[string]any{},
+				},
+			}); err != nil {
+				return prompt, completion, err
+			}
+		case ir.StreamToolCallDelta:
+			if ev.ArgsDelta == "" {
+				continue
+			}
+			if curKind != "tool" || curToolIR != ev.ToolIndex {
+				// Deltas are expected to be contiguous with their tool_use block.
+				continue
+			}
+			if err := writeEvent("content_block_delta", map[string]any{
+				"type":  "content_block_delta",
+				"index": curAnthIndex,
+				"delta": map[string]any{"type": "input_json_delta", "partial_json": ev.ArgsDelta},
+			}); err != nil {
+				return prompt, completion, err
+			}
 		case ir.StreamMessageEnd:
-			if blockStarted {
-				if err := writeEvent("content_block_stop", map[string]any{
-					"type": "content_block_stop", "index": index,
-				}); err != nil {
-					return prompt, completion, err
-				}
+			if err := closeCur(); err != nil {
+				return prompt, completion, err
 			}
 			finish := ev.FinishReason
 			if finish == "" {
 				finish = "stop"
 			}
-			delta := map[string]any{
-				"stop_reason": mapFinishToAnthropic(finish),
-			}
+			delta := map[string]any{"stop_reason": mapFinishToAnthropic(finish)}
 			usage := map[string]any{}
 			if ev.Usage != nil {
 				prompt, completion = ev.Usage.PromptTokens, ev.Usage.CompletionTokens
@@ -146,10 +187,19 @@ func (Anthropic) WriteStream(w io.Writer, events <-chan ir.StreamEvent) (prompt,
 	return prompt, completion, nil
 }
 
+func anthropicBlockIndex(raw map[string]any) int {
+	if v, ok := raw["index"].(float64); ok {
+		return int(v)
+	}
+	return 0
+}
+
 func mapFinishToAnthropic(r string) string {
 	switch r {
 	case "length":
 		return "max_tokens"
+	case "tool_calls":
+		return "tool_use"
 	case "stop", "":
 		return "end_turn"
 	default:
@@ -166,6 +216,8 @@ func ParseAnthropicSSE(r io.Reader) <-chan ir.StreamEvent {
 		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 		id := "msg_afi"
 		model := ""
+		toolOrdinal := map[int]int{}
+		nextToolOrdinal := 0
 		for scanner.Scan() {
 			line := scanner.Text()
 			if !strings.HasPrefix(line, "data:") {
@@ -196,17 +248,35 @@ func ParseAnthropicSSE(r io.Reader) <-chan ir.StreamEvent {
 					ch <- ir.StreamEvent{Kind: ir.StreamMessageStart, ID: id, Model: model, Role: role}
 				}
 			case "content_block_start":
+				blockIndex := anthropicBlockIndex(raw)
 				if block, ok := raw["content_block"].(map[string]any); ok {
-					if typ, _ := block["type"].(string); typ == "text" {
+					switch typ, _ := block["type"].(string); typ {
+					case "text":
 						if text, ok := block["text"].(string); ok && text != "" {
 							ch <- ir.StreamEvent{Kind: ir.StreamTextDelta, ID: id, Model: model, Text: text}
 						}
+					case "tool_use":
+						ordinal := nextToolOrdinal
+						nextToolOrdinal++
+						toolOrdinal[blockIndex] = ordinal
+						toolID, _ := block["id"].(string)
+						toolName, _ := block["name"].(string)
+						ch <- ir.StreamEvent{Kind: ir.StreamToolCallStart, ID: id, Model: model, ToolIndex: ordinal, ToolID: toolID, ToolName: toolName}
 					}
 				}
 			case "content_block_delta":
+				blockIndex := anthropicBlockIndex(raw)
 				if delta, ok := raw["delta"].(map[string]any); ok {
-					if text, ok := delta["text"].(string); ok && text != "" {
-						ch <- ir.StreamEvent{Kind: ir.StreamTextDelta, ID: id, Model: model, Text: text}
+					dtyp, _ := delta["type"].(string)
+					switch dtyp {
+					case "input_json_delta":
+						if pj, ok := delta["partial_json"].(string); ok && pj != "" {
+							ch <- ir.StreamEvent{Kind: ir.StreamToolCallDelta, ID: id, Model: model, ToolIndex: toolOrdinal[blockIndex], ArgsDelta: pj}
+						}
+					default:
+						if text, ok := delta["text"].(string); ok && text != "" {
+							ch <- ir.StreamEvent{Kind: ir.StreamTextDelta, ID: id, Model: model, Text: text}
+						}
 					}
 				}
 			case "message_delta":

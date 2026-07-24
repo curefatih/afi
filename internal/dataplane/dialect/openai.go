@@ -57,6 +57,30 @@ func (OpenAI) WriteStream(w io.Writer, events <-chan ir.StreamEvent) (prompt, co
 			if err := openaichat.WriteSSEChunk(w, id, model, map[string]any{"content": ev.Text}, nil); err != nil {
 				return prompt, completion, err
 			}
+		case ir.StreamToolCallStart:
+			delta := map[string]any{"tool_calls": []map[string]any{{
+				"index": ev.ToolIndex,
+				"id":    ev.ToolID,
+				"type":  "function",
+				"function": map[string]any{
+					"name":      ev.ToolName,
+					"arguments": "",
+				},
+			}}}
+			if err := openaichat.WriteSSEChunk(w, id, model, delta, nil); err != nil {
+				return prompt, completion, err
+			}
+		case ir.StreamToolCallDelta:
+			if ev.ArgsDelta == "" {
+				continue
+			}
+			delta := map[string]any{"tool_calls": []map[string]any{{
+				"index":    ev.ToolIndex,
+				"function": map[string]any{"arguments": ev.ArgsDelta},
+			}}}
+			if err := openaichat.WriteSSEChunk(w, id, model, delta, nil); err != nil {
+				return prompt, completion, err
+			}
 		case ir.StreamMessageEnd:
 			var finish any
 			if ev.FinishReason != "" {
@@ -102,6 +126,7 @@ func ParseOpenAISSE(r io.Reader) <-chan ir.StreamEvent {
 		scanner := bufio.NewScanner(r)
 		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 		started := false
+		seenTool := map[int]bool{}
 		id := "chatcmpl-afi"
 		model := ""
 		for scanner.Scan() {
@@ -118,8 +143,16 @@ func ParseOpenAISSE(r io.Reader) <-chan ir.StreamEvent {
 				Model   string `json:"model"`
 				Choices []struct {
 					Delta struct {
-						Role    string `json:"role"`
-						Content string `json:"content"`
+						Role      string `json:"role"`
+						Content   string `json:"content"`
+						ToolCalls []struct {
+							Index    *int   `json:"index"`
+							ID       string `json:"id"`
+							Function struct {
+								Name      string `json:"name"`
+								Arguments string `json:"arguments"`
+							} `json:"function"`
+						} `json:"tool_calls"`
 					} `json:"delta"`
 					FinishReason *string `json:"finish_reason"`
 				} `json:"choices"`
@@ -148,7 +181,7 @@ func ParseOpenAISSE(r io.Reader) <-chan ir.StreamEvent {
 				continue
 			}
 			c := raw.Choices[0]
-			if !started && (c.Delta.Role != "" || c.Delta.Content != "" || c.FinishReason != nil) {
+			if !started && (c.Delta.Role != "" || c.Delta.Content != "" || len(c.Delta.ToolCalls) > 0 || c.FinishReason != nil) {
 				started = true
 				role := c.Delta.Role
 				if role == "" {
@@ -158,6 +191,19 @@ func ParseOpenAISSE(r io.Reader) <-chan ir.StreamEvent {
 			}
 			if c.Delta.Content != "" {
 				ch <- ir.StreamEvent{Kind: ir.StreamTextDelta, ID: id, Model: model, Text: c.Delta.Content}
+			}
+			for _, tc := range c.Delta.ToolCalls {
+				idx := 0
+				if tc.Index != nil {
+					idx = *tc.Index
+				}
+				if !seenTool[idx] {
+					seenTool[idx] = true
+					ch <- ir.StreamEvent{Kind: ir.StreamToolCallStart, ID: id, Model: model, ToolIndex: idx, ToolID: tc.ID, ToolName: tc.Function.Name}
+				}
+				if tc.Function.Arguments != "" {
+					ch <- ir.StreamEvent{Kind: ir.StreamToolCallDelta, ID: id, Model: model, ToolIndex: idx, ArgsDelta: tc.Function.Arguments}
+				}
 			}
 			if c.FinishReason != nil && *c.FinishReason != "" {
 				ev := ir.StreamEvent{Kind: ir.StreamMessageEnd, ID: id, Model: model, FinishReason: *c.FinishReason}

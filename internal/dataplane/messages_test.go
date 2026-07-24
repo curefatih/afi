@@ -179,34 +179,74 @@ func TestMessagesAcceptsXAPIKey(t *testing.T) {
 	}
 }
 
-func TestRejectToolsViaAnthropicDialect(t *testing.T) {
+// TestToolsViaAnthropicDialectToOpenAIUpstream verifies an Anthropic-dialect
+// request carrying tools is translated to OpenAI on the way out, and the
+// upstream's tool call is rendered back as an Anthropic tool_use block.
+func TestToolsViaAnthropicDialectToOpenAIUpstream(t *testing.T) {
+	var sawTools bool
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		if bytes.Contains(raw, []byte(`"tools"`)) && bytes.Contains(raw, []byte("get_weather")) {
+			sawTools = true
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "chatcmpl-x",
+			"choices": []map[string]any{
+				{
+					"message": map[string]any{
+						"role":    "assistant",
+						"content": nil,
+						"tool_calls": []map[string]any{{
+							"id":       "call_1",
+							"type":     "function",
+							"function": map[string]any{"name": "get_weather", "arguments": `{"city":"SF"}`},
+						}},
+					},
+					"finish_reason": "tool_calls",
+				},
+			},
+			"usage": map[string]int{"prompt_tokens": 1, "completion_tokens": 2},
+		})
+	}))
+	defer upstream.Close()
+
+	t.Setenv("OPENAI_API_KEY", "ok")
+	client := llm.NewOpenAIClient(nil)
+	client.HTTP = upstream.Client()
 	holder := NewHolder()
 	holder.Set(snapshot.Compile(snapshot.Source{
 		APIKeys: []snapshot.APIKey{{
 			ID: "k", KeyHash: snapshot.HashKey("sk-good"), ProjectID: "p1", OrganizationID: "o1",
 		}},
 		Providers: []snapshot.Provider{{
-			ID: "prov", Type: "openai", BaseURL: "http://example.invalid", APIKeyEnv: "OPENAI_API_KEY",
+			ID: "prov", Type: "openai", BaseURL: upstream.URL, APIKeyEnv: "OPENAI_API_KEY",
 		}},
 		Routes: []snapshot.Route{{
 			OrganizationID: "o1", Model: "gpt-4o-mini", ProviderID: "prov", TargetModel: "gpt-4o-mini",
 		}},
 	}))
-	p := NewPipeline(holder, RegistryWithOpenAI(llm.NewOpenAIClient(nil)), slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(client), slog.Default())
 	body := `{
 		"model":"gpt-4o-mini","max_tokens":64,
 		"tools":[{"name":"get_weather","input_schema":{"type":"object"}}],
-		"messages":[{"role":"user","content":"hi"}]
+		"messages":[{"role":"user","content":"weather?"}]
 	}`
 	req := httptest.NewRequest(http.MethodPost, "/anthropic/v1/messages", bytes.NewBufferString(body))
 	req.Header.Set("x-api-key", "sk-good")
 	rr := httptest.NewRecorder()
 	p.Handler().ServeHTTP(rr, req)
-	if rr.Code != http.StatusBadRequest {
+	if rr.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
-	if !bytes.Contains(rr.Body.Bytes(), []byte("tools")) {
-		t.Fatalf("body=%s", rr.Body.String())
+	if !sawTools {
+		t.Fatal("upstream did not receive translated tools")
+	}
+	raw := rr.Body.Bytes()
+	if !bytes.Contains(raw, []byte(`"tool_use"`)) || !bytes.Contains(raw, []byte("get_weather")) {
+		t.Fatalf("expected anthropic tool_use block, body=%s", raw)
+	}
+	if !bytes.Contains(raw, []byte(`"stop_reason":"tool_use"`)) {
+		t.Fatalf("expected tool_use stop_reason, body=%s", raw)
 	}
 }
 

@@ -184,6 +184,10 @@ targetLoop:
 				if errors.Is(lastErr, ErrStreamUnsupported) {
 					break targetLoop
 				}
+				if _, ok := ir.AsUnsupported(lastErr); ok {
+					// Feature/provider mismatch is a client error; do not fail over.
+					break targetLoop
+				}
 				if shouldFailoverError(lastErr) {
 					if try+1 < maxTries {
 						logRetry(log, attempt.Provider.ID, try, maxTries, 0, lastErr)
@@ -215,6 +219,10 @@ targetLoop:
 	if lastErr != nil && !haveResult {
 		if errors.Is(lastErr, ErrStreamUnsupported) {
 			dialect.WriteError(w, d, http.StatusBadRequest, lastErr.Error(), "invalid_request_error")
+			return
+		}
+		if u, ok := ir.AsUnsupported(lastErr); ok {
+			dialect.WriteError(w, d, http.StatusBadRequest, u.Error(), "invalid_request_error")
 			return
 		}
 		log.Error("upstream error", "err", lastErr)
