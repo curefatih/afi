@@ -168,27 +168,30 @@ export function CreateKeySheet({
 	const envs = useQuery(environmentsQueryOptions(orgId, envProjectId));
 	const showEnv = !!envProjectId;
 
+	const firstProjectId = activeOrg?.projects[0]?.id;
 	useEffect(() => {
 		if (!open) return;
 		form.setFieldValue("kind", projectOnly ? "service_account" : defaultKind);
 		form.setFieldValue("saScope", projectOnly ? "project" : "organization");
-		form.setFieldValue(
-			"projectId",
-			defaultProjectId ?? activeOrg?.projects[0]?.id ?? "",
-		);
+		form.setFieldValue("projectId", defaultProjectId ?? firstProjectId ?? "");
 		form.setFieldValue("environmentId", "");
-		// Reset only when the sheet opens (or project binding changes), not on
-		// every org.projects referential update — that cleared the env selection.
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- form API is stable
-	}, [open, defaultKind, defaultProjectId, projectOnly]);
+		// Depend on firstProjectId (primitive), not org.projects — referential
+		// updates of the array previously cleared the env selection.
+	}, [
+		open,
+		defaultKind,
+		defaultProjectId,
+		projectOnly,
+		firstProjectId,
+		form.setFieldValue,
+	]);
 
 	const prevEnvProjectId = useRef(envProjectId);
 	useEffect(() => {
 		if (prevEnvProjectId.current === envProjectId) return;
 		prevEnvProjectId.current = envProjectId;
 		form.setFieldValue("environmentId", "");
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- only clear when project changes
-	}, [envProjectId]);
+	}, [envProjectId, form.setFieldValue]);
 
 	const handleClose = (next: boolean) => {
 		if (!next) {
