@@ -29,6 +29,7 @@ nav:
           - Policies: getting-started/web-ui/policies.md
           - MCP and A2A: getting-started/web-ui/mcp-a2a.md
       - Single sign-on (SSO): getting-started/sso.md
+      - Signup and password reset: getting-started/signup-password-reset.md
       - Verify: getting-started/verify.md
   - API:
       - Overview: api/index.md

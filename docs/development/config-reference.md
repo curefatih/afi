@@ -25,6 +25,7 @@ Full operator table (defaults, required vs optional, which process): [Customizat
 | `AFI_INTERNAL_TOKEN` | from yaml (`afi-local-internal-token`) | HTTP `/internal/v1/*` |
 | `AFI_TOKEN_TTL` | `24h` | JWT lifetime |
 | `AFI_AUTH_PUBLIC_BASE_URL` | `http://localhost:8081` | SSO OAuth callback base URL |
+| `AFI_SIGNUP_ENABLED` | `false` | Allow self-serve `POST /auth/register` |
 | `AFI_SSO_ENABLED` | `false` | Enable platform SSO |
 | `AFI_SSO_STATE_STORE` | `redis` | `redis` \| `memory` |
 | `AFI_CREDENTIALS_MASTER_KEY` | from yaml (`credentials.master_key`) | controlplane + gateway (encrypted_db credentials) |
