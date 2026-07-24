@@ -7,6 +7,7 @@ export type ApiKey = {
 	id: string;
 	project_id?: string;
 	organization_id: string;
+	environment_id?: string;
 	name: string;
 	kind: KeyKind;
 	owner_user_id?: string;
@@ -37,6 +38,7 @@ export type CreateOrgKeyInput = {
 	name: string;
 	kind: KeyKind;
 	project_id?: string;
+	environment_id?: string;
 	key?: string;
 };
 
@@ -53,15 +55,21 @@ export const createOrgKeyMutationOptions = () =>
 export type CreateProjectKeyInput = {
 	projectId: string;
 	name: string;
+	environment_id?: string;
 	key?: string;
 };
 
 export const createKeyMutationOptions = () =>
 	mutationOptions({
-		mutationFn: ({ projectId, name, key }: CreateProjectKeyInput) =>
+		mutationFn: ({
+			projectId,
+			name,
+			environment_id,
+			key,
+		}: CreateProjectKeyInput) =>
 			apiFetch<ApiKey>(`/api/v1/platform/projects/${projectId}/keys`, {
 				method: "POST",
-				body: { name, key },
+				body: { name, key, environment_id },
 			}),
 	});
 

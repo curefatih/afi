@@ -1,11 +1,12 @@
 "use client";
 
-import { useForm } from "@tanstack/react-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm, useStore } from "@tanstack/react-form";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckIcon, CopyIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { environmentsQueryOptions } from "#/api/environment";
 import {
 	type ApiKey,
 	createKeyMutationOptions,
@@ -73,6 +74,7 @@ export function CreateKeySheet({
 			kind: z.enum(["personal", "service_account"]),
 			saScope: z.enum(["organization", "project"]),
 			projectId: z.string(),
+			environmentId: z.string(),
 		})
 		.superRefine((val, ctx) => {
 			if (projectOnly) return;
@@ -93,8 +95,11 @@ export function CreateKeySheet({
 		defaultValues: {
 			name: "",
 			kind: projectOnly ? ("service_account" as KeyKind) : defaultKind,
-			saScope: "organization" as "organization" | "project",
+			saScope: (projectOnly ? "project" : "organization") as
+				| "organization"
+				| "project",
 			projectId: defaultProjectId ?? activeOrg?.projects[0]?.id ?? "",
+			environmentId: "",
 		},
 		validators: {
 			onChange: schema,
@@ -117,9 +122,15 @@ export function CreateKeySheet({
 				toast.error(error.message || "Failed to create key");
 			};
 
+			const environment_id = value.environmentId || undefined;
+
 			if (projectOnly && defaultProjectId) {
 				createProject.mutate(
-					{ projectId: defaultProjectId, name: value.name },
+					{
+						projectId: defaultProjectId,
+						name: value.name,
+						environment_id,
+					},
 					{ onSuccess, onError },
 				);
 				return;
@@ -134,27 +145,50 @@ export function CreateKeySheet({
 						value.kind === "service_account" && value.saScope === "project"
 							? value.projectId
 							: undefined,
+					environment_id:
+						value.kind === "service_account" && value.saScope === "project"
+							? environment_id
+							: undefined,
 				},
 				{ onSuccess, onError },
 			);
 		},
 	});
 
+	// Subscribe so the environments query re-runs when kind/scope/project change.
+	const kind = useStore(form.store, (s) => s.values.kind);
+	const saScope = useStore(form.store, (s) => s.values.saScope);
+	const projectId = useStore(form.store, (s) => s.values.projectId);
+
+	const envProjectId = projectOnly
+		? (defaultProjectId ?? "")
+		: kind === "service_account" && saScope === "project"
+			? projectId
+			: "";
+	const envs = useQuery(environmentsQueryOptions(orgId, envProjectId));
+	const showEnv = !!envProjectId;
+
 	useEffect(() => {
 		if (!open) return;
 		form.setFieldValue("kind", projectOnly ? "service_account" : defaultKind);
+		form.setFieldValue("saScope", projectOnly ? "project" : "organization");
 		form.setFieldValue(
 			"projectId",
 			defaultProjectId ?? activeOrg?.projects[0]?.id ?? "",
 		);
-	}, [
-		open,
-		defaultKind,
-		defaultProjectId,
-		projectOnly,
-		activeOrg?.projects,
-		form,
-	]);
+		form.setFieldValue("environmentId", "");
+		// Reset only when the sheet opens (or project binding changes), not on
+		// every org.projects referential update — that cleared the env selection.
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- form API is stable
+	}, [open, defaultKind, defaultProjectId, projectOnly]);
+
+	const prevEnvProjectId = useRef(envProjectId);
+	useEffect(() => {
+		if (prevEnvProjectId.current === envProjectId) return;
+		prevEnvProjectId.current = envProjectId;
+		form.setFieldValue("environmentId", "");
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- only clear when project changes
+	}, [envProjectId]);
 
 	const handleClose = (next: boolean) => {
 		if (!next) {
@@ -279,80 +313,108 @@ export function CreateKeySheet({
 								</form.Field>
 							) : null}
 
-							<form.Subscribe selector={(s) => s.values.kind}>
-								{(kind) =>
-									!projectOnly && kind === "service_account" ? (
-										<>
-											<form.Field name="saScope">
-												{(field) => (
-													<Field>
-														<FieldLabel>Scope</FieldLabel>
-														<Select
-															value={field.state.value}
-															onValueChange={(value) =>
-																field.handleChange(
-																	(value as "organization" | "project") ??
-																		"organization",
-																)
-															}
-														>
-															<SelectTrigger className="w-full">
-																<SelectValue />
-															</SelectTrigger>
-															<SelectContent>
-																<SelectItem value="organization">
-																	Organization-wide
+							{!projectOnly && kind === "service_account" ? (
+								<>
+									<form.Field name="saScope">
+										{(field) => (
+											<Field>
+												<FieldLabel>Scope</FieldLabel>
+												<Select
+													value={field.state.value}
+													onValueChange={(value) =>
+														field.handleChange(
+															(value as "organization" | "project") ??
+																"organization",
+														)
+													}
+												>
+													<SelectTrigger className="w-full">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="organization">
+															Organization-wide
+														</SelectItem>
+														<SelectItem value="project">Project</SelectItem>
+													</SelectContent>
+												</Select>
+											</Field>
+										)}
+									</form.Field>
+									{saScope === "project" ? (
+										<form.Field name="projectId">
+											{(field) => (
+												<Field>
+													<FieldLabel>Project</FieldLabel>
+													<Select
+														value={field.state.value}
+														onValueChange={(value) =>
+															field.handleChange(value ?? "")
+														}
+													>
+														<SelectTrigger className="w-full">
+															<SelectValue placeholder="Select a project" />
+														</SelectTrigger>
+														<SelectContent>
+															{(activeOrg?.projects ?? []).map((project) => (
+																<SelectItem key={project.id} value={project.id}>
+																	{project.name}
 																</SelectItem>
-																<SelectItem value="project">Project</SelectItem>
-															</SelectContent>
-														</Select>
-													</Field>
-												)}
-											</form.Field>
-											<form.Subscribe selector={(s) => s.values.saScope}>
-												{(saScope) =>
-													saScope === "project" ? (
-														<form.Field name="projectId">
-															{(field) => (
-																<Field>
-																	<FieldLabel>Project</FieldLabel>
-																	<Select
-																		value={field.state.value}
-																		onValueChange={(value) =>
-																			field.handleChange(value ?? "")
-																		}
-																	>
-																		<SelectTrigger className="w-full">
-																			<SelectValue placeholder="Select a project" />
-																		</SelectTrigger>
-																		<SelectContent>
-																			{(activeOrg?.projects ?? []).map(
-																				(project) => (
-																					<SelectItem
-																						key={project.id}
-																						value={project.id}
-																					>
-																						{project.name}
-																					</SelectItem>
-																				),
-																			)}
-																		</SelectContent>
-																	</Select>
-																	{!field.state.meta.isValid ? (
-																		<FieldError
-																			errors={field.state.meta.errors}
-																		/>
-																	) : null}
-																</Field>
-															)}
-														</form.Field>
-													) : null
+															))}
+														</SelectContent>
+													</Select>
+													{!field.state.meta.isValid ? (
+														<FieldError errors={field.state.meta.errors} />
+													) : null}
+												</Field>
+											)}
+										</form.Field>
+									) : null}
+								</>
+							) : null}
+
+							{showEnv ? (
+								<form.Field name="environmentId">
+									{(field) => (
+										<Field>
+											<FieldLabel>Environment (optional)</FieldLabel>
+											<Select
+												value={field.state.value || "__none__"}
+												onValueChange={(value) =>
+													field.handleChange(
+														!value || value === "__none__" ? "" : value,
+													)
 												}
-											</form.Subscribe>
-										</>
-									) : null
-								}
-							</form.Subscribe>
+											>
+												<SelectTrigger className="w-full">
+													<SelectValue placeholder="None" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="__none__">None</SelectItem>
+													{(envs.data ?? []).map((env) => (
+														<SelectItem key={env.id} value={env.id}>
+															{env.name} ({env.slug})
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											{envs.isError ? (
+												<p className="text-destructive text-xs">
+													Could not load environments.
+												</p>
+											) : null}
+											{!envs.isPending &&
+											!envs.isError &&
+											(envs.data?.length ?? 0) === 0 ? (
+												<p className="text-muted-foreground text-xs">
+													No environments on this project yet. Create one on
+													the project page.
+												</p>
+											) : null}
+										</Field>
+									)}
+								</form.Field>
+							) : null}
 						</FieldGroup>
 						<SheetFooter>
 							<Button
