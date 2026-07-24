@@ -21,6 +21,7 @@ Full operator table (defaults, required vs optional, which process): [Customizat
 | `AFI_WASM_BEFORE_CALL` | _(empty)_ | gateway — optional TinyGo `.wasm` path (`before_call`) |
 | `AFI_WASM_BEFORE_CHAT` | _(empty)_ | gateway — optional TinyGo `.wasm` path (`before_chat`) |
 | `AFI_WASM_S3_*` | _(empty)_ | gateway — S3-compatible fetch for `s3://` wasm module URIs |
+| `AFI_PLUGIN_SOCK` | _(set by gateway)_ | gRPC plugin process — unix socket path when spawned via `gateway.grpc_extensions[].command` |
 | `AFI_JWT_SECRET` | from yaml | controlplane auth |
 | `AFI_INTERNAL_TOKEN` | from yaml (`afi-local-internal-token`) | HTTP `/internal/v1/*` |
 | `AFI_TOKEN_TTL` | `24h` | JWT lifetime |
@@ -60,6 +61,20 @@ Full operator table (defaults, required vs optional, which process): [Customizat
 | `AFI_MAIL_RESEND_API_KEY` | _(empty)_ | Resend API key |
 
 See [Platform domain events](platform-events.md) for the outbox flow. See [Observability](../deployment/observability.md) for OTel / Grafana.
+
+### YAML-only: gRPC extensions
+
+```yaml
+gateway:
+  grpc_extensions:
+    - id: grpcecho
+      command: ["./bin/grpcecho"]
+    # - id: remote
+    #   address: unix:///tmp/plugin.sock
+    #   provider_type: optional-override
+```
+
+See [providers.md](providers.md#grpc-extensions-process-isolated) and [`extensions/grpcecho`](../../extensions/grpcecho).
 
 ## Internal admin HTTP
 

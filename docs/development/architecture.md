@@ -90,7 +90,7 @@ In-process registration is live:
 * **WASM hooks** — sandboxed TinyGo guests via `internal/adapters/wasm` + org `wasm_hooks` in the snapshot (`AFI_WASM_*` env still works for demos). See [WASM hooks](../hooks/wasm.md).
 * **Provider health** — control-plane rollup from `usage_events` for Providers UI
 
-Control-plane WASM hook bindings are available; gRPC plugin runtimes, billing invoices, and multi-region snapshot distribution remain future work.
+Control-plane WASM hook bindings and gateway gRPC extension runtime (ChatProvider + lifecycle hooks via `gateway.grpc_extensions`) are available; auth/secrets/notifications gRPC adapters, billing invoices, and multi-region snapshot distribution remain future work.
 
 **Protocol gateways:** MCP Streamable HTTP (`/mcp/{alias}`) and A2A JSON-RPC + Agent Card (`/a2a/{alias}`) proxies are shipped. Platform UI: [MCP and A2A](../getting-started/web-ui/mcp-a2a.md).
 
