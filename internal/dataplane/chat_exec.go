@@ -3,7 +3,6 @@ package dataplane
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -36,7 +35,7 @@ func (p *Pipeline) handleGeminiGenerateContent(w http.ResponseWriter, r *http.Re
 	if !ok {
 		dialect.WriteError(
 			w, ir.DialectGemini, http.StatusNotFound,
-			fmt.Sprintf("unsupported Gemini operation %q", operation), "NOT_FOUND",
+			"unsupported Gemini operation \""+operation+"\"", "NOT_FOUND",
 		)
 		return
 	}
