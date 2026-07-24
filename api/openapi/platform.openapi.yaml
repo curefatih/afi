@@ -737,6 +737,59 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/OrgDefaultRetrySettings'
+  /api/v1/platform/organizations/{orgID}/object-store:
+    get:
+      operationId: getOrgObjectStore
+      summary: Get object store settings
+      tags:
+      - Organizations
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgObjectStoreSettings'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters: *id004
+    put:
+      operationId: updateOrgObjectStore
+      summary: Update object store settings
+      tags:
+      - Organizations
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgObjectStoreSettings'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: |
+        Optional per-org S3-compatible asset persistence for image (and later video) generations.
+        Requires org admin; publishes snapshot. Secrets use credential_id (JSON access_key/secret_key)
+        or access_key_env + secret_key_env — never plaintext keys in this payload.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrgObjectStoreSettings'
   /api/v1/platform/organizations/{orgID}/teams:
     get:
       operationId: listTeams
@@ -2486,6 +2539,39 @@ components:
           oneOf:
           - $ref: '#/components/schemas/RetryConfig'
           - type: 'null'
+    ObjectStoreConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        endpoint:
+          type: string
+          description: S3-compatible host:port (no scheme)
+        region:
+          type: string
+        bucket:
+          type: string
+        use_ssl:
+          type: boolean
+        path_style:
+          type: boolean
+        credential_id:
+          type: string
+          description: Org credential whose plaintext is JSON {"access_key","secret_key"}
+        access_key_env:
+          type: string
+        secret_key_env:
+          type: string
+        presign_ttl_seconds:
+          type: integer
+          minimum: 0
+    OrgObjectStoreSettings:
+      type: object
+      properties:
+        object_store:
+          oneOf:
+          - $ref: '#/components/schemas/ObjectStoreConfig'
+          - type: 'null'
     InvitePreview:
       type: object
       required:
@@ -2840,6 +2926,8 @@ components:
         stt:
           type: boolean
         embedding:
+          type: boolean
+        image:
           type: boolean
     Provider:
       type: object
