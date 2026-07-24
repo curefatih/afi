@@ -8,6 +8,7 @@ import (
 
 	afiWasm "github.com/curefatih/afi/internal/adapters/wasm"
 	"github.com/curefatih/afi/internal/snapshot"
+	"github.com/curefatih/afi/sdk/chatir"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
 )
 
@@ -87,6 +88,29 @@ func (r *WasmRunner) RunBeforeChat(ctx context.Context, snap *snapshot.Snapshot,
 			return nil, err
 		}
 		out = next
+	}
+	return out, nil
+}
+
+// RunBeforeChatIR executes org-scoped typed chat IR WASM hooks.
+func (r *WasmRunner) RunBeforeChatIR(ctx context.Context, snap *snapshot.Snapshot, orgID string, req chatir.Request) (chatir.Request, error) {
+	if r == nil || r.Cache == nil {
+		return req, nil
+	}
+	out := req
+	for _, h := range filterWasmHooks(snap, orgID, snapshot.WasmPhaseBeforeChatIR) {
+		mod, err := r.Cache.Get(ctx, h.ModuleURI, h.Digest, "snap:"+h.ID)
+		if err != nil {
+			return out, err
+		}
+		hook, err := afiWasm.NewBeforeChatIRWithConfig(mod, rawConfig(h.Config))
+		if err != nil {
+			return out, err
+		}
+		out, err = hook.BeforeChatIR(ctx, out)
+		if err != nil {
+			return out, err
+		}
 	}
 	return out, nil
 }

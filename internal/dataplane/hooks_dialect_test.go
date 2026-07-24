@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/curefatih/afi/internal/adapters/llm"
+	"github.com/curefatih/afi/internal/dataplane/ir"
 	"github.com/curefatih/afi/internal/snapshot"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
 )
@@ -96,6 +97,14 @@ type captureBeforeCall struct {
 	bridgeBody []byte
 }
 
+type replaceSystemIRHook struct{}
+
+func (replaceSystemIRHook) Name() string { return "replace_system_ir" }
+func (replaceSystemIRHook) BeforeChatIR(_ context.Context, req ir.ChatRequest) (ir.ChatRequest, error) {
+	req.System = "typed system"
+	return req, nil
+}
+
 func (c *captureBeforeCall) Name() string { return "capture_before_call" }
 func (c *captureBeforeCall) BeforeCall(_ context.Context, call *CallContext) (CallDecision, error) {
 	c.mu.Lock()
@@ -118,6 +127,10 @@ func TestBeforeCallSeesClientBodyAndOpenAIBridge(t *testing.T) {
 		// Bridge must be OpenAI-shaped for the OpenAI upstream.
 		if !bytes.Contains(raw, []byte(`"messages"`)) {
 			http.Error(w, "expected openai body", http.StatusBadRequest)
+			return
+		}
+		if !bytes.Contains(raw, []byte(`"content":"typed system"`)) {
+			http.Error(w, "expected typed hook mutation", http.StatusBadRequest)
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
@@ -147,7 +160,7 @@ func TestBeforeCallSeesClientBodyAndOpenAIBridge(t *testing.T) {
 	}))
 	capture := &captureBeforeCall{}
 	p := NewPipeline(holder, RegistryWithOpenAI(client), slog.Default())
-	p.Hooks = NewHookChain().RegisterBeforeCall(capture)
+	p.Hooks = NewHookChain().RegisterBeforeCall(capture).RegisterIR(replaceSystemIRHook{})
 
 	anthBody := `{"model":"gpt-4o-mini","max_tokens":64,"system":"be brief","messages":[{"role":"user","content":"hi"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/anthropic/v1/messages", bytes.NewBufferString(anthBody))

@@ -7,6 +7,8 @@ package hook
 
 import (
 	"context"
+
+	"github.com/curefatih/afi/sdk/chatir"
 )
 
 // Principal is the authenticated API key identity for a call.
@@ -94,6 +96,15 @@ type AfterCallHook interface {
 type ChatHook interface {
 	Name() string
 	BeforeChat(ctx context.Context, body []byte) ([]byte, error)
+}
+
+// ChatIRHook mutates a typed chat request before provider dispatch.
+//
+// The gateway runs legacy OpenAI-byte ChatHook and WASM hooks first, decodes
+// their result back to chat IR, then runs ChatIRHook implementations.
+type ChatIRHook interface {
+	Name() string
+	BeforeChatIR(ctx context.Context, req chatir.Request) (chatir.Request, error)
 }
 
 // AfterChatInfo is passed to AfterChatHook after a chat attempt finishes.

@@ -15,16 +15,16 @@ const (
 
 // Request is the dialect-neutral chat request.
 type Request struct {
-	Model       string
-	Messages    []Message
-	System      string
-	MaxTokens   int
-	Temperature *float64
-	TopP        *float64
-	Stream      bool
-	Stop        []string
-	Tools       []Tool
-	ToolChoice  *ToolChoice
+	Model       string      `json:"model"`
+	Messages    []Message   `json:"messages"`
+	System      string      `json:"system,omitempty"`
+	MaxTokens   int         `json:"max_tokens,omitempty"`
+	Temperature *float64    `json:"temperature,omitempty"`
+	TopP        *float64    `json:"top_p,omitempty"`
+	Stream      bool        `json:"stream,omitempty"`
+	Stop        []string    `json:"stop,omitempty"`
+	Tools       []Tool      `json:"tools,omitempty"`
+	ToolChoice  *ToolChoice `json:"tool_choice,omitempty"`
 }
 
 // Message is a single chat turn.
@@ -34,18 +34,18 @@ type Request struct {
 // representation. ToolCalls carry assistant-issued function calls; ToolCallID is
 // set on role=="tool" messages to reference the call being answered.
 type Message struct {
-	Role       string // system | user | assistant | tool
-	Content    string
-	Parts      []ContentPart
-	ToolCalls  []ToolCall
-	ToolCallID string
+	Role       string        `json:"role"` // system | user | assistant | tool
+	Content    string        `json:"content,omitempty"`
+	Parts      []ContentPart `json:"parts,omitempty"`
+	ToolCalls  []ToolCall    `json:"tool_calls,omitempty"`
+	ToolCallID string        `json:"tool_call_id,omitempty"`
 }
 
 // ContentPart is one piece of multimodal message content.
 type ContentPart struct {
-	Type  ContentPartType
-	Text  string       // Type == ContentText
-	Image *ImageSource // Type == ContentImage
+	Type  ContentPartType `json:"type"`
+	Text  string          `json:"text,omitempty"`  // Type == ContentText
+	Image *ImageSource    `json:"image,omitempty"` // Type == ContentImage
 }
 
 // ContentPartType enumerates supported content part kinds.
@@ -58,16 +58,16 @@ const (
 
 // ImageSource references image bytes either by URL or inline base64 data.
 type ImageSource struct {
-	URL       string // http(s) URL; empty when inline data is used
-	MediaType string // e.g. "image/png"; required for inline data
-	Data      string // base64-encoded bytes (no data: prefix); empty when URL is used
+	URL       string `json:"url,omitempty"`        // http(s) URL; empty when inline data is used
+	MediaType string `json:"media_type,omitempty"` // e.g. "image/png"; required for inline data
+	Data      string `json:"data,omitempty"`       // base64-encoded bytes (no data: prefix); empty when URL is used
 }
 
 // Tool is a function tool the model may call.
 type Tool struct {
-	Name        string
-	Description string
-	Parameters  json.RawMessage // JSON Schema object
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	Parameters  json.RawMessage `json:"parameters"` // JSON Schema object
 }
 
 // ToolChoiceMode controls whether/which tool the model must call.
@@ -82,15 +82,15 @@ const (
 
 // ToolChoice expresses tool_choice across dialects.
 type ToolChoice struct {
-	Mode ToolChoiceMode
-	Name string // set when Mode == ToolChoiceTool
+	Mode ToolChoiceMode `json:"mode"`
+	Name string         `json:"name,omitempty"` // set when Mode == ToolChoiceTool
 }
 
 // ToolCall is a model-issued function call.
 type ToolCall struct {
-	ID        string
-	Name      string
-	Arguments string // JSON-encoded arguments object
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"` // JSON-encoded arguments object
 }
 
 // Usage holds token counts.

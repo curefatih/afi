@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/curefatih/afi/sdk/chatir"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
 )
 
@@ -66,5 +67,40 @@ func TestBeforeChatRoundTrip(t *testing.T) {
 	// encodeBeforeChatIn produces {"body_b64":"..."} which decodeBeforeChatOut accepts
 	if string(out) != `{"a":1}` {
 		t.Fatalf("got %q", out)
+	}
+}
+
+func TestBeforeChatIRRoundTrip(t *testing.T) {
+	req := chatir.Request{
+		Model: "route",
+		Messages: []chatir.Message{{
+			Role: "user", Content: "hi",
+			Parts: []chatir.ContentPart{{
+				Type:  chatir.ContentImage,
+				Image: &chatir.ImageSource{MediaType: "image/png", Data: "aW1hZ2U="},
+			}},
+		}},
+		Tools: []chatir.Tool{{
+			Name: "lookup", Parameters: json.RawMessage(`{"type":"object"}`),
+		}},
+	}
+	raw, err := encodeBeforeChatIRIn(req, json.RawMessage(`{"prefix":"x"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wire map[string]any
+	if err := json.Unmarshal(raw, &wire); err != nil {
+		t.Fatal(err)
+	}
+	if wire["request"].(map[string]any)["model"] != "route" {
+		t.Fatalf("wire=%v", wire)
+	}
+	out, err := decodeBeforeChatIROut(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Model != "route" || len(out.Messages) != 1 ||
+		len(out.Messages[0].Parts) != 1 || len(out.Tools) != 1 {
+		t.Fatalf("request=%+v", out)
 	}
 }

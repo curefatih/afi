@@ -9,6 +9,7 @@
 // Behavior:
 //   - before_call: deny when tags["plan"] == "blocked"; otherwise allow and set metadata["wasm_hook"]="1"
 //   - before_chat: prefix last user message content with "[wasm] " (OpenAI chat JSON)
+//   - before_chat_ir: prefix the last typed user message with "[wasm-ir] "
 package main
 
 // #include <stdlib.h>
@@ -18,6 +19,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"unsafe"
+
+	"github.com/curefatih/afi/sdk/chatir"
 )
 
 func main() {}
@@ -69,6 +72,10 @@ type beforeChatOut struct {
 	BodyB64 string `json:"body_b64"`
 }
 
+type beforeChatIRWire struct {
+	Request chatir.Request `json:"request"`
+}
+
 //go:wasmexport before_call
 func _before_call(ptr, size uint32) uint64 {
 	in := ptrToBytes(ptr, size)
@@ -89,11 +96,11 @@ func _before_call(ptr, size uint32) uint64 {
 	}
 	if req.Tags["plan"] == "blocked" {
 		return leakJSON(beforeCallOut{
-			Allow:   false,
-			Status:  403,
-			Reason:  "plan_blocked",
-			Message: "plan=blocked denied by wasm hook",
-			Tags:    req.Tags,
+			Allow:    false,
+			Status:   403,
+			Reason:   "plan_blocked",
+			Message:  "plan=blocked denied by wasm hook",
+			Tags:     req.Tags,
 			Metadata: req.Metadata,
 		})
 	}
@@ -154,6 +161,26 @@ func _before_chat(ptr, size uint32) uint64 {
 		return leakJSON(beforeChatOut{BodyB64: b64})
 	}
 	return leakJSON(beforeChatOut{BodyB64: req.BodyB64})
+}
+
+//go:wasmexport before_chat_ir
+func _before_chat_ir(ptr, size uint32) uint64 {
+	var in beforeChatIRWire
+	if err := json.Unmarshal(ptrToBytes(ptr, size), &in); err != nil {
+		return 0
+	}
+	for i := len(in.Request.Messages) - 1; i >= 0; i-- {
+		if in.Request.Messages[i].Role != "user" {
+			continue
+		}
+		const prefix = "[wasm-ir] "
+		content := in.Request.Messages[i].Content
+		if len(content) < len(prefix) || content[:len(prefix)] != prefix {
+			in.Request.Messages[i].Content = prefix + content
+		}
+		break
+	}
+	return leakJSON(in)
 }
 
 //go:wasmexport after_call

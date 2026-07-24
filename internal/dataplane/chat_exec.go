@@ -171,8 +171,23 @@ func (p *Pipeline) executeChat(
 		dialect.WriteError(w, d, http.StatusBadRequest, "chat hook produced invalid body: "+err.Error(), "invalid_request_error")
 		return
 	}
+	chatReq, err = p.Hooks.RunBeforeChatIR(ctx, chatReq)
+	if err != nil {
+		log.Error("typed chat hook", "err", err)
+		dialect.WriteError(w, d, http.StatusBadRequest, "chat hook failed: "+err.Error(), "invalid_request_error")
+		return
+	}
+	if p.Wasm != nil {
+		chatReq, err = p.Wasm.RunBeforeChatIR(ctx, snap, call.Principal.OrganizationID, chatReq)
+		if err != nil {
+			log.Error("wasm before_chat_ir", "err", err)
+			dialect.WriteError(w, d, http.StatusBadRequest, "chat hook failed: "+err.Error(), "invalid_request_error")
+			return
+		}
+	}
 	// Preserve client-requested model for routing/usage; hooks may rewrite messages only.
 	chatReq.Model = call.Route.Model
+	chatReq.Stream = call.Route.Stream
 
 	retryCfg := snap.ResolveRetry(route)
 	log.Info("chat",

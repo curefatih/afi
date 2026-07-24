@@ -35,6 +35,7 @@ func (p *testPlugin) Handshake(ctx context.Context, req *extensionv1.HandshakeRe
 			extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CALL,
 			extensionv1.Capability_CAPABILITY_HOOK_AFTER_CALL,
 			extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CHAT,
+			extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CHAT_IR,
 			extensionv1.Capability_CAPABILITY_HOOK_AFTER_CHAT,
 		},
 	}, nil
@@ -113,6 +114,13 @@ func (p *testPlugin) AfterCall(ctx context.Context, req *extensionv1.AfterCallRe
 
 func (p *testPlugin) BeforeChat(ctx context.Context, req *extensionv1.BeforeChatRequest) (*extensionv1.BeforeChatResponse, error) {
 	return &extensionv1.BeforeChatResponse{Body: append([]byte("prefix:"), req.GetBody()...)}, nil
+}
+
+func (p *testPlugin) BeforeChatIR(ctx context.Context, req *extensionv1.BeforeChatIRRequest) (*extensionv1.BeforeChatIRResponse, error) {
+	_ = ctx
+	irReq := grpcprovider.ChatIRRequestFromProto(req.GetRequest())
+	irReq.System = "typed-hook"
+	return &extensionv1.BeforeChatIRResponse{Request: grpcprovider.ChatIRRequestProto(irReq)}, nil
 }
 
 func (p *testPlugin) AfterChat(ctx context.Context, req *extensionv1.AfterChatRequest) (*extensionv1.AfterChatResponse, error) {
@@ -194,6 +202,7 @@ func TestRuntimeDial(t *testing.T) {
 	var before sdkhook.BeforeCallHook
 	var after sdkhook.AfterCallHook
 	var beforeChat sdkhook.ChatHook
+	var beforeChatIR sdkhook.ChatIRHook
 	var afterChat sdkhook.AfterChatHook
 	rt.ApplyHooks(func(h any) {
 		switch v := h.(type) {
@@ -203,12 +212,14 @@ func TestRuntimeDial(t *testing.T) {
 			after = v
 		case sdkhook.ChatHook:
 			beforeChat = v
+		case sdkhook.ChatIRHook:
+			beforeChatIR = v
 		case sdkhook.AfterChatHook:
 			afterChat = v
 		}
 	})
-	if before == nil || after == nil || beforeChat == nil || afterChat == nil {
-		t.Fatalf("missing hooks before=%v after=%v beforeChat=%v afterChat=%v", before, after, beforeChat, afterChat)
+	if before == nil || after == nil || beforeChat == nil || beforeChatIR == nil || afterChat == nil {
+		t.Fatalf("missing hooks before=%v after=%v beforeChat=%v beforeChatIR=%v afterChat=%v", before, after, beforeChat, beforeChatIR, afterChat)
 	}
 
 	call := &sdkhook.CallContext{Tags: map[string]string{}, RequestHeaders: map[string]string{}}
@@ -235,6 +246,15 @@ func TestRuntimeDial(t *testing.T) {
 	}
 	if string(out) != "prefix:hi" {
 		t.Fatalf("beforeChat=%q", out)
+	}
+	irOut, err := beforeChatIR.BeforeChatIR(ctx, chatir.Request{
+		Messages: []chatir.Message{{Role: "user", Content: "hi"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if irOut.System != "typed-hook" {
+		t.Fatalf("beforeChatIR=%+v", irOut)
 	}
 	if err := afterChat.AfterChat(ctx, sdkhook.AfterChatInfo{Model: "m", Status: "ok"}); err != nil {
 		t.Fatal(err)

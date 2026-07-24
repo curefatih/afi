@@ -16,6 +16,8 @@ enum Capability {
   // with or without CAPABILITY_PROVIDER_CHAT; when both are present the host
   // prefers ChatIR and keeps OpenAI-byte Chat as a fallback for older paths.
   CAPABILITY_PROVIDER_CHAT_IR = 6;
+  // Typed chat IR mutation hook (Hook.BeforeChatIR).
+  CAPABILITY_HOOK_BEFORE_CHAT_IR = 7;
   // Reserved for follow-on host adapters (not wired in v1).
   CAPABILITY_AUTH = 10;
   CAPABILITY_SECRETS = 11;

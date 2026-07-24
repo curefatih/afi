@@ -19,10 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Hook_BeforeCall_FullMethodName = "/afi.extension.v1.Hook/BeforeCall"
-	Hook_AfterCall_FullMethodName  = "/afi.extension.v1.Hook/AfterCall"
-	Hook_BeforeChat_FullMethodName = "/afi.extension.v1.Hook/BeforeChat"
-	Hook_AfterChat_FullMethodName  = "/afi.extension.v1.Hook/AfterChat"
+	Hook_BeforeCall_FullMethodName   = "/afi.extension.v1.Hook/BeforeCall"
+	Hook_AfterCall_FullMethodName    = "/afi.extension.v1.Hook/AfterCall"
+	Hook_BeforeChat_FullMethodName   = "/afi.extension.v1.Hook/BeforeChat"
+	Hook_BeforeChatIR_FullMethodName = "/afi.extension.v1.Hook/BeforeChatIR"
+	Hook_AfterChat_FullMethodName    = "/afi.extension.v1.Hook/AfterChat"
 )
 
 // HookClient is the client API for Hook service.
@@ -34,6 +35,7 @@ type HookClient interface {
 	BeforeCall(ctx context.Context, in *BeforeCallRequest, opts ...grpc.CallOption) (*BeforeCallResponse, error)
 	AfterCall(ctx context.Context, in *AfterCallRequest, opts ...grpc.CallOption) (*AfterCallResponse, error)
 	BeforeChat(ctx context.Context, in *BeforeChatRequest, opts ...grpc.CallOption) (*BeforeChatResponse, error)
+	BeforeChatIR(ctx context.Context, in *BeforeChatIRRequest, opts ...grpc.CallOption) (*BeforeChatIRResponse, error)
 	AfterChat(ctx context.Context, in *AfterChatRequest, opts ...grpc.CallOption) (*AfterChatResponse, error)
 }
 
@@ -75,6 +77,16 @@ func (c *hookClient) BeforeChat(ctx context.Context, in *BeforeChatRequest, opts
 	return out, nil
 }
 
+func (c *hookClient) BeforeChatIR(ctx context.Context, in *BeforeChatIRRequest, opts ...grpc.CallOption) (*BeforeChatIRResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BeforeChatIRResponse)
+	err := c.cc.Invoke(ctx, Hook_BeforeChatIR_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *hookClient) AfterChat(ctx context.Context, in *AfterChatRequest, opts ...grpc.CallOption) (*AfterChatResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AfterChatResponse)
@@ -94,6 +106,7 @@ type HookServer interface {
 	BeforeCall(context.Context, *BeforeCallRequest) (*BeforeCallResponse, error)
 	AfterCall(context.Context, *AfterCallRequest) (*AfterCallResponse, error)
 	BeforeChat(context.Context, *BeforeChatRequest) (*BeforeChatResponse, error)
+	BeforeChatIR(context.Context, *BeforeChatIRRequest) (*BeforeChatIRResponse, error)
 	AfterChat(context.Context, *AfterChatRequest) (*AfterChatResponse, error)
 	mustEmbedUnimplementedHookServer()
 }
@@ -113,6 +126,9 @@ func (UnimplementedHookServer) AfterCall(context.Context, *AfterCallRequest) (*A
 }
 func (UnimplementedHookServer) BeforeChat(context.Context, *BeforeChatRequest) (*BeforeChatResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BeforeChat not implemented")
+}
+func (UnimplementedHookServer) BeforeChatIR(context.Context, *BeforeChatIRRequest) (*BeforeChatIRResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BeforeChatIR not implemented")
 }
 func (UnimplementedHookServer) AfterChat(context.Context, *AfterChatRequest) (*AfterChatResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AfterChat not implemented")
@@ -192,6 +208,24 @@ func _Hook_BeforeChat_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Hook_BeforeChatIR_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BeforeChatIRRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HookServer).BeforeChatIR(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Hook_BeforeChatIR_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HookServer).BeforeChatIR(ctx, req.(*BeforeChatIRRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Hook_AfterChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AfterChatRequest)
 	if err := dec(in); err != nil {
@@ -228,6 +262,10 @@ var Hook_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BeforeChat",
 			Handler:    _Hook_BeforeChat_Handler,
+		},
+		{
+			MethodName: "BeforeChatIR",
+			Handler:    _Hook_BeforeChatIR_Handler,
 		},
 		{
 			MethodName: "AfterChat",

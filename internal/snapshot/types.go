@@ -102,7 +102,7 @@ type WasmHook struct {
 	ID             string          `json:"id"`
 	OrganizationID string          `json:"organization_id"`
 	Name           string          `json:"name"`
-	Phase          string          `json:"phase"` // before_call | before_chat | after_call
+	Phase          string          `json:"phase"` // before_call | before_chat | before_chat_ir | after_call
 	ModuleURI      string          `json:"module_uri"`
 	Digest         string          `json:"digest,omitempty"` // sha256 hex; empty skips verify
 	Enabled        bool            `json:"enabled"`
@@ -112,9 +112,10 @@ type WasmHook struct {
 
 // Wasm hook phases in the compiled snapshot.
 const (
-	WasmPhaseBeforeCall = "before_call"
-	WasmPhaseBeforeChat = "before_chat"
-	WasmPhaseAfterCall  = "after_call"
+	WasmPhaseBeforeCall   = "before_call"
+	WasmPhaseBeforeChat   = "before_chat"
+	WasmPhaseBeforeChatIR = "before_chat_ir"
+	WasmPhaseAfterCall    = "after_call"
 )
 
 // Credential is a compiled upstream secret reference (never plaintext for encrypted_db).

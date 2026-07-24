@@ -26,7 +26,7 @@ func (a *ProviderAdapter) chatIR(ctx context.Context, cfg sdkprovider.ProviderCo
 	pbReq := &extensionv1.ChatIRRequest{
 		Config:      providerConfigProto(cfg),
 		TargetModel: targetModel,
-		Request:     chatIRRequestProto(req),
+		Request:     ChatIRRequestProto(req),
 	}
 	if req.Stream {
 		return a.chatIRStream(cctx, pbReq)
@@ -78,7 +78,8 @@ func providerConfigProto(cfg sdkprovider.ProviderConfig) *extensionv1.ProviderCo
 	}
 }
 
-func chatIRRequestProto(req chatir.Request) *extensionv1.ChatIRCompletionRequest {
+// ChatIRRequestProto converts a typed request to its protobuf representation.
+func ChatIRRequestProto(req chatir.Request) *extensionv1.ChatIRCompletionRequest {
 	out := &extensionv1.ChatIRCompletionRequest{
 		Model:     req.Model,
 		System:    req.System,

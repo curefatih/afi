@@ -3,6 +3,8 @@ package dataplane
 import (
 	"context"
 	"testing"
+
+	"github.com/curefatih/afi/internal/dataplane/ir"
 )
 
 type prefixHook struct{}
@@ -10,6 +12,14 @@ type prefixHook struct{}
 func (prefixHook) Name() string { return "prefix" }
 func (prefixHook) BeforeChat(_ context.Context, body []byte) ([]byte, error) {
 	return append([]byte("X"), body...), nil
+}
+
+type typedSystemHook struct{}
+
+func (typedSystemHook) Name() string { return "typed-system" }
+func (typedSystemHook) BeforeChatIR(_ context.Context, req ir.ChatRequest) (ir.ChatRequest, error) {
+	req.System = "typed"
+	return req, nil
 }
 
 func TestHookChainOrder(t *testing.T) {
@@ -24,6 +34,24 @@ func TestHookChainOrder(t *testing.T) {
 	}
 	if got := c.Names(); len(got) != 1 || got[0] != "prefix" {
 		t.Fatalf("%v", got)
+	}
+}
+
+func TestHookChainTypedChat(t *testing.T) {
+	t.Parallel()
+	c := NewHookChain().RegisterHook(typedSystemHook{})
+	out, err := c.RunBeforeChatIR(context.Background(), ir.ChatRequest{
+		Messages: []ir.Message{{Role: "user", Content: "hi"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.System != "typed" {
+		t.Fatalf("request=%+v", out)
+	}
+	infos := c.Infos()
+	if len(infos) != 1 || !infos[0].BeforeChatIR || infos[0].BeforeChat {
+		t.Fatalf("infos=%+v", infos)
 	}
 }
 

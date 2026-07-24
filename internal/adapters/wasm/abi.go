@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
+	"github.com/curefatih/afi/sdk/chatir"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
 )
 
@@ -56,6 +57,11 @@ type beforeChatIn struct {
 
 type beforeChatOut struct {
 	BodyB64 string `json:"body_b64"`
+}
+
+type beforeChatIRWire struct {
+	Request chatir.Request  `json:"request"`
+	Config  json.RawMessage `json:"config,omitempty"`
 }
 
 type afterCallIn struct {
@@ -181,6 +187,18 @@ func decodeBeforeChatOut(raw []byte) ([]byte, error) {
 		return nil, nil
 	}
 	return base64.StdEncoding.DecodeString(out.BodyB64)
+}
+
+func encodeBeforeChatIRIn(req chatir.Request, config json.RawMessage) ([]byte, error) {
+	return json.Marshal(beforeChatIRWire{Request: req, Config: config})
+}
+
+func decodeBeforeChatIROut(raw []byte) (*chatir.Request, error) {
+	var out beforeChatIRWire
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out.Request, nil
 }
 
 func encodeAfterCallIn(call *sdkhook.CallContext, info sdkhook.AfterCallInfo, config json.RawMessage) ([]byte, error) {

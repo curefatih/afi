@@ -67,12 +67,13 @@ Remote plugins speak [`proto/afi/extension/v1`](../../proto/afi/extension/v1/) a
 
 * **OpenAI-byte chat:** advertise `CAPABILITY_PROVIDER_CHAT` and implement `Provider.Chat` (stable fallback).
 * **Typed chat IR:** also advertise `CAPABILITY_PROVIDER_CHAT_IR` and implement `ProviderIR.ChatIR` / `ChatIRStream`. The gateway prefers typed IR when present so plugins are not forced through OpenAI JSON encoding for tools/vision.
+* **Typed request mutation:** advertise `CAPABILITY_HOOK_BEFORE_CHAT_IR` and implement `Hook.BeforeChatIR`.
 
 Example: [`extensions/grpcecho`](../../extensions/grpcecho).
 
 ## Hooks (in-process)
 
-`BeforeCall` / `AfterCall` run on all modalities; `ChatHook.BeforeChat` / `AfterChatHook.AfterChat` remain for chat body mutation. Register via `dataplane.NewHookChain().RegisterHook(...)` / `RegisterBeforeCall` (see `extensions/demohook`). Gateway `/healthz` lists hook objects with `before_call` / `after_call` / `before_chat` / `after_chat`. `extensions/tagquota` is an example-only BeforeCall sample for per-tag limits (not registered by default). WASM hooks: set `AFI_WASM_BEFORE_CALL` / `AFI_WASM_BEFORE_CHAT` (see [WASM hooks](../hooks/wasm.md)).
+`BeforeCall` / `AfterCall` run on all modalities. `ChatHook.BeforeChat` keeps the OpenAI-byte compatibility body; `ChatIRHook.BeforeChatIR` receives typed `sdk/chatir.Request`; `AfterChatHook.AfterChat` handles chat completion side effects. Register via `dataplane.NewHookChain().RegisterHook(...)`, `RegisterIR(...)`, or `RegisterBeforeCall(...)` (see `extensions/demohook`). Gateway `/healthz` reports each supported phase, including `before_chat_ir`. `extensions/tagquota` is an example-only BeforeCall sample for per-tag limits (not registered by default). WASM hooks: set `AFI_WASM_BEFORE_CALL` / `AFI_WASM_BEFORE_CHAT` (see [WASM hooks](../hooks/wasm.md)).
 
 ## Example: local Ollama
 

@@ -12,9 +12,10 @@ import (
 
 // Wasm hook phases compiled into the gateway snapshot.
 const (
-	WasmPhaseBeforeCall = "before_call"
-	WasmPhaseBeforeChat = "before_chat"
-	WasmPhaseAfterCall  = "after_call"
+	WasmPhaseBeforeCall   = "before_call"
+	WasmPhaseBeforeChat   = "before_chat"
+	WasmPhaseBeforeChatIR = "before_chat_ir"
+	WasmPhaseAfterCall    = "after_call"
 )
 
 // WasmHook is the write-model for an org-scoped sandboxed lifecycle hook.
@@ -44,10 +45,10 @@ type WasmHookRepository interface {
 // ParseWasmPhase validates a lifecycle phase.
 func ParseWasmPhase(phase string) (string, error) {
 	switch strings.TrimSpace(phase) {
-	case WasmPhaseBeforeCall, WasmPhaseBeforeChat, WasmPhaseAfterCall:
+	case WasmPhaseBeforeCall, WasmPhaseBeforeChat, WasmPhaseBeforeChatIR, WasmPhaseAfterCall:
 		return strings.TrimSpace(phase), nil
 	default:
-		return "", fmt.Errorf("%w: phase must be before_call, before_chat, or after_call", kernel.ErrInvalidRequest)
+		return "", fmt.Errorf("%w: phase must be before_call, before_chat, before_chat_ir, or after_call", kernel.ErrInvalidRequest)
 	}
 }
 

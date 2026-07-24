@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/curefatih/afi/sdk/chatir"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
 )
 
@@ -114,6 +115,61 @@ func (a *BeforeChatAdapter) BeforeChat(ctx context.Context, body []byte) ([]byte
 	return decoded, nil
 }
 
+// BeforeChatIRAdapter runs the guest before_chat_ir export.
+type BeforeChatIRAdapter struct {
+	mod    *Module
+	name   string
+	config json.RawMessage
+}
+
+// NewBeforeChatIR returns a typed ChatIRHook backed by mod.
+func NewBeforeChatIR(mod *Module) (*BeforeChatIRAdapter, error) {
+	return NewBeforeChatIRWithConfig(mod, nil)
+}
+
+// NewBeforeChatIRWithConfig passes binding config to the typed guest hook.
+func NewBeforeChatIRWithConfig(mod *Module, config json.RawMessage) (*BeforeChatIRAdapter, error) {
+	if mod == nil {
+		return nil, fmt.Errorf("wasm: nil module")
+	}
+	if !mod.hasExport("before_chat_ir") {
+		return nil, fmt.Errorf("wasm: module has no before_chat_ir export")
+	}
+	return &BeforeChatIRAdapter{mod: mod, name: mod.cfg.Name + ":before_chat_ir", config: config}, nil
+}
+
+func (a *BeforeChatIRAdapter) Name() string {
+	if a == nil || a.name == "" {
+		return "wasm:before_chat_ir"
+	}
+	return a.name
+}
+
+func (a *BeforeChatIRAdapter) BeforeChatIR(ctx context.Context, req chatir.Request) (chatir.Request, error) {
+	if a == nil || a.mod == nil {
+		return req, nil
+	}
+	in, err := encodeBeforeChatIRIn(req, a.config)
+	if err != nil {
+		return req, fmt.Errorf("wasm: encode: %w", err)
+	}
+	out, err := a.mod.invokeJSON(ctx, "before_chat_ir", in)
+	if err != nil {
+		return req, err
+	}
+	if len(out) == 0 {
+		return req, nil
+	}
+	decoded, err := decodeBeforeChatIROut(out)
+	if err != nil {
+		return req, fmt.Errorf("wasm: decode: %w", err)
+	}
+	if decoded == nil {
+		return req, nil
+	}
+	return *decoded, nil
+}
+
 // AfterCallAdapter runs the guest after_call export.
 type AfterCallAdapter struct {
 	mod    *Module
@@ -173,5 +229,6 @@ func LoadBeforeCall(ctx context.Context, path string, cfg Config) (sdkhook.Befor
 var (
 	_ sdkhook.BeforeCallHook = (*BeforeCallAdapter)(nil)
 	_ sdkhook.ChatHook       = (*BeforeChatAdapter)(nil)
+	_ sdkhook.ChatIRHook     = (*BeforeChatIRAdapter)(nil)
 	_ sdkhook.AfterCallHook  = (*AfterCallAdapter)(nil)
 )

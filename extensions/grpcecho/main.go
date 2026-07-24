@@ -108,6 +108,7 @@ func (s *server) Handshake(ctx context.Context, req *extensionv1.HandshakeReques
 			extensionv1.Capability_CAPABILITY_PROVIDER_CHAT,
 			extensionv1.Capability_CAPABILITY_PROVIDER_CHAT_IR,
 			extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CALL,
+			extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CHAT_IR,
 		},
 	}, nil
 }
@@ -277,6 +278,12 @@ func (s *server) BeforeChat(ctx context.Context, req *extensionv1.BeforeChatRequ
 		body = []byte{}
 	}
 	return &extensionv1.BeforeChatResponse{Body: append([]byte(nil), body...)}, nil
+}
+
+func (s *server) BeforeChatIR(ctx context.Context, req *extensionv1.BeforeChatIRRequest) (*extensionv1.BeforeChatIRResponse, error) {
+	_ = ctx
+	typed := grpcprovider.ChatIRRequestFromProto(req.GetRequest())
+	return &extensionv1.BeforeChatIRResponse{Request: grpcprovider.ChatIRRequestProto(typed)}, nil
 }
 
 func (s *server) AfterChat(ctx context.Context, req *extensionv1.AfterChatRequest) (*extensionv1.AfterChatResponse, error) {

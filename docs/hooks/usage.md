@@ -5,7 +5,7 @@
 The gateway runs an in-process hook chain on every modality (chat, messages, TTS, STT):
 
 1. **BeforeCall** — after auth, before routing/provider. Receives a mutable `CallContext` (principal, route, tags from `X-AFI-Tags`, metadata, body). May **allow**, **enrich**, or **deny** (`Allow=false` + status/reason).
-2. **BeforeChat** — OpenAI, Anthropic, and Gemini chat dialects; mutates the **OpenAI-shaped bridge body** after BeforeCall allows (existing `ChatHook`).
+2. **BeforeChat** — OpenAI, Anthropic, and Gemini chat dialects. Legacy `ChatHook` / WASM mutate the **OpenAI-shaped bridge body**; `ChatIRHook` mutates typed `sdk/chatir.Request` after that bridge is decoded.
 3. **AfterCall** — after the upstream attempt finishes (all modalities).
 4. **AfterChat** — all three chat dialects; logging/side effects after AfterCall (`AfterChatInfo` includes `Dialect` and `Modality`).
 
@@ -14,12 +14,13 @@ The gateway runs an in-process hook chain on every modality (chat, messages, TTS
 | Hook | Body / info shape |
 | ---- | ----------------- |
 | **BeforeCall** `call.Body` | OpenAI chat.completions JSON derived from IR (stable bridge for all chat dialects) |
-| **BeforeCall** `call.Metadata["dialect"]` | `"openai"` or `"anthropic"` |
-| **BeforeCall** `call.Metadata["client_body"]` | Original client wire bytes (Anthropic Messages JSON or OpenAI JSON) |
+| **BeforeCall** `call.Metadata["dialect"]` | `"openai"`, `"anthropic"`, or `"gemini"` |
+| **BeforeCall** `call.Metadata["client_body"]` | Original OpenAI, Anthropic, or Gemini client wire bytes |
 | **BeforeChat** / WASM `before_chat` | Same OpenAI-shaped bridge JSON as `call.Body` — mutate messages here; keep `model` intact (routing uses the original route name) |
+| **Typed BeforeChat** | `sdk/chatir.Request`; in-process `ChatIRHook`, gRPC `Hook.BeforeChatIR` with `CAPABILITY_HOOK_BEFORE_CHAT_IR`, or WASM `before_chat_ir` |
 | **AfterChat** | `AfterChatInfo` with `Model`, `Status`, `LatencyMs`, `ProviderType`, `TargetModel`, plus `Dialect` / `Modality` |
 
-Dialect-native **mutation** of Anthropic JSON (or typed IR) in BeforeChat is a follow-on for WASM/gRPC extensions; until then, rewrite via the OpenAI bridge or inspect `client_body` in BeforeCall.
+The gateway runs legacy OpenAI-byte and WASM hooks first, then typed IR hooks. It preserves the client-selected route model and stream mode after mutation.
 
 Built-in gates always run in the request path (not registered on `pipeline.Hooks`, so replacing the chain cannot bypass them). Order:
 
@@ -34,11 +35,12 @@ Register in `cmd/gateway`:
 ```go
 hooks := dataplane.NewHookChain().
     RegisterHook(demohook.NewWithLog(log)).
+    RegisterIR(myTypedChatHook).
     RegisterBeforeCall(myBeforeCall)
 pipeline.Hooks = hooks
 ```
 
-Inspect active hooks on `GET /healthz` (`hooks` array of `{name, before_call, after_call, before_chat, after_chat}`) or the platform **Hooks** page.
+Inspect active hooks on `GET /healthz` (`hooks` array includes `before_call`, `after_call`, `before_chat`, `before_chat_ir`, and `after_chat`) or the platform **Hooks** page.
 
 ### Request tags
 
@@ -69,7 +71,6 @@ Guest ABI, limits, pooling benchmarks: [wasm.md](wasm.md). Example: [`extensions
 
 ## Future
 
-* Dialect-native or typed-IR **BeforeChat** mutation bodies (WASM/gRPC) — today mutation stays on the OpenAI bridge; see [dialects](../api/dialects.md)
 * gRPC auth / secrets / notifications host adapters (capabilities reserved; Chat + hooks shipped — see [`extensions/grpcecho`](../../extensions/grpcecho))
 * Remote / HTTP-backed WASM artifact stores (beyond local `file://` paths)
 

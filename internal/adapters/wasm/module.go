@@ -101,10 +101,12 @@ func Compile(ctx context.Context, wasmBytes []byte, cfg Config) (*Module, error)
 	}
 	if _, ok := exp["before_call"]; !ok {
 		if _, ok2 := exp["before_chat"]; !ok2 {
-			if _, ok3 := exp["after_call"]; !ok3 {
-				_ = compiled.Close(ctx)
-				_ = rt.Close(ctx)
-				return nil, fmt.Errorf("wasm: need before_call, before_chat, and/or after_call export")
+			if _, ok3 := exp["before_chat_ir"]; !ok3 {
+				if _, ok4 := exp["after_call"]; !ok4 {
+					_ = compiled.Close(ctx)
+					_ = rt.Close(ctx)
+					return nil, fmt.Errorf("wasm: need before_call, before_chat, before_chat_ir, and/or after_call export")
+				}
 			}
 		}
 	}
@@ -191,6 +193,9 @@ func (m *Module) newInst(ctx context.Context) (*pooledInst, error) {
 	}
 	if f := mod.ExportedFunction("before_chat"); f != nil {
 		fns["before_chat"] = f
+	}
+	if f := mod.ExportedFunction("before_chat_ir"); f != nil {
+		fns["before_chat_ir"] = f
 	}
 	if f := mod.ExportedFunction("after_call"); f != nil {
 		fns["after_call"] = f

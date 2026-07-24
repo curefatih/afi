@@ -133,6 +133,9 @@ func (rt *Runtime) loadOne(ctx context.Context, m Manifest) (*Plugin, error) {
 	if capSet[extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CHAT] {
 		p.Hooks = append(p.Hooks, &BeforeChatAdapter{client: hookClient, name: baseName + ":before_chat", timeout: hookTimeout})
 	}
+	if capSet[extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CHAT_IR] {
+		p.Hooks = append(p.Hooks, &BeforeChatIRAdapter{client: hookClient, name: baseName + ":before_chat_ir", timeout: hookTimeout})
+	}
 	if capSet[extensionv1.Capability_CAPABILITY_HOOK_AFTER_CHAT] {
 		p.Hooks = append(p.Hooks, &AfterChatAdapter{client: hookClient, name: baseName + ":after_chat", timeout: hookTimeout})
 	}
@@ -199,5 +202,6 @@ var (
 	_ sdkhook.BeforeCallHook = (*BeforeCallAdapter)(nil)
 	_ sdkhook.AfterCallHook  = (*AfterCallAdapter)(nil)
 	_ sdkhook.ChatHook       = (*BeforeChatAdapter)(nil)
+	_ sdkhook.ChatIRHook     = (*BeforeChatIRAdapter)(nil)
 	_ sdkhook.AfterChatHook  = (*AfterChatAdapter)(nil)
 )
