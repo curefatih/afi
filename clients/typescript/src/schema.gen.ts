@@ -1383,7 +1383,7 @@ export interface components {
         RouteFallback: {
             provider_id: string;
             target_model: string;
-            /** @description Relative weight for weighted routing; omitted or 0 defaults to 1. Ignored when routing_strategy is ordered. */
+            /** @description Relative weight for weighted routing; omitted or 0 defaults to 1. Ignored when routing_strategy is not weighted. */
             weight?: number;
         };
         Route: {
@@ -1395,10 +1395,10 @@ export interface components {
             fallbacks: components["schemas"]["RouteFallback"][];
             retry?: components["schemas"]["RetryConfig"] | null;
             /**
-             * @description Target selection before retry/failover. Default ordered.
+             * @description Target selection before retry/failover. Default ordered. latency uses gateway-local EWMA; cost uses embedded catalog unit prices.
              * @enum {string}
              */
-            routing_strategy?: "ordered" | "weighted";
+            routing_strategy?: "ordered" | "weighted" | "latency" | "cost";
             /** @description Primary target weight for weighted routing; omitted or 0 defaults to 1. */
             weight?: number;
             /** Format: date-time */
@@ -1411,7 +1411,7 @@ export interface components {
             fallbacks?: components["schemas"]["RouteFallback"][];
             retry?: components["schemas"]["RetryConfig"] | null;
             /** @enum {string} */
-            routing_strategy?: "ordered" | "weighted";
+            routing_strategy?: "ordered" | "weighted" | "latency" | "cost";
             weight?: number;
         };
         Quota: {
