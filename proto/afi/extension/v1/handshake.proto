@@ -12,6 +12,10 @@ enum Capability {
   CAPABILITY_HOOK_AFTER_CALL = 3;
   CAPABILITY_HOOK_BEFORE_CHAT = 4;
   CAPABILITY_HOOK_AFTER_CHAT = 5;
+  // Typed chat IR provider (Provider.ChatIR / ChatIRStream). May be advertised
+  // with or without CAPABILITY_PROVIDER_CHAT; when both are present the host
+  // prefers ChatIR and keeps OpenAI-byte Chat as a fallback for older paths.
+  CAPABILITY_PROVIDER_CHAT_IR = 6;
   // Reserved for follow-on host adapters (not wired in v1).
   CAPABILITY_AUTH = 10;
   CAPABILITY_SECRETS = 11;

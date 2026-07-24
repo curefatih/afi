@@ -35,7 +35,7 @@ message ChatResponse {
   bytes body = 3;
 }
 
-// Provider implements remote ChatProvider.Chat.
+// Provider implements remote ChatProvider.Chat (OpenAI-shaped bytes).
 service Provider {
   rpc Chat(ChatRequest) returns (ChatResponse);
 }

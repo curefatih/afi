@@ -26,7 +26,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// Provider implements remote ChatProvider.Chat.
+// Provider implements remote ChatProvider.Chat (OpenAI-shaped bytes).
 type ProviderClient interface {
 	Chat(ctx context.Context, in *ChatRequest, opts ...grpc.CallOption) (*ChatResponse, error)
 }
@@ -53,7 +53,7 @@ func (c *providerClient) Chat(ctx context.Context, in *ChatRequest, opts ...grpc
 // All implementations must embed UnimplementedProviderServer
 // for forward compatibility.
 //
-// Provider implements remote ChatProvider.Chat.
+// Provider implements remote ChatProvider.Chat (OpenAI-shaped bytes).
 type ProviderServer interface {
 	Chat(context.Context, *ChatRequest) (*ChatResponse, error)
 	mustEmbedUnimplementedProviderServer()

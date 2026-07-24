@@ -26,6 +26,7 @@ import (
 
 	extensionv1 "github.com/curefatih/afi/gen/proto/afi/extension/v1"
 	"github.com/curefatih/afi/internal/adapters/grpcprovider"
+	"github.com/curefatih/afi/sdk/chatir"
 	"google.golang.org/grpc"
 )
 
@@ -54,6 +55,7 @@ func main() {
 	plugin := &server{}
 	extensionv1.RegisterExtensionServer(srv, plugin)
 	extensionv1.RegisterProviderServer(srv, plugin)
+	extensionv1.RegisterProviderIRServer(srv, plugin)
 	extensionv1.RegisterHookServer(srv, plugin)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -91,6 +93,7 @@ func listen(addr string) (net.Listener, error) {
 type server struct {
 	extensionv1.UnimplementedExtensionServer
 	extensionv1.UnimplementedProviderServer
+	extensionv1.UnimplementedProviderIRServer
 	extensionv1.UnimplementedHookServer
 }
 
@@ -103,6 +106,7 @@ func (s *server) Handshake(ctx context.Context, req *extensionv1.HandshakeReques
 		ProviderType: providerType,
 		Capabilities: []extensionv1.Capability{
 			extensionv1.Capability_CAPABILITY_PROVIDER_CHAT,
+			extensionv1.Capability_CAPABILITY_PROVIDER_CHAT_IR,
 			extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CALL,
 		},
 	}, nil
@@ -166,6 +170,80 @@ func (s *server) Chat(ctx context.Context, req *extensionv1.ChatRequest) (*exten
 		Headers:    map[string]string{"Content-Type": "application/json"},
 		Body:       raw,
 	}, nil
+}
+
+func (s *server) ChatIR(ctx context.Context, req *extensionv1.ChatIRRequest) (*extensionv1.ChatIRResponse, error) {
+	_ = ctx
+	irReq := grpcprovider.ChatIRRequestFromProto(req.GetRequest())
+	if req.GetRequest() != nil && req.GetRequest().GetStream() {
+		return nil, fmt.Errorf("use ChatIRStream for streaming requests")
+	}
+	model := req.GetTargetModel()
+	if model == "" {
+		model = irReq.Model
+	}
+	userText := lastUserText(irReq)
+	content := "grpcecho: " + userText
+	result := grpcprovider.ChatIRResponseProto(chatirResult(model, userText, content))
+	return result, nil
+}
+
+func (s *server) ChatIRStream(req *extensionv1.ChatIRRequest, stream extensionv1.ProviderIR_ChatIRStreamServer) error {
+	irReq := grpcprovider.ChatIRRequestFromProto(req.GetRequest())
+	model := req.GetTargetModel()
+	if model == "" {
+		model = irReq.Model
+	}
+	userText := lastUserText(irReq)
+	content := "grpcecho: " + userText
+	events := []chatir.StreamEvent{
+		{Kind: chatir.StreamMessageStart, ID: "chatcmpl-grpcecho", Model: model, Role: "assistant"},
+		{Kind: chatir.StreamTextDelta, Text: content},
+		{
+			Kind: chatir.StreamMessageEnd, FinishReason: "stop",
+			Usage: &chatir.Usage{
+				PromptTokens:     int64(max(1, len(strings.Fields(userText)))),
+				CompletionTokens: int64(max(1, len(strings.Fields(content)))),
+			},
+		},
+	}
+	for _, ev := range events {
+		if err := stream.Send(grpcprovider.ChatIRStreamEventProto(ev)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func lastUserText(req chatir.Request) string {
+	for i := len(req.Messages) - 1; i >= 0; i-- {
+		if req.Messages[i].Role == "user" {
+			if req.Messages[i].Content != "" {
+				return req.Messages[i].Content
+			}
+			for _, part := range req.Messages[i].Parts {
+				if part.Type == chatir.ContentText && part.Text != "" {
+					return part.Text
+				}
+			}
+		}
+	}
+	return ""
+}
+
+func chatirResult(model, userText, content string) chatir.Result {
+	return chatir.Result{
+		StatusCode: 200,
+		Header:     map[string][]string{"Content-Type": {"application/json"}},
+		Response: &chatir.Response{
+			ID: "chatcmpl-grpcecho", Model: model, Role: "assistant", Content: content,
+			FinishReason: "stop",
+			Usage: chatir.Usage{
+				PromptTokens:     int64(max(1, len(strings.Fields(userText)))),
+				CompletionTokens: int64(max(1, len(strings.Fields(content)))),
+			},
+		},
+	}
 }
 
 func (s *server) BeforeCall(ctx context.Context, req *extensionv1.BeforeCallRequest) (*extensionv1.BeforeCallResponse, error) {

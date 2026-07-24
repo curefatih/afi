@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/curefatih/afi/internal/adapters/llm"
 	"github.com/curefatih/afi/internal/dataplane/dialect"
 	"github.com/curefatih/afi/internal/dataplane/ir"
 	"github.com/curefatih/afi/internal/snapshot"
@@ -88,5 +87,4 @@ func sdkConfig(p snapshot.Provider) sdkprovider.ProviderConfig {
 var (
 	_ ChatProvider   = (*sdkChatBridge)(nil)
 	_ IRChatProvider = (*sdkChatBridge)(nil)
-	_                = llm.WithExtraHeaders // keep llm import stable if helpers move
 )

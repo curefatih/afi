@@ -3,6 +3,8 @@ package provider
 import (
 	"context"
 	"net/http"
+
+	"github.com/curefatih/afi/sdk/chatir"
 )
 
 // Capabilities describes what an adapter supports on the OpenAI-compatible
@@ -38,6 +40,13 @@ type ChatProvider interface {
 	Type() string
 	Capabilities() Capabilities
 	Chat(ctx context.Context, cfg ProviderConfig, targetModel string, body []byte, stream bool) (*http.Response, error)
+}
+
+// ChatIRProvider is an optional typed chat IR contract. Adapters that implement
+// it avoid the OpenAI-JSON bridge used for legacy ChatProvider-only plugins.
+type ChatIRProvider interface {
+	ChatProvider
+	ChatIR(ctx context.Context, cfg ProviderConfig, targetModel string, req chatir.Request) (chatir.Result, error)
 }
 
 // ConfigFromFields builds a ProviderConfig from discrete snapshot-like fields.
