@@ -81,6 +81,23 @@ func TestEstimateCostEmbedding(t *testing.T) {
 	}
 }
 
+func TestEstimateCostImage(t *testing.T) {
+	t.Parallel()
+	img, ok := Lookup("openai", "dall-e-3")
+	if !ok || !img.IsImage() {
+		t.Fatalf("img=%+v ok=%v", img, ok)
+	}
+	got := EstimateCostUSD(usage.Event{
+		ProviderType: "openai", TargetModel: "dall-e-3",
+		Modality: "image",
+		Metrics:  map[string]any{"images": 2.0},
+	})
+	// 2 * 0.04 = 0.08
+	if got == nil || *got < 0.079 || *got > 0.081 {
+		t.Fatalf("got %v", got)
+	}
+}
+
 func TestEstimateCostMissingMetrics(t *testing.T) {
 	t.Parallel()
 	if got := EstimateCostUSD(usage.Event{

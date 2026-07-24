@@ -13,6 +13,7 @@ const (
 	ModeAudioSpeech        = "audio_speech"
 	ModeAudioTranscription = "audio_transcription"
 	ModeEmbedding          = "embedding"
+	ModeImage              = "image"
 )
 
 // Entry is curated metadata for a provider target model.
@@ -24,6 +25,7 @@ type Entry struct {
 	OutputCostPerMTok     *float64 `json:"output_cost_per_mtok,omitempty"`
 	InputCostPerCharacter *float64 `json:"input_cost_per_character,omitempty"`
 	InputCostPerSecond    *float64 `json:"input_cost_per_second,omitempty"`
+	InputCostPerImage     *float64 `json:"input_cost_per_image,omitempty"`
 	SupportsStreaming     *bool    `json:"supports_streaming,omitempty"`
 	SupportsVision        bool     `json:"supports_vision,omitempty"`
 	SupportsTools         bool     `json:"supports_tools,omitempty"`
@@ -97,6 +99,11 @@ func (e Entry) IsSTT() bool {
 // IsEmbedding reports whether the entry is an embeddings model.
 func (e Entry) IsEmbedding() bool {
 	return e.Mode == ModeEmbedding
+}
+
+// IsImage reports whether the entry is an image generation model.
+func (e Entry) IsImage() bool {
+	return e.Mode == ModeImage
 }
 
 // StreamingEnabled returns whether streaming is supported (chat default true).
