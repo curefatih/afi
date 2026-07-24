@@ -416,6 +416,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/organizations/{orgID}/object-store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get object store settings */
+        get: operations["getOrgObjectStore"];
+        /**
+         * Update object store settings
+         * @description Optional per-org S3-compatible asset persistence for image (and later video) generations.
+         *     Requires org admin; publishes snapshot. Secrets use credential_id (JSON access_key/secret_key)
+         *     or access_key_env + secret_key_env — never plaintext keys in this payload.
+         */
+        put: operations["updateOrgObjectStore"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/organizations/{orgID}/teams": {
         parameters: {
             query?: never;
@@ -1194,6 +1217,23 @@ export interface components {
         OrgDefaultRetrySettings: {
             retry?: components["schemas"]["RetryConfig"] | null;
         };
+        ObjectStoreConfig: {
+            enabled?: boolean;
+            /** @description S3-compatible host:port (no scheme) */
+            endpoint?: string;
+            region?: string;
+            bucket?: string;
+            use_ssl?: boolean;
+            path_style?: boolean;
+            /** @description Org credential whose plaintext is JSON {"access_key","secret_key"} */
+            credential_id?: string;
+            access_key_env?: string;
+            secret_key_env?: string;
+            presign_ttl_seconds?: number;
+        };
+        OrgObjectStoreSettings: {
+            object_store?: components["schemas"]["ObjectStoreConfig"] | null;
+        };
         InvitePreview: {
             email: string;
             organization_id: string;
@@ -1345,6 +1385,7 @@ export interface components {
             tts?: boolean;
             stt?: boolean;
             embedding?: boolean;
+            image?: boolean;
         };
         Provider: {
             id: string;
@@ -2484,6 +2525,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrgDefaultRetrySettings"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getOrgObjectStore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgObjectStoreSettings"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateOrgObjectStore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrgObjectStoreSettings"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgObjectStoreSettings"];
                 };
             };
             400: components["responses"]["BadRequest"];

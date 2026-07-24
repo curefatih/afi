@@ -4,17 +4,17 @@ Gateway chat dispatch uses a **registry** of in-process adapters. The pipeline l
 
 ## Built-in types
 
-| Type | Chat | Stream | TTS | STT | Embedding | Notes |
-|------|------|--------|-----|-----|-----------|-------|
-| `openai` | yes | yes | yes | yes | yes | Chat + audio + `/embeddings` |
-| `anthropic` | yes | yes | no | no | no | Messages API → OpenAI-shaped responses/SSE |
-| `gemini` | yes | yes | no | no | no | `generateContent` / `streamGenerateContent` → OpenAI JSON/SSE |
-| `openai_compatible` | yes | yes | yes | yes | yes | Same wire protocol as OpenAI (incl. audio/embeddings if upstream supports it) |
-| `echo` | yes | no | no | no | no | **SDK extension** (`extensions/echo`) — no network; echoes last user message |
+| Type | Chat | Stream | TTS | STT | Embedding | Image | Notes |
+|------|------|--------|-----|-----|-----------|-------|-------|
+| `openai` | yes | yes | yes | yes | yes | yes | Chat + audio + `/embeddings` + `/images/generations` |
+| `anthropic` | yes | yes | no | no | no | no | Messages API → OpenAI-shaped responses/SSE |
+| `gemini` | yes | yes | no | no | no | no | `generateContent` / `streamGenerateContent` → OpenAI JSON/SSE |
+| `openai_compatible` | yes | yes | yes | yes | yes | yes | Same wire protocol as OpenAI (incl. audio/embeddings/images if upstream supports it) |
+| `echo` | yes | no | no | no | no | no | **SDK extension** (`extensions/echo`) — no network; echoes last user message |
 
-Capabilities (`chat`, `stream`, `tts`, `stt`, `embedding`) are stored on the provider in the snapshot (defaults applied per type when empty). Streaming/TTS/STT/embeddings requests against unsupported providers return `400`.
+Capabilities (`chat`, `stream`, `tts`, `stt`, `embedding`, `image`) are stored on the provider in the snapshot (defaults applied per type when empty). Streaming/TTS/STT/embeddings/images requests against unsupported providers return `400`.
 
-## Modality ports (chat / messages / audio / embeddings)
+## Modality ports (chat / messages / audio / embeddings / images)
 
 | Surface | Registry port | Resolved by |
 |---------|---------------|-------------|
@@ -22,8 +22,11 @@ Capabilities (`chat`, `stream`, `tts`, `stt`, `embedding`) are stored on the pro
 | `POST /v1/messages` | `MessagesBackend` (via `AnthropicTransportProvider`) | routed `provider.type` |
 | `POST /v1/audio/speech` / `transcriptions` | `AudioBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
 | `POST /v1/embeddings` | `EmbeddingsBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
+| `POST /v1/images/generations` | `ImagesBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
 
-Chat stays on `ChatProvider`. TTS/STT, embeddings, and native Anthropic messages use **optional** transport interfaces implemented by the same adapters — they are **not** methods on `ChatProvider`, so SDK chat extensions need no modality stubs.
+Chat stays on `ChatProvider`. TTS/STT, embeddings, images, and native Anthropic messages use **optional** transport interfaces implemented by the same adapters — they are **not** methods on `ChatProvider`, so SDK chat extensions need no modality stubs.
+
+When an organization enables **object store** in control-plane settings (`GET/PUT …/organizations/{orgID}/object-store`), successful image generations may be persisted to S3-compatible storage and response URLs rewritten to presigned GET URLs. Disabled (default) keeps upstream passthrough.
 
 Adapters that do not implement the transport provider interface simply cannot serve that modality (handlers return `400` / `502` as today).
 

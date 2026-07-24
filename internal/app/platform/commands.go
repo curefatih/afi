@@ -270,6 +270,25 @@ func (s *Service) SetOrgDefaultRetry(ctx context.Context, orgID string, retry *g
 	return out, nil
 }
 
+func (s *Service) GetOrgObjectStore(ctx context.Context, orgID string) (*gatewayconfig.ObjectStoreConfig, error) {
+	return s.API.GetOrgObjectStore(ctx, orgID)
+}
+
+func (s *Service) SetOrgObjectStore(ctx context.Context, orgID string, cfg *gatewayconfig.ObjectStoreConfig) (*gatewayconfig.ObjectStoreConfig, error) {
+	if err := s.API.SetOrgObjectStore(ctx, orgID, cfg); err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "updated"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventOrgObjectStoreUpdated, orgID, orgID)
+	out, err := s.API.GetOrgObjectStore(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (s *Service) CreateQuota(ctx context.Context, orgID, scopeType, scopeID, metric string, limitValue int64, window string) (*gatewayconfig.Quota, error) {
 	q, err := s.API.CreateQuota(ctx, orgID, scopeType, scopeID, metric, limitValue, window)
 	if err != nil {

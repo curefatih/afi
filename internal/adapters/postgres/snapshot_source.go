@@ -262,7 +262,8 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	}
 
 	orgRows, err := l.Pool.Query(ctx, `
-		SELECT id, default_retry FROM organizations WHERE default_retry IS NOT NULL
+		SELECT id, default_retry, object_store FROM organizations
+		WHERE default_retry IS NOT NULL OR object_store IS NOT NULL
 	`)
 	if err != nil {
 		return src, err
@@ -270,15 +271,21 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	defer orgRows.Close()
 	for orgRows.Next() {
 		var orgID string
-		var raw []byte
-		if err := orgRows.Scan(&orgID, &raw); err != nil {
+		var retryRaw, storeRaw []byte
+		if err := orgRows.Scan(&orgID, &retryRaw, &storeRaw); err != nil {
 			return src, err
 		}
-		if rc := DecodeRetry(raw); rc != nil {
+		if rc := DecodeRetry(retryRaw); rc != nil {
 			if src.DefaultRetries == nil {
 				src.DefaultRetries = make(map[string]*snapshot.RetryConfig)
 			}
 			src.DefaultRetries[orgID] = rc.ToSnapshot()
+		}
+		if oc := DecodeObjectStore(storeRaw); oc != nil {
+			if src.ObjectStores == nil {
+				src.ObjectStores = make(map[string]*snapshot.ObjectStoreConfig)
+			}
+			src.ObjectStores[orgID] = oc.ToSnapshot()
 		}
 	}
 	if err := orgRows.Err(); err != nil {

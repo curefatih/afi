@@ -99,6 +99,8 @@ Written on first control-plane start (or `make seed`):
 | Org `default_retry` | optional org-wide `{max_attempts,backoff…}` applied when a route has no `retry` |
 | Gateway models | `GET /v1/models` lists org route model ids (`supports_streaming` / `supports_tts` / `supports_stt`) |
 | Gateway audio | `POST /v1/audio/speech`, `POST /v1/audio/transcriptions` (openai / openai_compatible) |
+| Gateway embeddings | `POST /v1/embeddings` (openai / openai_compatible) |
+| Gateway images | `POST /v1/images/generations` (openai / openai_compatible; optional org object-store persist) |
 
 ## Ports
 
@@ -132,6 +134,7 @@ Canonical contract: OpenAPI [`api/openapi/platform.openapi.yaml`](../../api/open
 | POST | `/api/v1/platform/auth/sso/{provider}/callback` (public; SAML ACS → web UI) |
 | GET | `/api/v1/platform/auth/sso/{provider}/metadata` (public; SAML SP metadata) |
 | GET/PUT | `/api/v1/platform/organizations/{orgID}/default-retry` (PUT = org admin; publishes snapshot) |
+| GET/PUT | `/api/v1/platform/organizations/{orgID}/object-store` (PUT = org admin; publishes snapshot; optional image asset persistence) |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/keys` (personal = member; service_account = org admin) |
 | DELETE | `/api/v1/platform/keys/{keyID}` (admin or personal key owner) |
 | GET/POST | `/api/v1/platform/projects/{projectID}/keys` (POST = org admin) |

@@ -51,6 +51,8 @@ func Summary(name, resourceID string) string {
 		return fmt.Sprintf("Deleted route %s", res)
 	case "org.default_retry.updated":
 		return "Updated organization default retry"
+	case "org.object_store.updated":
+		return "Updated organization object store"
 	case "quota.created":
 		return fmt.Sprintf("Created quota %s", res)
 	case "quota.updated":

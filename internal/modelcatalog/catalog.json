@@ -52,6 +52,21 @@
     "input_cost_per_mtok": 0.1,
     "supports_streaming": false
   },
+  "openai/dall-e-2": {
+    "mode": "image",
+    "input_cost_per_image": 0.02,
+    "supports_streaming": false
+  },
+  "openai/dall-e-3": {
+    "mode": "image",
+    "input_cost_per_image": 0.04,
+    "supports_streaming": false
+  },
+  "openai/gpt-image-1": {
+    "mode": "image",
+    "input_cost_per_image": 0.04,
+    "supports_streaming": false
+  },
   "anthropic/claude-sonnet-4-20250514": {
     "mode": "chat",
     "max_input_tokens": 200000,

@@ -153,6 +153,28 @@ func encodeRetry(c *gatewayconfig.RetryConfig) ([]byte, error) {
 	return json.Marshal(c)
 }
 
+func DecodeObjectStore(raw []byte) *gatewayconfig.ObjectStoreConfig {
+	return decodeObjectStore(raw)
+}
+
+func decodeObjectStore(raw []byte) *gatewayconfig.ObjectStoreConfig {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil
+	}
+	var out gatewayconfig.ObjectStoreConfig
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil
+	}
+	return &out
+}
+
+func encodeObjectStore(c *gatewayconfig.ObjectStoreConfig) ([]byte, error) {
+	if c == nil {
+		return nil, nil
+	}
+	return json.Marshal(c)
+}
+
 func (r *Routes) ListByOrg(ctx context.Context, orgID string) ([]gatewayconfig.Route, error) {
 	rows, err := r.Pool.Query(ctx, `
 		SELECT id, organization_id, model, provider_id, target_model, fallbacks, retry, routing_strategy, weight, created_at

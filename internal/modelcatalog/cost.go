@@ -42,6 +42,13 @@ func EstimateCostUSD(e usage.Event) *float64 {
 		cost := (float64(e.PromptTokens)/1_000_000.0)**entry.InputCostPerMTok +
 			(float64(e.CompletionTokens)/1_000_000.0)*outRate
 		return &cost
+	case ModeImage:
+		imgs, ok := metricFloat(e.Metrics, "images")
+		if !ok || entry.InputCostPerImage == nil {
+			return nil
+		}
+		cost := imgs * *entry.InputCostPerImage
+		return &cost
 	default:
 		// chat / messages / unknown treated as token pricing
 		if entry.InputCostPerMTok == nil || entry.OutputCostPerMTok == nil {

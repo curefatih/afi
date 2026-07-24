@@ -9,6 +9,7 @@ const (
 	ModalityTTS       Modality = "tts"
 	ModalitySTT       Modality = "stt"
 	ModalityEmbedding Modality = "embedding"
+	ModalityImage     Modality = "image"
 	ModalityMCP       Modality = "mcp"
 	ModalityA2A       Modality = "a2a"
 )

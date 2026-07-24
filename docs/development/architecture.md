@@ -48,6 +48,8 @@ Also exposes:
 * `GET /v1/models` — virtual models from the key’s organization routes, enriched from the curated model catalog (`mode`, context limits, `supports_streaming` / `supports_tts` / `supports_stt`)
 * `POST /v1/chat/completions` — OpenAI-shaped chat via `ChatProvider` (adapters translate native APIs)
 * `POST /v1/messages` — Anthropic-shaped pass-through via `MessagesBackend`
+* `POST /v1/embeddings` — OpenAI-compatible embeddings via `EmbeddingsBackend`
+* `POST /v1/images/generations` — OpenAI-compatible image generation via `ImagesBackend` (optional org object-store persist)
 * `POST /v1/audio/speech` / `POST /v1/audio/transcriptions` — TTS/STT via `AudioBackend`
 * `POST|GET|DELETE /mcp/{alias}` — MCP Streamable HTTP proxy to org-scoped upstream backends (snapshot `MCPBackends`). Platform UI: [MCP and A2A](../getting-started/web-ui/mcp-a2a.md).
 * `POST /a2a/{alias}` — A2A JSON-RPC proxy; `GET /a2a/{alias}/.well-known/agent-card.json` — Agent Card with gateway URL rewrite (snapshot `A2AAgents`). Platform UI: [MCP and A2A](../getting-started/web-ui/mcp-a2a.md).
@@ -64,6 +66,7 @@ Snapshots contain:
 * Providers (type, base URL, API key env ref, capabilities)
 * Provider credentials (env ref, encrypted_db ciphertext, or vault secret_ref) + assignments (provider type × org/project/api_key scope)
 * Static model routes (optional fallbacks and retry config)
+* Optional per-org object store config (S3-compatible asset persistence for image generations)
 * Quotas (scope, metric, limit, window) — resolve order per window: api_key → user → project → organization
 * CEL request policies (when/then: CEL when + ordered Then actions allow|deny|set_header|use_credential; vars include `request`, `key`, and `credential`)
 
@@ -76,7 +79,7 @@ flowchart LR
   Gateway --> usage_outbox --> worker --> usage_events
 ```
 
-The request path never waits on `usage_events` consumers. Run `make run-worker` locally to populate the Usage UI (including `cost_usd` when prices match). Events carry a `modality` (`chat` / `messages` / `tts` / `stt`, …) and a `metrics` JSON object for non-token quantities; token columns remain for chat pricing. Cost uses DB `model_prices` overrides when present, otherwise the curated catalog in `internal/modelcatalog` (chat $/MTok, TTS $/character, STT $/second).
+The request path never waits on `usage_events` consumers. Run `make run-worker` locally to populate the Usage UI (including `cost_usd` when prices match). Events carry a `modality` (`chat` / `messages` / `tts` / `stt` / `embedding` / `image`, …) and a `metrics` JSON object for non-token quantities; token columns remain for chat pricing. Cost uses DB `model_prices` overrides when present, otherwise the curated catalog in `internal/modelcatalog` (chat $/MTok, TTS $/character, STT $/second, embedding $/MTok, image $/image).
 
 ## Extensions (current)
 

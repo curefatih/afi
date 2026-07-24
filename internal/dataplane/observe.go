@@ -38,6 +38,8 @@ func modalityFromPath(path string) string {
 		return ModalityMessages
 	case strings.HasPrefix(path, "/v1/embeddings"):
 		return ModalityEmbedding
+	case strings.HasPrefix(path, "/v1/images/"):
+		return ModalityImage
 	case strings.HasPrefix(path, "/v1/audio/speech"):
 		return ModalityTTS
 	case strings.HasPrefix(path, "/v1/audio/transcriptions"):

@@ -35,6 +35,7 @@ const (
 	EventRouteUpdated           EventName = "route.updated"
 	EventRouteDeleted           EventName = "route.deleted"
 	EventOrgDefaultRetryUpdated EventName = "org.default_retry.updated"
+	EventOrgObjectStoreUpdated  EventName = "org.object_store.updated"
 	EventQuotaCreated           EventName = "quota.created"
 	EventQuotaUpdated           EventName = "quota.updated"
 	EventQuotaDeleted           EventName = "quota.deleted"

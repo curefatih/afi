@@ -15,6 +15,7 @@ Point official OpenAI / Anthropic / MCP / A2A clients at the gateway base URL. A
 | GET | `/v1/models` | OpenAI-shaped, route/catalog enriched |
 | POST | `/v1/chat/completions` | OpenAI-compatible |
 | POST | `/v1/embeddings` | OpenAI-compatible |
+| POST | `/v1/images/generations` | OpenAI-compatible (optional org object-store persist) |
 | POST | `/v1/audio/speech` | TTS |
 | POST | `/v1/audio/transcriptions` | STT |
 | POST | `/v1/messages` | Native Anthropic Messages |

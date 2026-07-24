@@ -161,6 +161,48 @@ export const updateOrgDefaultRetryMutationOptions = () =>
 			),
 	});
 
+export type ObjectStoreConfig = {
+	enabled: boolean;
+	endpoint?: string;
+	region?: string;
+	bucket?: string;
+	use_ssl?: boolean;
+	path_style?: boolean;
+	credential_id?: string;
+	access_key_env?: string;
+	secret_key_env?: string;
+	presign_ttl_seconds?: number;
+};
+
+export type OrgObjectStoreSettings = {
+	object_store: ObjectStoreConfig | null;
+};
+
+export const orgObjectStoreQueryOptions = (orgId: string) =>
+	queryOptions({
+		queryKey: ["organizations", orgId, "object-store"],
+		queryFn: () =>
+			apiFetch<OrgObjectStoreSettings>(
+				`/api/v1/platform/organizations/${orgId}/object-store`,
+			),
+		enabled: !!orgId,
+	});
+
+export const updateOrgObjectStoreMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({
+			orgId,
+			object_store,
+		}: {
+			orgId: string;
+			object_store: ObjectStoreConfig | null;
+		}) =>
+			apiFetch<OrgObjectStoreSettings>(
+				`/api/v1/platform/organizations/${orgId}/object-store`,
+				{ method: "PUT", body: { object_store } },
+			),
+	});
+
 export type InvitePreview = {
 	email: string;
 	organization_id: string;

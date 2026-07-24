@@ -141,6 +141,39 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
+  /v1/images/generations:
+    post:
+      tags: [OpenAICompatible]
+      operationId: createImage
+      summary: Image generation
+      description: |
+        OpenAI-compatible image generations. Body follows the OpenAI Images schema.
+        When the organization has object store enabled in the control plane, generated
+        assets may be persisted and response URLs rewritten to presigned object URLs.
+      externalDocs:
+        url: https://platform.openai.com/docs/api-reference/images/create
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Image generation response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
   /v1/audio/speech:
     post:
       tags: [OpenAICompatible]
