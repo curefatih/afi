@@ -64,6 +64,8 @@ type Config struct {
 		InternalToken string        `yaml:"internal_token" env:"AFI_INTERNAL_TOKEN"`
 		// PublicBaseURL is the externally reachable control-plane URL (SSO callbacks).
 		PublicBaseURL string `yaml:"public_base_url" env:"AFI_AUTH_PUBLIC_BASE_URL"`
+		// SignupEnabled allows self-serve POST /auth/register (default off).
+		SignupEnabled bool `yaml:"signup_enabled" env:"AFI_SIGNUP_ENABLED"`
 		SSO           struct {
 			Enabled bool `yaml:"enabled" env:"AFI_SSO_ENABLED"`
 			// StateStore is redis (shared, multi-node) or memory (single-node / tests).
