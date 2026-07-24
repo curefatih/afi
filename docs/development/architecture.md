@@ -48,9 +48,9 @@ Also exposes:
 * `GET /openai/v1/models` (alias `/v1/models`) — virtual models from the key’s organization routes, enriched from the curated model catalog
 * `POST /openai/v1/chat/completions` (alias `/v1/chat/completions`) — OpenAI dialect via chat IR
 * `POST /anthropic/v1/messages` (alias `/v1/messages`) — Anthropic dialect via chat IR (any chat-capable provider)
-* `POST /v1/embeddings` — OpenAI-compatible embeddings via `EmbeddingsBackend`
-* `POST /v1/images/generations` — OpenAI-compatible image generation via `ImagesBackend` (optional org object-store persist)
-* `POST /v1/audio/speech` / `POST /v1/audio/transcriptions` — TTS/STT via `AudioBackend`
+* `POST /openai/v1/embeddings` (alias `/v1/embeddings`) — OpenAI-compatible embeddings via `EmbeddingsBackend`
+* `POST /openai/v1/images/generations` (alias `/v1/images/generations`) — OpenAI-compatible image generation via `ImagesBackend` (optional org object-store persist)
+* `POST /openai/v1/audio/speech` / `POST /openai/v1/audio/transcriptions` (aliases `/v1/audio/...`) — TTS/STT via `AudioBackend`
 * `POST|GET|DELETE /mcp/{alias}` — MCP Streamable HTTP proxy to org-scoped upstream backends (snapshot `MCPBackends`). Platform UI: [MCP and A2A](../getting-started/web-ui/mcp-a2a.md).
 * `POST /a2a/{alias}` — A2A JSON-RPC proxy; `GET /a2a/{alias}/.well-known/agent-card.json` — Agent Card with gateway URL rewrite (snapshot `A2AAgents`). Platform UI: [MCP and A2A](../getting-started/web-ui/mcp-a2a.md).
 
