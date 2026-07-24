@@ -11,7 +11,7 @@ It has two major parts:
 * **Control plane** — configuration, identities, policies, quotas, routing, and platform APIs. Owns business rules and compiles **immutable snapshots**.
 * **Data plane (gateway)** — processes inference with a request pipeline. Loads snapshots and never queries the configuration database during a request.
 
-Start here: [Local development](getting-started/local-dev.md). Platform console: [Web UI](getting-started/web-ui.md). Platform SSO: [Single sign-on](getting-started/sso.md). Self-hosting: [Deployment](deployment.md).
+Start here: [Local development](getting-started/local-dev.md). Platform console: [Web UI](getting-started/web-ui.md). Point OpenAI or Anthropic SDKs at the gateway: [API dialects](api/dialects.md). Platform SSO: [Single sign-on](getting-started/sso.md). Self-hosting: [Deployment](deployment.md).
 
 ## High-level flow
 
@@ -37,8 +37,7 @@ flowchart TB
 * Control plane: migrate, seed, snapshot publish, platform auth, org create + member invite
 * Personal and service-account API keys; quotas on org / project / user / api_key
 * Gateway: virtual API key auth → quotas → routes (with failover) → provider registry
-* OpenAI-compatible `POST /v1/chat/completions` and `GET /v1/models` (`supports_streaming` / `supports_tts` / `supports_stt`)
-* Native Anthropic `POST /v1/messages` (Anthropic providers / routes)
+* OpenAI and Anthropic **[API dialects](api/dialects.md)** — `/openai/v1/...` and `/anthropic/v1/...` (aliases under `/v1`)
 * OpenAI-compatible `POST /v1/audio/speech` and `POST /v1/audio/transcriptions` (openai / openai_compatible)
 * OpenAI-compatible `POST /v1/embeddings` and `POST /v1/images/generations` (openai / openai_compatible)
 * Streaming for OpenAI, Anthropic, Gemini, and `openai_compatible` (capability-gated)

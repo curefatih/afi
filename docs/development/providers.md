@@ -14,17 +14,19 @@ Gateway chat dispatch uses a **registry** of in-process adapters. The pipeline l
 
 Capabilities (`chat`, `stream`, `tts`, `stt`, `embedding`, `image`) are stored on the provider in the snapshot (defaults applied per type when empty). Streaming/TTS/STT/embeddings/images requests against unsupported providers return `400`.
 
-## Modality ports (chat / messages / audio / embeddings / images)
+## Modality ports (chat / audio / embeddings / images)
 
 | Surface | Registry port | Resolved by |
 |---------|---------------|-------------|
-| `POST /v1/chat/completions` | `ChatProvider.Chat` | `provider.type` |
-| `POST /v1/messages` | `MessagesBackend` (via `AnthropicTransportProvider`) | routed `provider.type` |
+| `POST /openai/v1/chat/completions` (+ `/v1/...`) | `IRChatProvider.ChatIR` (fallback: `ChatProvider.Chat`) | `provider.type` |
+| `POST /anthropic/v1/messages` (+ `/v1/messages`) | same chat IR path | `provider.type` (any chat-capable provider) |
 | `POST /v1/audio/speech` / `transcriptions` | `AudioBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
 | `POST /v1/embeddings` | `EmbeddingsBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
 | `POST /v1/images/generations` | `ImagesBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
 
-Chat stays on `ChatProvider`. TTS/STT, embeddings, images, and native Anthropic messages use **optional** transport interfaces implemented by the same adapters — they are **not** methods on `ChatProvider`, so SDK chat extensions need no modality stubs.
+Client **dialect** (path prefix) selects wire format; routing selects the upstream provider. Product guide: [API dialects](../api/dialects.md). Chat IR design: [`internal-docs/dialect-api-ir.md`](../../internal-docs/dialect-api-ir.md).
+
+Chat stays on `ChatProvider` / `IRChatProvider`. TTS/STT, embeddings, and images use **optional** transport interfaces — they are **not** methods on `ChatProvider`, so SDK chat extensions need no modality stubs.
 
 When an organization enables **object store** in control-plane settings (`GET/PUT …/organizations/{orgID}/object-store`), successful image generations may be persisted to S3-compatible storage and response URLs rewritten to presigned GET URLs. Disabled (default) keeps upstream passthrough.
 
