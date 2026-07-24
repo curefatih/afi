@@ -8,10 +8,10 @@ func rejectOpenAIUnsupported(raw map[string]any) error {
 		return nil
 	}
 	if v, ok := raw["functions"]; ok && !isJSONNull(v) {
-		return Unsupported("functions", "legacy functions are not supported; use tools instead")
+		return Unsupported("functions", "functions are not supported; use tools instead")
 	}
 	if v, ok := raw["function_call"]; ok && !isJSONNull(v) {
-		return Unsupported("function_call", "legacy function_call is not supported; use tool_choice instead")
+		return Unsupported("function_call", "function_call is not supported; use tool_choice instead")
 	}
 	if v, ok := raw["logprobs"]; ok {
 		switch t := v.(type) {

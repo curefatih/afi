@@ -20,7 +20,7 @@ type ProviderCaps struct {
 	Embedding bool
 }
 
-// ChatProvider is the in-process adapter contract for gateway chat (legacy OpenAI-shaped bytes).
+// ChatProvider is the in-process adapter contract for gateway chat HTTP transport.
 type ChatProvider interface {
 	Type() string
 	Capabilities() ProviderCaps

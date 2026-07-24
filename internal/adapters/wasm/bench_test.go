@@ -2,10 +2,11 @@ package wasm
 
 import (
 	"context"
-	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/curefatih/afi/sdk/chatir"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
 )
 
@@ -34,39 +35,20 @@ type nativeBeforeChat struct{}
 
 func (nativeBeforeChat) Name() string { return "native_bench_chat" }
 
-func (nativeBeforeChat) BeforeChat(_ context.Context, body []byte) ([]byte, error) {
-	var chat map[string]any
-	if err := json.Unmarshal(body, &chat); err != nil {
-		return body, nil
-	}
-	msgs, ok := chat["messages"].([]any)
-	if !ok || len(msgs) == 0 {
-		return body, nil
-	}
-	for i := len(msgs) - 1; i >= 0; i-- {
-		m, ok := msgs[i].(map[string]any)
-		if !ok {
+func (nativeBeforeChat) BeforeChat(_ context.Context, req chatir.Request) (chatir.Request, error) {
+	const prefix = "[wasm] "
+	for i := len(req.Messages) - 1; i >= 0; i-- {
+		if req.Messages[i].Role != "user" {
 			continue
 		}
-		role, _ := m["role"].(string)
-		if role != "user" {
-			continue
-		}
-		content, _ := m["content"].(string)
-		const prefix = "[wasm] "
-		if len(content) >= len(prefix) && content[:len(prefix)] == prefix {
+		content := req.Messages[i].Content
+		if strings.HasPrefix(content, prefix) {
 			break
 		}
-		m["content"] = prefix + content
-		msgs[i] = m
-		chat["messages"] = msgs
-		out, err := json.Marshal(chat)
-		if err != nil {
-			return body, err
-		}
-		return out, nil
+		req.Messages[i].Content = prefix + content
+		break
 	}
-	return body, nil
+	return req, nil
 }
 
 func benchCallAllow() *sdkhook.CallContext {
@@ -90,8 +72,11 @@ func benchCallAllow() *sdkhook.CallContext {
 	}
 }
 
-func benchChatBody() []byte {
-	return []byte(`{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hello benchmark"}]}`)
+func benchChatRequest() chatir.Request {
+	return chatir.Request{
+		Model:    "gpt-4o-mini",
+		Messages: []chatir.Message{{Role: "user", Content: "hello benchmark"}},
+	}
 }
 
 func BenchmarkBeforeCall_Native(b *testing.B) {
@@ -223,18 +208,17 @@ func BenchmarkBeforeCall_WASM_Deny(b *testing.B) {
 func BenchmarkBeforeChat_Native(b *testing.B) {
 	h := nativeBeforeChat{}
 	ctx := context.Background()
-	body := benchChatBody()
 	for i := 0; i < 64; i++ {
-		if _, err := h.BeforeChat(ctx, body); err != nil {
+		if _, err := h.BeforeChat(ctx, benchChatRequest()); err != nil {
 			b.Fatal(err)
 		}
 	}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		out, err := h.BeforeChat(ctx, body)
-		if err != nil || len(out) == 0 {
-			b.Fatalf("native chat: err=%v len=%d", err, len(out))
+		out, err := h.BeforeChat(ctx, benchChatRequest())
+		if err != nil || len(out.Messages) == 0 {
+			b.Fatalf("native chat: err=%v messages=%d", err, len(out.Messages))
 		}
 	}
 }
@@ -250,18 +234,17 @@ func BenchmarkBeforeChat_WASM(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	body := benchChatBody()
 	for i := 0; i < 64; i++ {
-		if _, err := h.BeforeChat(ctx, body); err != nil {
+		if _, err := h.BeforeChat(ctx, benchChatRequest()); err != nil {
 			b.Fatal(err)
 		}
 	}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		out, err := h.BeforeChat(ctx, body)
-		if err != nil || len(out) == 0 {
-			b.Fatalf("wasm chat: err=%v len=%d", err, len(out))
+		out, err := h.BeforeChat(ctx, benchChatRequest())
+		if err != nil || len(out.Messages) == 0 {
+			b.Fatalf("wasm chat: err=%v messages=%d", err, len(out.Messages))
 		}
 	}
 }

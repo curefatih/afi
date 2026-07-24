@@ -172,8 +172,12 @@ func TestBeforeCallSeesClientBodyAndTypedChatHookReachesUpstream(t *testing.T) {
 		}},
 	}))
 	capture := &captureBeforeCall{}
+	afterCall := &captureAfterCall{}
 	p := NewPipeline(holder, RegistryWithOpenAI(client), slog.Default())
-	p.Hooks = NewHookChain().RegisterBeforeCall(capture).RegisterIR(replaceSystemIRHook{})
+	p.Hooks = NewHookChain().
+		RegisterBeforeCall(capture).
+		RegisterAfterCall(afterCall).
+		Register(replaceSystemHook{})
 
 	anthBody := `{"model":"gpt-4o-mini","max_tokens":64,"system":"be brief","messages":[{"role":"user","content":"hi"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/anthropic/v1/messages", bytes.NewBufferString(anthBody))
@@ -189,10 +193,18 @@ func TestBeforeCallSeesClientBodyAndTypedChatHookReachesUpstream(t *testing.T) {
 	if !bytes.Contains(capture.clientBody, []byte(`"system":"be brief"`)) {
 		t.Fatalf("client_body missing anthropic system: %s", capture.clientBody)
 	}
-	if bytes.Contains(capture.bridgeBody, []byte(`"system":"be brief"`)) {
-		t.Fatalf("bridge body should be openai-shaped, got %s", capture.bridgeBody)
+	// BeforeCall runs before chat decoding hooks, so it still observes the raw client body.
+	if !bytes.Equal(capture.callBody, capture.clientBody) {
+		t.Fatalf("before_call body=%s want client body %s", capture.callBody, capture.clientBody)
 	}
-	if !bytes.Contains(capture.bridgeBody, []byte(`"role":"system"`)) {
-		t.Fatalf("bridge body should lift system into messages: %s", capture.bridgeBody)
+	// AfterCall observes the OpenAI-shaped bridge built from the hook-mutated IR.
+	if bytes.Contains(afterCall.body, []byte(`"system":"be brief"`)) {
+		t.Fatalf("after_call body should be openai-shaped, got %s", afterCall.body)
+	}
+	if !bytes.Contains(afterCall.body, []byte(`"role":"system"`)) {
+		t.Fatalf("after_call body should lift system into messages: %s", afterCall.body)
+	}
+	if !bytes.Contains(afterCall.body, []byte(`"content":"typed system"`)) {
+		t.Fatalf("after_call body missing typed hook mutation: %s", afterCall.body)
 	}
 }

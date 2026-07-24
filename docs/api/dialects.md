@@ -70,7 +70,7 @@ Full path map: [Gateway API](gateway.md).
 
 ```bash
 export OPENAI_BASE_URL=http://localhost:8080/openai/v1
-# legacy alias also works:
+# alias also works:
 # export OPENAI_BASE_URL=http://localhost:8080/v1
 export OPENAI_API_KEY=sk-your-afi-virtual-key
 ```
@@ -179,7 +179,7 @@ All three dialects support streaming when the routed provider advertises `stream
 
 ## Known limitations
 
-Chat dialects cover text, tools/function calling, and image input (vision) — streaming included. Errors from the gateway and upstream providers are rewritten into the **client dialect** envelope, so SDKs do not see a foreign vendor body. Features the internal representation does not model yet receive a clear **`400`** (not silently dropped): Anthropic `thinking`/`document` blocks, OpenAI `logprobs`, `n>1`, legacy `functions`/`function_call`, and Gemini `candidateCount > 1`, `cachedContent`, `safetySettings`, structured-output / thinking generation config, or non-function tools. Gemini function-call IDs are synthesized when the wire response omits one, allowing tool results to round-trip through OpenAI/Anthropic providers. See [Coming next](#coming-next).
+Chat dialects cover text, tools/function calling, and image input (vision) — streaming included. Errors from the gateway and upstream providers are rewritten into the **client dialect** envelope, so SDKs do not see a foreign vendor body. Features the internal representation does not model yet receive a clear **`400`** (not silently dropped): Anthropic `thinking`/`document` blocks, OpenAI `logprobs`, `n>1`, OpenAI `functions`/`function_call`, and Gemini `candidateCount > 1`, `cachedContent`, `safetySettings`, structured-output / thinking generation config, or non-function tools. Gemini function-call IDs are synthesized when the wire response omits one, allowing tool results to round-trip through OpenAI/Anthropic providers.
 
 ## Related
 

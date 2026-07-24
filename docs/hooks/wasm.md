@@ -9,7 +9,6 @@ AFI can run **sandboxed TinyGo WASM modules** as lifecycle hooks on the gateway 
 ```bash
 export AFI_WASM_BEFORE_CALL=/path/to/hook.wasm   # optional BeforeCall
 export AFI_WASM_BEFORE_CHAT=/path/to/hook.wasm   # optional BeforeChat
-export AFI_WASM_BEFORE_CHAT_IR=/path/to/hook.wasm # optional typed BeforeChatIR
 ```
 
 ### Control plane (org-scoped, snapshot-backed)
@@ -33,7 +32,7 @@ Content-Type: application/json
 
 | Field | Notes |
 |-------|--------|
-| `phase` | `before_call` \| `before_chat` \| `before_chat_ir` \| `after_call` |
+| `phase` | `before_call` \| `before_chat` \| `after_call` |
 | `module_uri` | Local path, `file://…`, or `s3://bucket/key` (requires `gateway.wasm_s3`) |
 | `digest` | SHA-256 hex of module bytes; empty skips verification |
 | `priority` | Higher runs first within a phase |
@@ -71,8 +70,7 @@ Guest must export TinyGo allocator symbols and at least one hook:
 | `malloc` | `(size i32) -> i32` | Host allocates input buffer |
 | `free` | `(ptr i32)` | Host frees input/output buffers |
 | `before_call` | `(ptr i32, len i32) -> i64` | Optional; packed `ptr<<32 \| len` of JSON out |
-| `before_chat` | `(ptr i32, len i32) -> i64` | Optional; same packing |
-| `before_chat_ir` | `(ptr i32, len i32) -> i64` | Optional; typed chat IR JSON mutation |
+| `before_chat` | `(ptr i32, len i32) -> i64` | Optional; typed chat IR JSON mutation |
 | `after_call` | `(ptr i32, len i32) -> i64` | Optional; side effects (empty return OK) |
 
 Build with:
@@ -184,26 +182,7 @@ Then set `module_uri` to `s3://bucket/key` (digest still verified when provided)
 
 ### `before_chat` JSON
 
-**Input:** `{ "body_b64": "..." }`  
-**Output:** `{ "body_b64": "..." }` — decoded bytes become the chat request body.
-
-??? example "TinyGo guest `before_chat` (excerpt)"
-
-    ```go
-    //go:wasmexport before_chat
-    func _before_chat(ptr, size uint32) uint64 {
-        // decode body_b64 → OpenAI chat JSON
-        // prefix last user message with "[wasm] "
-        // return {"body_b64": "..."}
-    }
-    ```
-
-### `before_chat_ir` JSON
-
-The typed hook runs after legacy OpenAI-byte `before_chat` hooks are decoded back
-to chat IR.
-
-**Input and output:**
+Typed chat IR mutation. **Input and output:**
 
 ```json
 {
@@ -224,6 +203,17 @@ Return the same envelope with the mutated `request`. The host preserves the
 client-selected route model and stream mode after all hooks. Message parts,
 images, tools, tool calls, and generation options use the snake_case fields in
 [`sdk/chatir`](../../sdk/chatir).
+
+??? example "TinyGo guest `before_chat` (excerpt)"
+
+    ```go
+    //go:wasmexport before_chat
+    func _before_chat(ptr, size uint32) uint64 {
+        // decode {"request": chatir.Request, "config": ...}
+        // prefix last user message with "[wasm] "
+        // return the same envelope
+    }
+    ```
 
 ## Limits
 

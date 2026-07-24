@@ -32,7 +32,7 @@ func (b *sdkChatBridge) Chat(ctx context.Context, p snapshot.Provider, targetMod
 	_ = targetModel
 	_ = body
 	_ = stream
-	return nil, fmt.Errorf("sdk provider %q does not support OpenAI-byte Chat; use ChatIR", b.Type())
+	return nil, fmt.Errorf("sdk provider %q only supports ChatIR", b.Type())
 }
 
 func (b *sdkChatBridge) ChatIR(ctx context.Context, p snapshot.Provider, targetModel string, req ir.ChatRequest) (ir.ChatResult, error) {

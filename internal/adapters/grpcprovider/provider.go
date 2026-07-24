@@ -41,17 +41,17 @@ func (a *ProviderAdapter) ChatIR(ctx context.Context, cfg sdkprovider.ProviderCo
 	if a == nil || a.client == nil {
 		return chatir.Result{}, fmt.Errorf("grpc provider %q: nil client", a.typ)
 	}
-	cctx, cancel := context.WithTimeout(ctx, a.timeout)
-	defer cancel()
-
 	pbReq := &extensionv1.ChatIRRequest{
 		Config:      providerConfigProto(cfg),
 		TargetModel: targetModel,
 		Request:     ChatIRRequestProto(req),
 	}
+	// Streams outlive this call, so they own their context instead of the unary timeout.
 	if req.Stream {
-		return a.chatIRStream(cctx, pbReq)
+		return a.chatIRStream(ctx, pbReq)
 	}
+	cctx, cancel := context.WithTimeout(ctx, a.timeout)
+	defer cancel()
 	resp, err := a.client.ChatIR(cctx, pbReq)
 	if err != nil {
 		return chatir.Result{}, fmt.Errorf("grpc provider %q ChatIR: %w", a.typ, err)

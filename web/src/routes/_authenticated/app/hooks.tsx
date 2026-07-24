@@ -32,7 +32,6 @@ type HookInfo = {
 	before_call?: boolean;
 	after_call?: boolean;
 	before_chat?: boolean;
-	before_chat_ir?: boolean;
 	after_chat?: boolean;
 };
 
@@ -75,7 +74,7 @@ function RouteComponent() {
 			<PageHeader
 				title="Hooks"
 				description="Lifecycle hooks registered on the gateway."
-				info="BeforeCall / AfterCall / BeforeChat / typed BeforeChatIR / AfterChat hooks registered in the gateway through Go, WASM, or gRPC extensions."
+				info="BeforeCall / AfterCall / BeforeChat / AfterChat hooks registered in the gateway through Go, WASM, or gRPC extensions."
 			/>
 			<QueryGate
 				isPending={health.isPending}
@@ -124,9 +123,6 @@ function RouteComponent() {
 													) : null}
 													{h.before_chat ? (
 														<Badge variant="secondary">BeforeChat</Badge>
-													) : null}
-													{h.before_chat_ir ? (
-														<Badge variant="secondary">BeforeChatIR</Badge>
 													) : null}
 													{h.after_chat ? (
 														<Badge variant="outline">AfterChat</Badge>

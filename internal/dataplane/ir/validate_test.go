@@ -78,7 +78,7 @@ func TestRejectOpenAIN(t *testing.T) {
 	}
 }
 
-func TestRejectOpenAILegacyFunctions(t *testing.T) {
+func TestRejectOpenAIFunctionsField(t *testing.T) {
 	_, err := ir.DecodeOpenAIRequest([]byte(`{
 		"model":"m",
 		"functions":[{"name":"x"}],

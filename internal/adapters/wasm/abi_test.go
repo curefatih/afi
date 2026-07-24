@@ -56,21 +56,6 @@ func TestApplyBeforeCallDeny(t *testing.T) {
 }
 
 func TestBeforeChatRoundTrip(t *testing.T) {
-	in, err := encodeBeforeChatIn([]byte(`{"a":1}`), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	out, err := decodeBeforeChatOut(in) // same shape body_b64
-	if err != nil {
-		t.Fatal(err)
-	}
-	// encodeBeforeChatIn produces {"body_b64":"..."} which decodeBeforeChatOut accepts
-	if string(out) != `{"a":1}` {
-		t.Fatalf("got %q", out)
-	}
-}
-
-func TestBeforeChatIRRoundTrip(t *testing.T) {
 	req := chatir.Request{
 		Model: "route",
 		Messages: []chatir.Message{{
@@ -84,7 +69,7 @@ func TestBeforeChatIRRoundTrip(t *testing.T) {
 			Name: "lookup", Parameters: json.RawMessage(`{"type":"object"}`),
 		}},
 	}
-	raw, err := encodeBeforeChatIRIn(req, json.RawMessage(`{"prefix":"x"}`))
+	raw, err := encodeBeforeChatIn(req, json.RawMessage(`{"prefix":"x"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,12 +80,38 @@ func TestBeforeChatIRRoundTrip(t *testing.T) {
 	if wire["request"].(map[string]any)["model"] != "route" {
 		t.Fatalf("wire=%v", wire)
 	}
-	out, err := decodeBeforeChatIROut(raw)
+	if wire["config"].(map[string]any)["prefix"] != "x" {
+		t.Fatalf("config not passed to guest: %v", wire)
+	}
+	out, err := decodeBeforeChatOut(raw)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if out.Model != "route" || len(out.Messages) != 1 ||
 		len(out.Messages[0].Parts) != 1 || len(out.Tools) != 1 {
 		t.Fatalf("request=%+v", out)
+	}
+	if out.Messages[0].Parts[0].Image.MediaType != "image/png" {
+		t.Fatalf("image part lost: %+v", out.Messages[0].Parts[0])
+	}
+}
+
+func TestBeforeChatOmitsEmptyConfig(t *testing.T) {
+	raw, err := encodeBeforeChatIn(chatir.Request{Model: "m"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wire map[string]any
+	if err := json.Unmarshal(raw, &wire); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := wire["config"]; ok {
+		t.Fatalf("expected config omitted: %s", raw)
+	}
+}
+
+func TestDecodeBeforeChatOutRejectsInvalidJSON(t *testing.T) {
+	if _, err := decodeBeforeChatOut([]byte(`{"request":`)); err == nil {
+		t.Fatal("expected error")
 	}
 }

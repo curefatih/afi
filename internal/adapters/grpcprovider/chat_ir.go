@@ -13,12 +13,15 @@ import (
 )
 
 func (a *ProviderAdapter) chatIRStream(ctx context.Context, pbReq *extensionv1.ChatIRRequest) (chatir.Result, error) {
-	stream, err := a.client.ChatIRStream(ctx, pbReq)
+	sctx, cancel := context.WithCancel(ctx)
+	stream, err := a.client.ChatIRStream(sctx, pbReq)
 	if err != nil {
+		cancel()
 		return chatir.Result{}, fmt.Errorf("grpc provider %q ChatIRStream: %w", a.typ, err)
 	}
 	out := make(chan chatir.StreamEvent, 16)
 	go func() {
+		defer cancel()
 		defer close(out)
 		for {
 			ev, err := stream.Recv()

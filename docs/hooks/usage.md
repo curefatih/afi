@@ -5,7 +5,7 @@
 The gateway runs an in-process hook chain on every modality (chat, messages, TTS, STT):
 
 1. **BeforeCall** — after auth, before routing/provider. Receives a mutable `CallContext` (principal, route, tags from `X-AFI-Tags`, metadata, body). May **allow**, **enrich**, or **deny** (`Allow=false` + status/reason).
-2. **BeforeChat** — OpenAI, Anthropic, and Gemini chat dialects. Legacy `ChatHook` / WASM mutate the **OpenAI-shaped bridge body**; `ChatIRHook` mutates typed `sdk/chatir.Request` after that bridge is decoded.
+2. **BeforeChat** — OpenAI, Anthropic, and Gemini chat dialects; mutates typed `sdk/chatir.Request` after decode.
 3. **AfterCall** — after the upstream attempt finishes (all modalities).
 4. **AfterChat** — all three chat dialects; logging/side effects after AfterCall (`AfterChatInfo` includes `Dialect` and `Modality`).
 
@@ -13,14 +13,11 @@ The gateway runs an in-process hook chain on every modality (chat, messages, TTS
 
 | Hook | Body / info shape |
 | ---- | ----------------- |
-| **BeforeCall** `call.Body` | OpenAI chat.completions JSON derived from IR (stable bridge for all chat dialects) |
+| **BeforeCall** `call.Body` | Original client wire bytes for the request |
 | **BeforeCall** `call.Metadata["dialect"]` | `"openai"`, `"anthropic"`, or `"gemini"` |
-| **BeforeCall** `call.Metadata["client_body"]` | Original OpenAI, Anthropic, or Gemini client wire bytes |
-| **BeforeChat** / WASM `before_chat` | Same OpenAI-shaped bridge JSON as `call.Body` — mutate messages here; keep `model` intact (routing uses the original route name) |
-| **Typed BeforeChat** | `sdk/chatir.Request`; in-process `ChatIRHook`, gRPC `Hook.BeforeChatIR` with `CAPABILITY_HOOK_BEFORE_CHAT_IR`, or WASM `before_chat_ir` |
+| **BeforeCall** `call.Metadata["client_body"]` | Same original OpenAI, Anthropic, or Gemini client wire |
+| **BeforeChat** / WASM `before_chat` | Typed `sdk/chatir.Request` — mutate messages here; the gateway preserves the client-selected route model and stream mode |
 | **AfterChat** | `AfterChatInfo` with `Model`, `Status`, `LatencyMs`, `ProviderType`, `TargetModel`, plus `Dialect` / `Modality` |
-
-The gateway runs legacy OpenAI-byte and WASM hooks first, then typed IR hooks. It preserves the client-selected route model and stream mode after mutation.
 
 Built-in gates always run in the request path (not registered on `pipeline.Hooks`, so replacing the chain cannot bypass them). Order:
 
@@ -35,12 +32,11 @@ Register in `cmd/gateway`:
 ```go
 hooks := dataplane.NewHookChain().
     RegisterHook(demohook.NewWithLog(log)).
-    RegisterIR(myTypedChatHook).
     RegisterBeforeCall(myBeforeCall)
 pipeline.Hooks = hooks
 ```
 
-Inspect active hooks on `GET /healthz` (`hooks` array includes `before_call`, `after_call`, `before_chat`, `before_chat_ir`, and `after_chat`) or the platform **Hooks** page.
+Inspect active hooks on `GET /healthz` (`hooks` array includes `before_call`, `after_call`, `before_chat`, and `after_chat`) or the platform **Hooks** page.
 
 ### Request tags
 

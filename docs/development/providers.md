@@ -1,6 +1,6 @@
 # Provider adapters
 
-Gateway chat dispatch uses a **registry** of in-process adapters. The pipeline looks up `provider.type` and calls `Chat` — it does not hard-code vendor branches.
+Gateway chat dispatch uses a **registry** of in-process adapters. The pipeline looks up `provider.type` and calls `ChatIR` — it does not hard-code vendor branches.
 
 ## Built-in types
 
@@ -18,7 +18,7 @@ Capabilities (`chat`, `stream`, `tts`, `stt`, `embedding`, `image`) are stored o
 
 | Surface | Registry port | Resolved by |
 |---------|---------------|-------------|
-| `POST /openai/v1/chat/completions` (+ `/v1/...`) | `IRChatProvider.ChatIR` (fallback: `ChatProvider.Chat`) | `provider.type` |
+| `POST /openai/v1/chat/completions` (+ `/v1/...`) | `IRChatProvider.ChatIR` | `provider.type` |
 | `POST /anthropic/v1/messages` (+ `/v1/messages`) | same chat IR path | `provider.type` (any chat-capable provider) |
 | `POST /v1/audio/speech` / `transcriptions` | `AudioBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
 | `POST /v1/embeddings` | `EmbeddingsBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
@@ -26,7 +26,7 @@ Capabilities (`chat`, `stream`, `tts`, `stt`, `embedding`, `image`) are stored o
 
 Client **dialect** (path prefix) selects wire format; routing selects the upstream provider. See [API dialects](../api/dialects.md).
 
-Chat stays on `ChatProvider` / `IRChatProvider`. TTS/STT, embeddings, and images use **optional** transport interfaces — they are **not** methods on `ChatProvider`, so SDK chat extensions need no modality stubs.
+Chat stays on `IRChatProvider.ChatIR`. TTS/STT, embeddings, and images use **optional** transport interfaces — they are **not** methods on the chat IR contract, so SDK chat extensions need no modality stubs.
 
 When an organization enables **object store** in control-plane settings (`GET/PUT …/organizations/{orgID}/object-store`), successful image generations may be persisted to S3-compatible storage and response URLs rewritten to presigned GET URLs. Disabled (default) keeps upstream passthrough.
 
@@ -34,14 +34,14 @@ Adapters that do not implement the transport provider interface simply cannot se
 
 ## Adding a provider (in-tree)
 
-1. Implement `dataplane.ChatProvider` (`Type`, `Capabilities`, `Chat`).
+1. Implement `dataplane.IRChatProvider` (`Type`, `Capabilities`, `ChatIR`) on a `ChatProvider` registered in the registry.
 2. Register it in `dataplane.DefaultRegistry()` / `RegistryFromClients` (or your gateway bootstrap).
    Outbound HTTP clients live in `internal/adapters/llm` and resolve keys via `adapters/secrets`.
 3. Prefer reusing [`internal/dataplane/openaichat`](../../internal/dataplane/openaichat) helpers for OpenAI-shaped JSON/SSE.
 4. Document the type, default `api_key_env`, and capabilities in this page.
 5. Optionally seed an inactive provider (no route) like `prov_ollama`.
 
-You should **not** need to edit `callProvider` or add a new `switch` case in the pipeline.
+You should **not** need to edit `callProviderIR` or add a new `switch` case in the pipeline.
 
 ## Adding an extension (SDK)
 
@@ -65,15 +65,14 @@ Expect assistant content containing `echo:` (and `[hook:demo]` if the demo Befor
 
 Remote plugins speak [`proto/afi/extension/v1`](../../proto/afi/extension/v1/) and are discovered via gateway YAML `gateway.grpc_extensions` (command spawn or dial address). The host adapts them to `sdk/provider` / `sdk/hook`.
 
-* **OpenAI-byte chat:** advertise `CAPABILITY_PROVIDER_CHAT` and implement `Provider.Chat` (stable fallback).
-* **Typed chat IR:** also advertise `CAPABILITY_PROVIDER_CHAT_IR` and implement `ProviderIR.ChatIR` / `ChatIRStream`. The gateway prefers typed IR when present so plugins are not forced through OpenAI JSON encoding for tools/vision.
-* **Typed request mutation:** advertise `CAPABILITY_HOOK_BEFORE_CHAT_IR` and implement `Hook.BeforeChatIR`.
+* **Typed chat IR:** advertise `CAPABILITY_PROVIDER_CHAT` and implement `Provider.ChatIR` / `ChatIRStream`.
+* **Typed request mutation:** advertise `CAPABILITY_HOOK_BEFORE_CHAT` and implement `Hook.BeforeChat`.
 
 Example: [`extensions/grpcecho`](../../extensions/grpcecho).
 
 ## Hooks (in-process)
 
-`BeforeCall` / `AfterCall` run on all modalities. `ChatHook.BeforeChat` keeps the OpenAI-byte compatibility body; `ChatIRHook.BeforeChatIR` receives typed `sdk/chatir.Request`; `AfterChatHook.AfterChat` handles chat completion side effects. Register via `dataplane.NewHookChain().RegisterHook(...)`, `RegisterIR(...)`, or `RegisterBeforeCall(...)` (see `extensions/demohook`). Gateway `/healthz` reports each supported phase, including `before_chat_ir`. `extensions/tagquota` is an example-only BeforeCall sample for per-tag limits (not registered by default). WASM hooks: set `AFI_WASM_BEFORE_CALL` / `AFI_WASM_BEFORE_CHAT` (see [WASM hooks](../hooks/wasm.md)).
+`BeforeCall` / `AfterCall` run on all modalities. `ChatHook.BeforeChat` receives typed `sdk/chatir.Request`; `AfterChatHook.AfterChat` handles chat completion side effects. Register via `dataplane.NewHookChain().RegisterHook(...)` / `RegisterBeforeCall(...)` (see `extensions/demohook`). Gateway `/healthz` reports each supported phase. `extensions/tagquota` is an example-only BeforeCall sample for per-tag limits (not registered by default). WASM hooks: set `AFI_WASM_BEFORE_CALL` / `AFI_WASM_BEFORE_CHAT` (see [WASM hooks](../hooks/wasm.md)).
 
 ## Example: local Ollama
 
