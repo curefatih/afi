@@ -16,10 +16,22 @@ export type SSOProvider = {
 	type: string;
 };
 
+export type AuthFeatures = {
+	signup_enabled: boolean;
+	password_reset_enabled: boolean;
+};
+
 export const meQueryOptions = () =>
 	queryOptions({
 		queryKey: ["me"],
 		queryFn: () => apiFetch<MeResponse>("/api/v1/platform/auth/me"),
+	});
+
+export const authFeaturesQueryOptions = () =>
+	queryOptions({
+		queryKey: ["auth-features"],
+		queryFn: () =>
+			apiFetch<AuthFeatures>("/api/v1/platform/auth/features", { auth: false }),
 	});
 
 export const ssoProvidersQueryOptions = () =>
@@ -78,6 +90,53 @@ export const loginMutationOptions = () =>
 				},
 			);
 
+			return bootstrapSessionFromToken(token);
+		},
+	});
+
+type RegisterRequest = {
+	email: string;
+	name: string;
+	password: string;
+};
+
+export const registerMutationOptions = () =>
+	mutationOptions({
+		mutationFn: async (data: RegisterRequest) => {
+			const { token } = await apiFetch<{ token: string }>(
+				"/api/v1/platform/auth/register",
+				{
+					method: "POST",
+					body: data,
+					auth: false,
+				},
+			);
+			return bootstrapSessionFromToken(token);
+		},
+	});
+
+export const requestPasswordResetMutationOptions = () =>
+	mutationOptions({
+		mutationFn: async (email: string) => {
+			return apiFetch<{ ok: boolean }>("/api/v1/platform/auth/password-reset", {
+				method: "POST",
+				body: { email },
+				auth: false,
+			});
+		},
+	});
+
+export const confirmPasswordResetMutationOptions = () =>
+	mutationOptions({
+		mutationFn: async (data: { token: string; password: string }) => {
+			const { token } = await apiFetch<{ token: string }>(
+				`/api/v1/platform/auth/password-reset/${encodeURIComponent(data.token)}`,
+				{
+					method: "POST",
+					body: { password: data.password },
+					auth: false,
+				},
+			);
 			return bootstrapSessionFromToken(token);
 		},
 	});

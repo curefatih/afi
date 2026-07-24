@@ -13,11 +13,12 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AuthRouteRouteImport } from './routes/auth/route'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
-import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
 import { Route as AuthenticatedAppRouteRouteImport } from './routes/_authenticated/app/route'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app/index'
 import { Route as AuthSsoCallbackRouteImport } from './routes/auth/sso.callback'
+import { Route as AuthResetPasswordTokenRouteImport } from './routes/auth/reset-password.$token'
 import { Route as AuthInviteTokenRouteImport } from './routes/auth/invite.$token'
 import { Route as AuthenticatedAppUsersRouteImport } from './routes/_authenticated/app/users'
 import { Route as AuthenticatedAppUsageRouteImport } from './routes/_authenticated/app/usage'
@@ -69,14 +70,14 @@ const AuthSignupRoute = AuthSignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => AuthRouteRoute,
 } as any)
-const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => AuthRouteRoute,
-} as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => AuthRouteRoute,
+} as any)
+const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => AuthRouteRoute,
 } as any)
 const AuthenticatedAppRouteRoute = AuthenticatedAppRouteRouteImport.update({
@@ -92,6 +93,11 @@ const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
 const AuthSsoCallbackRoute = AuthSsoCallbackRouteImport.update({
   id: '/sso/callback',
   path: '/sso/callback',
+  getParentRoute: () => AuthRouteRoute,
+} as any)
+const AuthResetPasswordTokenRoute = AuthResetPasswordTokenRouteImport.update({
+  id: '/reset-password/$token',
+  path: '/reset-password/$token',
   getParentRoute: () => AuthRouteRoute,
 } as any)
 const AuthInviteTokenRoute = AuthInviteTokenRouteImport.update({
@@ -266,8 +272,8 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/app': typeof AuthenticatedAppRouteRouteWithChildren
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
-  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/$': typeof AuthenticatedAppSplatRoute
   '/app/a2a': typeof AuthenticatedAppA2aRoute
@@ -287,6 +293,7 @@ export interface FileRoutesByFullPath {
   '/app/usage': typeof AuthenticatedAppUsageRoute
   '/app/users': typeof AuthenticatedAppUsersRoute
   '/auth/invite/$token': typeof AuthInviteTokenRoute
+  '/auth/reset-password/$token': typeof AuthResetPasswordTokenRoute
   '/auth/sso/callback': typeof AuthSsoCallbackRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/app/playground/a2a': typeof AuthenticatedAppPlaygroundA2aRoute
@@ -306,8 +313,8 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRouteRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
-  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/$': typeof AuthenticatedAppSplatRoute
   '/app/a2a': typeof AuthenticatedAppA2aRoute
@@ -327,6 +334,7 @@ export interface FileRoutesByTo {
   '/app/usage': typeof AuthenticatedAppUsageRoute
   '/app/users': typeof AuthenticatedAppUsersRoute
   '/auth/invite/$token': typeof AuthInviteTokenRoute
+  '/auth/reset-password/$token': typeof AuthResetPasswordTokenRoute
   '/auth/sso/callback': typeof AuthSsoCallbackRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/app/playground/a2a': typeof AuthenticatedAppPlaygroundA2aRoute
@@ -348,8 +356,8 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/_authenticated/app': typeof AuthenticatedAppRouteRouteWithChildren
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
-  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/_authenticated/app/$': typeof AuthenticatedAppSplatRoute
   '/_authenticated/app/a2a': typeof AuthenticatedAppA2aRoute
@@ -369,6 +377,7 @@ export interface FileRoutesById {
   '/_authenticated/app/usage': typeof AuthenticatedAppUsageRoute
   '/_authenticated/app/users': typeof AuthenticatedAppUsersRoute
   '/auth/invite/$token': typeof AuthInviteTokenRoute
+  '/auth/reset-password/$token': typeof AuthResetPasswordTokenRoute
   '/auth/sso/callback': typeof AuthSsoCallbackRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/playground/a2a': typeof AuthenticatedAppPlaygroundA2aRoute
@@ -391,8 +400,8 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/app'
+    | '/auth/forgot-password'
     | '/auth/login'
-    | '/auth/reset-password'
     | '/auth/signup'
     | '/app/$'
     | '/app/a2a'
@@ -412,6 +421,7 @@ export interface FileRouteTypes {
     | '/app/usage'
     | '/app/users'
     | '/auth/invite/$token'
+    | '/auth/reset-password/$token'
     | '/auth/sso/callback'
     | '/app/'
     | '/app/playground/a2a'
@@ -431,8 +441,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/privacy'
     | '/terms'
+    | '/auth/forgot-password'
     | '/auth/login'
-    | '/auth/reset-password'
     | '/auth/signup'
     | '/app/$'
     | '/app/a2a'
@@ -452,6 +462,7 @@ export interface FileRouteTypes {
     | '/app/usage'
     | '/app/users'
     | '/auth/invite/$token'
+    | '/auth/reset-password/$token'
     | '/auth/sso/callback'
     | '/app'
     | '/app/playground/a2a'
@@ -472,8 +483,8 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/_authenticated/app'
+    | '/auth/forgot-password'
     | '/auth/login'
-    | '/auth/reset-password'
     | '/auth/signup'
     | '/_authenticated/app/$'
     | '/_authenticated/app/a2a'
@@ -493,6 +504,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/usage'
     | '/_authenticated/app/users'
     | '/auth/invite/$token'
+    | '/auth/reset-password/$token'
     | '/auth/sso/callback'
     | '/_authenticated/app/'
     | '/_authenticated/app/playground/a2a'
@@ -546,18 +558,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSignupRouteImport
       parentRoute: typeof AuthRouteRoute
     }
-    '/auth/reset-password': {
-      id: '/auth/reset-password'
-      path: '/reset-password'
-      fullPath: '/auth/reset-password'
-      preLoaderRoute: typeof AuthResetPasswordRouteImport
-      parentRoute: typeof AuthRouteRoute
-    }
     '/auth/login': {
       id: '/auth/login'
       path: '/login'
       fullPath: '/auth/login'
       preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRouteRoute
+    }
+    '/auth/forgot-password': {
+      id: '/auth/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/auth/forgot-password'
+      preLoaderRoute: typeof AuthForgotPasswordRouteImport
       parentRoute: typeof AuthRouteRoute
     }
     '/_authenticated/app': {
@@ -579,6 +591,13 @@ declare module '@tanstack/react-router' {
       path: '/sso/callback'
       fullPath: '/auth/sso/callback'
       preLoaderRoute: typeof AuthSsoCallbackRouteImport
+      parentRoute: typeof AuthRouteRoute
+    }
+    '/auth/reset-password/$token': {
+      id: '/auth/reset-password/$token'
+      path: '/reset-password/$token'
+      fullPath: '/auth/reset-password/$token'
+      preLoaderRoute: typeof AuthResetPasswordTokenRouteImport
       parentRoute: typeof AuthRouteRoute
     }
     '/auth/invite/$token': {
@@ -795,18 +814,20 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthRouteRouteChildren {
+  AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
-  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   AuthSignupRoute: typeof AuthSignupRoute
   AuthInviteTokenRoute: typeof AuthInviteTokenRoute
+  AuthResetPasswordTokenRoute: typeof AuthResetPasswordTokenRoute
   AuthSsoCallbackRoute: typeof AuthSsoCallbackRoute
 }
 
 const AuthRouteRouteChildren: AuthRouteRouteChildren = {
+  AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
-  AuthResetPasswordRoute: AuthResetPasswordRoute,
   AuthSignupRoute: AuthSignupRoute,
   AuthInviteTokenRoute: AuthInviteTokenRoute,
+  AuthResetPasswordTokenRoute: AuthResetPasswordTokenRoute,
   AuthSsoCallbackRoute: AuthSsoCallbackRoute,
 }
 
