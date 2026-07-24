@@ -15,11 +15,11 @@ import (
 
 // ProviderAdapter implements sdk/provider.ChatProvider over gRPC.
 type ProviderAdapter struct {
-	client   extensionv1.ProviderClient
-	irClient extensionv1.ProviderIRClient
-	typ      string
-	timeout  time.Duration
-	caps     sdkprovider.Capabilities
+	client     extensionv1.ProviderClient
+	irClient   extensionv1.ProviderIRClient
+	typ        string
+	timeout    time.Duration
+	caps       sdkprovider.Capabilities
 	supportsIR bool
 }
 

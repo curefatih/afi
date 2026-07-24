@@ -9,6 +9,7 @@ import (
 
 	extensionv1 "github.com/curefatih/afi/gen/proto/afi/extension/v1"
 	"github.com/curefatih/afi/internal/adapters/grpcprovider"
+	"github.com/curefatih/afi/sdk/chatir"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
 	sdkprovider "github.com/curefatih/afi/sdk/provider"
 	"google.golang.org/grpc"
@@ -17,6 +18,7 @@ import (
 type testPlugin struct {
 	extensionv1.UnimplementedExtensionServer
 	extensionv1.UnimplementedProviderServer
+	extensionv1.UnimplementedProviderIRServer
 	extensionv1.UnimplementedHookServer
 
 	deny bool
@@ -29,6 +31,7 @@ func (p *testPlugin) Handshake(ctx context.Context, req *extensionv1.HandshakeRe
 		ProviderType: "testgrpc",
 		Capabilities: []extensionv1.Capability{
 			extensionv1.Capability_CAPABILITY_PROVIDER_CHAT,
+			extensionv1.Capability_CAPABILITY_PROVIDER_CHAT_IR,
 			extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CALL,
 			extensionv1.Capability_CAPABILITY_HOOK_AFTER_CALL,
 			extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CHAT,
@@ -49,6 +52,38 @@ func (p *testPlugin) Chat(ctx context.Context, req *extensionv1.ChatRequest) (*e
 		Headers:    map[string]string{"Content-Type": "application/json", "X-Test": "1"},
 		Body:       body,
 	}, nil
+}
+
+func (p *testPlugin) ChatIR(ctx context.Context, req *extensionv1.ChatIRRequest) (*extensionv1.ChatIRResponse, error) {
+	_ = ctx
+	irReq := grpcprovider.ChatIRRequestFromProto(req.GetRequest())
+	text := ""
+	for i := len(irReq.Messages) - 1; i >= 0; i-- {
+		if irReq.Messages[i].Role == "user" {
+			text = irReq.Messages[i].Content
+			break
+		}
+	}
+	model := req.GetTargetModel()
+	if model == "" {
+		model = irReq.Model
+	}
+	return grpcprovider.ChatIRResponseProto(chatir.Result{
+		StatusCode: 200,
+		Header:     map[string][]string{"Content-Type": {"application/json"}, "X-Test-IR": {"1"}},
+		Response: &chatir.Response{
+			ID: "chatcmpl-ir", Model: model, Role: "assistant",
+			Content: "ir:" + text, FinishReason: "stop",
+			Usage: chatir.Usage{PromptTokens: 1, CompletionTokens: 1},
+		},
+	}), nil
+}
+
+func (p *testPlugin) ChatIRStream(req *extensionv1.ChatIRRequest, stream extensionv1.ProviderIR_ChatIRStreamServer) error {
+	_ = req
+	return stream.Send(grpcprovider.ChatIRStreamEventProto(chatir.StreamEvent{
+		Kind: chatir.StreamTextDelta, Text: "streamed",
+	}))
 }
 
 func (p *testPlugin) BeforeCall(ctx context.Context, req *extensionv1.BeforeCallRequest) (*extensionv1.BeforeCallResponse, error) {
@@ -93,6 +128,7 @@ func servePlugin(t *testing.T, plugin *testPlugin) string {
 	tcpSrv := grpc.NewServer()
 	extensionv1.RegisterExtensionServer(tcpSrv, plugin)
 	extensionv1.RegisterProviderServer(tcpSrv, plugin)
+	extensionv1.RegisterProviderIRServer(tcpSrv, plugin)
 	extensionv1.RegisterHookServer(tcpSrv, plugin)
 	go func() { _ = tcpSrv.Serve(tcpLis) }()
 	t.Cleanup(func() {
@@ -136,6 +172,23 @@ func TestRuntimeDial(t *testing.T) {
 	raw, _ := io.ReadAll(resp.Body)
 	if !json.Valid(raw) {
 		t.Fatalf("body=%s", raw)
+	}
+
+	irp, ok := providers[0].(sdkprovider.ChatIRProvider)
+	if !ok {
+		t.Fatal("expected ChatIRProvider")
+	}
+	irResult, err := irp.ChatIR(ctx, sdkprovider.ProviderConfig{ID: "p1", Type: "testgrpc"}, "m", chatir.Request{
+		Messages: []chatir.Message{{Role: "user", Content: "ping"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if irResult.Response == nil || irResult.Response.Content != "ir:ping" {
+		t.Fatalf("ir result=%+v", irResult)
+	}
+	if irResult.Header["X-Test-IR"][0] != "1" {
+		t.Fatalf("ir headers=%v", irResult.Header)
 	}
 
 	var before sdkhook.BeforeCallHook

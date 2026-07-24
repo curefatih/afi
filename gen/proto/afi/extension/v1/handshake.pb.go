@@ -149,8 +149,8 @@ type HandshakeResponse struct {
 	Name    string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Version string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	// Provider type string for snapshot provider.type binding (e.g. "grpcecho").
-	// Required when CAPABILITY_PROVIDER_CHAT is advertised; may be overridden by
-	// gateway manifest provider_type.
+	// Required when CAPABILITY_PROVIDER_CHAT or CAPABILITY_PROVIDER_CHAT_IR is
+	// advertised; may be overridden by gateway manifest provider_type.
 	ProviderType  string       `protobuf:"bytes,3,opt,name=provider_type,json=providerType,proto3" json:"provider_type,omitempty"`
 	Capabilities  []Capability `protobuf:"varint,4,rep,packed,name=capabilities,proto3,enum=afi.extension.v1.Capability" json:"capabilities,omitempty"`
 	unknownFields protoimpl.UnknownFields

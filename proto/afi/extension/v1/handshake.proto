@@ -32,8 +32,8 @@ message HandshakeResponse {
   string name = 1;
   string version = 2;
   // Provider type string for snapshot provider.type binding (e.g. "grpcecho").
-  // Required when CAPABILITY_PROVIDER_CHAT is advertised; may be overridden by
-  // gateway manifest provider_type.
+  // Required when CAPABILITY_PROVIDER_CHAT or CAPABILITY_PROVIDER_CHAT_IR is
+  // advertised; may be overridden by gateway manifest provider_type.
   string provider_type = 3;
   repeated Capability capabilities = 4;
 }
