@@ -87,7 +87,10 @@ type AfterCallHook interface {
 	AfterCall(ctx context.Context, call *CallContext, info AfterCallInfo) error
 }
 
-// ChatHook mutates the OpenAI chat request body before provider dispatch.
+// ChatHook mutates the chat request body before provider dispatch.
+//
+// The body is always OpenAI chat.completions JSON (the stable bridge format),
+// even when the client used the Anthropic dialect. See docs/hooks/usage.md.
 type ChatHook interface {
 	Name() string
 	BeforeChat(ctx context.Context, body []byte) ([]byte, error)
@@ -100,9 +103,13 @@ type AfterChatInfo struct {
 	LatencyMs    int64
 	ProviderType string
 	TargetModel  string
+	// Dialect is the client wire format: "openai" or "anthropic".
+	Dialect string
+	// Modality is the usage modality: "chat" or "messages".
+	Modality string
 }
 
-// AfterChatHook runs after the chat attempt completes (success or error).
+// AfterChatHook runs after a chat/messages dialect attempt completes (success or error).
 type AfterChatHook interface {
 	Name() string
 	AfterChat(ctx context.Context, info AfterChatInfo) error

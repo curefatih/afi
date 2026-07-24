@@ -75,6 +75,8 @@ func (h *Hook) AfterChat(_ context.Context, info sdkhook.AfterChatInfo) error {
 		"latency_ms", info.LatencyMs,
 		"provider_type", info.ProviderType,
 		"target_model", info.TargetModel,
+		"dialect", info.Dialect,
+		"modality", info.Modality,
 	)
 	return nil
 }

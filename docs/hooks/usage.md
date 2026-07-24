@@ -5,9 +5,21 @@
 The gateway runs an in-process hook chain on every modality (chat, messages, TTS, STT):
 
 1. **BeforeCall** — after auth, before routing/provider. Receives a mutable `CallContext` (principal, route, tags from `X-AFI-Tags`, metadata, body). May **allow**, **enrich**, or **deny** (`Allow=false` + status/reason).
-2. **BeforeChat** — chat only; mutates the OpenAI chat body after BeforeCall allows (existing `ChatHook`).
+2. **BeforeChat** — OpenAI and Anthropic chat dialects; mutates the **OpenAI-shaped bridge body** after BeforeCall allows (existing `ChatHook`).
 3. **AfterCall** — after the upstream attempt finishes (all modalities).
-4. **AfterChat** — chat only; logging/side effects after AfterCall.
+4. **AfterChat** — OpenAI and Anthropic chat dialects; logging/side effects after AfterCall (`AfterChatInfo` includes `Dialect` and `Modality`).
+
+### Chat dialect hook bodies
+
+| Hook | Body / info shape |
+| ---- | ----------------- |
+| **BeforeCall** `call.Body` | OpenAI chat.completions JSON derived from IR (stable bridge for all chat dialects) |
+| **BeforeCall** `call.Metadata["dialect"]` | `"openai"` or `"anthropic"` |
+| **BeforeCall** `call.Metadata["client_body"]` | Original client wire bytes (Anthropic Messages JSON or OpenAI JSON) |
+| **BeforeChat** / WASM `before_chat` | Same OpenAI-shaped bridge JSON as `call.Body` — mutate messages here; keep `model` intact (routing uses the original route name) |
+| **AfterChat** | `AfterChatInfo` with `Model`, `Status`, `LatencyMs`, `ProviderType`, `TargetModel`, plus `Dialect` / `Modality` |
+
+Dialect-native **mutation** of Anthropic JSON (or typed IR) in BeforeChat is a follow-on for WASM/gRPC extensions; until then, rewrite via the OpenAI bridge or inspect `client_body` in BeforeCall.
 
 Built-in gates always run in the request path (not registered on `pipeline.Hooks`, so replacing the chain cannot bypass them). Order:
 
@@ -57,6 +69,7 @@ Guest ABI, limits, pooling benchmarks: [wasm.md](wasm.md). Example: [`extensions
 
 ## Future
 
+* Dialect-native or typed-IR **BeforeChat** mutation bodies (WASM/gRPC) — today mutation stays on the OpenAI bridge; see [dialects](../api/dialects.md)
 * gRPC auth / secrets / notifications host adapters (capabilities reserved; Chat + hooks shipped — see [design note](../../internal-docs/grpc-extension-runtime.md) and [`extensions/grpcecho`](../../extensions/grpcecho))
 * Remote / HTTP-backed WASM artifact stores (beyond local `file://` paths)
 

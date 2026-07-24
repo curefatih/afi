@@ -80,6 +80,9 @@ func (p *Pipeline) executeChat(w http.ResponseWriter, r *http.Request, d ir.Dial
 		call.Metadata = map[string]any{}
 	}
 	call.Metadata["dialect"] = string(d)
+	// Original client wire (OpenAI or Anthropic JSON) for BeforeCall inspection.
+	// BeforeChat still mutates the OpenAI-shaped bridge body in call.Body.
+	call.Metadata["client_body"] = append([]byte(nil), body...)
 	if !p.gateCall(ctx, w, snap, call) {
 		return
 	}
@@ -240,13 +243,11 @@ targetLoop:
 			Status: "error", LatencyMs: time.Since(start).Milliseconds(),
 			ProviderType: usedProvider.Type, TargetModel: usedTarget,
 		})
-		if modality == ModalityChat {
-			p.Hooks.RunAfterChat(ctx, AfterChatInfo{
-				Model: chatReq.Model, Status: "error",
-				LatencyMs:    time.Since(start).Milliseconds(),
-				ProviderType: usedProvider.Type, TargetModel: usedTarget,
-			})
-		}
+		p.runAfterChat(ctx, d, modality, AfterChatInfo{
+			Model: chatReq.Model, Status: "error",
+			LatencyMs:    time.Since(start).Milliseconds(),
+			ProviderType: usedProvider.Type, TargetModel: usedTarget,
+		})
 		dialect.WriteError(w, d, http.StatusBadGateway, lastErr.Error(), "server_error")
 		return
 	}
@@ -315,13 +316,20 @@ targetLoop:
 		ProviderType: usedProvider.Type, TargetModel: usedTarget,
 		PromptTokens: promptTokens, CompletionTokens: completionTokens,
 	})
-	if modality == ModalityChat {
-		p.Hooks.RunAfterChat(ctx, AfterChatInfo{
-			Model: chatReq.Model, Status: status,
-			LatencyMs:    time.Since(start).Milliseconds(),
-			ProviderType: usedProvider.Type, TargetModel: usedTarget,
-		})
+	p.runAfterChat(ctx, d, modality, AfterChatInfo{
+		Model: chatReq.Model, Status: status,
+		LatencyMs:    time.Since(start).Milliseconds(),
+		ProviderType: usedProvider.Type, TargetModel: usedTarget,
+	})
+}
+
+func (p *Pipeline) runAfterChat(ctx context.Context, d ir.Dialect, modality string, info AfterChatInfo) {
+	if p == nil || p.Hooks == nil {
+		return
 	}
+	info.Dialect = string(d)
+	info.Modality = modality
+	p.Hooks.RunAfterChat(ctx, info)
 }
 
 func (p *Pipeline) callProviderIR(ctx context.Context, provider snapshot.Provider, targetModel string, req ir.ChatRequest, call *CallContext) (ir.ChatResult, error) {
