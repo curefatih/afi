@@ -101,13 +101,28 @@ func (rt *Runtime) loadOne(ctx context.Context, m Manifest) (*Plugin, error) {
 	hookTimeout := m.hookTimeout()
 	baseName := "grpc:" + m.ID
 
-	if capSet[extensionv1.Capability_CAPABILITY_PROVIDER_CHAT] {
+	if capSet[extensionv1.Capability_CAPABILITY_PROVIDER_CHAT] ||
+		capSet[extensionv1.Capability_CAPABILITY_PROVIDER_CHAT_IR] {
 		typ, err := resolveProviderType(m, hs)
 		if err != nil {
 			return nil, err
 		}
-		p.Provider = newProviderAdapter(extensionv1.NewProviderClient(conn), typ, m.chatTimeout())
-		rt.log.Info("grpc extension provider", "id", m.ID, "type", typ, "name", p.Name, "version", p.Version)
+		supportsIR := capSet[extensionv1.Capability_CAPABILITY_PROVIDER_CHAT_IR]
+		var chatClient extensionv1.ProviderClient
+		if capSet[extensionv1.Capability_CAPABILITY_PROVIDER_CHAT] {
+			chatClient = extensionv1.NewProviderClient(conn)
+		}
+		var irClient extensionv1.ProviderIRClient
+		if supportsIR {
+			irClient = extensionv1.NewProviderIRClient(conn)
+		}
+		base := newProviderAdapter(chatClient, irClient, typ, m.chatTimeout(), supportsIR)
+		if supportsIR {
+			p.Provider = &irCapableProvider{ProviderAdapter: base}
+		} else {
+			p.Provider = base
+		}
+		rt.log.Info("grpc extension provider", "id", m.ID, "type", typ, "name", p.Name, "version", p.Version, "chat_ir", supportsIR)
 	}
 	if capSet[extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CALL] {
 		p.Hooks = append(p.Hooks, &BeforeCallAdapter{client: hookClient, name: baseName, timeout: hookTimeout})

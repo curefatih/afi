@@ -15,18 +15,28 @@ import (
 
 // ProviderAdapter implements sdk/provider.ChatProvider over gRPC.
 type ProviderAdapter struct {
-	client  extensionv1.ProviderClient
-	typ     string
-	timeout time.Duration
-	caps    sdkprovider.Capabilities
+	client   extensionv1.ProviderClient
+	irClient extensionv1.ProviderIRClient
+	typ      string
+	timeout  time.Duration
+	caps     sdkprovider.Capabilities
+	supportsIR bool
 }
 
-func newProviderAdapter(client extensionv1.ProviderClient, typ string, timeout time.Duration) *ProviderAdapter {
+func newProviderAdapter(
+	client extensionv1.ProviderClient,
+	irClient extensionv1.ProviderIRClient,
+	typ string,
+	timeout time.Duration,
+	supportsIR bool,
+) *ProviderAdapter {
 	return &ProviderAdapter{
-		client:  client,
-		typ:     typ,
-		timeout: timeout,
-		caps:    sdkprovider.Capabilities{Chat: true, Stream: false},
+		client:     client,
+		irClient:   irClient,
+		typ:        typ,
+		timeout:    timeout,
+		caps:       sdkprovider.Capabilities{Chat: true, Stream: supportsIR},
+		supportsIR: supportsIR,
 	}
 }
 
@@ -41,10 +51,10 @@ func (a *ProviderAdapter) Capabilities() sdkprovider.Capabilities {
 
 func (a *ProviderAdapter) Chat(ctx context.Context, cfg sdkprovider.ProviderConfig, targetModel string, body []byte, stream bool) (*http.Response, error) {
 	if a == nil || a.client == nil {
-		return nil, fmt.Errorf("grpc provider %q: nil client", a.typ)
+		return nil, fmt.Errorf("grpc provider %q: OpenAI-byte Chat is not available", a.typ)
 	}
 	if stream {
-		return nil, fmt.Errorf("streaming is not supported for grpc provider type %q", a.typ)
+		return nil, fmt.Errorf("streaming is not supported for grpc provider type %q via OpenAI-byte Chat; advertise CAPABILITY_PROVIDER_CHAT_IR for typed streaming", a.typ)
 	}
 	cctx, cancel := context.WithTimeout(ctx, a.timeout)
 	defer cancel()
@@ -93,6 +103,13 @@ func (a *ProviderAdapter) Chat(ctx context.Context, cfg sdkprovider.ProviderConf
 }
 
 var _ sdkprovider.ChatProvider = (*ProviderAdapter)(nil)
+
+// irCapableProvider adds typed ChatIR on top of OpenAI-byte Chat.
+type irCapableProvider struct {
+	*ProviderAdapter
+}
+
+var _ sdkprovider.ChatIRProvider = (*irCapableProvider)(nil)
 
 func resolveProviderType(manifest Manifest, hs *extensionv1.HandshakeResponse) (string, error) {
 	if t := strings.TrimSpace(manifest.ProviderType); t != "" {
