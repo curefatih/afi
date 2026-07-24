@@ -17,9 +17,17 @@ func TestNormalizeRoutingStrategy(t *testing.T) {
 	if err != nil || got != RoutingWeighted {
 		t.Fatalf("weighted: got=%q err=%v", got, err)
 	}
-	_, err = NormalizeRoutingStrategy("latency")
+	got, err = NormalizeRoutingStrategy("latency")
+	if err != nil || got != RoutingLatency {
+		t.Fatalf("latency: got=%q err=%v", got, err)
+	}
+	got, err = NormalizeRoutingStrategy("COST")
+	if err != nil || got != RoutingCost {
+		t.Fatalf("cost: got=%q err=%v", got, err)
+	}
+	_, err = NormalizeRoutingStrategy("affinity")
 	if !errors.Is(err, kernel.ErrInvalidRequest) {
-		t.Fatalf("latency err=%v", err)
+		t.Fatalf("affinity err=%v", err)
 	}
 }
 

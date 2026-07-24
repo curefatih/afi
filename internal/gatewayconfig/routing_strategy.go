@@ -11,6 +11,8 @@ import (
 const (
 	RoutingOrdered  = "ordered"
 	RoutingWeighted = "weighted"
+	RoutingLatency  = "latency"
+	RoutingCost     = "cost"
 )
 
 // NormalizeRoutingStrategy trims/lowercases strategy; empty becomes ordered.
@@ -20,10 +22,10 @@ func NormalizeRoutingStrategy(strategy string) (string, error) {
 		return RoutingOrdered, nil
 	}
 	switch strategy {
-	case RoutingOrdered, RoutingWeighted:
+	case RoutingOrdered, RoutingWeighted, RoutingLatency, RoutingCost:
 		return strategy, nil
 	default:
-		return "", fmt.Errorf("%w: routing_strategy must be ordered or weighted", kernel.ErrInvalidRequest)
+		return "", fmt.Errorf("%w: routing_strategy must be ordered, weighted, latency, or cost", kernel.ErrInvalidRequest)
 	}
 }
 
