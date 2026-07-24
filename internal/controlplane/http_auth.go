@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/curefatih/afi/internal/app/platform"
 	"github.com/curefatih/afi/internal/identity"
@@ -34,6 +35,111 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"token": tok})
+}
+
+func (s *Server) handleAuthFeatures(w http.ResponseWriter, _ *http.Request) {
+	features := platform.AuthFeatures{PasswordResetEnabled: true}
+	if s.auth != nil {
+		features = s.auth.Features()
+	}
+	writeJSON(w, http.StatusOK, features)
+}
+
+func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Email    string `json:"email"`
+		Name     string `json:"name"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if s.auth == nil {
+		writeErr(w, http.StatusInternalServerError, "auth not configured")
+		return
+	}
+	tok, user, err := s.auth.Register(r.Context(), body.Email, body.Name, body.Password)
+	if err != nil {
+		switch {
+		case errors.Is(err, identity.ErrSignupDisabled):
+			writeErr(w, http.StatusForbidden, "signup disabled")
+		case errors.Is(err, kernel.ErrConflict):
+			writeErr(w, http.StatusConflict, "email already registered")
+		case errors.Is(err, kernel.ErrInvalidRequest):
+			writeErr(w, http.StatusBadRequest, "invalid request")
+		default:
+			writeErr(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"token": tok,
+		"user": map[string]any{
+			"id": user.ID, "email": user.Email, "name": user.Name, "role": user.Role,
+		},
+	})
+}
+
+func (s *Server) handleRequestPasswordReset(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if s.auth == nil {
+		writeErr(w, http.StatusInternalServerError, "auth not configured")
+		return
+	}
+	raw, err := s.auth.RequestPasswordReset(r.Context(), body.Email)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if raw != "" {
+		email := strings.ToLower(strings.TrimSpace(body.Email))
+		if err := s.sendPasswordResetMail(r.Context(), email, raw); err != nil {
+			if s.log != nil {
+				s.log.Error("password reset mail", "err", err)
+			}
+			// Still return ok to avoid leaking mail/config failures to attackers.
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func (s *Server) handleConfirmPasswordReset(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if s.auth == nil {
+		writeErr(w, http.StatusInternalServerError, "auth not configured")
+		return
+	}
+	tok, user, err := s.auth.ConfirmPasswordReset(r.Context(), r.PathValue("token"), body.Password)
+	if err != nil {
+		switch {
+		case errors.Is(err, identity.ErrInvalidResetToken):
+			writeErr(w, http.StatusBadRequest, "invalid or expired reset token")
+		case errors.Is(err, kernel.ErrInvalidRequest):
+			writeErr(w, http.StatusBadRequest, "invalid request")
+		default:
+			writeErr(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"token": tok,
+		"user": map[string]any{
+			"id": user.ID, "email": user.Email, "name": user.Name, "role": user.Role,
+		},
+	})
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
