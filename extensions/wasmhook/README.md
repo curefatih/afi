@@ -5,7 +5,8 @@ Example TinyGo WASM lifecycle hook for the AFI gateway.
 ## Behavior
 
 - **before_call** — denies when `X-AFI-Tags` includes `plan:blocked`; otherwise allows and sets `metadata.wasm_hook=1`.
-- **before_chat** — prefixes the last user message with `[wasm] `.
+- **before_chat** — mutates typed chat IR (`{"request":{...}}`) and prefixes the last user message with `[wasm] `.
+- **after_call** — no-op.
 
 ## Rebuild
 

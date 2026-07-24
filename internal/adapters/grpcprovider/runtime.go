@@ -101,28 +101,13 @@ func (rt *Runtime) loadOne(ctx context.Context, m Manifest) (*Plugin, error) {
 	hookTimeout := m.hookTimeout()
 	baseName := "grpc:" + m.ID
 
-	if capSet[extensionv1.Capability_CAPABILITY_PROVIDER_CHAT] ||
-		capSet[extensionv1.Capability_CAPABILITY_PROVIDER_CHAT_IR] {
+	if capSet[extensionv1.Capability_CAPABILITY_PROVIDER_CHAT] {
 		typ, err := resolveProviderType(m, hs)
 		if err != nil {
 			return nil, err
 		}
-		supportsIR := capSet[extensionv1.Capability_CAPABILITY_PROVIDER_CHAT_IR]
-		var chatClient extensionv1.ProviderClient
-		if capSet[extensionv1.Capability_CAPABILITY_PROVIDER_CHAT] {
-			chatClient = extensionv1.NewProviderClient(conn)
-		}
-		var irClient extensionv1.ProviderIRClient
-		if supportsIR {
-			irClient = extensionv1.NewProviderIRClient(conn)
-		}
-		base := newProviderAdapter(chatClient, irClient, typ, m.chatTimeout(), supportsIR)
-		if supportsIR {
-			p.Provider = &irCapableProvider{ProviderAdapter: base}
-		} else {
-			p.Provider = base
-		}
-		rt.log.Info("grpc extension provider", "id", m.ID, "type", typ, "name", p.Name, "version", p.Version, "chat_ir", supportsIR)
+		p.Provider = newProviderAdapter(extensionv1.NewProviderClient(conn), typ, m.chatTimeout())
+		rt.log.Info("grpc extension provider", "id", m.ID, "type", typ, "name", p.Name, "version", p.Version)
 	}
 	if capSet[extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CALL] {
 		p.Hooks = append(p.Hooks, &BeforeCallAdapter{client: hookClient, name: baseName, timeout: hookTimeout})
@@ -132,9 +117,6 @@ func (rt *Runtime) loadOne(ctx context.Context, m Manifest) (*Plugin, error) {
 	}
 	if capSet[extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CHAT] {
 		p.Hooks = append(p.Hooks, &BeforeChatAdapter{client: hookClient, name: baseName + ":before_chat", timeout: hookTimeout})
-	}
-	if capSet[extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CHAT_IR] {
-		p.Hooks = append(p.Hooks, &BeforeChatIRAdapter{client: hookClient, name: baseName + ":before_chat_ir", timeout: hookTimeout})
 	}
 	if capSet[extensionv1.Capability_CAPABILITY_HOOK_AFTER_CHAT] {
 		p.Hooks = append(p.Hooks, &AfterChatAdapter{client: hookClient, name: baseName + ":after_chat", timeout: hookTimeout})
@@ -202,6 +184,5 @@ var (
 	_ sdkhook.BeforeCallHook = (*BeforeCallAdapter)(nil)
 	_ sdkhook.AfterCallHook  = (*AfterCallAdapter)(nil)
 	_ sdkhook.ChatHook       = (*BeforeChatAdapter)(nil)
-	_ sdkhook.ChatIRHook     = (*BeforeChatIRAdapter)(nil)
 	_ sdkhook.AfterChatHook  = (*AfterChatAdapter)(nil)
 )

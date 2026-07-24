@@ -60,7 +60,7 @@ func (a *BeforeCallAdapter) BeforeCall(ctx context.Context, call *sdkhook.CallCo
 	return applyBeforeCallOut(call, out)
 }
 
-// BeforeChatAdapter runs the guest before_chat export.
+// BeforeChatAdapter runs the guest before_chat export (typed chat IR).
 type BeforeChatAdapter struct {
 	mod    *Module
 	name   string
@@ -90,77 +90,22 @@ func (a *BeforeChatAdapter) Name() string {
 	return a.name
 }
 
-func (a *BeforeChatAdapter) BeforeChat(ctx context.Context, body []byte) ([]byte, error) {
-	if a == nil || a.mod == nil {
-		return body, nil
-	}
-	in, err := encodeBeforeChatIn(body, a.config)
-	if err != nil {
-		return nil, fmt.Errorf("wasm: encode: %w", err)
-	}
-	out, err := a.mod.invokeJSON(ctx, "before_chat", in)
-	if err != nil {
-		return nil, err
-	}
-	if len(out) == 0 {
-		return body, nil
-	}
-	decoded, err := decodeBeforeChatOut(out)
-	if err != nil {
-		return nil, fmt.Errorf("wasm: decode: %w", err)
-	}
-	if decoded == nil {
-		return body, nil
-	}
-	return decoded, nil
-}
-
-// BeforeChatIRAdapter runs the guest before_chat_ir export.
-type BeforeChatIRAdapter struct {
-	mod    *Module
-	name   string
-	config json.RawMessage
-}
-
-// NewBeforeChatIR returns a typed ChatIRHook backed by mod.
-func NewBeforeChatIR(mod *Module) (*BeforeChatIRAdapter, error) {
-	return NewBeforeChatIRWithConfig(mod, nil)
-}
-
-// NewBeforeChatIRWithConfig passes binding config to the typed guest hook.
-func NewBeforeChatIRWithConfig(mod *Module, config json.RawMessage) (*BeforeChatIRAdapter, error) {
-	if mod == nil {
-		return nil, fmt.Errorf("wasm: nil module")
-	}
-	if !mod.hasExport("before_chat_ir") {
-		return nil, fmt.Errorf("wasm: module has no before_chat_ir export")
-	}
-	return &BeforeChatIRAdapter{mod: mod, name: mod.cfg.Name + ":before_chat_ir", config: config}, nil
-}
-
-func (a *BeforeChatIRAdapter) Name() string {
-	if a == nil || a.name == "" {
-		return "wasm:before_chat_ir"
-	}
-	return a.name
-}
-
-func (a *BeforeChatIRAdapter) BeforeChatIR(ctx context.Context, req chatir.Request) (chatir.Request, error) {
+func (a *BeforeChatAdapter) BeforeChat(ctx context.Context, req chatir.Request) (chatir.Request, error) {
 	if a == nil || a.mod == nil {
 		return req, nil
 	}
-	in, err := encodeBeforeChatIRIn(req, a.config)
+	in, err := encodeBeforeChatIn(req, a.config)
 	if err != nil {
 		return req, fmt.Errorf("wasm: encode: %w", err)
 	}
-	out, err := a.mod.invokeJSON(ctx, "before_chat_ir", in)
+	out, err := a.mod.invokeJSON(ctx, "before_chat", in)
 	if err != nil {
 		return req, err
 	}
 	if len(out) == 0 {
 		return req, nil
 	}
-	decoded, err := decodeBeforeChatIROut(out)
+	decoded, err := decodeBeforeChatOut(out)
 	if err != nil {
 		return req, fmt.Errorf("wasm: decode: %w", err)
 	}
@@ -229,6 +174,5 @@ func LoadBeforeCall(ctx context.Context, path string, cfg Config) (sdkhook.Befor
 var (
 	_ sdkhook.BeforeCallHook = (*BeforeCallAdapter)(nil)
 	_ sdkhook.ChatHook       = (*BeforeChatAdapter)(nil)
-	_ sdkhook.ChatIRHook     = (*BeforeChatIRAdapter)(nil)
 	_ sdkhook.AfterCallHook  = (*AfterCallAdapter)(nil)
 )

@@ -92,47 +92,17 @@ func (a *BeforeChatAdapter) Name() string {
 	return a.name
 }
 
-func (a *BeforeChatAdapter) BeforeChat(ctx context.Context, body []byte) ([]byte, error) {
-	if a == nil || a.client == nil {
-		return body, nil
-	}
-	cctx, cancel := context.WithTimeout(ctx, a.timeout)
-	defer cancel()
-	resp, err := a.client.BeforeChat(cctx, &extensionv1.BeforeChatRequest{Body: body})
-	if err != nil {
-		return nil, fmt.Errorf("grpc hook %s BeforeChat: %w", a.Name(), err)
-	}
-	if resp == nil || resp.Body == nil {
-		return body, nil
-	}
-	return resp.Body, nil
-}
-
-// BeforeChatIRAdapter implements sdk/hook.ChatIRHook over gRPC.
-type BeforeChatIRAdapter struct {
-	client  extensionv1.HookClient
-	name    string
-	timeout time.Duration
-}
-
-func (a *BeforeChatIRAdapter) Name() string {
-	if a == nil || a.name == "" {
-		return "grpc:before_chat_ir"
-	}
-	return a.name
-}
-
-func (a *BeforeChatIRAdapter) BeforeChatIR(ctx context.Context, req chatir.Request) (chatir.Request, error) {
+func (a *BeforeChatAdapter) BeforeChat(ctx context.Context, req chatir.Request) (chatir.Request, error) {
 	if a == nil || a.client == nil {
 		return req, nil
 	}
 	cctx, cancel := context.WithTimeout(ctx, a.timeout)
 	defer cancel()
-	resp, err := a.client.BeforeChatIR(cctx, &extensionv1.BeforeChatIRRequest{
+	resp, err := a.client.BeforeChat(cctx, &extensionv1.BeforeChatRequest{
 		Request: ChatIRRequestProto(req),
 	})
 	if err != nil {
-		return req, fmt.Errorf("grpc hook %s BeforeChatIR: %w", a.Name(), err)
+		return req, fmt.Errorf("grpc hook %s BeforeChat: %w", a.Name(), err)
 	}
 	if resp == nil || resp.Request == nil {
 		return req, nil

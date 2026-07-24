@@ -2,13 +2,11 @@ package dataplane
 
 import (
 	"context"
-	"io"
+	"fmt"
 	"net/http"
 
-	"github.com/curefatih/afi/internal/dataplane/dialect"
 	"github.com/curefatih/afi/internal/dataplane/ir"
 	"github.com/curefatih/afi/internal/snapshot"
-	"github.com/curefatih/afi/sdk/chatir"
 	sdkprovider "github.com/curefatih/afi/sdk/provider"
 )
 
@@ -29,49 +27,16 @@ func (b *sdkChatBridge) Capabilities() ProviderCaps {
 }
 
 func (b *sdkChatBridge) Chat(ctx context.Context, p snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
-	return b.inner.Chat(ctx, sdkConfig(p), targetModel, body, stream)
+	_ = ctx
+	_ = p
+	_ = targetModel
+	_ = body
+	_ = stream
+	return nil, fmt.Errorf("sdk provider %q does not support OpenAI-byte Chat; use ChatIR", b.Type())
 }
 
 func (b *sdkChatBridge) ChatIR(ctx context.Context, p snapshot.Provider, targetModel string, req ir.ChatRequest) (ir.ChatResult, error) {
-	if irp, ok := b.inner.(sdkprovider.ChatIRProvider); ok {
-		return irp.ChatIR(ctx, sdkConfig(p), targetModel, req)
-	}
-	// Legacy SDK / gRPC adapters: OpenAI-shaped bytes bridge.
-	body, err := ir.EncodeOpenAI(req)
-	if err != nil {
-		return ir.ChatResult{}, err
-	}
-	resp, err := b.inner.Chat(ctx, sdkConfig(p), targetModel, body, req.Stream)
-	if err != nil {
-		return ir.ChatResult{}, err
-	}
-	if resp.StatusCode >= 400 {
-		raw, _ := io.ReadAll(resp.Body)
-		_ = resp.Body.Close()
-		return ir.ChatResult{StatusCode: resp.StatusCode, Header: resp.Header, ErrorBody: raw}, nil
-	}
-	if req.Stream {
-		ch := dialect.ParseOpenAISSE(resp.Body)
-		out := make(chan chatir.StreamEvent, 16)
-		go func() {
-			defer close(out)
-			defer resp.Body.Close()
-			for ev := range ch {
-				out <- ev
-			}
-		}()
-		return ir.ChatResult{StatusCode: resp.StatusCode, Header: resp.Header, Events: out}, nil
-	}
-	raw, err := io.ReadAll(resp.Body)
-	_ = resp.Body.Close()
-	if err != nil {
-		return ir.ChatResult{}, err
-	}
-	mapped, err := ir.DecodeOpenAIResponse(raw)
-	if err != nil {
-		return ir.ChatResult{}, err
-	}
-	return ir.ChatResult{StatusCode: resp.StatusCode, Header: resp.Header, Response: &mapped}, nil
+	return b.inner.ChatIR(ctx, sdkConfig(p), targetModel, req)
 }
 
 func sdkConfig(p snapshot.Provider) sdkprovider.ProviderConfig {

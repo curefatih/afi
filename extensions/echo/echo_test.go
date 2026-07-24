@@ -2,45 +2,89 @@ package echo
 
 import (
 	"context"
-	"encoding/json"
-	"io"
 	"testing"
 
+	"github.com/curefatih/afi/sdk/chatir"
 	sdkprovider "github.com/curefatih/afi/sdk/provider"
 )
 
-func TestEchoChat(t *testing.T) {
+func TestEchoChatIR(t *testing.T) {
 	t.Parallel()
 	a := New()
-	body := []byte(`{"model":"echo-demo","messages":[{"role":"user","content":"hello world"}]}`)
-	resp, err := a.Chat(context.Background(), sdkprovider.ProviderConfig{Type: Type}, "echo-demo", body, false)
+	req := chatir.Request{
+		Model: "echo-demo",
+		Messages: []chatir.Message{
+			{Role: "system", Content: "be nice"},
+			{Role: "user", Content: "hello world"},
+		},
+	}
+	res, err := a.ChatIR(context.Background(), sdkprovider.ProviderConfig{Type: Type}, "echo-demo", req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		t.Fatalf("status=%d", resp.StatusCode)
+	if res.StatusCode != 200 {
+		t.Fatalf("status=%d", res.StatusCode)
 	}
-	raw, _ := io.ReadAll(resp.Body)
-	var out struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
+	if res.Response == nil {
+		t.Fatal("expected response")
 	}
-	if err := json.Unmarshal(raw, &out); err != nil {
+	if res.Response.Content != "echo: hello world" {
+		t.Fatalf("content=%q", res.Response.Content)
+	}
+	if res.Response.Role != "assistant" || res.Response.FinishReason != "stop" {
+		t.Fatalf("%+v", res.Response)
+	}
+	if res.Response.Model != "echo-demo" {
+		t.Fatalf("model=%q", res.Response.Model)
+	}
+	if res.Response.Usage.PromptTokens != 2 || res.Response.Usage.CompletionTokens != 3 {
+		t.Fatalf("usage=%+v", res.Response.Usage)
+	}
+}
+
+func TestEchoChatIRFallsBackToRequestModel(t *testing.T) {
+	t.Parallel()
+	req := chatir.Request{Model: "from-request", Messages: []chatir.Message{{Role: "user", Content: "hi"}}}
+	res, err := New().ChatIR(context.Background(), sdkprovider.ProviderConfig{}, "", req)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if len(out.Choices) != 1 || out.Choices[0].Message.Content != "echo: hello world" {
-		t.Fatalf("%s", raw)
+	if res.Response.Model != "from-request" {
+		t.Fatalf("model=%q", res.Response.Model)
+	}
+}
+
+func TestEchoChatIRWithoutUserMessage(t *testing.T) {
+	t.Parallel()
+	req := chatir.Request{Model: "m", Messages: []chatir.Message{{Role: "assistant", Content: "prior"}}}
+	res, err := New().ChatIR(context.Background(), sdkprovider.ProviderConfig{}, "m", req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Response.Content != "echo: " {
+		t.Fatalf("content=%q", res.Response.Content)
+	}
+	if res.Response.Usage.PromptTokens != 1 {
+		t.Fatalf("prompt tokens=%d", res.Response.Usage.PromptTokens)
 	}
 }
 
 func TestEchoRejectsStream(t *testing.T) {
 	t.Parallel()
-	_, err := New().Chat(context.Background(), sdkprovider.ProviderConfig{}, "m", []byte(`{}`), true)
+	_, err := New().ChatIR(context.Background(), sdkprovider.ProviderConfig{}, "m", chatir.Request{Stream: true})
 	if err == nil {
 		t.Fatal("expected error")
+	}
+}
+
+func TestEchoCapabilities(t *testing.T) {
+	t.Parallel()
+	a := New()
+	if a.Type() != Type {
+		t.Fatalf("type=%q", a.Type())
+	}
+	caps := a.Capabilities()
+	if !caps.Chat || caps.Stream {
+		t.Fatalf("caps=%+v", caps)
 	}
 }

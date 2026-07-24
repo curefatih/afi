@@ -21,7 +21,6 @@ type (
 	BeforeCallHook = sdkhook.BeforeCallHook
 	AfterCallHook  = sdkhook.AfterCallHook
 	ChatHook       = sdkhook.ChatHook
-	ChatIRHook     = sdkhook.ChatIRHook
 	AfterChatHook  = sdkhook.AfterChatHook
 )
 
@@ -31,7 +30,6 @@ type HookChain struct {
 	beforeCall []BeforeCallHook
 	afterCall  []AfterCallHook
 	before     []ChatHook
-	beforeIR   []ChatIRHook
 	after      []AfterChatHook
 }
 
@@ -83,17 +81,6 @@ func (c *HookChain) Register(h ChatHook) *HookChain {
 	return c
 }
 
-// RegisterIR adds a typed BeforeChat hook.
-func (c *HookChain) RegisterIR(h ChatIRHook) *HookChain {
-	if h == nil {
-		return c
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.beforeIR = append(c.beforeIR, h)
-	return c
-}
-
 // RegisterAfter adds an AfterChat hook.
 func (c *HookChain) RegisterAfter(h AfterChatHook) *HookChain {
 	if h == nil {
@@ -119,9 +106,6 @@ func (c *HookChain) RegisterHook(h any) *HookChain {
 	if b, ok := h.(ChatHook); ok {
 		c.Register(b)
 	}
-	if b, ok := h.(ChatIRHook); ok {
-		c.RegisterIR(b)
-	}
 	if a, ok := h.(AfterChatHook); ok {
 		c.RegisterAfter(a)
 	}
@@ -130,12 +114,11 @@ func (c *HookChain) RegisterHook(h any) *HookChain {
 
 // HookInfo describes a registered hook for healthz / UI.
 type HookInfo struct {
-	Name         string `json:"name"`
-	BeforeCall   bool   `json:"before_call"`
-	AfterCall    bool   `json:"after_call"`
-	BeforeChat   bool   `json:"before_chat"`
-	BeforeChatIR bool   `json:"before_chat_ir"`
-	AfterChat    bool   `json:"after_chat"`
+	Name       string `json:"name"`
+	BeforeCall bool   `json:"before_call"`
+	AfterCall  bool   `json:"after_call"`
+	BeforeChat bool   `json:"before_chat"`
+	AfterChat  bool   `json:"after_chat"`
 }
 
 func (c *HookChain) Infos() []HookInfo {
@@ -161,9 +144,6 @@ func (c *HookChain) Infos() []HookInfo {
 	}
 	for _, h := range c.before {
 		add(h.Name()).BeforeChat = true
-	}
-	for _, h := range c.beforeIR {
-		add(h.Name()).BeforeChatIR = true
 	}
 	for _, h := range c.after {
 		add(h.Name()).AfterChat = true
@@ -217,34 +197,17 @@ func (c *HookChain) RunAfterCall(ctx context.Context, call *CallContext, info Af
 	}
 }
 
-func (c *HookChain) RunBeforeChat(ctx context.Context, body []byte) ([]byte, error) {
+// RunBeforeChat runs typed chat hooks in registration order.
+func (c *HookChain) RunBeforeChat(ctx context.Context, req ir.ChatRequest) (ir.ChatRequest, error) {
 	if c == nil {
-		return body, nil
+		return req, nil
 	}
 	c.mu.RLock()
 	hooks := append([]ChatHook(nil), c.before...)
 	c.mu.RUnlock()
 	var err error
 	for _, h := range hooks {
-		body, err = h.BeforeChat(ctx, body)
-		if err != nil {
-			return body, err
-		}
-	}
-	return body, nil
-}
-
-// RunBeforeChatIR runs typed chat hooks in registration order.
-func (c *HookChain) RunBeforeChatIR(ctx context.Context, req ir.ChatRequest) (ir.ChatRequest, error) {
-	if c == nil {
-		return req, nil
-	}
-	c.mu.RLock()
-	hooks := append([]ChatIRHook(nil), c.beforeIR...)
-	c.mu.RUnlock()
-	var err error
-	for _, h := range hooks {
-		req, err = h.BeforeChatIR(ctx, req)
+		req, err = h.BeforeChat(ctx, req)
 		if err != nil {
 			return req, err
 		}

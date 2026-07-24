@@ -12,34 +12,8 @@ import (
 	sdkprovider "github.com/curefatih/afi/sdk/provider"
 )
 
-func (a *irCapableProvider) ChatIR(ctx context.Context, cfg sdkprovider.ProviderConfig, targetModel string, req chatir.Request) (chatir.Result, error) {
-	return a.ProviderAdapter.chatIR(ctx, cfg, targetModel, req)
-}
-
-func (a *ProviderAdapter) chatIR(ctx context.Context, cfg sdkprovider.ProviderConfig, targetModel string, req chatir.Request) (chatir.Result, error) {
-	if a == nil || a.irClient == nil {
-		return chatir.Result{}, fmt.Errorf("grpc provider %q: typed ChatIR is not available", a.typ)
-	}
-	cctx, cancel := context.WithTimeout(ctx, a.timeout)
-	defer cancel()
-
-	pbReq := &extensionv1.ChatIRRequest{
-		Config:      providerConfigProto(cfg),
-		TargetModel: targetModel,
-		Request:     ChatIRRequestProto(req),
-	}
-	if req.Stream {
-		return a.chatIRStream(cctx, pbReq)
-	}
-	resp, err := a.irClient.ChatIR(cctx, pbReq)
-	if err != nil {
-		return chatir.Result{}, fmt.Errorf("grpc provider %q ChatIR: %w", a.typ, err)
-	}
-	return chatIRResultFromProto(resp), nil
-}
-
 func (a *ProviderAdapter) chatIRStream(ctx context.Context, pbReq *extensionv1.ChatIRRequest) (chatir.Result, error) {
-	stream, err := a.irClient.ChatIRStream(ctx, pbReq)
+	stream, err := a.client.ChatIRStream(ctx, pbReq)
 	if err != nil {
 		return chatir.Result{}, fmt.Errorf("grpc provider %q ChatIRStream: %w", a.typ, err)
 	}

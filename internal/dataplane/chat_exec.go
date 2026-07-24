@@ -117,26 +117,17 @@ func (p *Pipeline) executeChat(
 		chatReq.Stream = true
 	}
 
-	openaiBody, err := ir.EncodeOpenAI(chatReq)
-	if err != nil {
-		dialect.WriteError(w, d, http.StatusBadRequest, err.Error(), "invalid_request_error")
-		return
-	}
-
 	path := r.URL.Path
-	call := newCallContext(key, chatReq.Model, path, modality, chatReq.Stream, openaiBody, TagsFromRequest(r))
+	call := newCallContext(key, chatReq.Model, path, modality, chatReq.Stream, append([]byte(nil), body...), TagsFromRequest(r))
 	call.Headers = HeadersForPolicy(r.Header)
 	if call.Metadata == nil {
 		call.Metadata = map[string]any{}
 	}
 	call.Metadata["dialect"] = string(d)
-	// Original client wire (OpenAI or Anthropic JSON) for BeforeCall inspection.
-	// BeforeChat still mutates the OpenAI-shaped bridge body in call.Body.
 	call.Metadata["client_body"] = append([]byte(nil), body...)
 	if !p.gateCall(ctx, w, snap, call) {
 		return
 	}
-	openaiBody = call.Body
 
 	route, provider, ok := snap.LookupRoute(key.OrganizationID, chatReq.Model)
 	if !ok {
@@ -150,37 +141,16 @@ func (p *Pipeline) executeChat(
 		return
 	}
 
-	openaiBody, err = p.Hooks.RunBeforeChat(ctx, openaiBody)
+	chatReq, err = p.Hooks.RunBeforeChat(ctx, chatReq)
 	if err != nil {
 		log.Error("chat hook", "err", err)
 		dialect.WriteError(w, d, http.StatusBadRequest, "chat hook failed: "+err.Error(), "invalid_request_error")
 		return
 	}
 	if p.Wasm != nil {
-		openaiBody, err = p.Wasm.RunBeforeChat(ctx, snap, call.Principal.OrganizationID, openaiBody)
+		chatReq, err = p.Wasm.RunBeforeChat(ctx, snap, call.Principal.OrganizationID, chatReq)
 		if err != nil {
 			log.Error("wasm before_chat", "err", err)
-			dialect.WriteError(w, d, http.StatusBadRequest, "chat hook failed: "+err.Error(), "invalid_request_error")
-			return
-		}
-	}
-	call.Body = openaiBody
-
-	chatReq, err = ir.DecodeOpenAIRequest(openaiBody)
-	if err != nil {
-		dialect.WriteError(w, d, http.StatusBadRequest, "chat hook produced invalid body: "+err.Error(), "invalid_request_error")
-		return
-	}
-	chatReq, err = p.Hooks.RunBeforeChatIR(ctx, chatReq)
-	if err != nil {
-		log.Error("typed chat hook", "err", err)
-		dialect.WriteError(w, d, http.StatusBadRequest, "chat hook failed: "+err.Error(), "invalid_request_error")
-		return
-	}
-	if p.Wasm != nil {
-		chatReq, err = p.Wasm.RunBeforeChatIR(ctx, snap, call.Principal.OrganizationID, chatReq)
-		if err != nil {
-			log.Error("wasm before_chat_ir", "err", err)
 			dialect.WriteError(w, d, http.StatusBadRequest, "chat hook failed: "+err.Error(), "invalid_request_error")
 			return
 		}
@@ -188,6 +158,9 @@ func (p *Pipeline) executeChat(
 	// Preserve client-requested model for routing/usage; hooks may rewrite messages only.
 	chatReq.Model = call.Route.Model
 	chatReq.Stream = call.Route.Stream
+	if bridge, encErr := ir.EncodeOpenAI(chatReq); encErr == nil {
+		call.Body = bridge
+	}
 
 	retryCfg := snap.ResolveRetry(route)
 	log.Info("chat",
@@ -418,40 +391,5 @@ func (p *Pipeline) callProviderIR(ctx context.Context, provider snapshot.Provide
 	if irp, ok := adapter.(IRChatProvider); ok {
 		return irp.ChatIR(ctx, provider, targetModel, req)
 	}
-	// Legacy SDK / gRPC adapters: OpenAI-shaped bytes bridge.
-	body, err := ir.EncodeOpenAI(req)
-	if err != nil {
-		return ir.ChatResult{}, err
-	}
-	resp, err := adapter.Chat(ctx, provider, targetModel, body, req.Stream)
-	if err != nil {
-		return ir.ChatResult{}, err
-	}
-	if resp.StatusCode >= 400 {
-		raw, _ := io.ReadAll(resp.Body)
-		_ = resp.Body.Close()
-		return ir.ChatResult{StatusCode: resp.StatusCode, Header: resp.Header, ErrorBody: raw}, nil
-	}
-	if req.Stream {
-		ch := dialect.ParseOpenAISSE(resp.Body)
-		out := make(chan ir.StreamEvent, 16)
-		go func() {
-			defer close(out)
-			defer resp.Body.Close()
-			for ev := range ch {
-				out <- ev
-			}
-		}()
-		return ir.ChatResult{StatusCode: resp.StatusCode, Header: resp.Header, Events: out}, nil
-	}
-	raw, err := io.ReadAll(resp.Body)
-	_ = resp.Body.Close()
-	if err != nil {
-		return ir.ChatResult{}, err
-	}
-	mapped, err := ir.DecodeOpenAIResponse(raw)
-	if err != nil {
-		return ir.ChatResult{}, err
-	}
-	return ir.ChatResult{StatusCode: resp.StatusCode, Header: resp.Header, Response: &mapped}, nil
+	return ir.ChatResult{}, errors.New("provider type \"" + provider.Type + "\" does not implement ChatIR")
 }

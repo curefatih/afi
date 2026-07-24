@@ -15,12 +15,12 @@ func TestNewWasmHook(t *testing.T) {
 	}
 }
 
-func TestNewTypedChatIRWasmHook(t *testing.T) {
-	h, err := NewWasmHook("w2", "o1", "typed", WasmPhaseBeforeChatIR, "file:///tmp/h.wasm", "", true, 10, nil, timeNowUTC())
+func TestNewBeforeChatWasmHook(t *testing.T) {
+	h, err := NewWasmHook("w2", "o1", "typed", WasmPhaseBeforeChat, "file:///tmp/h.wasm", "", true, 10, nil, timeNowUTC())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if h.Phase != WasmPhaseBeforeChatIR {
+	if h.Phase != WasmPhaseBeforeChat {
 		t.Fatalf("phase=%q", h.Phase)
 	}
 }

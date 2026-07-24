@@ -19,41 +19,41 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ProviderIR_ChatIR_FullMethodName       = "/afi.extension.v1.ProviderIR/ChatIR"
-	ProviderIR_ChatIRStream_FullMethodName = "/afi.extension.v1.ProviderIR/ChatIRStream"
+	Provider_ChatIR_FullMethodName       = "/afi.extension.v1.Provider/ChatIR"
+	Provider_ChatIRStream_FullMethodName = "/afi.extension.v1.Provider/ChatIRStream"
 )
 
-// ProviderIRClient is the client API for ProviderIR service.
+// ProviderClient is the client API for Provider service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// ProviderIR implements typed chat IR (CAPABILITY_PROVIDER_CHAT_IR).
-type ProviderIRClient interface {
+// Provider implements typed chat IR (CAPABILITY_PROVIDER_CHAT).
+type ProviderClient interface {
 	ChatIR(ctx context.Context, in *ChatIRRequest, opts ...grpc.CallOption) (*ChatIRResponse, error)
 	ChatIRStream(ctx context.Context, in *ChatIRRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ChatIRStreamEvent], error)
 }
 
-type providerIRClient struct {
+type providerClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewProviderIRClient(cc grpc.ClientConnInterface) ProviderIRClient {
-	return &providerIRClient{cc}
+func NewProviderClient(cc grpc.ClientConnInterface) ProviderClient {
+	return &providerClient{cc}
 }
 
-func (c *providerIRClient) ChatIR(ctx context.Context, in *ChatIRRequest, opts ...grpc.CallOption) (*ChatIRResponse, error) {
+func (c *providerClient) ChatIR(ctx context.Context, in *ChatIRRequest, opts ...grpc.CallOption) (*ChatIRResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ChatIRResponse)
-	err := c.cc.Invoke(ctx, ProviderIR_ChatIR_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Provider_ChatIR_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *providerIRClient) ChatIRStream(ctx context.Context, in *ChatIRRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ChatIRStreamEvent], error) {
+func (c *providerClient) ChatIRStream(ctx context.Context, in *ChatIRRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ChatIRStreamEvent], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &ProviderIR_ServiceDesc.Streams[0], ProviderIR_ChatIRStream_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &Provider_ServiceDesc.Streams[0], Provider_ChatIRStream_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -68,98 +68,98 @@ func (c *providerIRClient) ChatIRStream(ctx context.Context, in *ChatIRRequest, 
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type ProviderIR_ChatIRStreamClient = grpc.ServerStreamingClient[ChatIRStreamEvent]
+type Provider_ChatIRStreamClient = grpc.ServerStreamingClient[ChatIRStreamEvent]
 
-// ProviderIRServer is the server API for ProviderIR service.
-// All implementations must embed UnimplementedProviderIRServer
+// ProviderServer is the server API for Provider service.
+// All implementations must embed UnimplementedProviderServer
 // for forward compatibility.
 //
-// ProviderIR implements typed chat IR (CAPABILITY_PROVIDER_CHAT_IR).
-type ProviderIRServer interface {
+// Provider implements typed chat IR (CAPABILITY_PROVIDER_CHAT).
+type ProviderServer interface {
 	ChatIR(context.Context, *ChatIRRequest) (*ChatIRResponse, error)
 	ChatIRStream(*ChatIRRequest, grpc.ServerStreamingServer[ChatIRStreamEvent]) error
-	mustEmbedUnimplementedProviderIRServer()
+	mustEmbedUnimplementedProviderServer()
 }
 
-// UnimplementedProviderIRServer must be embedded to have
+// UnimplementedProviderServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedProviderIRServer struct{}
+type UnimplementedProviderServer struct{}
 
-func (UnimplementedProviderIRServer) ChatIR(context.Context, *ChatIRRequest) (*ChatIRResponse, error) {
+func (UnimplementedProviderServer) ChatIR(context.Context, *ChatIRRequest) (*ChatIRResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ChatIR not implemented")
 }
-func (UnimplementedProviderIRServer) ChatIRStream(*ChatIRRequest, grpc.ServerStreamingServer[ChatIRStreamEvent]) error {
+func (UnimplementedProviderServer) ChatIRStream(*ChatIRRequest, grpc.ServerStreamingServer[ChatIRStreamEvent]) error {
 	return status.Error(codes.Unimplemented, "method ChatIRStream not implemented")
 }
-func (UnimplementedProviderIRServer) mustEmbedUnimplementedProviderIRServer() {}
-func (UnimplementedProviderIRServer) testEmbeddedByValue()                    {}
+func (UnimplementedProviderServer) mustEmbedUnimplementedProviderServer() {}
+func (UnimplementedProviderServer) testEmbeddedByValue()                  {}
 
-// UnsafeProviderIRServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ProviderIRServer will
+// UnsafeProviderServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ProviderServer will
 // result in compilation errors.
-type UnsafeProviderIRServer interface {
-	mustEmbedUnimplementedProviderIRServer()
+type UnsafeProviderServer interface {
+	mustEmbedUnimplementedProviderServer()
 }
 
-func RegisterProviderIRServer(s grpc.ServiceRegistrar, srv ProviderIRServer) {
-	// If the following call panics, it indicates UnimplementedProviderIRServer was
+func RegisterProviderServer(s grpc.ServiceRegistrar, srv ProviderServer) {
+	// If the following call panics, it indicates UnimplementedProviderServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&ProviderIR_ServiceDesc, srv)
+	s.RegisterService(&Provider_ServiceDesc, srv)
 }
 
-func _ProviderIR_ChatIR_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Provider_ChatIR_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ChatIRRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ProviderIRServer).ChatIR(ctx, in)
+		return srv.(ProviderServer).ChatIR(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ProviderIR_ChatIR_FullMethodName,
+		FullMethod: Provider_ChatIR_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ProviderIRServer).ChatIR(ctx, req.(*ChatIRRequest))
+		return srv.(ProviderServer).ChatIR(ctx, req.(*ChatIRRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ProviderIR_ChatIRStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _Provider_ChatIRStream_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(ChatIRRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(ProviderIRServer).ChatIRStream(m, &grpc.GenericServerStream[ChatIRRequest, ChatIRStreamEvent]{ServerStream: stream})
+	return srv.(ProviderServer).ChatIRStream(m, &grpc.GenericServerStream[ChatIRRequest, ChatIRStreamEvent]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type ProviderIR_ChatIRStreamServer = grpc.ServerStreamingServer[ChatIRStreamEvent]
+type Provider_ChatIRStreamServer = grpc.ServerStreamingServer[ChatIRStreamEvent]
 
-// ProviderIR_ServiceDesc is the grpc.ServiceDesc for ProviderIR service.
+// Provider_ServiceDesc is the grpc.ServiceDesc for Provider service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var ProviderIR_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "afi.extension.v1.ProviderIR",
-	HandlerType: (*ProviderIRServer)(nil),
+var Provider_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "afi.extension.v1.Provider",
+	HandlerType: (*ProviderServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "ChatIR",
-			Handler:    _ProviderIR_ChatIR_Handler,
+			Handler:    _Provider_ChatIR_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "ChatIRStream",
-			Handler:       _ProviderIR_ChatIRStream_Handler,
+			Handler:       _Provider_ChatIRStream_Handler,
 			ServerStreams: true,
 		},
 	},

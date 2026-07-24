@@ -125,22 +125,6 @@ func main() {
 		hooks = hooks.Register(hook)
 		log.Info("wasm before_chat loaded", "path", path)
 	}
-	if path := cfg.Gateway.WasmBeforeChatIR; path != "" {
-		mod, err := afiWasm.CompileFile(ctx, path, afiWasm.Config{Name: "wasm:before_chat_ir"})
-		if err != nil {
-			log.Error("wasm before_chat_ir", "path", path, "err", err)
-			os.Exit(1)
-		}
-		hook, err := afiWasm.NewBeforeChatIR(mod)
-		if err != nil {
-			_ = mod.Close(ctx)
-			log.Error("wasm before_chat_ir adapter", "err", err)
-			os.Exit(1)
-		}
-		wasmMods = append(wasmMods, mod)
-		hooks = hooks.RegisterIR(hook)
-		log.Info("wasm before_chat_ir loaded", "path", path)
-	}
 
 	pipeline := dataplane.NewPipelineWithRegistry(holder, reg, log)
 	pipeline.Hooks = hooks

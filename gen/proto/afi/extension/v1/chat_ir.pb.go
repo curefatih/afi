@@ -1075,9 +1075,8 @@ const file_afi_extension_v1_chat_ir_proto_rawDesc = "" +
 	")CHAT_IR_STREAM_EVENT_KIND_TOOL_CALL_START\x10\x03\x12-\n" +
 	")CHAT_IR_STREAM_EVENT_KIND_TOOL_CALL_DELTA\x10\x04\x12)\n" +
 	"%CHAT_IR_STREAM_EVENT_KIND_MESSAGE_END\x10\x05\x12#\n" +
-	"\x1fCHAT_IR_STREAM_EVENT_KIND_ERROR\x10\x062\xb1\x01\n" +
-	"\n" +
-	"ProviderIR\x12K\n" +
+	"\x1fCHAT_IR_STREAM_EVENT_KIND_ERROR\x10\x062\xaf\x01\n" +
+	"\bProvider\x12K\n" +
 	"\x06ChatIR\x12\x1f.afi.extension.v1.ChatIRRequest\x1a .afi.extension.v1.ChatIRResponse\x12V\n" +
 	"\fChatIRStream\x12\x1f.afi.extension.v1.ChatIRRequest\x1a#.afi.extension.v1.ChatIRStreamEvent0\x01BAZ?github.com/curefatih/afi/gen/proto/afi/extension/v1;extensionv1b\x06proto3"
 
@@ -1127,10 +1126,10 @@ var file_afi_extension_v1_chat_ir_proto_depIdxs = []int32{
 	10, // 11: afi.extension.v1.ChatIRResponse.completion:type_name -> afi.extension.v1.ChatIRCompletion
 	0,  // 12: afi.extension.v1.ChatIRStreamEvent.kind:type_name -> afi.extension.v1.ChatIRStreamEventKind
 	9,  // 13: afi.extension.v1.ChatIRStreamEvent.usage:type_name -> afi.extension.v1.ChatIRUsage
-	1,  // 14: afi.extension.v1.ProviderIR.ChatIR:input_type -> afi.extension.v1.ChatIRRequest
-	1,  // 15: afi.extension.v1.ProviderIR.ChatIRStream:input_type -> afi.extension.v1.ChatIRRequest
-	11, // 16: afi.extension.v1.ProviderIR.ChatIR:output_type -> afi.extension.v1.ChatIRResponse
-	12, // 17: afi.extension.v1.ProviderIR.ChatIRStream:output_type -> afi.extension.v1.ChatIRStreamEvent
+	1,  // 14: afi.extension.v1.Provider.ChatIR:input_type -> afi.extension.v1.ChatIRRequest
+	1,  // 15: afi.extension.v1.Provider.ChatIRStream:input_type -> afi.extension.v1.ChatIRRequest
+	11, // 16: afi.extension.v1.Provider.ChatIR:output_type -> afi.extension.v1.ChatIRResponse
+	12, // 17: afi.extension.v1.Provider.ChatIRStream:output_type -> afi.extension.v1.ChatIRStreamEvent
 	16, // [16:18] is the sub-list for method output_type
 	14, // [14:16] is the sub-list for method input_type
 	14, // [14:14] is the sub-list for extension type_name

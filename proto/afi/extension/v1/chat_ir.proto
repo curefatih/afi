@@ -111,8 +111,9 @@ message ChatIRStreamEvent {
   string args_delta = 12;
 }
 
-// ProviderIR implements typed chat IR (CAPABILITY_PROVIDER_CHAT_IR).
-service ProviderIR {
+// Provider implements typed chat IR (CAPABILITY_PROVIDER_CHAT).
+service Provider {
   rpc ChatIR(ChatIRRequest) returns (ChatIRResponse);
   rpc ChatIRStream(ChatIRRequest) returns (stream ChatIRStreamEvent);
 }
+

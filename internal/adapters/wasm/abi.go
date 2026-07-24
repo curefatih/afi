@@ -42,7 +42,7 @@ type beforeCallOut struct {
 	Status          int               `json:"status"`
 	Reason          string            `json:"reason"`
 	Message         string            `json:"message"`
-	Headers         map[string]string `json:"headers"` // deny response headers (legacy + CallDecision.Headers)
+	Headers         map[string]string `json:"headers"` // deny response headers (+ CallDecision.Headers)
 	Tags            map[string]string `json:"tags"`
 	Metadata        map[string]any    `json:"metadata"`
 	BodyB64         *string           `json:"body_b64"`
@@ -50,16 +50,7 @@ type beforeCallOut struct {
 	ResponseHeaders map[string]string `json:"response_headers"`
 }
 
-type beforeChatIn struct {
-	BodyB64 string          `json:"body_b64"`
-	Config  json.RawMessage `json:"config,omitempty"`
-}
-
-type beforeChatOut struct {
-	BodyB64 string `json:"body_b64"`
-}
-
-type beforeChatIRWire struct {
+type beforeChatWire struct {
 	Request chatir.Request  `json:"request"`
 	Config  json.RawMessage `json:"config,omitempty"`
 }
@@ -170,31 +161,12 @@ func applyBeforeCallOut(call *sdkhook.CallContext, raw []byte) (sdkhook.CallDeci
 	return d, nil
 }
 
-func encodeBeforeChatIn(body []byte, config json.RawMessage) ([]byte, error) {
-	in := beforeChatIn{Config: config}
-	if len(body) > 0 {
-		in.BodyB64 = base64.StdEncoding.EncodeToString(body)
-	}
-	return json.Marshal(in)
+func encodeBeforeChatIn(req chatir.Request, config json.RawMessage) ([]byte, error) {
+	return json.Marshal(beforeChatWire{Request: req, Config: config})
 }
 
-func decodeBeforeChatOut(raw []byte) ([]byte, error) {
-	var out beforeChatOut
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return nil, err
-	}
-	if out.BodyB64 == "" {
-		return nil, nil
-	}
-	return base64.StdEncoding.DecodeString(out.BodyB64)
-}
-
-func encodeBeforeChatIRIn(req chatir.Request, config json.RawMessage) ([]byte, error) {
-	return json.Marshal(beforeChatIRWire{Request: req, Config: config})
-}
-
-func decodeBeforeChatIROut(raw []byte) (*chatir.Request, error) {
-	var out beforeChatIRWire
+func decodeBeforeChatOut(raw []byte) (*chatir.Request, error) {
+	var out beforeChatWire
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-// Command grpcecho is a sample gRPC extension plugin (ChatProvider + BeforeCall).
+// Command grpcecho is a sample gRPC extension plugin (ChatIR provider + BeforeCall/BeforeChat).
 //
 // Listen address comes from AFI_PLUGIN_SOCK (set by the gateway when spawning)
 // or -addr. Example gateway config:
@@ -13,7 +13,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -22,7 +21,6 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
 
 	extensionv1 "github.com/curefatih/afi/gen/proto/afi/extension/v1"
 	"github.com/curefatih/afi/internal/adapters/grpcprovider"
@@ -55,7 +53,6 @@ func main() {
 	plugin := &server{}
 	extensionv1.RegisterExtensionServer(srv, plugin)
 	extensionv1.RegisterProviderServer(srv, plugin)
-	extensionv1.RegisterProviderIRServer(srv, plugin)
 	extensionv1.RegisterHookServer(srv, plugin)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -93,7 +90,6 @@ func listen(addr string) (net.Listener, error) {
 type server struct {
 	extensionv1.UnimplementedExtensionServer
 	extensionv1.UnimplementedProviderServer
-	extensionv1.UnimplementedProviderIRServer
 	extensionv1.UnimplementedHookServer
 }
 
@@ -106,70 +102,9 @@ func (s *server) Handshake(ctx context.Context, req *extensionv1.HandshakeReques
 		ProviderType: providerType,
 		Capabilities: []extensionv1.Capability{
 			extensionv1.Capability_CAPABILITY_PROVIDER_CHAT,
-			extensionv1.Capability_CAPABILITY_PROVIDER_CHAT_IR,
 			extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CALL,
-			extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CHAT_IR,
+			extensionv1.Capability_CAPABILITY_HOOK_BEFORE_CHAT,
 		},
-	}, nil
-}
-
-func (s *server) Chat(ctx context.Context, req *extensionv1.ChatRequest) (*extensionv1.ChatResponse, error) {
-	_ = ctx
-	if req.GetStream() {
-		return nil, fmt.Errorf("streaming is not supported for provider type %q", providerType)
-	}
-	body := req.GetBody()
-	model := req.GetTargetModel()
-	var chatReq struct {
-		Model    string `json:"model"`
-		Messages []struct {
-			Role    string `json:"role"`
-			Content string `json:"content"`
-		} `json:"messages"`
-	}
-	if err := json.Unmarshal(body, &chatReq); err != nil {
-		return nil, fmt.Errorf("invalid chat body: %w", err)
-	}
-	if model == "" {
-		model = chatReq.Model
-	}
-	userText := ""
-	for i := len(chatReq.Messages) - 1; i >= 0; i-- {
-		if chatReq.Messages[i].Role == "user" {
-			userText = chatReq.Messages[i].Content
-			break
-		}
-	}
-	content := "grpcecho: " + userText
-	payload := map[string]any{
-		"id":      "chatcmpl-grpcecho",
-		"object":  "chat.completion",
-		"created": time.Now().Unix(),
-		"model":   model,
-		"choices": []map[string]any{{
-			"index": 0,
-			"message": map[string]string{
-				"role":    "assistant",
-				"content": content,
-			},
-			"finish_reason": "stop",
-		}},
-		"usage": map[string]int{
-			"prompt_tokens":     max(1, len(strings.Fields(userText))),
-			"completion_tokens": max(1, len(strings.Fields(content))),
-			"total_tokens":      0,
-		},
-	}
-	u := payload["usage"].(map[string]int)
-	u["total_tokens"] = u["prompt_tokens"] + u["completion_tokens"]
-	raw, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-	return &extensionv1.ChatResponse{
-		StatusCode: 200,
-		Headers:    map[string]string{"Content-Type": "application/json"},
-		Body:       raw,
 	}, nil
 }
 
@@ -185,11 +120,10 @@ func (s *server) ChatIR(ctx context.Context, req *extensionv1.ChatIRRequest) (*e
 	}
 	userText := lastUserText(irReq)
 	content := "grpcecho: " + userText
-	result := grpcprovider.ChatIRResponseProto(chatirResult(model, userText, content))
-	return result, nil
+	return grpcprovider.ChatIRResponseProto(chatirResult(model, userText, content)), nil
 }
 
-func (s *server) ChatIRStream(req *extensionv1.ChatIRRequest, stream extensionv1.ProviderIR_ChatIRStreamServer) error {
+func (s *server) ChatIRStream(req *extensionv1.ChatIRRequest, stream extensionv1.Provider_ChatIRStreamServer) error {
 	irReq := grpcprovider.ChatIRRequestFromProto(req.GetRequest())
 	model := req.GetTargetModel()
 	if model == "" {
@@ -273,17 +207,8 @@ func (s *server) AfterCall(ctx context.Context, req *extensionv1.AfterCallReques
 
 func (s *server) BeforeChat(ctx context.Context, req *extensionv1.BeforeChatRequest) (*extensionv1.BeforeChatResponse, error) {
 	_ = ctx
-	body := req.GetBody()
-	if body == nil {
-		body = []byte{}
-	}
-	return &extensionv1.BeforeChatResponse{Body: append([]byte(nil), body...)}, nil
-}
-
-func (s *server) BeforeChatIR(ctx context.Context, req *extensionv1.BeforeChatIRRequest) (*extensionv1.BeforeChatIRResponse, error) {
-	_ = ctx
 	typed := grpcprovider.ChatIRRequestFromProto(req.GetRequest())
-	return &extensionv1.BeforeChatIRResponse{Request: grpcprovider.ChatIRRequestProto(typed)}, nil
+	return &extensionv1.BeforeChatResponse{Request: grpcprovider.ChatIRRequestProto(typed)}, nil
 }
 
 func (s *server) AfterChat(ctx context.Context, req *extensionv1.AfterChatRequest) (*extensionv1.AfterChatResponse, error) {

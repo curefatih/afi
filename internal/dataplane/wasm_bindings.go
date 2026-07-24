@@ -69,45 +69,22 @@ func (r *WasmRunner) RunBeforeCall(ctx context.Context, snap *snapshot.Snapshot,
 	return sdkhook.Allow(), nil
 }
 
-func (r *WasmRunner) RunBeforeChat(ctx context.Context, snap *snapshot.Snapshot, orgID string, body []byte) ([]byte, error) {
-	if r == nil || r.Cache == nil {
-		return body, nil
-	}
-	out := body
-	for _, h := range filterWasmHooks(snap, orgID, snapshot.WasmPhaseBeforeChat) {
-		mod, err := r.Cache.Get(ctx, h.ModuleURI, h.Digest, "snap:"+h.ID)
-		if err != nil {
-			return nil, err
-		}
-		hook, err := afiWasm.NewBeforeChatWithConfig(mod, rawConfig(h.Config))
-		if err != nil {
-			return nil, err
-		}
-		next, err := hook.BeforeChat(ctx, out)
-		if err != nil {
-			return nil, err
-		}
-		out = next
-	}
-	return out, nil
-}
-
-// RunBeforeChatIR executes org-scoped typed chat IR WASM hooks.
-func (r *WasmRunner) RunBeforeChatIR(ctx context.Context, snap *snapshot.Snapshot, orgID string, req chatir.Request) (chatir.Request, error) {
+// RunBeforeChat executes org-scoped typed chat IR WASM hooks.
+func (r *WasmRunner) RunBeforeChat(ctx context.Context, snap *snapshot.Snapshot, orgID string, req chatir.Request) (chatir.Request, error) {
 	if r == nil || r.Cache == nil {
 		return req, nil
 	}
 	out := req
-	for _, h := range filterWasmHooks(snap, orgID, snapshot.WasmPhaseBeforeChatIR) {
+	for _, h := range filterWasmHooks(snap, orgID, snapshot.WasmPhaseBeforeChat) {
 		mod, err := r.Cache.Get(ctx, h.ModuleURI, h.Digest, "snap:"+h.ID)
 		if err != nil {
 			return out, err
 		}
-		hook, err := afiWasm.NewBeforeChatIRWithConfig(mod, rawConfig(h.Config))
+		hook, err := afiWasm.NewBeforeChatWithConfig(mod, rawConfig(h.Config))
 		if err != nil {
 			return out, err
 		}
-		out, err = hook.BeforeChatIR(ctx, out)
+		out, err = hook.BeforeChat(ctx, out)
 		if err != nil {
 			return out, err
 		}

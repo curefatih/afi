@@ -69,18 +69,10 @@ message AfterCallRequest {
 message AfterCallResponse {}
 
 message BeforeChatRequest {
-  bytes body = 1;
-}
-
-message BeforeChatResponse {
-  bytes body = 1;
-}
-
-message BeforeChatIRRequest {
   ChatIRCompletionRequest request = 1;
 }
 
-message BeforeChatIRResponse {
+message BeforeChatResponse {
   ChatIRCompletionRequest request = 1;
 }
 
@@ -103,6 +95,5 @@ service Hook {
   rpc BeforeCall(BeforeCallRequest) returns (BeforeCallResponse);
   rpc AfterCall(AfterCallRequest) returns (AfterCallResponse);
   rpc BeforeChat(BeforeChatRequest) returns (BeforeChatResponse);
-  rpc BeforeChatIR(BeforeChatIRRequest) returns (BeforeChatIRResponse);
   rpc AfterChat(AfterChatRequest) returns (AfterChatResponse);
 }

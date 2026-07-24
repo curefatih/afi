@@ -21,21 +21,3 @@ message Capabilities {
   bool stt = 4;
   bool embedding = 5;
 }
-
-message ChatRequest {
-  ProviderConfig config = 1;
-  string target_model = 2;
-  bytes body = 3;
-  bool stream = 4;
-}
-
-message ChatResponse {
-  int32 status_code = 1;
-  map<string, string> headers = 2;
-  bytes body = 3;
-}
-
-// Provider implements remote ChatProvider.Chat (OpenAI-shaped bytes).
-service Provider {
-  rpc Chat(ChatRequest) returns (ChatResponse);
-}

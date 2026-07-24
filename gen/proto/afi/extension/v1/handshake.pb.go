@@ -25,18 +25,14 @@ const (
 type Capability int32
 
 const (
-	Capability_CAPABILITY_UNSPECIFIED      Capability = 0
+	Capability_CAPABILITY_UNSPECIFIED Capability = 0
+	// Typed chat IR provider (Provider.ChatIR / ChatIRStream).
 	Capability_CAPABILITY_PROVIDER_CHAT    Capability = 1
 	Capability_CAPABILITY_HOOK_BEFORE_CALL Capability = 2
 	Capability_CAPABILITY_HOOK_AFTER_CALL  Capability = 3
+	// Typed chat IR mutation hook (Hook.BeforeChat).
 	Capability_CAPABILITY_HOOK_BEFORE_CHAT Capability = 4
 	Capability_CAPABILITY_HOOK_AFTER_CHAT  Capability = 5
-	// Typed chat IR provider (Provider.ChatIR / ChatIRStream). May be advertised
-	// with or without CAPABILITY_PROVIDER_CHAT; when both are present the host
-	// prefers ChatIR and keeps OpenAI-byte Chat as a fallback for older paths.
-	Capability_CAPABILITY_PROVIDER_CHAT_IR Capability = 6
-	// Typed chat IR mutation hook (Hook.BeforeChatIR).
-	Capability_CAPABILITY_HOOK_BEFORE_CHAT_IR Capability = 7
 	// Reserved for follow-on host adapters (not wired in v1).
 	Capability_CAPABILITY_AUTH          Capability = 10
 	Capability_CAPABILITY_SECRETS       Capability = 11
@@ -53,26 +49,22 @@ var (
 		3:  "CAPABILITY_HOOK_AFTER_CALL",
 		4:  "CAPABILITY_HOOK_BEFORE_CHAT",
 		5:  "CAPABILITY_HOOK_AFTER_CHAT",
-		6:  "CAPABILITY_PROVIDER_CHAT_IR",
-		7:  "CAPABILITY_HOOK_BEFORE_CHAT_IR",
 		10: "CAPABILITY_AUTH",
 		11: "CAPABILITY_SECRETS",
 		12: "CAPABILITY_NOTIFICATIONS",
 		13: "CAPABILITY_ANALYTICS",
 	}
 	Capability_value = map[string]int32{
-		"CAPABILITY_UNSPECIFIED":         0,
-		"CAPABILITY_PROVIDER_CHAT":       1,
-		"CAPABILITY_HOOK_BEFORE_CALL":    2,
-		"CAPABILITY_HOOK_AFTER_CALL":     3,
-		"CAPABILITY_HOOK_BEFORE_CHAT":    4,
-		"CAPABILITY_HOOK_AFTER_CHAT":     5,
-		"CAPABILITY_PROVIDER_CHAT_IR":    6,
-		"CAPABILITY_HOOK_BEFORE_CHAT_IR": 7,
-		"CAPABILITY_AUTH":                10,
-		"CAPABILITY_SECRETS":             11,
-		"CAPABILITY_NOTIFICATIONS":       12,
-		"CAPABILITY_ANALYTICS":           13,
+		"CAPABILITY_UNSPECIFIED":      0,
+		"CAPABILITY_PROVIDER_CHAT":    1,
+		"CAPABILITY_HOOK_BEFORE_CALL": 2,
+		"CAPABILITY_HOOK_AFTER_CALL":  3,
+		"CAPABILITY_HOOK_BEFORE_CHAT": 4,
+		"CAPABILITY_HOOK_AFTER_CHAT":  5,
+		"CAPABILITY_AUTH":             10,
+		"CAPABILITY_SECRETS":          11,
+		"CAPABILITY_NOTIFICATIONS":    12,
+		"CAPABILITY_ANALYTICS":        13,
 	}
 )
 
@@ -153,8 +145,8 @@ type HandshakeResponse struct {
 	Name    string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Version string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	// Provider type string for snapshot provider.type binding (e.g. "grpcecho").
-	// Required when CAPABILITY_PROVIDER_CHAT or CAPABILITY_PROVIDER_CHAT_IR is
-	// advertised; may be overridden by gateway manifest provider_type.
+	// Required when CAPABILITY_PROVIDER_CHAT is advertised; may be overridden by
+	// gateway manifest provider_type.
 	ProviderType  string       `protobuf:"bytes,3,opt,name=provider_type,json=providerType,proto3" json:"provider_type,omitempty"`
 	Capabilities  []Capability `protobuf:"varint,4,rep,packed,name=capabilities,proto3,enum=afi.extension.v1.Capability" json:"capabilities,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -230,7 +222,7 @@ const file_afi_extension_v1_handshake_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12#\n" +
 	"\rprovider_type\x18\x03 \x01(\tR\fproviderType\x12@\n" +
-	"\fcapabilities\x18\x04 \x03(\x0e2\x1c.afi.extension.v1.CapabilityR\fcapabilities*\xf2\x02\n" +
+	"\fcapabilities\x18\x04 \x03(\x0e2\x1c.afi.extension.v1.CapabilityR\fcapabilities*\xad\x02\n" +
 	"\n" +
 	"Capability\x12\x1a\n" +
 	"\x16CAPABILITY_UNSPECIFIED\x10\x00\x12\x1c\n" +
@@ -238,9 +230,7 @@ const file_afi_extension_v1_handshake_proto_rawDesc = "" +
 	"\x1bCAPABILITY_HOOK_BEFORE_CALL\x10\x02\x12\x1e\n" +
 	"\x1aCAPABILITY_HOOK_AFTER_CALL\x10\x03\x12\x1f\n" +
 	"\x1bCAPABILITY_HOOK_BEFORE_CHAT\x10\x04\x12\x1e\n" +
-	"\x1aCAPABILITY_HOOK_AFTER_CHAT\x10\x05\x12\x1f\n" +
-	"\x1bCAPABILITY_PROVIDER_CHAT_IR\x10\x06\x12\"\n" +
-	"\x1eCAPABILITY_HOOK_BEFORE_CHAT_IR\x10\a\x12\x13\n" +
+	"\x1aCAPABILITY_HOOK_AFTER_CHAT\x10\x05\x12\x13\n" +
 	"\x0fCAPABILITY_AUTH\x10\n" +
 	"\x12\x16\n" +
 	"\x12CAPABILITY_SECRETS\x10\v\x12\x1c\n" +

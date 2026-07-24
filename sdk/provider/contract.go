@@ -2,13 +2,11 @@ package provider
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/curefatih/afi/sdk/chatir"
 )
 
-// Capabilities describes what an adapter supports on the OpenAI-compatible
-// gateway surface.
+// Capabilities describes what an adapter supports on the gateway surface.
 type Capabilities struct {
 	Chat      bool `json:"chat"`
 	Stream    bool `json:"stream"`
@@ -17,7 +15,7 @@ type Capabilities struct {
 	Embedding bool `json:"embedding"`
 }
 
-// ProviderConfig is the snapshot view passed into Chat (IDs, base URL, key env).
+// ProviderConfig is the snapshot view passed into ChatIR (IDs, base URL, key env).
 // Mirrors internal/snapshot.Provider fields needed by adapters.
 type ProviderConfig struct {
 	ID           string
@@ -28,8 +26,7 @@ type ProviderConfig struct {
 	Capabilities Capabilities
 }
 
-// ChatProvider is the stable in-process adapter contract for out-of-tree
-// extensions (see extensions/).
+// ChatProvider is the in-process adapter contract for out-of-tree extensions.
 //
 // Example wiring (gateway bootstrap):
 //
@@ -39,13 +36,6 @@ type ProviderConfig struct {
 type ChatProvider interface {
 	Type() string
 	Capabilities() Capabilities
-	Chat(ctx context.Context, cfg ProviderConfig, targetModel string, body []byte, stream bool) (*http.Response, error)
-}
-
-// ChatIRProvider is an optional typed chat IR contract. Adapters that implement
-// it avoid the OpenAI-JSON bridge used for legacy ChatProvider-only plugins.
-type ChatIRProvider interface {
-	ChatProvider
 	ChatIR(ctx context.Context, cfg ProviderConfig, targetModel string, req chatir.Request) (chatir.Result, error)
 }
 
