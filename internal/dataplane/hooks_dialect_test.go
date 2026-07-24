@@ -94,13 +94,13 @@ type captureBeforeCall struct {
 	mu         sync.Mutex
 	dialect    string
 	clientBody []byte
-	bridgeBody []byte
+	callBody   []byte
 }
 
-type replaceSystemIRHook struct{}
+type replaceSystemHook struct{}
 
-func (replaceSystemIRHook) Name() string { return "replace_system_ir" }
-func (replaceSystemIRHook) BeforeChatIR(_ context.Context, req ir.ChatRequest) (ir.ChatRequest, error) {
+func (replaceSystemHook) Name() string { return "replace_system" }
+func (replaceSystemHook) BeforeChat(_ context.Context, req ir.ChatRequest) (ir.ChatRequest, error) {
 	req.System = "typed system"
 	return req, nil
 }
@@ -117,11 +117,24 @@ func (c *captureBeforeCall) BeforeCall(_ context.Context, call *CallContext) (Ca
 			c.clientBody = append([]byte(nil), b...)
 		}
 	}
-	c.bridgeBody = append([]byte(nil), call.Body...)
+	c.callBody = append([]byte(nil), call.Body...)
 	return sdkhook.Allow(), nil
 }
 
-func TestBeforeCallSeesClientBodyAndOpenAIBridge(t *testing.T) {
+type captureAfterCall struct {
+	mu   sync.Mutex
+	body []byte
+}
+
+func (c *captureAfterCall) Name() string { return "capture_after_call" }
+func (c *captureAfterCall) AfterCall(_ context.Context, call *CallContext, _ AfterCallInfo) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.body = append([]byte(nil), call.Body...)
+	return nil
+}
+
+func TestBeforeCallSeesClientBodyAndTypedChatHookReachesUpstream(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, _ := io.ReadAll(r.Body)
 		// Bridge must be OpenAI-shaped for the OpenAI upstream.
