@@ -10,6 +10,15 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	GetByID(ctx context.Context, id string) (*User, error)
 	Create(ctx context.Context, user User) error
+	UpdatePassword(ctx context.Context, userID, passwordHash string) error
+}
+
+// PasswordResetRepository stores opaque password-reset tokens (hash only).
+type PasswordResetRepository interface {
+	Create(ctx context.Context, token PasswordResetToken) error
+	DeleteUnusedForUser(ctx context.Context, userID string) error
+	GetByTokenHash(ctx context.Context, hash string) (*PasswordResetToken, error)
+	Consume(ctx context.Context, id string, usedAt time.Time) error
 }
 
 // ExternalIdentityRepository persists federated IdP linkages.

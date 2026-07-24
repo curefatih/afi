@@ -40,7 +40,13 @@ func NewSSOStateStore(cfg *kernel.Config, rdb *goredis.Client) (identity.SSOStat
 }
 
 // NewAuthService wires password + SSO auth against identity ports (composition root supplies adapters).
-func NewAuthService(cfg *kernel.Config, users identity.UserRepository, identities identity.ExternalIdentityRepository, states identity.SSOStateStore) *platform.AuthService {
+func NewAuthService(
+	cfg *kernel.Config,
+	users identity.UserRepository,
+	identities identity.ExternalIdentityRepository,
+	resets identity.PasswordResetRepository,
+	states identity.SSOStateStore,
+) *platform.AuthService {
 	if cfg == nil || users == nil {
 		return nil
 	}
@@ -52,15 +58,18 @@ func NewAuthService(cfg *kernel.Config, users identity.UserRepository, identitie
 	svc := &platform.AuthService{
 		Users:         users,
 		Identities:    identities,
+		Resets:        resets,
 		Tokens:        authAdapter,
 		Passwords:     authAdapter,
 		States:        states,
 		Providers:     map[string]identity.FederationProvider{},
 		SSOEnabled:    cfg.Auth.SSO.Enabled,
+		SignupEnabled: cfg.Auth.SignupEnabled,
 		PublicBaseURL: cfg.Auth.PublicBaseURL,
 		AppBaseURL:    cfg.Mail.PublicAppURL,
 		NewUserID:     func() string { return newID("user") },
 		NewLinkID:     func() string { return newID("extid") },
+		NewResetID:    func() string { return newID("pwreset") },
 	}
 	if !cfg.Auth.SSO.Enabled {
 		return svc

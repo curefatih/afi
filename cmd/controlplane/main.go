@@ -95,7 +95,13 @@ func main() {
 		log.Info("sso state store", "backend", cfg.Auth.SSO.StateStore)
 	}
 
-	auth := controlplane.NewAuthService(cfg, postgres.NewUsers(pool), postgres.NewExternalIdentities(pool), ssoStates)
+	auth := controlplane.NewAuthService(
+		cfg,
+		postgres.NewUsers(pool),
+		postgres.NewExternalIdentities(pool),
+		postgres.NewPasswordResets(pool),
+		ssoStates,
+	)
 	if err := controlplane.EnsureSSOConfigured(cfg, auth); err != nil {
 		log.Error("sso", "err", err)
 		os.Exit(1)

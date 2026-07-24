@@ -4,7 +4,7 @@ Control plane admin API used by the web UI and automation.
 
 - **Base URL:** `http://localhost:8081` (local)
 - **Prefix:** `/api/v1/platform`
-- **Auth:** `Authorization: Bearer <jwt>` from `POST /auth/login`, invite accept, or SSO
+- **Auth:** `Authorization: Bearer <jwt>` from `POST /auth/login`, `POST /auth/register`, password reset confirm, invite accept, or SSO
 - **Errors:** `{ "error": "..." }`
 - **OpenAPI:** [`api/openapi/platform.openapi.yaml`](https://github.com/curefatih/afi/blob/main/api/openapi/platform.openapi.yaml)
 

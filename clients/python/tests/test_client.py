@@ -49,3 +49,52 @@ def test_login_no_auth():
     assert client.login("a@b.c", "x")["token"] == "jwt"
     assert seen["auth"] is None
     client.close()
+
+
+def test_register_and_reset_no_auth():
+    paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        paths.append(request.url.path)
+        assert request.headers.get("Authorization") is None
+        if request.url.path.endswith("/features"):
+            return httpx.Response(
+                200, json={"signup_enabled": True, "password_reset_enabled": True}
+            )
+        if request.url.path.endswith("/register"):
+            return httpx.Response(
+                201,
+                json={
+                    "token": "jwt",
+                    "user": {
+                        "id": "u1",
+                        "email": "a@b.c",
+                        "name": "A",
+                        "role": "member",
+                    },
+                },
+            )
+        if request.url.path.endswith("/password-reset"):
+            return httpx.Response(200, json={"ok": True})
+        return httpx.Response(
+            200,
+            json={
+                "token": "jwt2",
+                "user": {
+                    "id": "u1",
+                    "email": "a@b.c",
+                    "name": "A",
+                    "role": "member",
+                },
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+    http = httpx.Client(transport=transport, base_url="http://cp.test")
+    client = PlatformClient("http://cp.test", client=http)
+    assert client.auth_features()["signup_enabled"] is True
+    assert client.register("a@b.c", "A", "password1")["token"] == "jwt"
+    assert client.request_password_reset("a@b.c")["ok"] is True
+    assert client.confirm_password_reset("tok", "password2")["token"] == "jwt2"
+    assert "/api/v1/platform/auth/features" in paths
+    client.close()

@@ -49,6 +49,14 @@ func (m *ssoMemUsers) Create(_ context.Context, user identity.User) error {
 	m.byEmail[user.Email] = &cp
 	return nil
 }
+func (m *ssoMemUsers) UpdatePassword(_ context.Context, userID, passwordHash string) error {
+	u, ok := m.byID[userID]
+	if !ok {
+		return kernel.ErrNotFound
+	}
+	u.PasswordHash = passwordHash
+	return nil
+}
 
 type ssoMemIdentities struct {
 	byKey map[string]*identity.ExternalIdentity

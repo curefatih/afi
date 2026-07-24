@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
+	authFeaturesQueryOptions,
 	loginMutationOptions,
 	ssoProvidersQueryOptions,
 	startSSO,
@@ -51,6 +52,7 @@ function RouteComponent() {
 		...loginMutationOptions(),
 	});
 	const ssoProviders = useQuery(ssoProvidersQueryOptions());
+	const authFeatures = useQuery(authFeaturesQueryOptions());
 
 	const form = useForm({
 		validators: {
@@ -80,6 +82,9 @@ function RouteComponent() {
 	});
 
 	const providers = ssoProviders.data ?? [];
+	const signupEnabled = authFeatures.data?.signup_enabled ?? false;
+	const passwordResetEnabled =
+		authFeatures.data?.password_reset_enabled ?? true;
 
 	return (
 		<div className={cn("flex flex-col gap-6")}>
@@ -122,9 +127,18 @@ function RouteComponent() {
 									<Field id="password">
 										<div className="flex items-center">
 											<FieldLabel htmlFor="password">Password</FieldLabel>
-											<span className="ml-auto text-sm text-muted-foreground">
-												Reset unavailable
-											</span>
+											{passwordResetEnabled ? (
+												<Link
+													to="/auth/forgot-password"
+													className="ml-auto text-sm underline-offset-4 hover:underline"
+												>
+													Forgot password?
+												</Link>
+											) : (
+												<span className="ml-auto text-sm text-muted-foreground">
+													Reset unavailable
+												</span>
+											)}
 										</div>
 										<Input
 											id="password"
@@ -170,13 +184,27 @@ function RouteComponent() {
 									</>
 								) : null}
 								<FieldDescription className="text-center">
-									Self-serve signup is not enabled yet.{" "}
-									<Link
-										to="/auth/signup"
-										className="underline-offset-4 hover:underline"
-									>
-										Learn more
-									</Link>
+									{signupEnabled ? (
+										<>
+											Don&apos;t have an account?{" "}
+											<Link
+												to="/auth/signup"
+												className="underline-offset-4 hover:underline"
+											>
+												Create account
+											</Link>
+										</>
+									) : (
+										<>
+											Self-serve signup is not enabled yet.{" "}
+											<Link
+												to="/auth/signup"
+												className="underline-offset-4 hover:underline"
+											>
+												Learn more
+											</Link>
+										</>
+									)}
 								</FieldDescription>
 							</Field>
 						</FieldGroup>

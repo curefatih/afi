@@ -47,6 +47,15 @@ func (m *memUsers) Create(_ context.Context, user identity.User) error {
 	return nil
 }
 
+func (m *memUsers) UpdatePassword(_ context.Context, userID, passwordHash string) error {
+	u, ok := m.byID[userID]
+	if !ok {
+		return kernel.ErrNotFound
+	}
+	u.PasswordHash = passwordHash
+	return nil
+}
+
 type memIdentities struct {
 	byKey map[string]*identity.ExternalIdentity
 }

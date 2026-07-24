@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/identity"
@@ -69,6 +70,71 @@ func (u *Users) Create(ctx context.Context, user identity.User) error {
 		VALUES ($1,$2,$3,$4,$5,$6)
 	`, user.ID, user.Email, user.Name, user.Role, passwordHash, user.CreatedAt)
 	return err
+}
+
+func (u *Users) UpdatePassword(ctx context.Context, userID, passwordHash string) error {
+	tag, err := u.Pool.Exec(ctx, `
+		UPDATE users SET password_hash = $2 WHERE id = $1
+	`, userID, passwordHash)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return kernel.ErrNotFound
+	}
+	return nil
+}
+
+// PasswordResets implements identity.PasswordResetRepository.
+type PasswordResets struct {
+	Pool *pgxpool.Pool
+}
+
+func NewPasswordResets(pool *pgxpool.Pool) *PasswordResets {
+	return &PasswordResets{Pool: pool}
+}
+
+func (r *PasswordResets) Create(ctx context.Context, token identity.PasswordResetToken) error {
+	_, err := r.Pool.Exec(ctx, `
+		INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, created_at, used_at)
+		VALUES ($1,$2,$3,$4,$5,$6)
+	`, token.ID, token.UserID, token.TokenHash, token.ExpiresAt, token.CreatedAt, token.UsedAt)
+	return err
+}
+
+func (r *PasswordResets) DeleteUnusedForUser(ctx context.Context, userID string) error {
+	_, err := r.Pool.Exec(ctx, `
+		DELETE FROM password_reset_tokens WHERE user_id = $1 AND used_at IS NULL
+	`, userID)
+	return err
+}
+
+func (r *PasswordResets) GetByTokenHash(ctx context.Context, hash string) (*identity.PasswordResetToken, error) {
+	var t identity.PasswordResetToken
+	err := r.Pool.QueryRow(ctx, `
+		SELECT id, user_id, token_hash, expires_at, created_at, used_at
+		FROM password_reset_tokens WHERE token_hash = $1
+	`, hash).Scan(&t.ID, &t.UserID, &t.TokenHash, &t.ExpiresAt, &t.CreatedAt, &t.UsedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, kernel.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+func (r *PasswordResets) Consume(ctx context.Context, id string, usedAt time.Time) error {
+	tag, err := r.Pool.Exec(ctx, `
+		UPDATE password_reset_tokens SET used_at = $2 WHERE id = $1 AND used_at IS NULL
+	`, id, usedAt)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return kernel.ErrNotFound
+	}
+	return nil
 }
 
 // Organizations implements tenancy.OrganizationRepository.

@@ -78,6 +78,10 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("POST /api/v1/platform/auth/login", s.handleLogin)
 	mux.HandleFunc("GET /api/v1/platform/auth/me", s.requireAuth(s.handleMe))
+	mux.HandleFunc("GET /api/v1/platform/auth/features", s.handleAuthFeatures)
+	mux.HandleFunc("POST /api/v1/platform/auth/register", s.handleRegister)
+	mux.HandleFunc("POST /api/v1/platform/auth/password-reset", s.handleRequestPasswordReset)
+	mux.HandleFunc("POST /api/v1/platform/auth/password-reset/{token}", s.handleConfirmPasswordReset)
 	mux.HandleFunc("GET /api/v1/platform/auth/sso/providers", s.handleListSSOProviders)
 	mux.HandleFunc("GET /api/v1/platform/auth/sso/{provider}/start", s.handleSSOStart)
 	mux.HandleFunc("GET /api/v1/platform/auth/sso/{provider}/callback", s.handleSSOCallback)

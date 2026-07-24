@@ -130,3 +130,17 @@ func (s *Server) sendInviteMail(ctx context.Context, orgID string, outcome *Invi
 	}
 	return sender.Send(ctx, msg)
 }
+
+func (s *Server) sendPasswordResetMail(ctx context.Context, email, rawToken string) error {
+	if email == "" || rawToken == "" {
+		return nil
+	}
+	sender, _, err := resolveMailSender(s.cfg, "", s.log)
+	if err != nil {
+		return err
+	}
+	base := strings.TrimRight(s.cfg.Mail.PublicAppURL, "/")
+	msg := mail.PasswordReset(base + "/auth/reset-password/" + rawToken)
+	msg.To = email
+	return sender.Send(ctx, msg)
+}
