@@ -180,12 +180,23 @@ Seed key `sk-project-local-dev-token-12345` is a project **service_account** key
 
 | Field | Values |
 |-------|--------|
-| `scope_type` | `organization`, `project`, `user`, `api_key` |
+| `scope_type` | `organization`, `team`, `project`, `user`, `api_key` |
 | `metric` | `requests`, `tokens` |
 | `window` | `total` (Postgres lifetime), `minute` / `hour` / `day` (Redis fixed windows) |
 | `limit_value` | integer ≥ 0 (`0` blocks immediately) |
 
-Most specific scope wins **per window**: api_key → user → project → organization. Timed windows require Redis (`redis_url` / `AFI_REDIS_URL`). Create/update/delete quotas, providers, and routes require org owner/admin.
+Most specific scope wins **per window**: api_key → user → project → team → organization. Timed windows require Redis (`redis_url` / `AFI_REDIS_URL`). Create/update/delete quotas, providers, and routes require org owner/admin.
+
+Team quotas apply when the authenticated key’s project has a `team_id` (compiled onto the snapshot key). Personal keys without a project do not match team scopes.
+
+### Environments
+
+Projects own named environments (`dev` / `stage` / `prod` / custom). Service-account keys may optionally bind an `environment_id` for usage attribution. Routes and providers remain organization-scoped.
+
+| Method | Path |
+| ------ | ---- |
+| GET/POST | `/api/v1/platform/organizations/{orgID}/projects/{projectID}/environments` (POST = org admin) |
+| GET/DELETE | `/api/v1/platform/environments/{environmentID}` (DELETE = org admin) |
 
 ### Route retry
 
