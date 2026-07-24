@@ -421,26 +421,30 @@ function RouteComponent() {
 									</div>
 								</div>
 								<div className="flex flex-wrap items-center gap-4 text-sm">
-									<label className="flex items-center gap-2">
+									<div className="flex items-center gap-2">
 										<Switch
+											id="object-store-use-ssl"
 											checked={!!storeDraft.use_ssl}
 											onCheckedChange={(checked) =>
 												setStoreDraft((d) => ({ ...d, use_ssl: checked }))
 											}
 											disabled={!storeDraft.enabled}
 										/>
-										Use SSL
-									</label>
-									<label className="flex items-center gap-2">
+										<Label htmlFor="object-store-use-ssl">Use SSL</Label>
+									</div>
+									<div className="flex items-center gap-2">
 										<Switch
+											id="object-store-path-style"
 											checked={!!storeDraft.path_style}
 											onCheckedChange={(checked) =>
 												setStoreDraft((d) => ({ ...d, path_style: checked }))
 											}
 											disabled={!storeDraft.enabled}
 										/>
-										Path-style addressing
-									</label>
+										<Label htmlFor="object-store-path-style">
+											Path-style addressing
+										</Label>
+									</div>
 								</div>
 								<p className="text-muted-foreground text-xs">
 									Provide either a credential ID (secret plaintext must be JSON{" "}
