@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/curefatih/afi/internal/dataplane/dialect"
+	"github.com/curefatih/afi/internal/dataplane/ir"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
 )
 
@@ -224,7 +226,7 @@ func (c *HookChain) RunAfterChat(ctx context.Context, info AfterChatInfo) {
 	}
 }
 
-func writeCallDeny(w http.ResponseWriter, d CallDecision) {
+func writeCallDeny(w http.ResponseWriter, d CallDecision, call *CallContext) {
 	status := d.Status
 	if status == 0 {
 		status = http.StatusForbidden
@@ -240,11 +242,18 @@ func writeCallDeny(w http.ResponseWriter, d CallDecision) {
 	if msg == "" {
 		msg = reason
 	}
-	writeJSON(w, status, map[string]any{
-		"error": map[string]string{
-			"message": msg,
-			"type":    reason,
-			"code":    reason,
-		},
-	})
+	dialect.WriteError(w, dialectFromCall(call), status, msg, reason)
+}
+
+func dialectFromCall(call *CallContext) ir.Dialect {
+	if call != nil && call.Metadata != nil {
+		if s, ok := call.Metadata["dialect"].(string); ok && s != "" {
+			return ir.Dialect(s)
+		}
+	}
+	return ir.DialectOpenAI
+}
+
+func writeGateError(w http.ResponseWriter, call *CallContext, status int, message, typ string) {
+	dialect.WriteError(w, dialectFromCall(call), status, message, typ)
 }

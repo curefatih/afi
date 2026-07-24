@@ -32,6 +32,10 @@ func For(d ir.Dialect) (Codec, error) {
 
 // WriteError writes a dialect-shaped JSON error.
 func WriteError(w http.ResponseWriter, d ir.Dialect, status int, message, typ string) {
+	if typ == "" {
+		typ = "invalid_request_error"
+	}
+	typ = normalizeErrorType(d, typ)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	var payload any
@@ -49,6 +53,7 @@ func WriteError(w http.ResponseWriter, d ir.Dialect, status int, message, typ st
 			"error": map[string]string{
 				"message": message,
 				"type":    typ,
+				"code":    typ,
 			},
 		}
 	}

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/curefatih/afi/internal/adapters/llm"
@@ -259,16 +258,7 @@ targetLoop:
 	if result.StatusCode >= 400 {
 		status = "upstream_error"
 		applyResponseHeaders(w, call)
-		for k, vals := range result.Header {
-			if strings.EqualFold(k, "Transfer-Encoding") || strings.EqualFold(k, "Connection") {
-				continue
-			}
-			for _, v := range vals {
-				w.Header().Add(k, v)
-			}
-		}
-		w.WriteHeader(result.StatusCode)
-		_, _ = w.Write(result.ErrorBody)
+		dialect.WriteUpstreamError(w, d, result.StatusCode, result.ErrorBody)
 	} else if chatReq.Stream {
 		applyResponseHeaders(w, call)
 		w.Header().Set("Content-Type", "text/event-stream")
