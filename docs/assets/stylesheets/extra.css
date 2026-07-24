@@ -1,0 +1,6 @@
+/* Mermaid diagrams render narrower than the content column and would sit flush
+   left. The SVG lives in a closed shadow root, so only inherited properties
+   such as text-align can reach it. */
+.md-typeset .mermaid {
+  text-align: center;
+}
