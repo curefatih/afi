@@ -36,13 +36,13 @@ func modalityFromPath(path string) string {
 		return ModalityChat
 	case strings.HasPrefix(path, "/anthropic/v1/messages"), strings.HasPrefix(path, "/v1/messages"):
 		return ModalityMessages
-	case strings.HasPrefix(path, "/v1/embeddings"):
+	case strings.HasPrefix(path, "/openai/v1/embeddings"), strings.HasPrefix(path, "/v1/embeddings"):
 		return ModalityEmbedding
-	case strings.HasPrefix(path, "/v1/images/"):
+	case strings.HasPrefix(path, "/openai/v1/images/"), strings.HasPrefix(path, "/v1/images/"):
 		return ModalityImage
-	case strings.HasPrefix(path, "/v1/audio/speech"):
+	case strings.HasPrefix(path, "/openai/v1/audio/speech"), strings.HasPrefix(path, "/v1/audio/speech"):
 		return ModalityTTS
-	case strings.HasPrefix(path, "/v1/audio/transcriptions"):
+	case strings.HasPrefix(path, "/openai/v1/audio/transcriptions"), strings.HasPrefix(path, "/v1/audio/transcriptions"):
 		return ModalitySTT
 	case strings.HasPrefix(path, "/mcp/"):
 		return ModalityMCP

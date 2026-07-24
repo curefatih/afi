@@ -172,7 +172,40 @@ paths:
       tags: [OpenAICompatible]
       operationId: createEmbeddings
       summary: Embeddings
-      description: OpenAI-compatible embeddings. Body follows the OpenAI Embeddings schema.
+      description: |
+        OpenAI-compatible embeddings (alias of `POST /openai/v1/embeddings`).
+        Body follows the OpenAI Embeddings schema.
+      externalDocs:
+        url: https://platform.openai.com/docs/api-reference/embeddings
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Embedding response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /openai/v1/embeddings:
+    post:
+      tags: [OpenAICompatible]
+      operationId: createEmbeddingsOpenAIDialect
+      summary: Embeddings (OpenAI dialect)
+      description: |
+        Canonical OpenAI dialect embeddings path. Same as `POST /v1/embeddings`.
       externalDocs:
         url: https://platform.openai.com/docs/api-reference/embeddings
       parameters:
@@ -203,9 +236,41 @@ paths:
       operationId: createImage
       summary: Image generation
       description: |
-        OpenAI-compatible image generations. Body follows the OpenAI Images schema.
+        OpenAI-compatible image generations (alias of `POST /openai/v1/images/generations`).
+        Body follows the OpenAI Images schema.
         When the organization has object store enabled in the control plane, generated
         assets may be persisted and response URLs rewritten to presigned object URLs.
+      externalDocs:
+        url: https://platform.openai.com/docs/api-reference/images/create
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Image generation response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /openai/v1/images/generations:
+    post:
+      tags: [OpenAICompatible]
+      operationId: createImageOpenAIDialect
+      summary: Image generation (OpenAI dialect)
+      description: |
+        Canonical OpenAI dialect images path. Same as `POST /v1/images/generations`.
       externalDocs:
         url: https://platform.openai.com/docs/api-reference/images/create
       parameters:
@@ -235,7 +300,43 @@ paths:
       tags: [OpenAICompatible]
       operationId: audioSpeech
       summary: Text-to-speech
-      description: OpenAI-compatible TTS.
+      description: |
+        OpenAI-compatible TTS (alias of `POST /openai/v1/audio/speech`).
+      externalDocs:
+        url: https://platform.openai.com/docs/api-reference/audio/createSpeech
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Audio bytes
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /openai/v1/audio/speech:
+    post:
+      tags: [OpenAICompatible]
+      operationId: audioSpeechOpenAIDialect
+      summary: Text-to-speech (OpenAI dialect)
+      description: |
+        Canonical OpenAI dialect TTS path. Same as `POST /v1/audio/speech`.
       externalDocs:
         url: https://platform.openai.com/docs/api-reference/audio/createSpeech
       parameters:
@@ -269,7 +370,39 @@ paths:
       tags: [OpenAICompatible]
       operationId: audioTranscriptions
       summary: Speech-to-text
-      description: OpenAI-compatible transcriptions (multipart).
+      description: |
+        OpenAI-compatible transcriptions (multipart; alias of `POST /openai/v1/audio/transcriptions`).
+      externalDocs:
+        url: https://platform.openai.com/docs/api-reference/audio/createTranscription
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Transcription
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /openai/v1/audio/transcriptions:
+    post:
+      tags: [OpenAICompatible]
+      operationId: audioTranscriptionsOpenAIDialect
+      summary: Speech-to-text (OpenAI dialect)
+      description: |
+        Canonical OpenAI dialect STT path. Same as `POST /v1/audio/transcriptions`.
       externalDocs:
         url: https://platform.openai.com/docs/api-reference/audio/createTranscription
       parameters:
