@@ -10,7 +10,7 @@ const ewmaAlpha = 0.2
 // MemorySignalStore keeps gateway-local EWMA latency and error rates in process memory.
 // Multi-instance skew is accepted; no Redis/Postgres.
 type MemorySignalStore struct {
-	mu   sync.Mutex
+	mu    sync.Mutex
 	byKey map[string]*signalEntry
 }
 

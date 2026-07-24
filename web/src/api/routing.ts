@@ -3,7 +3,9 @@ import { apiFetch } from "#/lib/api-client";
 
 export type RoutingStrategy = "ordered" | "weighted" | "latency" | "cost";
 
-export function parseRoutingStrategy(v: string | null | undefined): RoutingStrategy {
+export function parseRoutingStrategy(
+	v: string | null | undefined,
+): RoutingStrategy {
 	switch (v) {
 		case "weighted":
 		case "latency":

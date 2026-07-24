@@ -437,9 +437,7 @@ function RouteComponent() {
 									<SelectItem value="weighted">
 										Weighted load balance
 									</SelectItem>
-									<SelectItem value="latency">
-										Latency (EWMA)
-									</SelectItem>
+									<SelectItem value="latency">Latency (EWMA)</SelectItem>
 									<SelectItem value="cost">Cost (catalog)</SelectItem>
 								</SelectContent>
 							</Select>
@@ -598,9 +596,7 @@ function RouteComponent() {
 										<SelectItem value="weighted">
 											Weighted load balance
 										</SelectItem>
-										<SelectItem value="latency">
-											Latency (EWMA)
-										</SelectItem>
+										<SelectItem value="latency">Latency (EWMA)</SelectItem>
 										<SelectItem value="cost">Cost (catalog)</SelectItem>
 									</SelectContent>
 								</Select>
