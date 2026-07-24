@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/adapters/secrets"
+	"github.com/curefatih/afi/internal/dataplane/ir"
 	"github.com/curefatih/afi/internal/dataplane/routing"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/modelcatalog"
@@ -302,10 +303,10 @@ func modelListItem(virtualModel, targetModel, providerType string, caps snapshot
 	if maxOut > 0 {
 		item["max_output_tokens"] = maxOut
 	}
-	if supportsVision {
+	if supportsVision && ir.DialectSupportsVision {
 		item["supports_vision"] = true
 	}
-	if supportsTools {
+	if supportsTools && ir.DialectSupportsTools {
 		item["supports_tools"] = true
 	}
 	return item

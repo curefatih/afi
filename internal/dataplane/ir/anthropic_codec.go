@@ -63,6 +63,14 @@ func EncodeAnthropic(req ChatRequest, targetModel string) ([]byte, error) {
 
 // DecodeAnthropicRequest parses Anthropic messages JSON into ChatRequest.
 func DecodeAnthropicRequest(body []byte) (ChatRequest, error) {
+	var raw map[string]any
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return ChatRequest{}, fmt.Errorf("invalid anthropic messages body: %w", err)
+	}
+	if err := rejectAnthropicUnsupported(raw); err != nil {
+		return ChatRequest{}, err
+	}
+
 	var in struct {
 		Model       string   `json:"model"`
 		Stream      bool     `json:"stream"`
@@ -90,25 +98,9 @@ func DecodeAnthropicRequest(body []byte) (ChatRequest, error) {
 		System:      anthropicSystemToString(in.System),
 	}
 	for _, m := range in.Messages {
-		text := contentToString(m.Content)
-		// Anthropic content arrays: flatten text blocks.
-		if arr, ok := m.Content.([]any); ok {
-			var b strings.Builder
-			for _, block := range arr {
-				bm, _ := block.(map[string]any)
-				if bm == nil {
-					continue
-				}
-				typ, _ := bm["type"].(string)
-				if typ == "text" || typ == "" {
-					if t, ok := bm["text"].(string); ok {
-						b.WriteString(t)
-					}
-				}
-			}
-			if b.Len() > 0 {
-				text = b.String()
-			}
+		text, err := textFromAnthropicContent(m.Content)
+		if err != nil {
+			return ChatRequest{}, err
 		}
 		switch m.Role {
 		case "user", "assistant":

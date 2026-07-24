@@ -20,7 +20,7 @@ type ChatRequest struct {
 	Stop        []string
 }
 
-// Message is a single chat turn (MVP: text content).
+// Message is a single chat turn (v1: text content; tools/vision in backlog).
 type Message struct {
 	Role    string // system | user | assistant
 	Content string

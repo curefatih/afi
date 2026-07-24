@@ -40,13 +40,21 @@ func EncodeOpenAI(req ChatRequest) ([]byte, error) {
 
 // DecodeOpenAIRequest parses OpenAI chat.completions JSON into ChatRequest.
 func DecodeOpenAIRequest(body []byte) (ChatRequest, error) {
+	var raw map[string]any
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return ChatRequest{}, fmt.Errorf("invalid openai chat body: %w", err)
+	}
+	if err := rejectOpenAIUnsupported(raw); err != nil {
+		return ChatRequest{}, err
+	}
+
 	var in struct {
-		Model               string  `json:"model"`
-		Stream              bool    `json:"stream"`
-		MaxTokens           *int    `json:"max_tokens"`
-		MaxCompletionTokens *int    `json:"max_completion_tokens"`
+		Model               string   `json:"model"`
+		Stream              bool     `json:"stream"`
+		MaxTokens           *int     `json:"max_tokens"`
+		MaxCompletionTokens *int     `json:"max_completion_tokens"`
 		Temperature         *float64 `json:"temperature"`
-		Stop                any     `json:"stop"`
+		Stop                any      `json:"stop"`
 		Messages            []struct {
 			Role    string `json:"role"`
 			Content any    `json:"content"`
@@ -68,7 +76,10 @@ func DecodeOpenAIRequest(body []byte) (ChatRequest, error) {
 
 	var systemParts []string
 	for _, m := range in.Messages {
-		text := contentToString(m.Content)
+		text, err := textFromOpenAIContent(m.Content)
+		if err != nil {
+			return ChatRequest{}, err
+		}
 		switch m.Role {
 		case "system":
 			if text != "" {
