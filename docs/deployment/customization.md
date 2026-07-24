@@ -36,6 +36,8 @@ export AFI_JWT_SECRET="..."   # overrides auth.jwt_secret in the file
 | `AFI_WASM_S3_REGION` | `gateway.wasm_s3.region` | _(empty → us-east-1)_ | Gateway | Object-store region |
 | `AFI_WASM_S3_USE_SSL` | `gateway.wasm_s3.use_ssl` | `false` | Gateway | Use HTTPS to the endpoint |
 | `AFI_WASM_S3_PATH_STYLE` | `gateway.wasm_s3.path_style` | `false` | Gateway | Path-style addressing (typical for MinIO) |
+| _(YAML)_ | `gateway.grpc_extensions` | _(empty)_ | Gateway | List of gRPC plugins (`id`, `command` or `address`, optional `provider_type`) |
+| `AFI_PLUGIN_SOCK` | _(runtime)_ | _(set by host)_ | Plugin process | Unix socket path when the gateway spawns `command` |
 | `AFI_JWT_SECRET` | `auth.jwt_secret` | `afi-local-dev-jwt-secret-change-me` | Control plane | **Change in prod** — HS256 signing |
 | `AFI_TOKEN_TTL` | `auth.token_ttl` | `24h` | Control plane | Platform session JWT lifetime |
 | `AFI_INTERNAL_TOKEN` | `auth.internal_token` | `afi-local-internal-token` | Control plane | Header `X-AFI-Internal-Token` for `/internal/v1/*` |

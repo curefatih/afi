@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package afi.extension.v1;
+
+option go_package = "github.com/curefatih/afi/gen/proto/afi/extension/v1;extensionv1";
+
+import "google/protobuf/struct.proto";
+
+message Principal {
+  string organization_id = 1;
+  string project_id = 2;
+  string api_key_id = 3;
+  string kind = 4;
+  string owner_user_id = 5;
+  string name = 6;
+}
+
+message RouteContext {
+  string model = 1;
+  string path = 2;
+  bool stream = 3;
+  string modality = 4;
+}
+
+message CallContext {
+  Principal principal = 1;
+  RouteContext route = 2;
+  map<string, string> tags = 3;
+  map<string, string> headers = 4;
+  google.protobuf.Struct metadata = 5;
+  bytes body = 6;
+  map<string, string> request_headers = 7;
+  map<string, string> response_headers = 8;
+}
+
+message CallDecision {
+  bool allow = 1;
+  int32 status = 2;
+  string reason = 3;
+  string message = 4;
+  map<string, string> headers = 5;
+}
+
+message BeforeCallRequest {
+  CallContext call = 1;
+}
+
+message BeforeCallResponse {
+  CallDecision decision = 1;
+  // Mutated call fields; nil/empty maps leave host values unchanged for that map.
+  CallContext call = 2;
+}
+
+message AfterCallInfo {
+  string status = 1;
+  int64 latency_ms = 2;
+  string provider_type = 3;
+  string target_model = 4;
+  int64 prompt_tokens = 5;
+  int64 completion_tokens = 6;
+}
+
+message AfterCallRequest {
+  CallContext call = 1;
+  AfterCallInfo info = 2;
+}
+
+message AfterCallResponse {}
+
+message BeforeChatRequest {
+  bytes body = 1;
+}
+
+message BeforeChatResponse {
+  bytes body = 1;
+}
+
+message AfterChatInfo {
+  string model = 1;
+  string status = 2;
+  int64 latency_ms = 3;
+  string provider_type = 4;
+  string target_model = 5;
+}
+
+message AfterChatRequest {
+  AfterChatInfo info = 1;
+}
+
+message AfterChatResponse {}
+
+// Hook implements remote lifecycle hooks matching sdk/hook.
+service Hook {
+  rpc BeforeCall(BeforeCallRequest) returns (BeforeCallResponse);
+  rpc AfterCall(AfterCallRequest) returns (AfterCallResponse);
+  rpc BeforeChat(BeforeChatRequest) returns (BeforeChatResponse);
+  rpc AfterChat(AfterChatRequest) returns (AfterChatResponse);
+}

@@ -30,6 +30,14 @@ type SSOProvider struct {
 	SPKeyPEM       string `yaml:"sp_key_pem"`
 }
 
+// GrpcExtension is one process-isolated gRPC plugin (gateway discovery v1).
+type GrpcExtension struct {
+	ID           string   `yaml:"id"`
+	Address      string   `yaml:"address"` // unix:///path or host:port
+	Command      []string `yaml:"command"` // host spawns; sets AFI_PLUGIN_SOCK
+	ProviderType string   `yaml:"provider_type"`
+}
+
 type Config struct {
 	DatabaseURL string `yaml:"database_url" env:"AFI_DATABASE_URL"`
 	RedisURL    string `yaml:"redis_url" env:"AFI_REDIS_URL"`
@@ -55,6 +63,8 @@ type Config struct {
 			UseSSL    bool   `yaml:"use_ssl" env:"AFI_WASM_S3_USE_SSL"`
 			PathStyle bool   `yaml:"path_style" env:"AFI_WASM_S3_PATH_STYLE"`
 		} `yaml:"wasm_s3"`
+		// GrpcExtensions lists process-isolated gRPC plugins (YAML via AFI_CONFIG).
+		GrpcExtensions []GrpcExtension `yaml:"grpc_extensions"`
 	} `yaml:"gateway"`
 
 	Auth struct {

@@ -6,7 +6,8 @@
 	seed snapshot-publish \
 	deploy-init deploy-up deploy-down deploy-logs deploy-health \
 	build-release build-images brand-assets \
-	openapi-lint openapi-drift openapi-gen openapi-check
+	openapi-lint openapi-drift openapi-gen openapi-check \
+	proto-gen proto-check
 
 GO ?= go
 BIN_DIR ?= bin
@@ -59,6 +60,7 @@ build:
 	$(GO) build -o $(BIN_DIR)/gateway ./cmd/gateway
 	$(GO) build -o $(BIN_DIR)/worker ./cmd/worker
 	$(GO) build -o $(BIN_DIR)/afi ./cmd/cli
+	$(GO) build -o $(BIN_DIR)/grpcecho ./extensions/grpcecho
 
 build-release:
 	bash scripts/build-release.sh
@@ -119,6 +121,17 @@ openapi-check: openapi-lint openapi-drift
 	$(MAKE) openapi-gen
 	@git diff --exit-code -- clients/typescript/src/schema.gen.ts \
 		|| (echo "ERROR: schema.gen.ts is stale — run make openapi-gen and commit" >&2; exit 1)
+
+proto-gen:
+	bash scripts/proto-gen.sh
+
+proto-check:
+	@tmpdir=$$(mktemp -d) && \
+	cp -R gen/proto "$$tmpdir/before" && \
+	$(MAKE) proto-gen && \
+	diff -ru "$$tmpdir/before" gen/proto >/dev/null \
+		|| (echo "ERROR: generated protobuf Go is stale — run make proto-gen and commit" >&2; rm -rf "$$tmpdir"; exit 1) && \
+	rm -rf "$$tmpdir"
 
 run-controlplane:
 	$(GO) run ./cmd/controlplane

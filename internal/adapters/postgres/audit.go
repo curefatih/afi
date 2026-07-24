@@ -105,6 +105,9 @@ func (a *AuditEvents) List(ctx context.Context, orgID string, f audit.Filter) ([
 		); err != nil {
 			return nil, err
 		}
+		// Always derive from the current formatter so historical rows pick up
+		// new event labels (summary is deterministic from name + resource_id).
+		r.Summary = audit.Summary(r.Name, r.ResourceID)
 		if len(metaJSON) > 0 {
 			_ = json.Unmarshal(metaJSON, &r.Meta)
 		}

@@ -59,9 +59,13 @@ curl -s http://localhost:8080/v1/chat/completions \
 
 Expect assistant content containing `echo:` (and `[hook:demo]` if the demo BeforeChat hook is registered).
 
+## gRPC extensions (process-isolated)
+
+Remote plugins speak [`proto/afi/extension/v1`](../../proto/afi/extension/v1/) and are discovered via gateway YAML `gateway.grpc_extensions` (command spawn or dial address). The host adapts them to `sdk/provider` / `sdk/hook`. Example: [`extensions/grpcecho`](../../extensions/grpcecho). Design note: [`internal-docs/grpc-extension-runtime.md`](../../internal-docs/grpc-extension-runtime.md).
+
 ## Hooks (in-process)
 
-`BeforeCall` / `AfterCall` run on all modalities; `ChatHook.BeforeChat` / `AfterChatHook.AfterChat` remain for chat body mutation. Register via `dataplane.NewHookChain().RegisterHook(...)` / `RegisterBeforeCall` (see `extensions/demohook`). Gateway `/healthz` lists hook objects with `before_call` / `after_call` / `before_chat` / `after_chat`. `extensions/tagquota` is an example-only BeforeCall sample for per-tag limits (not registered by default). WASM hooks: set `AFI_WASM_BEFORE_CALL` / `AFI_WASM_BEFORE_CHAT` (see [WASM hooks](../hooks/wasm.md)). gRPC plugin runtimes remain future work.
+`BeforeCall` / `AfterCall` run on all modalities; `ChatHook.BeforeChat` / `AfterChatHook.AfterChat` remain for chat body mutation. Register via `dataplane.NewHookChain().RegisterHook(...)` / `RegisterBeforeCall` (see `extensions/demohook`). Gateway `/healthz` lists hook objects with `before_call` / `after_call` / `before_chat` / `after_chat`. `extensions/tagquota` is an example-only BeforeCall sample for per-tag limits (not registered by default). WASM hooks: set `AFI_WASM_BEFORE_CALL` / `AFI_WASM_BEFORE_CHAT` (see [WASM hooks](../hooks/wasm.md)).
 
 ## Example: local Ollama
 

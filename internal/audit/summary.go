@@ -33,6 +33,10 @@ func Summary(name, resourceID string) string {
 		return fmt.Sprintf("Removed team member %s", res)
 	case "project.created":
 		return fmt.Sprintf("Created project %s", res)
+	case "environment.created":
+		return fmt.Sprintf("Created environment %s", res)
+	case "environment.deleted":
+		return fmt.Sprintf("Deleted environment %s", res)
 	case "api_key.created":
 		return fmt.Sprintf("Created API key %s", res)
 	case "api_key.deleted":

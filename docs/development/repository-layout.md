@@ -23,6 +23,7 @@ internal/
 │   ├── llm/          # OpenAI / Anthropic / Gemini HTTP clients
 │   ├── secrets/      # SecretResolver (env today)
 │   ├── wasm/         # wazero host for TinyGo lifecycle hooks
+│   ├── grpcprovider/ # gRPC plugin runtime (Chat + hooks)
 │   ├── natsjs/       # JetStream platform-event publisher
 │   ├── kafka/        # Kafka platform-event publisher
 │   ├── logpub/       # Log stand-in publisher
@@ -34,11 +35,13 @@ internal/
 ├── workers/          # Usage + platform-event ProcessOnce
 └── shared/           # Placeholder
 
-extensions/           # Examples: echo, demohook, tagquota, wasmhook (TinyGo .wasm)
+extensions/           # Examples: echo, demohook, tagquota, wasmhook, grpcecho (gRPC plugin)
 examples/             # Standalone samples (e.g. a2a-echo upstream for gateway testing)
 sdk/provider/         # Documented ChatProvider contract
 sdk/hook/             # Lifecycle hook contracts (Go + WASM ABI docs)
 api/openapi/          # Public OpenAPI 3.1 (platform + gateway overlay)
+proto/                # gRPC extension contract (afi/extension/v1)
+gen/proto/            # Generated Go from proto (committed)
 clients/              # Thin TS/Python platform HTTP clients
 web/                  # Platform UI (TanStack / Vite)
 configs/              # Local/dev defaults
@@ -46,7 +49,7 @@ deploy/               # Compose stack, example env/YAML, nginx for web
 docs/                 # Public MkDocs site
 Dockerfile            # Multi-stage Go service image (AFI_SERVICE=…)
 Dockerfile.web        # Vite build + nginx
-scripts/              # verify-local, deploy-*, build-release
+scripts/              # verify-local, deploy-*, build-release, proto-gen
 ```
 
 Platform events (bus + durable outbox): [Platform domain events](platform-events.md).
@@ -73,6 +76,8 @@ Platform events (bus + durable outbox): [Platform domain events](platform-events
 | `internal/adapters/kafka` | Kafka event publisher |
 | `internal/adapters/logpub` | Log stand-in event publisher |
 | `internal/adapters/eventpub` | Publisher factory (log\|nats\|kafka\|noop) |
+| `internal/adapters/wasm` | wazero host for lifecycle hooks |
+| `internal/adapters/grpcprovider` | gRPC plugin runtime (handshake, Chat, hooks) |
 | `internal/app/platform` | Platform queries + commands + event bus / outbox handler |
 | `internal/snapshot` | Types, compile, Store port (no Postgres) |
 | `internal/controlplane` | HTTP handlers, Store facade, seed, migrate |

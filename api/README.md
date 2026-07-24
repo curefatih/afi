@@ -7,7 +7,7 @@ Hand-authored OpenAPI 3.1 specs for AFI HTTP surfaces.
 | [`openapi/platform.openapi.yaml`](openapi/platform.openapi.yaml) | Control plane `/api/v1/platform/*` (admin / JWT) |
 | [`openapi/gateway.openapi.yaml`](openapi/gateway.openapi.yaml) | Data plane overlay (virtual keys, AFI headers, path map) |
 
-Proto under `proto/` is reserved for the gRPC extension runtime (P2.2); it is not part of the public HTTP contract.
+Extension protobuf lives under [`proto/afi/extension/v1/`](../proto/afi/extension/v1/) (gRPC plugin contract for the gateway). It is **not** a public client API. Generate with `make proto-gen`; freshness: `make proto-check`.
 
 ## Commands
 

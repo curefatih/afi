@@ -7,6 +7,8 @@
 // register at process startup via dataplane.Registry.RegisterSDK — see
 // github.com/curefatih/afi/extensions/echo for a working example.
 //
-// gRPC provider runtimes are not shipped yet. WASM is for lifecycle hooks
+// Process-isolated gRPC providers are supported via
+// github.com/curefatih/afi/internal/adapters/grpcprovider and
+// proto/afi/extension/v1 (see extensions/grpcecho). WASM is for lifecycle hooks
 // (docs/hooks/wasm.md), not ChatProvider adapters. See docs/development/providers.md.
 package provider

@@ -290,4 +290,4 @@ Pooling removes most of the per-call instantiate cost. Remaining gap vs native i
 3. ~~`AfterCall` guest export~~ — shipped in ABI + example module.
 4. ~~Header mutation helpers~~ — ABI `request_headers` / `response_headers` + SDK helpers.
 5. Richer response transforms / streaming WASM hooks.
-6. gRPC providers / remote lifecycle hooks (auth, secrets, BeforeCall over RPC).
+6. ~~gRPC providers / remote lifecycle hooks~~ — shipped for Chat + hooks (`internal/adapters/grpcprovider`, `extensions/grpcecho`); auth/secrets/notifications remain.

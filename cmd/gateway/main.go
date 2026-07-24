@@ -10,6 +10,7 @@ import (
 
 	"github.com/curefatih/afi/extensions/demohook"
 	"github.com/curefatih/afi/extensions/echo"
+	"github.com/curefatih/afi/internal/adapters/grpcprovider"
 	"github.com/curefatih/afi/internal/adapters/postgres"
 	afiRedis "github.com/curefatih/afi/internal/adapters/redis"
 	"github.com/curefatih/afi/internal/adapters/secrets"
@@ -62,6 +63,29 @@ func main() {
 	holder := dataplane.NewHolder()
 	reg := dataplane.DefaultRegistry().RegisterSDK(echo.New())
 	hooks := dataplane.NewHookChain().RegisterHook(demohook.NewWithLog(log))
+
+	if len(cfg.Gateway.GrpcExtensions) > 0 {
+		manifests := make([]grpcprovider.Manifest, 0, len(cfg.Gateway.GrpcExtensions))
+		for _, e := range cfg.Gateway.GrpcExtensions {
+			manifests = append(manifests, grpcprovider.Manifest{
+				ID:           e.ID,
+				Address:      e.Address,
+				Command:      e.Command,
+				ProviderType: e.ProviderType,
+			})
+		}
+		grpcRT, err := grpcprovider.Start(ctx, manifests, log)
+		if err != nil {
+			log.Error("grpc extensions", "err", err)
+			os.Exit(1)
+		}
+		defer func() { _ = grpcRT.Close() }()
+		for _, p := range grpcRT.Providers() {
+			reg = reg.RegisterSDK(p)
+			log.Info("grpc provider registered", "type", p.Type())
+		}
+		grpcRT.ApplyHooks(func(h any) { hooks = hooks.RegisterHook(h) })
+	}
 
 	var wasmMods []*afiWasm.Module
 	defer func() {

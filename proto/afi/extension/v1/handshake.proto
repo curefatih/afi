@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package afi.extension.v1;
+
+option go_package = "github.com/curefatih/afi/gen/proto/afi/extension/v1;extensionv1";
+
+// Capability advertises what the plugin implements.
+enum Capability {
+  CAPABILITY_UNSPECIFIED = 0;
+  CAPABILITY_PROVIDER_CHAT = 1;
+  CAPABILITY_HOOK_BEFORE_CALL = 2;
+  CAPABILITY_HOOK_AFTER_CALL = 3;
+  CAPABILITY_HOOK_BEFORE_CHAT = 4;
+  CAPABILITY_HOOK_AFTER_CHAT = 5;
+  // Reserved for follow-on host adapters (not wired in v1).
+  CAPABILITY_AUTH = 10;
+  CAPABILITY_SECRETS = 11;
+  CAPABILITY_NOTIFICATIONS = 12;
+  CAPABILITY_ANALYTICS = 13;
+}
+
+message HandshakeRequest {
+  // Protocol version the host speaks (currently "1").
+  string host_version = 1;
+}
+
+message HandshakeResponse {
+  string name = 1;
+  string version = 2;
+  // Provider type string for snapshot provider.type binding (e.g. "grpcecho").
+  // Required when CAPABILITY_PROVIDER_CHAT is advertised; may be overridden by
+  // gateway manifest provider_type.
+  string provider_type = 3;
+  repeated Capability capabilities = 4;
+}
+
+// Extension is the discovery service every plugin must implement.
+service Extension {
+  rpc Handshake(HandshakeRequest) returns (HandshakeResponse);
+}

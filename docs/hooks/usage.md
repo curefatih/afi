@@ -57,7 +57,11 @@ Guest ABI, limits, pooling benchmarks: [wasm.md](wasm.md). Example: [`extensions
 
 ## Future
 
-* gRPC extensions — providers, auth, secrets, notifications, remote BeforeCall
+* gRPC auth / secrets / notifications host adapters (capabilities reserved; Chat + hooks shipped — see [design note](../../internal-docs/grpc-extension-runtime.md) and [`extensions/grpcecho`](../../extensions/grpcecho))
 * Remote / HTTP-backed WASM artifact stores (beyond local `file://` paths)
 
 Redis rate limits and CEL request policies remain available via the built-in BeforeCall gates (see Quotas / Policies in the platform UI).
+
+## gRPC (process-isolated)
+
+Configure `gateway.grpc_extensions` in YAML. Plugins implement Handshake + optional Provider/Hook services. See [providers.md](../development/providers.md#grpc-extensions-process-isolated).

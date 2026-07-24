@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package afi.extension.v1;
+
+option go_package = "github.com/curefatih/afi/gen/proto/afi/extension/v1;extensionv1";
+
+// ProviderConfig mirrors sdk/provider.ProviderConfig fields needed by adapters.
+message ProviderConfig {
+  string id = 1;
+  string type = 2;
+  string base_url = 3;
+  string api_key_env = 4;
+  string name = 5;
+  Capabilities capabilities = 6;
+}
+
+message Capabilities {
+  bool chat = 1;
+  bool stream = 2;
+  bool tts = 3;
+  bool stt = 4;
+  bool embedding = 5;
+}
+
+message ChatRequest {
+  ProviderConfig config = 1;
+  string target_model = 2;
+  bytes body = 3;
+  bool stream = 4;
+}
+
+message ChatResponse {
+  int32 status_code = 1;
+  map<string, string> headers = 2;
+  bytes body = 3;
+}
+
+// Provider implements remote ChatProvider.Chat.
+service Provider {
+  rpc Chat(ChatRequest) returns (ChatResponse);
+}
