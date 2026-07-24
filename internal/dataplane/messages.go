@@ -149,8 +149,10 @@ targetLoop:
 				}
 				break targetLoop
 			}
+			attemptStart := time.Now()
 			resp, lastErr = client.PassThrough(llm.WithExtraHeaders(ctx, call.RequestHeaders), bound, attempt.TargetModel, body, reqBody.Stream)
 			if lastErr != nil {
+				p.observeRouteAttempt(attempt.Provider.ID, attempt.TargetModel, attemptStart, true)
 				log.Warn("upstream messages attempt failed", "provider", bound.ID, "err", lastErr, "attempt", i, "try", try)
 				if shouldFailoverError(lastErr) {
 					if try+1 < maxTries {
@@ -163,6 +165,7 @@ targetLoop:
 				}
 				break targetLoop
 			}
+			p.observeRouteAttempt(attempt.Provider.ID, attempt.TargetModel, attemptStart, resp.StatusCode >= 400)
 			if shouldFailoverStatus(resp.StatusCode) {
 				if try+1 < maxTries || i+1 < len(attempts) {
 					code := resp.StatusCode
@@ -271,7 +274,7 @@ func (p *Pipeline) buildAnthropicAttempts(snap *snapshot.Snapshot, route snapsho
 	var cands []routing.Candidate
 	if primary.Type == "anthropic" {
 		cands = append(cands, routing.Candidate{
-			ProviderID: primary.ID, TargetModel: route.TargetModel, Weight: route.Weight,
+			ProviderID: primary.ID, ProviderType: primary.Type, TargetModel: route.TargetModel, Weight: route.Weight,
 		})
 	}
 	for _, fb := range route.Fallbacks {
@@ -284,10 +287,10 @@ func (p *Pipeline) buildAnthropicAttempts(snap *snapshot.Snapshot, route snapsho
 			target = route.TargetModel
 		}
 		cands = append(cands, routing.Candidate{
-			ProviderID: fb.ProviderID, TargetModel: target, Weight: fb.Weight,
+			ProviderID: fb.ProviderID, ProviderType: prov.Type, TargetModel: target, Weight: fb.Weight,
 		})
 	}
-	ordered := routing.ForStrategy(route.RoutingStrategy).Order(cands, p.RouteRand)
+	ordered := routing.ForStrategy(route.RoutingStrategy, p.RouteSignals).Order(cands, p.RouteRand)
 	out := make([]routeAttempt, 0, len(ordered))
 	for _, c := range ordered {
 		prov, ok := snap.Providers[c.ProviderID]

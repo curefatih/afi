@@ -11,6 +11,8 @@ import { providersQueryOptions } from "#/api/provider";
 import {
 	createRouteMutationOptions,
 	deleteRouteMutationOptions,
+	formatRoutingStrategy,
+	parseRoutingStrategy,
 	type RetryConfig,
 	type RouteConfig,
 	type RoutingStrategy,
@@ -160,7 +162,7 @@ function RouteComponent() {
 			})),
 		);
 		setEditRetry(r.retry ?? null);
-		setEditStrategy(r.routing_strategy === "weighted" ? "weighted" : "ordered");
+		setEditStrategy(parseRoutingStrategy(r.routing_strategy));
 		setEditWeight(r.weight && r.weight > 0 ? r.weight : 1);
 		setEditError(null);
 	};
@@ -178,7 +180,7 @@ function RouteComponent() {
 			<PageHeader
 				title="Routing"
 				description="Map requested model names to providers."
-				info="Optional route retries override the org default; weighted routes pick the first target by weight, then failover in list order on 5xx/timeout/429."
+				info="Optional route retries override the org default. Strategies: ordered (config order), weighted (random first pick), latency (gateway EWMA), cost (catalog unit price). Failover on 5xx/timeout/429."
 				actions={
 					isOrgAdmin ? (
 						<Button onClick={openCreate} disabled={!canAddRoute}>
@@ -282,9 +284,7 @@ function RouteComponent() {
 											</div>
 										</TableCell>
 										<TableCell className="text-muted-foreground text-xs">
-											{r.routing_strategy === "weighted"
-												? `weighted (w=${r.weight ?? 1})`
-												: "ordered"}
+											{formatRoutingStrategy(r.routing_strategy, r.weight)}
 										</TableCell>
 										<TableCell className="text-muted-foreground text-xs">
 											{formatRetrySummary(r.retry, orgRetry.data?.retry)}
@@ -425,9 +425,7 @@ function RouteComponent() {
 							<Label>Routing strategy</Label>
 							<Select
 								value={strategy}
-								onValueChange={(v) =>
-									setStrategy(v === "weighted" ? "weighted" : "ordered")
-								}
+								onValueChange={(v) => setStrategy(parseRoutingStrategy(v))}
 							>
 								<SelectTrigger className="w-full">
 									<SelectValue />
@@ -439,6 +437,8 @@ function RouteComponent() {
 									<SelectItem value="weighted">
 										Weighted load balance
 									</SelectItem>
+									<SelectItem value="latency">Latency (EWMA)</SelectItem>
+									<SelectItem value="cost">Cost (catalog)</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
@@ -583,7 +583,7 @@ function RouteComponent() {
 								<Select
 									value={editStrategy}
 									onValueChange={(v) =>
-										setEditStrategy(v === "weighted" ? "weighted" : "ordered")
+										setEditStrategy(parseRoutingStrategy(v))
 									}
 								>
 									<SelectTrigger className="w-full">
@@ -596,6 +596,8 @@ function RouteComponent() {
 										<SelectItem value="weighted">
 											Weighted load balance
 										</SelectItem>
+										<SelectItem value="latency">Latency (EWMA)</SelectItem>
+										<SelectItem value="cost">Cost (catalog)</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>

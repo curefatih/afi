@@ -16,6 +16,7 @@ import (
 	afiWasm "github.com/curefatih/afi/internal/adapters/wasm"
 	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/dataplane"
+	"github.com/curefatih/afi/internal/dataplane/routing"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
@@ -104,6 +105,7 @@ func main() {
 	pipeline := dataplane.NewPipelineWithRegistry(holder, reg, log)
 	pipeline.Hooks = hooks
 	pipeline.HTTP = telemetry.HTTPClient(120 * time.Second)
+	pipeline.RouteSignals = routing.NewMemorySignalStore()
 	if cfg.Telemetry.Enabled {
 		gm, err := telemetry.NewGatewayMetrics()
 		if err != nil {

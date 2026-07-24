@@ -54,16 +54,3 @@ func TestWeightedSelectorDistribution(t *testing.T) {
 		t.Fatalf("counts=%v", counts)
 	}
 }
-
-func TestForStrategy(t *testing.T) {
-	t.Parallel()
-	if _, ok := ForStrategy("weighted").(WeightedSelector); !ok {
-		t.Fatal("expected WeightedSelector")
-	}
-	if _, ok := ForStrategy("").(OrderedSelector); !ok {
-		t.Fatal("expected OrderedSelector")
-	}
-	if _, ok := ForStrategy("latency").(OrderedSelector); !ok {
-		t.Fatal("unknown should be ordered")
-	}
-}

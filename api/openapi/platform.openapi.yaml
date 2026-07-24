@@ -2936,7 +2936,7 @@ components:
         weight:
           type: integer
           minimum: 0
-          description: Relative weight for weighted routing; omitted or 0 defaults to 1. Ignored when routing_strategy is ordered.
+          description: Relative weight for weighted routing; omitted or 0 defaults to 1. Ignored when routing_strategy is not weighted.
     Route:
       type: object
       required:
@@ -2971,7 +2971,9 @@ components:
           enum:
           - ordered
           - weighted
-          description: Target selection before retry/failover. Default ordered.
+          - latency
+          - cost
+          description: Target selection before retry/failover. Default ordered. latency uses gateway-local EWMA; cost uses embedded catalog unit prices.
         weight:
           type: integer
           minimum: 0
@@ -3004,6 +3006,8 @@ components:
           enum:
           - ordered
           - weighted
+          - latency
+          - cost
         weight:
           type: integer
           minimum: 0

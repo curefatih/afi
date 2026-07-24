@@ -1,7 +1,36 @@
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "#/lib/api-client";
 
-export type RoutingStrategy = "ordered" | "weighted";
+export type RoutingStrategy = "ordered" | "weighted" | "latency" | "cost";
+
+export function parseRoutingStrategy(
+	v: string | null | undefined,
+): RoutingStrategy {
+	switch (v) {
+		case "weighted":
+		case "latency":
+		case "cost":
+			return v;
+		default:
+			return "ordered";
+	}
+}
+
+export function formatRoutingStrategy(
+	strategy: RoutingStrategy | undefined,
+	weight?: number,
+): string {
+	switch (strategy) {
+		case "weighted":
+			return `weighted (w=${weight && weight > 0 ? weight : 1})`;
+		case "latency":
+			return "latency";
+		case "cost":
+			return "cost";
+		default:
+			return "ordered";
+	}
+}
 
 export type RouteFallback = {
 	provider_id: string;
