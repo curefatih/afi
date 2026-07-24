@@ -144,7 +144,7 @@ func (p *Pipeline) handleEmbeddings(w http.ResponseWriter, r *http.Request) {
 		})
 		status = "error"
 		p.recordUsage(UsageEvent{
-			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID, CredentialID: credID,
+			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID, CredentialID: credID,
 			Model: reqBody.Model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			Modality: ModalityEmbedding, Tags: cloneTags(call.Tags),
@@ -168,7 +168,7 @@ func (p *Pipeline) handleEmbeddings(w http.ResponseWriter, r *http.Request) {
 			})
 			status = "error"
 			p.recordUsage(UsageEvent{
-				OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID, CredentialID: credID,
+				OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID, CredentialID: credID,
 				Model: reqBody.Model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 				Status: status, LatencyMs: time.Since(start).Milliseconds(),
 				Modality: ModalityEmbedding, Tags: cloneTags(call.Tags),
@@ -201,7 +201,7 @@ func (p *Pipeline) handleEmbeddings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.recordUsage(UsageEvent{
-		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID, CredentialID: credID,
+		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID, CredentialID: credID,
 		Model: reqBody.Model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		PromptTokens: promptTokens, CompletionTokens: completionTokens,

@@ -21,7 +21,10 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	var src snapshot.Source
 
 	keyRows, err := l.Pool.Query(ctx, `
-		SELECT id, key_hash, key_prefix, project_id, organization_id, name, kind, owner_user_id FROM api_keys
+		SELECT k.id, k.key_hash, k.key_prefix, k.project_id, k.organization_id, k.name, k.kind, k.owner_user_id,
+			k.environment_id, p.team_id
+		FROM api_keys k
+		LEFT JOIN projects p ON p.id = k.project_id
 	`)
 	if err != nil {
 		return src, err
@@ -29,8 +32,11 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	defer keyRows.Close()
 	for keyRows.Next() {
 		var k snapshot.APIKey
-		var projectID, ownerUserID *string
-		if err := keyRows.Scan(&k.ID, &k.KeyHash, &k.KeyPrefix, &projectID, &k.OrganizationID, &k.Name, &k.Kind, &ownerUserID); err != nil {
+		var projectID, ownerUserID, environmentID, teamID *string
+		if err := keyRows.Scan(
+			&k.ID, &k.KeyHash, &k.KeyPrefix, &projectID, &k.OrganizationID, &k.Name, &k.Kind, &ownerUserID,
+			&environmentID, &teamID,
+		); err != nil {
 			return src, err
 		}
 		if projectID != nil {
@@ -38,6 +44,12 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 		}
 		if ownerUserID != nil {
 			k.OwnerUserID = *ownerUserID
+		}
+		if environmentID != nil {
+			k.EnvironmentID = *environmentID
+		}
+		if teamID != nil {
+			k.TeamID = *teamID
 		}
 		src.APIKeys = append(src.APIKeys, k)
 	}

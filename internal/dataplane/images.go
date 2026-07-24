@@ -152,7 +152,7 @@ func (p *Pipeline) handleImagesGenerations(w http.ResponseWriter, r *http.Reques
 		})
 		status = "error"
 		p.recordUsage(UsageEvent{
-			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID, CredentialID: credID,
+			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID, CredentialID: credID,
 			Model: reqBody.Model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			Modality: ModalityImage, Tags: cloneTags(call.Tags),
@@ -176,7 +176,7 @@ func (p *Pipeline) handleImagesGenerations(w http.ResponseWriter, r *http.Reques
 			})
 			status = "error"
 			p.recordUsage(UsageEvent{
-				OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID, CredentialID: credID,
+				OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID, CredentialID: credID,
 				Model: reqBody.Model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 				Status: status, LatencyMs: time.Since(start).Milliseconds(),
 				Modality: ModalityImage, Tags: cloneTags(call.Tags),
@@ -221,7 +221,7 @@ func (p *Pipeline) handleImagesGenerations(w http.ResponseWriter, r *http.Reques
 		metrics["images"] = float64(imageCount)
 	}
 	p.recordUsage(UsageEvent{
-		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID, CredentialID: credID,
+		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID, CredentialID: credID,
 		Model: reqBody.Model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		Modality: ModalityImage, Tags: cloneTags(call.Tags), Metrics: metrics,

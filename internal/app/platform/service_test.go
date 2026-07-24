@@ -11,6 +11,7 @@ import (
 	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/identity"
+	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
 	"github.com/curefatih/afi/internal/usage"
@@ -93,11 +94,24 @@ func (m *memAPI) ListProjects(context.Context, string, string) ([]tenancy.Projec
 func (m *memAPI) CreateProject(context.Context, string, string, string) (*tenancy.Project, error) {
 	panic("unused")
 }
+func (m *memAPI) ListEnvironments(context.Context, string) ([]tenancy.Environment, error) {
+	return nil, nil
+}
+func (m *memAPI) GetEnvironment(context.Context, string) (*tenancy.Environment, error) {
+	return nil, kernel.ErrNotFound
+}
+func (m *memAPI) CreateEnvironment(context.Context, string, string, string, string) (*tenancy.Environment, error) {
+	panic("unused")
+}
+func (m *memAPI) DeleteEnvironment(context.Context, string) error { panic("unused") }
+func (m *memAPI) GetEnvironmentOrgID(context.Context, string) (string, error) {
+	return "org_1", nil
+}
 func (m *memAPI) ListAPIKeys(context.Context, string) ([]access.APIKey, error) { return nil, nil }
 func (m *memAPI) ListOrgAPIKeys(context.Context, string) ([]access.APIKey, error) {
 	return m.keys, nil
 }
-func (m *memAPI) CreateAPIKey(context.Context, string, string, string, string, string, string) (*access.APIKey, error) {
+func (m *memAPI) CreateAPIKey(context.Context, string, string, string, string, string, string, string) (*access.APIKey, error) {
 	panic("unused")
 }
 func (m *memAPI) GetAPIKeyOrgID(context.Context, string) (string, error) { return "org_1", nil }

@@ -155,6 +155,24 @@ class PlatformClient:
             body=dict(body),
         )
 
+    def list_environments(self, org_id: str, project_id: str) -> list[Any]:
+        return self.request(
+            "GET",
+            f"/api/v1/platform/organizations/{org_id}/projects/{project_id}/environments",
+        )
+
+    def create_environment(
+        self, org_id: str, project_id: str, name: str, slug: str
+    ) -> dict[str, Any]:
+        return self.request(
+            "POST",
+            f"/api/v1/platform/organizations/{org_id}/projects/{project_id}/environments",
+            body={"name": name, "slug": slug},
+        )
+
+    def delete_environment(self, environment_id: str) -> None:
+        self.request("DELETE", f"/api/v1/platform/environments/{environment_id}")
+
     def list_providers(self, org_id: str) -> list[Any]:
         return self.request(
             "GET", f"/api/v1/platform/organizations/{org_id}/providers"

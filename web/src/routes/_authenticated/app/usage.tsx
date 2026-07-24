@@ -771,8 +771,8 @@ function RouteComponent() {
 							</ChartCard>
 						</div>
 
-						<div className="rounded-md border">
-							<Table containerClassName="overflow-visible">
+						<div className="overflow-hidden rounded-md border">
+							<Table>
 								<TableHeader>
 									<TableRow>
 										<IconHead icon={ClockIcon} label="When" />
@@ -1100,7 +1100,7 @@ function ChartCard({
 
 function IconHead({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
 	return (
-		<TableHead className="sticky top-0 z-10 bg-background">
+		<TableHead>
 			<span className="inline-flex items-center gap-1.5">
 				<Icon className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
 				{label}

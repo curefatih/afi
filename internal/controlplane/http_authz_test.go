@@ -114,6 +114,13 @@ func (f *fakeMembers) GetProjectOrgID(_ context.Context, projectID string) (stri
 	return "", kernel.ErrNotFound
 }
 
+func (f *fakeMembers) GetEnvironmentOrgID(_ context.Context, environmentID string) (string, error) {
+	if environmentID == "env_ok" {
+		return "org_a", nil
+	}
+	return "", kernel.ErrNotFound
+}
+
 func (f *fakeMembers) GetProviderOrgID(_ context.Context, providerID string) (string, error) {
 	if providerID == "prov_ok" {
 		return "org_a", nil
@@ -259,6 +266,19 @@ func (f *fakePlatform) CreateProject(_ context.Context, orgID, teamID, name stri
 	f.created = &Project{ID: "proj_new", OrganizationID: orgID, TeamID: teamID, Name: name}
 	return f.created, nil
 }
+func (f *fakePlatform) ListEnvironments(context.Context, string) ([]Environment, error) {
+	return nil, nil
+}
+func (f *fakePlatform) GetEnvironment(context.Context, string) (*Environment, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *fakePlatform) CreateEnvironment(context.Context, string, string, string, string) (*Environment, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) DeleteEnvironment(context.Context, string) error { return kernel.ErrNotFound }
+func (f *fakePlatform) GetEnvironmentOrgID(context.Context, string) (string, error) {
+	return "", kernel.ErrNotFound
+}
 func (f *fakePlatform) ListAPIKeys(context.Context, string) ([]APIKey, error) { return nil, nil }
 func (f *fakePlatform) ListOrgAPIKeys(context.Context, string) ([]APIKey, error) {
 	return nil, nil
@@ -266,7 +286,7 @@ func (f *fakePlatform) ListOrgAPIKeys(context.Context, string) ([]APIKey, error)
 func (f *fakePlatform) GetAPIKey(context.Context, string) (*APIKey, error) {
 	return nil, kernel.ErrNotFound
 }
-func (f *fakePlatform) CreateAPIKey(context.Context, string, string, string, string, string, string) (*APIKey, error) {
+func (f *fakePlatform) CreateAPIKey(context.Context, string, string, string, string, string, string, string) (*APIKey, error) {
 	return nil, errors.New("unused")
 }
 func (f *fakePlatform) DeleteAPIKey(context.Context, string) error                { return kernel.ErrNotFound }

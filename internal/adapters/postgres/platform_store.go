@@ -305,6 +305,44 @@ func (s *Store) CreateProject(ctx context.Context, orgID, teamID, name string) (
 	return tenancy.CreateProject(ctx, s.projectsRepo(), newPlatformID("proj"), orgID, teamID, name)
 }
 
+func (s *Store) environmentsRepo() *Environments {
+	return NewEnvironments(s.pool)
+}
+
+func (s *Store) ListEnvironments(ctx context.Context, projectID string) ([]tenancy.Environment, error) {
+	return s.environmentsRepo().ListByProject(ctx, projectID)
+}
+
+func (s *Store) GetEnvironment(ctx context.Context, environmentID string) (*tenancy.Environment, error) {
+	return s.environmentsRepo().Get(ctx, environmentID)
+}
+
+func (s *Store) CreateEnvironment(ctx context.Context, orgID, projectID, name, slug string) (*tenancy.Environment, error) {
+	return tenancy.CreateEnvironment(ctx, s.environmentsRepo(), s.projectsRepo(), newPlatformID("env"), orgID, projectID, name, slug)
+}
+
+func (s *Store) DeleteEnvironment(ctx context.Context, environmentID string) error {
+	return s.environmentsRepo().Delete(ctx, environmentID)
+}
+
+func (s *Store) GetEnvironmentOrgID(ctx context.Context, environmentID string) (string, error) {
+	return s.environmentsRepo().OrgID(ctx, environmentID)
+}
+
+func (s *Store) EnvironmentBelongsToProject(ctx context.Context, environmentID, projectID, orgID string) error {
+	e, err := s.environmentsRepo().Get(ctx, environmentID)
+	if err != nil {
+		if errors.Is(err, kernel.ErrNotFound) {
+			return fmt.Errorf("%w: environment not found", kernel.ErrInvalidRequest)
+		}
+		return err
+	}
+	if e.OrganizationID != orgID || e.ProjectID != projectID {
+		return fmt.Errorf("%w: environment does not belong to project", kernel.ErrInvalidRequest)
+	}
+	return nil
+}
+
 func (s *Store) apiKeys() *APIKeys {
 	return NewAPIKeys(s.pool)
 }
@@ -336,8 +374,8 @@ func (s *Store) GetProjectOrgID(ctx context.Context, projectID string) (string, 
 // CreateAPIKey inserts a key. kind must be personal or service_account.
 // Personal: ownerUserID required, projectID must be empty.
 // Service account: ownerUserID empty, projectID optional (empty = org-wide).
-func (s *Store) CreateAPIKey(ctx context.Context, orgID, kind, ownerUserID, projectID, name, rawKey string) (*APIKey, error) {
-	return access.CreateAPIKey(ctx, s.apiKeys(), s, newPlatformID("key"), orgID, kind, ownerUserID, projectID, name, rawKey)
+func (s *Store) CreateAPIKey(ctx context.Context, orgID, kind, ownerUserID, projectID, environmentID, name, rawKey string) (*APIKey, error) {
+	return access.CreateAPIKey(ctx, s.apiKeys(), s, s, newPlatformID("key"), orgID, kind, ownerUserID, projectID, environmentID, name, rawKey)
 }
 
 func (s *Store) providers() *Providers {
@@ -504,6 +542,20 @@ func (s *Store) ProjectBelongsToOrg(ctx context.Context, projectID, orgID string
 	}
 	if projOrg != orgID {
 		return fmt.Errorf("%w: project not in organization", kernel.ErrInvalidRequest)
+	}
+	return nil
+}
+
+func (s *Store) TeamBelongsToOrg(ctx context.Context, teamID, orgID string) error {
+	teamOrg, err := s.teamsRepo().OrgID(ctx, teamID)
+	if errors.Is(err, kernel.ErrNotFound) {
+		return fmt.Errorf("%w: team not found", kernel.ErrInvalidRequest)
+	}
+	if err != nil {
+		return err
+	}
+	if teamOrg != orgID {
+		return fmt.Errorf("%w: team not in organization", kernel.ErrInvalidRequest)
 	}
 	return nil
 }

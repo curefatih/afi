@@ -78,6 +78,9 @@ function RouteComponent() {
 		const projects = new Map(
 			(org?.projects ?? []).map((p) => [p.id, p.name] as const),
 		);
+		const teams = new Map(
+			(org?.teams ?? []).map((t) => [t.id, t.name] as const),
+		);
 		const users = new Map(
 			(members.data ?? []).map((m) => [m.user_id, m.email] as const),
 		);
@@ -88,6 +91,8 @@ function RouteComponent() {
 			switch (scopeType) {
 				case "organization":
 					return org?.name ?? scopeId;
+				case "team":
+					return teams.get(scopeId) ?? scopeId;
 				case "project":
 					return projects.get(scopeId) ?? scopeId;
 				case "user":
@@ -154,7 +159,7 @@ function RouteComponent() {
 			<PageHeader
 				title="Quotas"
 				description="Request and token limits for this organization."
-				info="Windows: total (Postgres lifetime) or minute/hour/day (Redis rate limits). Most specific wins per window: api key → user → project → organization."
+				info="Windows: total (Postgres lifetime) or minute/hour/day (Redis rate limits). Most specific wins per window: api key → user → project → team → organization."
 				actions={
 					isOrgAdmin ? (
 						<Button onClick={() => setCreateOpen(true)} disabled={!orgId}>
@@ -290,6 +295,7 @@ function RouteComponent() {
 									const next = v ?? "organization";
 									setScopeType(next);
 									if (next === "organization") setScopeID(orgId);
+									else if (next === "team") setScopeID(org?.teams[0]?.id ?? "");
 									else if (next === "project")
 										setScopeID(org?.projects[0]?.id ?? "");
 									else if (next === "user")
@@ -303,12 +309,34 @@ function RouteComponent() {
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value="organization">Organization</SelectItem>
+									<SelectItem value="team">Team</SelectItem>
 									<SelectItem value="project">Project</SelectItem>
 									<SelectItem value="user">User</SelectItem>
 									<SelectItem value="api_key">API key</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
+
+						{scopeType === "team" ? (
+							<div className="space-y-1">
+								<Label>Team</Label>
+								<Select
+									value={scopeID}
+									onValueChange={(v) => setScopeID(v ?? "")}
+								>
+									<SelectTrigger className="w-full">
+										<SelectValue placeholder="Select team" />
+									</SelectTrigger>
+									<SelectContent>
+										{(org?.teams ?? []).map((t) => (
+											<SelectItem key={t.id} value={t.id}>
+												{t.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+						) : null}
 
 						{scopeType === "project" ? (
 							<div className="space-y-1">

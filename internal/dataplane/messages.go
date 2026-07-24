@@ -184,17 +184,15 @@ targetLoop:
 
 	if lastErr != nil && resp == nil {
 		p.recordUsage(UsageEvent{
-			OrganizationID: key.OrganizationID,
-			ProjectID:      key.ProjectID,
-			APIKeyID:       key.ID,
-			CredentialID:   usedCredentialID,
-			Model:          reqBody.Model,
-			ProviderType:   usedProvider.Type,
-			TargetModel:    usedTarget,
-			Status:         "error",
-			LatencyMs:      time.Since(start).Milliseconds(),
-			Modality:       ModalityMessages,
-			Tags:           cloneTags(call.Tags),
+			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
+			CredentialID: usedCredentialID,
+			Model:        reqBody.Model,
+			ProviderType: usedProvider.Type,
+			TargetModel:  usedTarget,
+			Status:       "error",
+			LatencyMs:    time.Since(start).Milliseconds(),
+			Modality:     ModalityMessages,
+			Tags:         cloneTags(call.Tags),
 		})
 		p.runAfterCall(ctx, snap, call, AfterCallInfo{
 			Status: "error", LatencyMs: time.Since(start).Milliseconds(),
@@ -248,9 +246,7 @@ targetLoop:
 	}
 
 	p.recordUsage(UsageEvent{
-		OrganizationID:   key.OrganizationID,
-		ProjectID:        key.ProjectID,
-		APIKeyID:         key.ID,
+		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
 		CredentialID:     usedCredentialID,
 		Model:            reqBody.Model,
 		ProviderType:     usedProvider.Type,

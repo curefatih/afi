@@ -46,6 +46,7 @@ type QuotaScope string
 
 const (
 	ScopeOrganization QuotaScope = snapshot.ScopeOrganization
+	ScopeTeam         QuotaScope = snapshot.ScopeTeam
 	ScopeProject      QuotaScope = snapshot.ScopeProject
 	ScopeUser         QuotaScope = snapshot.ScopeUser
 	ScopeAPIKey       QuotaScope = snapshot.ScopeAPIKey

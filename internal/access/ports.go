@@ -7,6 +7,11 @@ type ProjectOrgChecker interface {
 	ProjectBelongsToOrg(ctx context.Context, projectID, orgID string) error
 }
 
+// EnvironmentProjectChecker verifies an environment belongs to a project in an org.
+type EnvironmentProjectChecker interface {
+	EnvironmentBelongsToProject(ctx context.Context, environmentID, projectID, orgID string) error
+}
+
 // APIKeyRepository persists write-model API keys.
 type APIKeyRepository interface {
 	ListByProject(ctx context.Context, projectID string) ([]APIKey, error)

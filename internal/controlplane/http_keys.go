@@ -45,10 +45,11 @@ func (s *Server) handleCreateOrgKey(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgID")
 	claims := claimsFrom(r.Context())
 	var body struct {
-		Name      string `json:"name"`
-		Key       string `json:"key"`
-		Kind      string `json:"kind"`
-		ProjectID string `json:"project_id"`
+		Name          string `json:"name"`
+		Key           string `json:"key"`
+		Kind          string `json:"kind"`
+		ProjectID     string `json:"project_id"`
+		EnvironmentID string `json:"environment_id"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid json")
@@ -71,6 +72,10 @@ func (s *Server) handleCreateOrgKey(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusBadRequest, "personal keys cannot have a project")
 			return
 		}
+		if body.EnvironmentID != "" {
+			writeErr(w, http.StatusBadRequest, "personal keys cannot have an environment")
+			return
+		}
 		ownerUserID = claims.UserID
 	case snapshot.KeyKindServiceAccount:
 		admin, err := s.members.IsOrgAdmin(r.Context(), claims.UserID, orgID)
@@ -87,7 +92,7 @@ func (s *Server) handleCreateOrgKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	k, err := s.app.CreateAPIKey(r.Context(), orgID, body.Kind, ownerUserID, body.ProjectID, body.Name, body.Key)
+	k, err := s.app.CreateAPIKey(r.Context(), orgID, body.Kind, ownerUserID, body.ProjectID, body.EnvironmentID, body.Name, body.Key)
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
@@ -137,8 +142,9 @@ func (s *Server) handleDeleteKey(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Name string `json:"name"`
-		Key  string `json:"key"`
+		Name          string `json:"name"`
+		Key           string `json:"key"`
+		EnvironmentID string `json:"environment_id"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid json")
@@ -157,7 +163,7 @@ func (s *Server) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	k, err := s.app.CreateAPIKey(r.Context(), orgID, snapshot.KeyKindServiceAccount, "", r.PathValue("projectID"), body.Name, body.Key)
+	k, err := s.app.CreateAPIKey(r.Context(), orgID, snapshot.KeyKindServiceAccount, "", r.PathValue("projectID"), body.EnvironmentID, body.Name, body.Key)
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return

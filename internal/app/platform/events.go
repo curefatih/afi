@@ -26,6 +26,8 @@ const (
 	EventTeamMemberRoleUpdated  EventName = "team.member_role_updated"
 	EventTeamMemberRemoved      EventName = "team.member_removed"
 	EventProjectCreated         EventName = "project.created"
+	EventEnvironmentCreated     EventName = "environment.created"
+	EventEnvironmentDeleted     EventName = "environment.deleted"
 	EventAPIKeyCreated          EventName = "api_key.created"
 	EventAPIKeyDeleted          EventName = "api_key.deleted"
 	EventProviderCreated        EventName = "provider.created"

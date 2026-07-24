@@ -23,6 +23,8 @@ func AssertScopeInOrg(ctx context.Context, orgID, scopeType, scopeID string, m M
 			return fmt.Errorf("%w: organization scope_id must match organization", kernel.ErrInvalidRequest)
 		}
 		return nil
+	case snapshot.ScopeTeam:
+		return m.TeamBelongsToOrg(ctx, scopeID, orgID)
 	case snapshot.ScopeProject:
 		return m.ProjectBelongsToOrg(ctx, scopeID, orgID)
 	case snapshot.ScopeUser:

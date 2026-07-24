@@ -90,6 +90,16 @@ type Project struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
+// Environment is a named deployment stage under a project (dev/stage/prod/…).
+type Environment struct {
+	ID             string    `json:"id"`
+	OrganizationID string    `json:"organization_id"`
+	ProjectID      string    `json:"project_id"`
+	Name           string    `json:"name"`
+	Slug           string    `json:"slug"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
 // ValidateOrgRole checks role is owner/admin/member.
 func ValidateOrgRole(role string) error {
 	switch role {
@@ -202,5 +212,52 @@ func NewProject(id, orgID, teamID, name string, now time.Time) (*Project, error)
 	return &Project{
 		ID: id, OrganizationID: orgID, TeamID: teamID, Name: name,
 		CreatedAt: now, UpdatedAt: now,
+	}, nil
+}
+
+const maxEnvironmentSlugLen = 64
+
+// NormalizeEnvironmentSlug lowercases and trims a slug.
+func NormalizeEnvironmentSlug(slug string) string {
+	return strings.ToLower(strings.TrimSpace(slug))
+}
+
+// ValidateEnvironmentSlug ensures slug is lowercase alnum with -/_ and length ≤ 64.
+func ValidateEnvironmentSlug(slug string) error {
+	slug = NormalizeEnvironmentSlug(slug)
+	if slug == "" {
+		return fmt.Errorf("%w: slug is required", kernel.ErrInvalidRequest)
+	}
+	if len(slug) > maxEnvironmentSlugLen {
+		return fmt.Errorf("%w: slug must be at most %d characters", kernel.ErrInvalidRequest, maxEnvironmentSlugLen)
+	}
+	for _, r := range slug {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			continue
+		}
+		return fmt.Errorf("%w: slug must be lowercase alphanumeric with - or _", kernel.ErrInvalidRequest)
+	}
+	return nil
+}
+
+// NewEnvironment builds a validated environment entity.
+func NewEnvironment(id, orgID, projectID, name, slug string, now time.Time) (*Environment, error) {
+	name = strings.TrimSpace(name)
+	slug = NormalizeEnvironmentSlug(slug)
+	if id == "" || orgID == "" || projectID == "" {
+		return nil, fmt.Errorf("%w: id, organization_id, and project_id required", kernel.ErrInvalidRequest)
+	}
+	if name == "" {
+		return nil, fmt.Errorf("%w: name required", kernel.ErrInvalidRequest)
+	}
+	if err := ValidateEnvironmentSlug(slug); err != nil {
+		return nil, err
+	}
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	return &Environment{
+		ID: id, OrganizationID: orgID, ProjectID: projectID,
+		Name: name, Slug: slug, CreatedAt: now.UTC(),
 	}, nil
 }

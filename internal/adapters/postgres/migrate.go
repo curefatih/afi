@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 20
+const schemaVersion = 21
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS platform_event_outbox CASCADE;
@@ -32,6 +32,7 @@ DROP TABLE IF EXISTS credential_assignments CASCADE;
 DROP TABLE IF EXISTS provider_credentials CASCADE;
 DROP TABLE IF EXISTS routes CASCADE;
 DROP TABLE IF EXISTS api_keys CASCADE;
+DROP TABLE IF EXISTS environments CASCADE;
 DROP TABLE IF EXISTS providers CASCADE;
 DROP TABLE IF EXISTS projects CASCADE;
 DROP TABLE IF EXISTS team_members CASCADE;
@@ -137,10 +138,21 @@ CREATE TABLE IF NOT EXISTS projects (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS environments (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (project_id, slug)
+);
+
 CREATE TABLE IF NOT EXISTS api_keys (
     id TEXT PRIMARY KEY,
     project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
     organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    environment_id TEXT REFERENCES environments(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
     kind TEXT NOT NULL DEFAULT 'service_account',
     owner_user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
@@ -222,6 +234,8 @@ CREATE TABLE IF NOT EXISTS usage_events (
     id BIGSERIAL PRIMARY KEY,
     organization_id TEXT NOT NULL,
     project_id TEXT NOT NULL,
+    team_id TEXT NOT NULL DEFAULT '',
+    environment_id TEXT NOT NULL DEFAULT '',
     api_key_id TEXT NOT NULL DEFAULT '',
     credential_id TEXT,
     used_byok BOOLEAN NOT NULL DEFAULT FALSE,
@@ -868,6 +882,23 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		ALTER TABLE organizations ADD COLUMN IF NOT EXISTS object_store JSONB;
 	`); err != nil {
 		return fmt.Errorf("cycle34 org object store: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS environments (
+			id TEXT PRIMARY KEY,
+			organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+			project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			name TEXT NOT NULL,
+			slug TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			UNIQUE (project_id, slug)
+		);
+		ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS environment_id TEXT REFERENCES environments(id) ON DELETE SET NULL;
+		ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS team_id TEXT NOT NULL DEFAULT '';
+		ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS environment_id TEXT NOT NULL DEFAULT '';
+	`); err != nil {
+		return fmt.Errorf("cycle35 environments: %w", err)
 	}
 	return nil
 }

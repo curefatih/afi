@@ -138,7 +138,7 @@ func (p *Pipeline) handleMCP(w http.ResponseWriter, r *http.Request) {
 		status = "error"
 		metrics["latency_ms"] = time.Since(start).Milliseconds()
 		p.recordUsage(UsageEvent{
-			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID,
+			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
 			Model: alias, ProviderType: "mcp", TargetModel: backend.ID,
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			Modality: ModalityMCP, Metrics: metrics, Tags: cloneTags(call.Tags),
@@ -160,7 +160,7 @@ func (p *Pipeline) handleMCP(w http.ResponseWriter, r *http.Request) {
 	}
 	metrics["latency_ms"] = time.Since(start).Milliseconds()
 	p.recordUsage(UsageEvent{
-		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, APIKeyID: key.ID,
+		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
 		Model: alias, ProviderType: "mcp", TargetModel: backend.ID,
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		Modality: ModalityMCP, Metrics: metrics, Tags: cloneTags(call.Tags),
