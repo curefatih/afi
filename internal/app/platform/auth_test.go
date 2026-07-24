@@ -44,6 +44,62 @@ func (m *memUsers) Create(_ context.Context, user identity.User) error {
 	m.byEmail[user.Email] = &cp
 	return nil
 }
+func (m *memUsers) UpdatePassword(_ context.Context, userID, passwordHash string) error {
+	u, ok := m.byID[userID]
+	if !ok {
+		return kernel.ErrNotFound
+	}
+	u.PasswordHash = passwordHash
+	return nil
+}
+
+type memResets struct {
+	byHash map[string]*identity.PasswordResetToken
+	byID   map[string]*identity.PasswordResetToken
+}
+
+func newMemResets() *memResets {
+	return &memResets{
+		byHash: map[string]*identity.PasswordResetToken{},
+		byID:   map[string]*identity.PasswordResetToken{},
+	}
+}
+
+func (m *memResets) Create(_ context.Context, token identity.PasswordResetToken) error {
+	cp := token
+	m.byHash[token.TokenHash] = &cp
+	m.byID[token.ID] = &cp
+	return nil
+}
+
+func (m *memResets) DeleteUnusedForUser(_ context.Context, userID string) error {
+	for hash, t := range m.byHash {
+		if t.UserID == userID && t.UsedAt == nil {
+			delete(m.byHash, hash)
+			delete(m.byID, t.ID)
+		}
+	}
+	return nil
+}
+
+func (m *memResets) GetByTokenHash(_ context.Context, hash string) (*identity.PasswordResetToken, error) {
+	t, ok := m.byHash[hash]
+	if !ok {
+		return nil, kernel.ErrNotFound
+	}
+	cp := *t
+	return &cp, nil
+}
+
+func (m *memResets) Consume(_ context.Context, id string, usedAt time.Time) error {
+	t, ok := m.byID[id]
+	if !ok {
+		return kernel.ErrNotFound
+	}
+	cp := usedAt
+	t.UsedAt = &cp
+	return nil
+}
 
 type memIdentities struct {
 	byKey map[string]*identity.ExternalIdentity
@@ -157,5 +213,99 @@ func TestCompleteSSO_JIT(t *testing.T) {
 	u, err := users.GetByEmail(context.Background(), "jit@example.com")
 	if err != nil || u.ID != "user_jit" {
 		t.Fatalf("user=%+v err=%v", u, err)
+	}
+}
+
+func TestRegister_Disabled(t *testing.T) {
+	t.Parallel()
+	tokens := auth.NewService("secret", time.Hour)
+	svc := &platform.AuthService{
+		Users: newMemUsers(), Passwords: tokens, Tokens: tokens,
+		SignupEnabled: false, NewUserID: func() string { return "u_new" },
+	}
+	_, _, err := svc.Register(context.Background(), "a@b.c", "A", "password1")
+	if !errors.Is(err, identity.ErrSignupDisabled) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestRegister_SuccessAndConflict(t *testing.T) {
+	t.Parallel()
+	users := newMemUsers()
+	tokens := auth.NewService("secret", time.Hour)
+	svc := &platform.AuthService{
+		Users: users, Passwords: tokens, Tokens: tokens,
+		SignupEnabled: true, NewUserID: func() string { return "u_reg" },
+	}
+	tok, user, err := svc.Register(context.Background(), "New@Example.com", "New User", "password1")
+	if err != nil || tok == "" || user == nil || user.Email != "new@example.com" || user.Role != "member" {
+		t.Fatalf("tok=%q user=%+v err=%v", tok, user, err)
+	}
+	_, _, err = svc.Register(context.Background(), "new@example.com", "Dup", "password1")
+	if !errors.Is(err, kernel.ErrConflict) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestPasswordReset_RoundTrip(t *testing.T) {
+	t.Parallel()
+	hash, err := auth.HashPassword("oldpass12")
+	if err != nil {
+		t.Fatal(err)
+	}
+	users := newMemUsers()
+	_ = users.Create(context.Background(), identity.User{
+		ID: "u1", Email: "reset@afi.local", Name: "R", Role: "member", PasswordHash: hash,
+	})
+	resets := newMemResets()
+	tokens := auth.NewService("secret", time.Hour)
+	svc := &platform.AuthService{
+		Users: users, Resets: resets, Passwords: tokens, Tokens: tokens,
+		NewResetID: func() string { return "reset_1" },
+	}
+	raw, err := svc.RequestPasswordReset(context.Background(), "reset@afi.local")
+	if err != nil || raw == "" {
+		t.Fatalf("raw=%q err=%v", raw, err)
+	}
+	unknown, err := svc.RequestPasswordReset(context.Background(), "missing@afi.local")
+	if err != nil || unknown != "" {
+		t.Fatalf("unknown=%q err=%v", unknown, err)
+	}
+	tok, user, err := svc.ConfirmPasswordReset(context.Background(), raw, "newpass12")
+	if err != nil || tok == "" || user == nil {
+		t.Fatalf("tok=%q user=%+v err=%v", tok, user, err)
+	}
+	_, err = svc.LoginWithPassword(context.Background(), "reset@afi.local", "newpass12")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = svc.ConfirmPasswordReset(context.Background(), raw, "another12")
+	if !errors.Is(err, identity.ErrInvalidResetToken) {
+		t.Fatalf("reuse got %v", err)
+	}
+}
+
+func TestPasswordReset_Expired(t *testing.T) {
+	t.Parallel()
+	users := newMemUsers()
+	_ = users.Create(context.Background(), identity.User{
+		ID: "u1", Email: "exp@afi.local", Name: "E", Role: "member", PasswordHash: "x",
+	})
+	resets := newMemResets()
+	tokens := auth.NewService("secret", time.Hour)
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	svc := &platform.AuthService{
+		Users: users, Resets: resets, Passwords: tokens, Tokens: tokens,
+		NewResetID: func() string { return "reset_exp" },
+		Now:        func() time.Time { return now },
+	}
+	raw, err := svc.RequestPasswordReset(context.Background(), "exp@afi.local")
+	if err != nil || raw == "" {
+		t.Fatalf("raw=%q err=%v", raw, err)
+	}
+	svc.Now = func() time.Time { return now.Add(2 * time.Hour) }
+	_, _, err = svc.ConfirmPasswordReset(context.Background(), raw, "newpass12")
+	if !errors.Is(err, identity.ErrInvalidResetToken) {
+		t.Fatalf("got %v", err)
 	}
 }

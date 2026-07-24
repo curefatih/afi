@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 18
+const schemaVersion = 19
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS platform_event_outbox CASCADE;
@@ -37,6 +37,7 @@ DROP TABLE IF EXISTS projects CASCADE;
 DROP TABLE IF EXISTS team_members CASCADE;
 DROP TABLE IF EXISTS teams CASCADE;
 DROP TABLE IF EXISTS organization_invites CASCADE;
+DROP TABLE IF EXISTS password_reset_tokens CASCADE;
 DROP TABLE IF EXISTS organization_members CASCADE;
 DROP TABLE IF EXISTS external_identities CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
@@ -79,6 +80,17 @@ CREATE TABLE IF NOT EXISTS external_identities (
 );
 CREATE INDEX IF NOT EXISTS external_identities_user_idx
     ON external_identities (user_id);
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    used_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS password_reset_tokens_user_idx
+    ON password_reset_tokens (user_id);
 
 CREATE TABLE IF NOT EXISTS organization_members (
     organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -834,6 +846,21 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		ALTER TABLE routes ADD COLUMN IF NOT EXISTS weight INT NOT NULL DEFAULT 1;
 	`); err != nil {
 		return fmt.Errorf("cycle32 route routing strategy: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS password_reset_tokens (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			token_hash TEXT NOT NULL UNIQUE,
+			expires_at TIMESTAMPTZ NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			used_at TIMESTAMPTZ
+		);
+		CREATE INDEX IF NOT EXISTS password_reset_tokens_user_idx
+			ON password_reset_tokens (user_id);
+	`); err != nil {
+		return fmt.Errorf("cycle33 password reset tokens: %w", err)
 	}
 	return nil
 }

@@ -17,20 +17,29 @@ import (
 
 // AuthService orchestrates password and SSO platform AuthN.
 type AuthService struct {
-	Users      identity.UserRepository
-	Identities identity.ExternalIdentityRepository
-	Tokens     identity.TokenIssuer
-	Passwords  identity.PasswordHasher
-	States     identity.SSOStateStore
-	Providers  map[string]identity.FederationProvider
-	SSOEnabled bool
+	Users          identity.UserRepository
+	Identities     identity.ExternalIdentityRepository
+	Resets         identity.PasswordResetRepository
+	Tokens         identity.TokenIssuer
+	Passwords      identity.PasswordHasher
+	States         identity.SSOStateStore
+	Providers      map[string]identity.FederationProvider
+	SSOEnabled     bool
+	SignupEnabled  bool
 	// PublicBaseURL is the control-plane base URL used for OAuth callbacks.
 	PublicBaseURL string
 	// AppBaseURL is the web UI base URL used after SSO callback redirect.
 	AppBaseURL string
 	NewUserID  func() string
 	NewLinkID  func() string
+	NewResetID func() string
 	Now        func() time.Time
+}
+
+// AuthFeatures describes public auth capabilities for the login UI.
+type AuthFeatures struct {
+	SignupEnabled        bool `json:"signup_enabled"`
+	PasswordResetEnabled bool `json:"password_reset_enabled"`
 }
 
 // SSOProviderInfo is a public descriptor for the login UI.
@@ -55,6 +64,166 @@ func (a *AuthService) ListSSOProviders() []SSOProviderInfo {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out
+}
+
+// Features returns public auth capability flags for the UI.
+func (a *AuthService) Features() AuthFeatures {
+	if a == nil {
+		return AuthFeatures{PasswordResetEnabled: true}
+	}
+	return AuthFeatures{
+		SignupEnabled:        a.SignupEnabled,
+		PasswordResetEnabled: true,
+	}
+}
+
+// Register creates a local password user and returns a session JWT.
+func (a *AuthService) Register(ctx context.Context, email, name, password string) (token string, user *identity.User, err error) {
+	if a == nil || a.Users == nil || a.Passwords == nil || a.Tokens == nil {
+		return "", nil, fmt.Errorf("auth service not configured")
+	}
+	if !a.SignupEnabled {
+		return "", nil, identity.ErrSignupDisabled
+	}
+	email = strings.ToLower(strings.TrimSpace(email))
+	name = strings.TrimSpace(name)
+	if email == "" || !strings.Contains(email, "@") || name == "" {
+		return "", nil, kernel.ErrInvalidRequest
+	}
+	if len(password) < 8 {
+		return "", nil, kernel.ErrInvalidRequest
+	}
+	if _, err := a.Users.GetByEmail(ctx, email); err == nil {
+		return "", nil, kernel.ErrConflict
+	} else if !errors.Is(err, kernel.ErrNotFound) {
+		return "", nil, err
+	}
+	hash, err := a.Passwords.Hash(password)
+	if err != nil {
+		return "", nil, err
+	}
+	now := time.Now().UTC()
+	if a.Now != nil {
+		now = a.Now().UTC()
+	}
+	id := ""
+	if a.NewUserID != nil {
+		id = a.NewUserID()
+	}
+	if id == "" {
+		return "", nil, fmt.Errorf("new user id not configured")
+	}
+	u := identity.User{
+		ID:           id,
+		Email:        email,
+		Name:         name,
+		Role:         "member",
+		PasswordHash: hash,
+		CreatedAt:    now,
+	}
+	if err := a.Users.Create(ctx, u); err != nil {
+		return "", nil, err
+	}
+	tok, err := a.Tokens.Issue(u.ID, u.Email, u.Role)
+	if err != nil {
+		return "", nil, err
+	}
+	out := u
+	out.PasswordHash = ""
+	return tok, &out, nil
+}
+
+// RequestPasswordReset creates a reset token for the user when the email exists.
+// Returns an empty rawToken (and nil error) when the email is unknown — anti-enumeration.
+func (a *AuthService) RequestPasswordReset(ctx context.Context, email string) (rawToken string, err error) {
+	if a == nil || a.Users == nil || a.Resets == nil {
+		return "", fmt.Errorf("auth service not configured")
+	}
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" || !strings.Contains(email, "@") {
+		return "", nil
+	}
+	user, err := a.Users.GetByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, kernel.ErrNotFound) {
+			return "", nil
+		}
+		return "", err
+	}
+	raw, hash, err := identity.NewOpaqueToken()
+	if err != nil {
+		return "", err
+	}
+	now := time.Now().UTC()
+	if a.Now != nil {
+		now = a.Now().UTC()
+	}
+	id := ""
+	if a.NewResetID != nil {
+		id = a.NewResetID()
+	}
+	if id == "" {
+		return "", fmt.Errorf("new reset id not configured")
+	}
+	if err := a.Resets.DeleteUnusedForUser(ctx, user.ID); err != nil {
+		return "", err
+	}
+	if err := a.Resets.Create(ctx, identity.PasswordResetToken{
+		ID:        id,
+		UserID:    user.ID,
+		TokenHash: hash,
+		ExpiresAt: now.Add(identity.DefaultPasswordResetTTL),
+		CreatedAt: now,
+	}); err != nil {
+		return "", err
+	}
+	return raw, nil
+}
+
+// ConfirmPasswordReset consumes a reset token, sets the new password, and issues a JWT.
+func (a *AuthService) ConfirmPasswordReset(ctx context.Context, rawToken, password string) (token string, user *identity.User, err error) {
+	if a == nil || a.Users == nil || a.Resets == nil || a.Passwords == nil || a.Tokens == nil {
+		return "", nil, fmt.Errorf("auth service not configured")
+	}
+	rawToken = strings.TrimSpace(rawToken)
+	if rawToken == "" || len(password) < 8 {
+		return "", nil, kernel.ErrInvalidRequest
+	}
+	stored, err := a.Resets.GetByTokenHash(ctx, identity.HashOpaqueToken(rawToken))
+	if err != nil {
+		if errors.Is(err, kernel.ErrNotFound) {
+			return "", nil, identity.ErrInvalidResetToken
+		}
+		return "", nil, err
+	}
+	now := time.Now().UTC()
+	if a.Now != nil {
+		now = a.Now().UTC()
+	}
+	if stored.UsedAt != nil || !stored.ExpiresAt.After(now) {
+		return "", nil, identity.ErrInvalidResetToken
+	}
+	hash, err := a.Passwords.Hash(password)
+	if err != nil {
+		return "", nil, err
+	}
+	if err := a.Users.UpdatePassword(ctx, stored.UserID, hash); err != nil {
+		return "", nil, err
+	}
+	if err := a.Resets.Consume(ctx, stored.ID, now); err != nil {
+		return "", nil, err
+	}
+	u, err := a.Users.GetByID(ctx, stored.UserID)
+	if err != nil {
+		return "", nil, err
+	}
+	tok, err := a.Tokens.Issue(u.ID, u.Email, u.Role)
+	if err != nil {
+		return "", nil, err
+	}
+	out := *u
+	out.PasswordHash = ""
+	return tok, &out, nil
 }
 
 // LoginWithPassword authenticates a local user and returns a session JWT.
