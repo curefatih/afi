@@ -107,6 +107,33 @@ class PlatformClient:
             auth=False,
         )
 
+    def auth_features(self) -> dict[str, Any]:
+        return self.request("GET", "/api/v1/platform/auth/features", auth=False)
+
+    def register(self, email: str, name: str, password: str) -> dict[str, Any]:
+        return self.request(
+            "POST",
+            "/api/v1/platform/auth/register",
+            body={"email": email, "name": name, "password": password},
+            auth=False,
+        )
+
+    def request_password_reset(self, email: str) -> dict[str, Any]:
+        return self.request(
+            "POST",
+            "/api/v1/platform/auth/password-reset",
+            body={"email": email},
+            auth=False,
+        )
+
+    def confirm_password_reset(self, token: str, password: str) -> dict[str, Any]:
+        return self.request(
+            "POST",
+            f"/api/v1/platform/auth/password-reset/{token}",
+            body={"password": password},
+            auth=False,
+        )
+
     def me(self) -> dict[str, Any]:
         return self.request("GET", "/api/v1/platform/auth/me")
 
