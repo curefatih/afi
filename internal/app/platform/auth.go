@@ -17,15 +17,15 @@ import (
 
 // AuthService orchestrates password and SSO platform AuthN.
 type AuthService struct {
-	Users          identity.UserRepository
-	Identities     identity.ExternalIdentityRepository
-	Resets         identity.PasswordResetRepository
-	Tokens         identity.TokenIssuer
-	Passwords      identity.PasswordHasher
-	States         identity.SSOStateStore
-	Providers      map[string]identity.FederationProvider
-	SSOEnabled     bool
-	SignupEnabled  bool
+	Users         identity.UserRepository
+	Identities    identity.ExternalIdentityRepository
+	Resets        identity.PasswordResetRepository
+	Tokens        identity.TokenIssuer
+	Passwords     identity.PasswordHasher
+	States        identity.SSOStateStore
+	Providers     map[string]identity.FederationProvider
+	SSOEnabled    bool
+	SignupEnabled bool
 	// PublicBaseURL is the control-plane base URL used for OAuth callbacks.
 	PublicBaseURL string
 	// AppBaseURL is the web UI base URL used after SSO callback redirect.
