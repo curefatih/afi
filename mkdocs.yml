@@ -33,6 +33,7 @@ nav:
       - Verify: getting-started/verify.md
   - API:
       - Overview: api/index.md
+      - Dialects: api/dialects.md
       - Platform: api/platform.md
       - Gateway: api/gateway.md
   - Development:

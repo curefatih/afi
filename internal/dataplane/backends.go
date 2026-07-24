@@ -41,7 +41,8 @@ type ImagesBackend interface {
 	Images(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte) (*http.Response, error)
 }
 
-// MessagesBackend is the modality port for native Anthropic /v1/messages.
+// MessagesBackend is retained for Anthropic transport PassThrough (used by ChatIR).
+// Client Anthropic dialect traffic goes through chat IR, not this port directly.
 type MessagesBackend interface {
 	PassThrough(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error)
 }

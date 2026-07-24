@@ -5,9 +5,19 @@
 The gateway runs an in-process hook chain on every modality (chat, messages, TTS, STT):
 
 1. **BeforeCall** — after auth, before routing/provider. Receives a mutable `CallContext` (principal, route, tags from `X-AFI-Tags`, metadata, body). May **allow**, **enrich**, or **deny** (`Allow=false` + status/reason).
-2. **BeforeChat** — chat only; mutates the OpenAI chat body after BeforeCall allows (existing `ChatHook`).
+2. **BeforeChat** — OpenAI, Anthropic, and Gemini chat dialects; mutates typed `sdk/chatir.Request` after decode.
 3. **AfterCall** — after the upstream attempt finishes (all modalities).
-4. **AfterChat** — chat only; logging/side effects after AfterCall.
+4. **AfterChat** — all three chat dialects; logging/side effects after AfterCall (`AfterChatInfo` includes `Dialect` and `Modality`).
+
+### Chat dialect hook bodies
+
+| Hook | Body / info shape |
+| ---- | ----------------- |
+| **BeforeCall** `call.Body` | Original client wire bytes for the request |
+| **BeforeCall** `call.Metadata["dialect"]` | `"openai"`, `"anthropic"`, or `"gemini"` |
+| **BeforeCall** `call.Metadata["client_body"]` | Same original OpenAI, Anthropic, or Gemini client wire |
+| **BeforeChat** / WASM `before_chat` | Typed `sdk/chatir.Request` — mutate messages here; the gateway preserves the client-selected route model and stream mode |
+| **AfterChat** | `AfterChatInfo` with `Model`, `Status`, `LatencyMs`, `ProviderType`, `TargetModel`, plus `Dialect` / `Modality` |
 
 Built-in gates always run in the request path (not registered on `pipeline.Hooks`, so replacing the chain cannot bypass them). Order:
 
@@ -26,7 +36,7 @@ hooks := dataplane.NewHookChain().
 pipeline.Hooks = hooks
 ```
 
-Inspect active hooks on `GET /healthz` (`hooks` array of `{name, before_call, after_call, before_chat, after_chat}`) or the platform **Hooks** page.
+Inspect active hooks on `GET /healthz` (`hooks` array includes `before_call`, `after_call`, `before_chat`, and `after_chat`) or the platform **Hooks** page.
 
 ### Request tags
 
@@ -57,7 +67,7 @@ Guest ABI, limits, pooling benchmarks: [wasm.md](wasm.md). Example: [`extensions
 
 ## Future
 
-* gRPC auth / secrets / notifications host adapters (capabilities reserved; Chat + hooks shipped — see [design note](../../internal-docs/grpc-extension-runtime.md) and [`extensions/grpcecho`](../../extensions/grpcecho))
+* gRPC auth / secrets / notifications host adapters (capabilities reserved; Chat + hooks shipped — see [`extensions/grpcecho`](../../extensions/grpcecho))
 * Remote / HTTP-backed WASM artifact stores (beyond local `file://` paths)
 
 Redis rate limits and CEL request policies remain available via the built-in BeforeCall gates (see Quotas / Policies in the platform UI).

@@ -19,7 +19,7 @@ Full operator table (defaults, required vs optional, which process): [Customizat
 | `AFI_GATEWAY_ADDR` | `:8080` | gateway |
 | `AFI_SNAPSHOT_POLL_INTERVAL` | `2s` | gateway watch |
 | `AFI_WASM_BEFORE_CALL` | _(empty)_ | gateway — optional TinyGo `.wasm` path (`before_call`) |
-| `AFI_WASM_BEFORE_CHAT` | _(empty)_ | gateway — optional TinyGo `.wasm` path (`before_chat`) |
+| `AFI_WASM_BEFORE_CHAT` | _(empty)_ | gateway — optional TinyGo `.wasm` path (`before_chat`, typed chat IR) |
 | `AFI_WASM_S3_*` | _(empty)_ | gateway — S3-compatible fetch for `s3://` wasm module URIs |
 | `AFI_PLUGIN_SOCK` | _(set by gateway)_ | gRPC plugin process — unix socket path when spawned via `gateway.grpc_extensions[].command` |
 | `AFI_JWT_SECRET` | from yaml | controlplane auth |
@@ -238,7 +238,7 @@ Compiled into the gateway snapshot. Resolution order: **route `retry` → org `d
 | `latency` | Lowest gateway-local EWMA latency among primary + fallbacks | Remaining by ascending EWMA (unknown → median of known) |
 | `cost` | Lowest embedded catalog unit price (`input+output` $/MTok) | Remaining by ascending price (unknown last) |
 
-Unknown strategies are rejected at write time. Adaptive signals are process-local (multi-instance skew accepted); see `internal-docs/weighted-adaptive-routing.md`.
+Unknown strategies are rejected at write time. Adaptive signals are process-local, so multi-instance deployments may observe temporary routing skew.
 
 ### CEL policies
 

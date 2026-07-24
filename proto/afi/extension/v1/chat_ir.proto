@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package afi.extension.v1;
+
+option go_package = "github.com/curefatih/afi/gen/proto/afi/extension/v1;extensionv1";
+
+import "afi/extension/v1/provider.proto";
+
+// ChatIRRequest carries a typed chat IR request for Provider.ChatIR / ChatIRStream.
+message ChatIRRequest {
+  ProviderConfig config = 1;
+  string target_model = 2;
+  ChatIRCompletionRequest request = 3;
+}
+
+message ChatIRCompletionRequest {
+  string model = 1;
+  repeated ChatIRMessage messages = 2;
+  string system = 3;
+  int32 max_tokens = 4;
+  optional double temperature = 5;
+  optional double top_p = 6;
+  bool stream = 7;
+  repeated string stop = 8;
+  repeated ChatIRTool tools = 9;
+  ChatIRToolChoice tool_choice = 10;
+}
+
+message ChatIRMessage {
+  string role = 1;
+  string content = 2;
+  repeated ChatIRContentPart parts = 3;
+  repeated ChatIRToolCall tool_calls = 4;
+  string tool_call_id = 5;
+}
+
+message ChatIRContentPart {
+  string type = 1; // text | image
+  string text = 2;
+  ChatIRImageSource image = 3;
+}
+
+message ChatIRImageSource {
+  string url = 1;
+  string media_type = 2;
+  string data = 3;
+}
+
+message ChatIRTool {
+  string name = 1;
+  string description = 2;
+  bytes parameters = 3; // JSON Schema object
+}
+
+message ChatIRToolChoice {
+  string mode = 1; // auto | none | required | tool
+  string name = 2;
+}
+
+message ChatIRToolCall {
+  string id = 1;
+  string name = 2;
+  string arguments = 3; // JSON-encoded arguments object
+}
+
+message ChatIRUsage {
+  int64 prompt_tokens = 1;
+  int64 completion_tokens = 2;
+}
+
+message ChatIRCompletion {
+  string id = 1;
+  string model = 2;
+  string role = 3;
+  string content = 4;
+  repeated ChatIRToolCall tool_calls = 5;
+  string finish_reason = 6;
+  ChatIRUsage usage = 7;
+}
+
+// ChatIRResponse is the unary (non-stream) ChatIR reply.
+message ChatIRResponse {
+  int32 status_code = 1;
+  map<string, string> headers = 2;
+  ChatIRCompletion completion = 3;
+  bytes error_body = 4;
+}
+
+enum ChatIRStreamEventKind {
+  CHAT_IR_STREAM_EVENT_KIND_UNSPECIFIED = 0;
+  CHAT_IR_STREAM_EVENT_KIND_MESSAGE_START = 1;
+  CHAT_IR_STREAM_EVENT_KIND_TEXT_DELTA = 2;
+  CHAT_IR_STREAM_EVENT_KIND_TOOL_CALL_START = 3;
+  CHAT_IR_STREAM_EVENT_KIND_TOOL_CALL_DELTA = 4;
+  CHAT_IR_STREAM_EVENT_KIND_MESSAGE_END = 5;
+  CHAT_IR_STREAM_EVENT_KIND_ERROR = 6;
+}
+
+message ChatIRStreamEvent {
+  ChatIRStreamEventKind kind = 1;
+  string id = 2;
+  string model = 3;
+  string role = 4;
+  string text = 5;
+  string finish_reason = 6;
+  ChatIRUsage usage = 7;
+  string error = 8;
+  int32 tool_index = 9;
+  string tool_id = 10;
+  string tool_name = 11;
+  string args_delta = 12;
+}
+
+// Provider implements typed chat IR (CAPABILITY_PROVIDER_CHAT).
+service Provider {
+  rpc ChatIR(ChatIRRequest) returns (ChatIRResponse);
+  rpc ChatIRStream(ChatIRRequest) returns (stream ChatIRStreamEvent);
+}
+

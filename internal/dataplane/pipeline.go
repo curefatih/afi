@@ -5,16 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"math/rand"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/curefatih/afi/internal/adapters/llm"
 	"github.com/curefatih/afi/internal/adapters/secrets"
-	"github.com/curefatih/afi/internal/dataplane/openaichat"
+	"github.com/curefatih/afi/internal/dataplane/ir"
 	"github.com/curefatih/afi/internal/dataplane/routing"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/modelcatalog"
@@ -28,14 +26,15 @@ import (
 var ErrStreamUnsupported = errors.New("streaming is not supported for this provider")
 
 const (
-	ModalityChat      = "chat"
-	ModalityMessages  = "messages"
-	ModalityTTS       = "tts"
-	ModalitySTT       = "stt"
-	ModalityEmbedding = "embedding"
-	ModalityImage     = "image"
-	ModalityMCP       = "mcp"
-	ModalityA2A       = "a2a"
+	ModalityChat            = "chat"
+	ModalityMessages        = "messages"
+	ModalityGenerateContent = "generate_content"
+	ModalityTTS             = "tts"
+	ModalitySTT             = "stt"
+	ModalityEmbedding       = "embedding"
+	ModalityImage           = "image"
+	ModalityMCP             = "mcp"
+	ModalityA2A             = "a2a"
 )
 
 // UsageEvent is an alias for the canonical usage.Event emitted on the request path.
@@ -78,12 +77,20 @@ func (p *Pipeline) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", p.handleHealth)
 	mux.HandleFunc("GET /v1/models", p.handleModels)
+	mux.HandleFunc("GET /openai/v1/models", p.handleModels)
 	mux.HandleFunc("POST /v1/chat/completions", p.handleChatCompletions)
+	mux.HandleFunc("POST /openai/v1/chat/completions", p.handleChatCompletions)
 	mux.HandleFunc("POST /v1/messages", p.handleMessages)
+	mux.HandleFunc("POST /anthropic/v1/messages", p.handleMessages)
+	mux.HandleFunc("POST /gemini/v1beta/models/{operation}", p.handleGeminiGenerateContent)
 	mux.HandleFunc("POST /v1/embeddings", p.handleEmbeddings)
+	mux.HandleFunc("POST /openai/v1/embeddings", p.handleEmbeddings)
 	mux.HandleFunc("POST /v1/images/generations", p.handleImagesGenerations)
+	mux.HandleFunc("POST /openai/v1/images/generations", p.handleImagesGenerations)
 	mux.HandleFunc("POST /v1/audio/speech", p.handleAudioSpeech)
+	mux.HandleFunc("POST /openai/v1/audio/speech", p.handleAudioSpeech)
 	mux.HandleFunc("POST /v1/audio/transcriptions", p.handleAudioTranscriptions)
+	mux.HandleFunc("POST /openai/v1/audio/transcriptions", p.handleAudioTranscriptions)
 	mux.HandleFunc("POST /mcp/{alias}", p.handleMCP)
 	mux.HandleFunc("GET /mcp/{alias}", p.handleMCP)
 	mux.HandleFunc("DELETE /mcp/{alias}", p.handleMCP)
@@ -95,7 +102,7 @@ func (p *Pipeline) Handler() http.Handler {
 func withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		allowHeaders := "Authorization, Content-Type, X-AFI-Tags"
+		allowHeaders := "Authorization, Content-Type, X-AFI-Tags, x-api-key, x-goog-api-key, anthropic-version"
 		if reqHdrs := strings.TrimSpace(r.Header.Get("Access-Control-Request-Headers")); reqHdrs != "" {
 			allowHeaders = reqHdrs
 		}
@@ -131,311 +138,6 @@ func (p *Pipeline) handleHealth(w http.ResponseWriter, r *http.Request) {
 type routeAttempt struct {
 	Provider    snapshot.Provider
 	TargetModel string
-}
-
-func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
-	reqID := kernel.NewRequestID()
-	ctx := kernel.WithRequestID(r.Context(), reqID)
-	log := p.Log.With("request_id", reqID)
-	start := time.Now()
-
-	rawKey, err := bearerToken(r.Header.Get("Authorization"))
-	if err != nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "missing or invalid authorization", "type": "invalid_request_error"},
-		})
-		return
-	}
-
-	snap := p.Holder.Get()
-	if snap == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
-			"error": map[string]string{"message": "no snapshot loaded", "type": "server_error"},
-		})
-		return
-	}
-
-	key, ok := snap.LookupKey(rawKey)
-	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "invalid api key", "type": "invalid_request_error"},
-		})
-		return
-	}
-
-	body, err := io.ReadAll(io.LimitReader(r.Body, 8<<20))
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{
-			"error": map[string]string{"message": "failed to read body", "type": "invalid_request_error"},
-		})
-		return
-	}
-
-	var reqBody struct {
-		Model  string `json:"model"`
-		Stream bool   `json:"stream"`
-	}
-	if err := json.Unmarshal(body, &reqBody); err != nil || reqBody.Model == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]any{
-			"error": map[string]string{"message": "model is required", "type": "invalid_request_error"},
-		})
-		return
-	}
-
-	call := newCallContext(key, reqBody.Model, "/v1/chat/completions", ModalityChat, reqBody.Stream, body, TagsFromRequest(r))
-	call.Headers = HeadersForPolicy(r.Header)
-	if !p.gateCall(ctx, w, snap, call) {
-		return
-	}
-	body = call.Body
-
-	route, provider, ok := snap.LookupRoute(key.OrganizationID, reqBody.Model)
-	if !ok {
-		writeJSON(w, http.StatusBadRequest, map[string]any{
-			"error": map[string]string{"message": "no route for model", "type": "invalid_request_error"},
-		})
-		return
-	}
-
-	attempts := p.buildAttempts(snap, route, provider)
-	if len(attempts) == 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]any{
-			"error": map[string]string{"message": "no usable providers for route", "type": "invalid_request_error"},
-		})
-		return
-	}
-
-	body, err = p.Hooks.RunBeforeChat(ctx, body)
-	if err != nil {
-		log.Error("chat hook", "err", err)
-		writeJSON(w, http.StatusBadRequest, map[string]any{
-			"error": map[string]string{"message": "chat hook failed: " + err.Error(), "type": "invalid_request_error"},
-		})
-		return
-	}
-	if p.Wasm != nil {
-		body, err = p.Wasm.RunBeforeChat(ctx, snap, call.Principal.OrganizationID, body)
-		if err != nil {
-			log.Error("wasm before_chat", "err", err)
-			writeJSON(w, http.StatusBadRequest, map[string]any{
-				"error": map[string]string{"message": "chat hook failed: " + err.Error(), "type": "invalid_request_error"},
-			})
-			return
-		}
-	}
-	call.Body = body
-
-	retryCfg := snap.ResolveRetry(route)
-	log.Info("chat.completions",
-		"project_id", key.ProjectID,
-		"model", reqBody.Model,
-		"target_model", route.TargetModel,
-		"provider", provider.ID,
-		"fallbacks", len(route.Fallbacks),
-		"retry_max_attempts", maxTriesFor(retryCfg),
-		"stream", reqBody.Stream,
-		"snapshot_version", snap.Version,
-	)
-
-	var (
-		resp             *http.Response
-		lastErr          error
-		usedProvider     snapshot.Provider
-		usedTarget       string
-		usedCredentialID string
-		promptTokens     int64
-		completionTokens int64
-		status           = "ok"
-	)
-
-	maxTries := maxTriesFor(retryCfg)
-targetLoop:
-	for i, attempt := range attempts {
-		for try := 0; try < maxTries; try++ {
-			if try > 0 {
-				if sleepErr := sleepBeforeRetry(ctx, retryCfg, try-1); sleepErr != nil {
-					lastErr = sleepErr
-					discardResponse(resp)
-					resp = nil
-					break targetLoop
-				}
-			}
-
-			bound, credID, bindErr := p.bindProviderSecret(ctx, snap, attempt.Provider, key, policy.Request{
-				Model:   reqBody.Model,
-				Path:    call.Route.Path,
-				Stream:  reqBody.Stream,
-				Tags:    call.Tags,
-				Headers: call.Headers,
-			})
-			if bindErr != nil {
-				lastErr = bindErr
-				log.Warn("credential resolve failed", "provider", attempt.Provider.ID, "err", bindErr, "attempt", i)
-				// Credential errors are not upstream retries — move to next target.
-				if i+1 < len(attempts) {
-					continue targetLoop
-				}
-				break targetLoop
-			}
-			usedProvider = bound
-			usedTarget = attempt.TargetModel
-			usedCredentialID = credID
-			attemptStart := time.Now()
-			resp, lastErr = p.callProvider(ctx, bound, attempt.TargetModel, body, reqBody.Stream, call)
-			if lastErr != nil {
-				p.observeRouteAttempt(attempt.Provider.ID, attempt.TargetModel, attemptStart, true)
-				log.Warn("upstream attempt failed", "provider", attempt.Provider.ID, "err", lastErr, "attempt", i, "try", try)
-				if errors.Is(lastErr, ErrStreamUnsupported) {
-					break targetLoop
-				}
-				if shouldFailoverError(lastErr) {
-					if try+1 < maxTries {
-						logRetry(log, attempt.Provider.ID, try, maxTries, 0, lastErr)
-						continue
-					}
-					if i+1 < len(attempts) {
-						continue targetLoop
-					}
-				}
-				break targetLoop
-			}
-			p.observeRouteAttempt(attempt.Provider.ID, attempt.TargetModel, attemptStart, resp.StatusCode >= 400)
-			if shouldFailoverStatus(resp.StatusCode) {
-				if try+1 < maxTries || i+1 < len(attempts) {
-					log.Warn("upstream attempt status", "provider", attempt.Provider.ID, "status", resp.StatusCode, "attempt", i, "try", try)
-					code := resp.StatusCode
-					discardResponse(resp)
-					resp = nil
-					if try+1 < maxTries {
-						logRetry(log, attempt.Provider.ID, try, maxTries, code, nil)
-						continue
-					}
-					continue targetLoop
-				}
-			}
-			break targetLoop
-		}
-	}
-
-	if lastErr != nil && resp == nil {
-		if errors.Is(lastErr, ErrStreamUnsupported) {
-			writeJSON(w, http.StatusBadRequest, map[string]any{
-				"error": map[string]string{"message": lastErr.Error(), "type": "invalid_request_error"},
-			})
-			return
-		}
-		log.Error("upstream error", "err", lastErr)
-		p.recordUsage(UsageEvent{
-			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
-			CredentialID: usedCredentialID,
-			Model:        reqBody.Model,
-			ProviderType: usedProvider.Type,
-			TargetModel:  usedTarget,
-			Status:       "error",
-			LatencyMs:    time.Since(start).Milliseconds(),
-			Modality:     ModalityChat,
-			Tags:         cloneTags(call.Tags),
-		})
-		afterInfo := AfterCallInfo{
-			Status: "error", LatencyMs: time.Since(start).Milliseconds(),
-			ProviderType: usedProvider.Type, TargetModel: usedTarget,
-		}
-		p.runAfterCall(ctx, snap, call, afterInfo)
-		p.Hooks.RunAfterChat(ctx, AfterChatInfo{
-			Model: reqBody.Model, Status: "error",
-			LatencyMs:    time.Since(start).Milliseconds(),
-			ProviderType: usedProvider.Type, TargetModel: usedTarget,
-		})
-		writeJSON(w, http.StatusBadGateway, map[string]any{
-			"error": map[string]string{"message": lastErr.Error(), "type": "server_error"},
-		})
-		return
-	}
-	if resp == nil {
-		writeJSON(w, http.StatusBadGateway, map[string]any{
-			"error": map[string]string{"message": "all upstream attempts failed", "type": "server_error"},
-		})
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		status = "upstream_error"
-	}
-
-	if !reqBody.Stream && resp.StatusCode < 400 {
-		respBody, err := io.ReadAll(resp.Body)
-		if err != nil {
-			writeJSON(w, http.StatusBadGateway, map[string]any{
-				"error": map[string]string{"message": "failed to read upstream", "type": "server_error"},
-			})
-			return
-		}
-		promptTokens, completionTokens = openaichat.ParseUsageTokens(respBody)
-		p.incrTokens(ctx, snap, key, promptTokens+completionTokens)
-		applyResponseHeaders(w, call)
-		for k, vals := range resp.Header {
-			if strings.EqualFold(k, "Transfer-Encoding") || strings.EqualFold(k, "Connection") {
-				continue
-			}
-			for _, v := range vals {
-				w.Header().Add(k, v)
-			}
-		}
-		w.WriteHeader(resp.StatusCode)
-		_, _ = w.Write(respBody)
-	} else if reqBody.Stream && resp.StatusCode < 400 {
-		applyResponseHeaders(w, call)
-		for k, vals := range resp.Header {
-			if strings.EqualFold(k, "Transfer-Encoding") || strings.EqualFold(k, "Connection") {
-				continue
-			}
-			for _, v := range vals {
-				w.Header().Add(k, v)
-			}
-		}
-		w.WriteHeader(resp.StatusCode)
-		var copyErr error
-		promptTokens, completionTokens, copyErr = openaichat.CopySSEAndParseUsage(w, resp.Body)
-		if copyErr != nil {
-			log.Error("copy stream response", "err", copyErr)
-			status = "error"
-		}
-		if promptTokens+completionTokens > 0 {
-			p.incrTokens(ctx, snap, key, promptTokens+completionTokens)
-		}
-	} else {
-		if err := CopyResponse(w, resp); err != nil {
-			log.Error("copy response", "err", err)
-			status = "error"
-		}
-	}
-
-	p.recordUsage(UsageEvent{
-		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
-		CredentialID:     usedCredentialID,
-		Model:            reqBody.Model,
-		ProviderType:     usedProvider.Type,
-		TargetModel:      usedTarget,
-		Status:           status,
-		LatencyMs:        time.Since(start).Milliseconds(),
-		PromptTokens:     promptTokens,
-		CompletionTokens: completionTokens,
-		Modality:         ModalityChat,
-		Metrics:          tokenMetrics(promptTokens, completionTokens),
-		Tags:             cloneTags(call.Tags),
-	})
-	afterInfo := AfterCallInfo{
-		Status: status, LatencyMs: time.Since(start).Milliseconds(),
-		ProviderType: usedProvider.Type, TargetModel: usedTarget,
-		PromptTokens: promptTokens, CompletionTokens: completionTokens,
-	}
-	p.runAfterCall(ctx, snap, call, afterInfo)
-	p.Hooks.RunAfterChat(ctx, AfterChatInfo{
-		Model: reqBody.Model, Status: status,
-		LatencyMs:    time.Since(start).Milliseconds(),
-		ProviderType: usedProvider.Type, TargetModel: usedTarget,
-	})
 }
 
 func tokenMetrics(prompt, completion int64) map[string]any {
@@ -607,34 +309,13 @@ func modelListItem(virtualModel, targetModel, providerType string, caps snapshot
 	if maxOut > 0 {
 		item["max_output_tokens"] = maxOut
 	}
-	if supportsVision {
+	if supportsVision && ir.DialectSupportsVision {
 		item["supports_vision"] = true
 	}
-	if supportsTools {
+	if supportsTools && ir.DialectSupportsTools {
 		item["supports_tools"] = true
 	}
 	return item
-}
-
-func (p *Pipeline) callProvider(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool, call *CallContext) (*http.Response, error) {
-	if p.Providers == nil {
-		return nil, fmt.Errorf("provider registry not configured")
-	}
-	adapter, ok := p.Providers.Get(provider.Type)
-	if !ok {
-		return nil, fmt.Errorf("unsupported provider type %q", provider.Type)
-	}
-	caps := snapshot.NormalizeCapabilities(provider.Type, provider.Capabilities)
-	if stream && !caps.Stream {
-		return nil, fmt.Errorf("%w", ErrStreamUnsupported)
-	}
-	if !caps.Chat {
-		return nil, fmt.Errorf("chat is not supported for provider type %q", provider.Type)
-	}
-	if call != nil {
-		ctx = llm.WithExtraHeaders(ctx, call.RequestHeaders)
-	}
-	return adapter.Chat(ctx, provider, targetModel, body, stream)
 }
 
 // bindProviderSecret resolves BYOK via a matching use_credential policy action,
@@ -731,6 +412,25 @@ func bearerToken(h string) (string, error) {
 		return "", errors.New("empty token")
 	}
 	return tok, nil
+}
+
+// virtualAPIKey extracts the AFI virtual key from Authorization: Bearer or Anthropic-style x-api-key.
+func virtualAPIKey(r *http.Request) (string, error) {
+	if tok, err := bearerToken(r.Header.Get("Authorization")); err == nil {
+		return tok, nil
+	}
+	if key := strings.TrimSpace(r.Header.Get("x-api-key")); key != "" {
+		return key, nil
+	}
+	if strings.HasPrefix(r.URL.Path, "/gemini/") {
+		if key := strings.TrimSpace(r.Header.Get("x-goog-api-key")); key != "" {
+			return key, nil
+		}
+		if key := strings.TrimSpace(r.URL.Query().Get("key")); key != "" {
+			return key, nil
+		}
+	}
+	return "", errors.New("missing bearer")
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

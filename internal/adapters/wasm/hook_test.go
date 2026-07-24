@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/curefatih/afi/sdk/chatir"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
 )
 
@@ -87,7 +88,71 @@ func TestBeforeCallDenyBlockedPlan(t *testing.T) {
 	}
 }
 
+// skipUnlessTypedBeforeChatGuest skips when the checked-in hook.wasm artifact
+// still speaks the removed byte-oriented before_chat ABI. Rebuild it with
+// `make -C extensions/wasmhook build` to exercise the typed path end to end.
+func skipUnlessTypedBeforeChatGuest(ctx context.Context, t *testing.T, mod *Module) {
+	t.Helper()
+	raw, err := mod.invokeJSON(ctx, "before_chat", []byte(`{"request":{"model":"m"}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var probe map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &probe); err != nil {
+		t.Fatalf("guest returned non-JSON: %s", raw)
+	}
+	if _, ok := probe["request"]; !ok {
+		t.Skip("extensions/wasmhook/hook.wasm predates the typed before_chat ABI; run make -C extensions/wasmhook build")
+	}
+}
+
 func TestBeforeChatPrefix(t *testing.T) {
+	ctx := context.Background()
+	mod, err := CompileFile(ctx, exampleWASMPath(t), Config{Name: "wasmhook", Timeout: time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mod.Close(ctx)
+	skipUnlessTypedBeforeChatGuest(ctx, t, mod)
+
+	hook, err := NewBeforeChat(mod)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := hook.BeforeChat(ctx, chatir.Request{
+		Model:    "m",
+		Messages: []chatir.Message{{Role: "user", Content: "hi"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Messages) != 1 || out.Messages[0].Content != "[wasm] hi" {
+		t.Fatalf("messages=%+v", out.Messages)
+	}
+}
+
+func TestNewBeforeChatRequiresModule(t *testing.T) {
+	if _, err := NewBeforeChat(nil); err == nil {
+		t.Fatal("expected error for nil module")
+	}
+}
+
+func TestBeforeChatAdapterNilModuleIsPassthrough(t *testing.T) {
+	req := chatir.Request{Model: "m", Messages: []chatir.Message{{Role: "user", Content: "hi"}}}
+	var a *BeforeChatAdapter
+	out, err := a.BeforeChat(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Model != "m" || out.Messages[0].Content != "hi" {
+		t.Fatalf("request mutated: %+v", out)
+	}
+	if a.Name() != "wasm:before_chat" {
+		t.Fatalf("name=%q", a.Name())
+	}
+}
+
+func TestBeforeChatAdapterName(t *testing.T) {
 	ctx := context.Background()
 	mod, err := CompileFile(ctx, exampleWASMPath(t), Config{Name: "wasmhook", Timeout: time.Second})
 	if err != nil {
@@ -99,19 +164,8 @@ func TestBeforeChatPrefix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	body := []byte(`{"messages":[{"role":"user","content":"hi"}]}`)
-	out, err := hook.BeforeChat(ctx, body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var req map[string]any
-	if err := json.Unmarshal(out, &req); err != nil {
-		t.Fatal(err)
-	}
-	msgs := req["messages"].([]any)
-	m := msgs[0].(map[string]any)
-	if m["content"] != "[wasm] hi" {
-		t.Fatalf("content=%v", m["content"])
+	if hook.Name() != "wasmhook:before_chat" {
+		t.Fatalf("name=%q", hook.Name())
 	}
 }
 

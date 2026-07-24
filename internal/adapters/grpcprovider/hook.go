@@ -6,6 +6,7 @@ import (
 	"time"
 
 	extensionv1 "github.com/curefatih/afi/gen/proto/afi/extension/v1"
+	"github.com/curefatih/afi/sdk/chatir"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -91,20 +92,22 @@ func (a *BeforeChatAdapter) Name() string {
 	return a.name
 }
 
-func (a *BeforeChatAdapter) BeforeChat(ctx context.Context, body []byte) ([]byte, error) {
+func (a *BeforeChatAdapter) BeforeChat(ctx context.Context, req chatir.Request) (chatir.Request, error) {
 	if a == nil || a.client == nil {
-		return body, nil
+		return req, nil
 	}
 	cctx, cancel := context.WithTimeout(ctx, a.timeout)
 	defer cancel()
-	resp, err := a.client.BeforeChat(cctx, &extensionv1.BeforeChatRequest{Body: body})
+	resp, err := a.client.BeforeChat(cctx, &extensionv1.BeforeChatRequest{
+		Request: ChatIRRequestProto(req),
+	})
 	if err != nil {
-		return nil, fmt.Errorf("grpc hook %s BeforeChat: %w", a.Name(), err)
+		return req, fmt.Errorf("grpc hook %s BeforeChat: %w", a.Name(), err)
 	}
-	if resp == nil || resp.Body == nil {
-		return body, nil
+	if resp == nil || resp.Request == nil {
+		return req, nil
 	}
-	return resp.Body, nil
+	return ChatIRRequestFromProto(resp.Request), nil
 }
 
 // AfterChatAdapter implements sdk/hook.AfterChatHook over gRPC.
@@ -244,15 +247,15 @@ func normalizeMetadata(m map[string]any) map[string]any {
 	}
 	out := make(map[string]any, len(m))
 	for k, v := range m {
-		switch v.(type) {
+		switch typed := v.(type) {
 		case nil, bool, float64, string, []any, map[string]any:
 			out[k] = v
 		case int:
-			out[k] = float64(v.(int))
+			out[k] = float64(typed)
 		case int64:
-			out[k] = float64(v.(int64))
+			out[k] = float64(typed)
 		case float32:
-			out[k] = float64(v.(float32))
+			out[k] = float64(typed)
 		default:
 			out[k] = fmt.Sprint(v)
 		}

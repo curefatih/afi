@@ -32,17 +32,19 @@ func (s *statusRecorder) Unwrap() http.ResponseWriter { return s.ResponseWriter 
 
 func modalityFromPath(path string) string {
 	switch {
-	case strings.HasPrefix(path, "/v1/chat/completions"):
+	case strings.HasPrefix(path, "/openai/v1/chat/completions"), strings.HasPrefix(path, "/v1/chat/completions"):
 		return ModalityChat
-	case strings.HasPrefix(path, "/v1/messages"):
+	case strings.HasPrefix(path, "/anthropic/v1/messages"), strings.HasPrefix(path, "/v1/messages"):
 		return ModalityMessages
-	case strings.HasPrefix(path, "/v1/embeddings"):
+	case strings.HasPrefix(path, "/gemini/v1beta/models/"):
+		return ModalityGenerateContent
+	case strings.HasPrefix(path, "/openai/v1/embeddings"), strings.HasPrefix(path, "/v1/embeddings"):
 		return ModalityEmbedding
-	case strings.HasPrefix(path, "/v1/images/"):
+	case strings.HasPrefix(path, "/openai/v1/images/"), strings.HasPrefix(path, "/v1/images/"):
 		return ModalityImage
-	case strings.HasPrefix(path, "/v1/audio/speech"):
+	case strings.HasPrefix(path, "/openai/v1/audio/speech"), strings.HasPrefix(path, "/v1/audio/speech"):
 		return ModalityTTS
-	case strings.HasPrefix(path, "/v1/audio/transcriptions"):
+	case strings.HasPrefix(path, "/openai/v1/audio/transcriptions"), strings.HasPrefix(path, "/v1/audio/transcriptions"):
 		return ModalitySTT
 	case strings.HasPrefix(path, "/mcp/"):
 		return ModalityMCP

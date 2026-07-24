@@ -25,10 +25,12 @@ const (
 type Capability int32
 
 const (
-	Capability_CAPABILITY_UNSPECIFIED      Capability = 0
+	Capability_CAPABILITY_UNSPECIFIED Capability = 0
+	// Typed chat IR provider (Provider.ChatIR / ChatIRStream).
 	Capability_CAPABILITY_PROVIDER_CHAT    Capability = 1
 	Capability_CAPABILITY_HOOK_BEFORE_CALL Capability = 2
 	Capability_CAPABILITY_HOOK_AFTER_CALL  Capability = 3
+	// Typed chat IR mutation hook (Hook.BeforeChat).
 	Capability_CAPABILITY_HOOK_BEFORE_CHAT Capability = 4
 	Capability_CAPABILITY_HOOK_AFTER_CHAT  Capability = 5
 	// Reserved for follow-on host adapters (not wired in v1).

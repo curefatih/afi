@@ -70,7 +70,7 @@ Guest must export TinyGo allocator symbols and at least one hook:
 | `malloc` | `(size i32) -> i32` | Host allocates input buffer |
 | `free` | `(ptr i32)` | Host frees input/output buffers |
 | `before_call` | `(ptr i32, len i32) -> i64` | Optional; packed `ptr<<32 \| len` of JSON out |
-| `before_chat` | `(ptr i32, len i32) -> i64` | Optional; same packing |
+| `before_chat` | `(ptr i32, len i32) -> i64` | Optional; typed chat IR JSON mutation |
 | `after_call` | `(ptr i32, len i32) -> i64` | Optional; side effects (empty return OK) |
 
 Build with:
@@ -182,17 +182,36 @@ Then set `module_uri` to `s3://bucket/key` (digest still verified when provided)
 
 ### `before_chat` JSON
 
-**Input:** `{ "body_b64": "..." }`  
-**Output:** `{ "body_b64": "..." }` — decoded bytes become the chat request body.
+Typed chat IR mutation. **Input and output:**
+
+```json
+{
+  "request": {
+    "model": "route-alias",
+    "messages": [{"role": "user", "content": "hello"}],
+    "system": "",
+    "max_tokens": 128,
+    "stream": false,
+    "tools": [],
+    "tool_choice": null
+  },
+  "config": {}
+}
+```
+
+Return the same envelope with the mutated `request`. The host preserves the
+client-selected route model and stream mode after all hooks. Message parts,
+images, tools, tool calls, and generation options use the snake_case fields in
+[`sdk/chatir`](../../sdk/chatir).
 
 ??? example "TinyGo guest `before_chat` (excerpt)"
 
     ```go
     //go:wasmexport before_chat
     func _before_chat(ptr, size uint32) uint64 {
-        // decode body_b64 → OpenAI chat JSON
+        // decode {"request": chatir.Request, "config": ...}
         // prefix last user message with "[wasm] "
-        // return {"body_b64": "..."}
+        // return the same envelope
     }
     ```
 

@@ -2,10 +2,9 @@ package demohook
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
 
+	"github.com/curefatih/afi/sdk/chatir"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
 )
 
@@ -29,39 +28,20 @@ func NewWithLog(log *slog.Logger) *Hook {
 
 func (Hook) Name() string { return Name }
 
-func (Hook) BeforeChat(_ context.Context, body []byte) ([]byte, error) {
-	var req map[string]any
-	if err := json.Unmarshal(body, &req); err != nil {
-		return body, fmt.Errorf("demohook: %w", err)
-	}
-	msgs, ok := req["messages"].([]any)
-	if !ok || len(msgs) == 0 {
-		return body, nil
-	}
-	for i := len(msgs) - 1; i >= 0; i-- {
-		m, ok := msgs[i].(map[string]any)
-		if !ok {
+func (Hook) BeforeChat(_ context.Context, req chatir.Request) (chatir.Request, error) {
+	const prefix = "[hook:demo] "
+	for i := len(req.Messages) - 1; i >= 0; i-- {
+		if req.Messages[i].Role != "user" {
 			continue
 		}
-		role, _ := m["role"].(string)
-		if role != "user" {
-			continue
-		}
-		content, _ := m["content"].(string)
-		const prefix = "[hook:demo] "
+		content := req.Messages[i].Content
 		if len(content) >= len(prefix) && content[:len(prefix)] == prefix {
 			break
 		}
-		m["content"] = prefix + content
-		msgs[i] = m
-		req["messages"] = msgs
-		out, err := json.Marshal(req)
-		if err != nil {
-			return body, err
-		}
-		return out, nil
+		req.Messages[i].Content = prefix + content
+		break
 	}
-	return body, nil
+	return req, nil
 }
 
 func (h *Hook) AfterChat(_ context.Context, info sdkhook.AfterChatInfo) error {
@@ -75,6 +55,8 @@ func (h *Hook) AfterChat(_ context.Context, info sdkhook.AfterChatInfo) error {
 		"latency_ms", info.LatencyMs,
 		"provider_type", info.ProviderType,
 		"target_model", info.TargetModel,
+		"dialect", info.Dialect,
+		"modality", info.Modality,
 	)
 	return nil
 }

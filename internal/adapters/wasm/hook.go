@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/curefatih/afi/sdk/chatir"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
 )
 
@@ -59,7 +60,7 @@ func (a *BeforeCallAdapter) BeforeCall(ctx context.Context, call *sdkhook.CallCo
 	return applyBeforeCallOut(call, out)
 }
 
-// BeforeChatAdapter runs the guest before_chat export.
+// BeforeChatAdapter runs the guest before_chat export (typed chat IR).
 type BeforeChatAdapter struct {
 	mod    *Module
 	name   string
@@ -89,29 +90,29 @@ func (a *BeforeChatAdapter) Name() string {
 	return a.name
 }
 
-func (a *BeforeChatAdapter) BeforeChat(ctx context.Context, body []byte) ([]byte, error) {
+func (a *BeforeChatAdapter) BeforeChat(ctx context.Context, req chatir.Request) (chatir.Request, error) {
 	if a == nil || a.mod == nil {
-		return body, nil
+		return req, nil
 	}
-	in, err := encodeBeforeChatIn(body, a.config)
+	in, err := encodeBeforeChatIn(req, a.config)
 	if err != nil {
-		return nil, fmt.Errorf("wasm: encode: %w", err)
+		return req, fmt.Errorf("wasm: encode: %w", err)
 	}
 	out, err := a.mod.invokeJSON(ctx, "before_chat", in)
 	if err != nil {
-		return nil, err
+		return req, err
 	}
 	if len(out) == 0 {
-		return body, nil
+		return req, nil
 	}
 	decoded, err := decodeBeforeChatOut(out)
 	if err != nil {
-		return nil, fmt.Errorf("wasm: decode: %w", err)
+		return req, fmt.Errorf("wasm: decode: %w", err)
 	}
 	if decoded == nil {
-		return body, nil
+		return req, nil
 	}
-	return decoded, nil
+	return *decoded, nil
 }
 
 // AfterCallAdapter runs the guest after_call export.

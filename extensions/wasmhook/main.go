@@ -8,16 +8,18 @@
 //
 // Behavior:
 //   - before_call: deny when tags["plan"] == "blocked"; otherwise allow and set metadata["wasm_hook"]="1"
-//   - before_chat: prefix last user message content with "[wasm] " (OpenAI chat JSON)
+//   - before_chat: prefix last user message content with "[wasm] " (typed chat IR JSON)
+//   - after_call: no-op
 package main
 
 // #include <stdlib.h>
 import "C"
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"unsafe"
+
+	"github.com/curefatih/afi/sdk/chatir"
 )
 
 func main() {}
@@ -61,12 +63,8 @@ type beforeCallOut struct {
 	ResponseHeaders map[string]string `json:"response_headers,omitempty"`
 }
 
-type beforeChatIn struct {
-	BodyB64 string `json:"body_b64"`
-}
-
-type beforeChatOut struct {
-	BodyB64 string `json:"body_b64"`
+type beforeChatWire struct {
+	Request chatir.Request `json:"request"`
 }
 
 //go:wasmexport before_call
@@ -89,11 +87,11 @@ func _before_call(ptr, size uint32) uint64 {
 	}
 	if req.Tags["plan"] == "blocked" {
 		return leakJSON(beforeCallOut{
-			Allow:   false,
-			Status:  403,
-			Reason:  "plan_blocked",
-			Message: "plan=blocked denied by wasm hook",
-			Tags:    req.Tags,
+			Allow:    false,
+			Status:   403,
+			Reason:   "plan_blocked",
+			Message:  "plan=blocked denied by wasm hook",
+			Tags:     req.Tags,
 			Metadata: req.Metadata,
 		})
 	}
@@ -112,48 +110,22 @@ func _before_call(ptr, size uint32) uint64 {
 
 //go:wasmexport before_chat
 func _before_chat(ptr, size uint32) uint64 {
-	in := ptrToBytes(ptr, size)
-	var req beforeChatIn
-	if err := json.Unmarshal(in, &req); err != nil {
-		return leakJSON(beforeChatOut{BodyB64: req.BodyB64})
+	var in beforeChatWire
+	if err := json.Unmarshal(ptrToBytes(ptr, size), &in); err != nil {
+		return 0
 	}
-	body, err := base64.StdEncoding.DecodeString(req.BodyB64)
-	if err != nil || len(body) == 0 {
-		return leakJSON(beforeChatOut{BodyB64: req.BodyB64})
-	}
-	var chat map[string]any
-	if err := json.Unmarshal(body, &chat); err != nil {
-		return leakJSON(beforeChatOut{BodyB64: req.BodyB64})
-	}
-	msgs, ok := chat["messages"].([]any)
-	if !ok || len(msgs) == 0 {
-		return leakJSON(beforeChatOut{BodyB64: req.BodyB64})
-	}
-	for i := len(msgs) - 1; i >= 0; i-- {
-		m, ok := msgs[i].(map[string]any)
-		if !ok {
+	for i := len(in.Request.Messages) - 1; i >= 0; i-- {
+		if in.Request.Messages[i].Role != "user" {
 			continue
 		}
-		role, _ := m["role"].(string)
-		if role != "user" {
-			continue
-		}
-		content, _ := m["content"].(string)
 		const prefix = "[wasm] "
-		if len(content) >= len(prefix) && content[:len(prefix)] == prefix {
-			break
+		content := in.Request.Messages[i].Content
+		if len(content) < len(prefix) || content[:len(prefix)] != prefix {
+			in.Request.Messages[i].Content = prefix + content
 		}
-		m["content"] = prefix + content
-		msgs[i] = m
-		chat["messages"] = msgs
-		out, err := json.Marshal(chat)
-		if err != nil {
-			return leakJSON(beforeChatOut{BodyB64: req.BodyB64})
-		}
-		b64 := base64.StdEncoding.EncodeToString(out)
-		return leakJSON(beforeChatOut{BodyB64: b64})
+		break
 	}
-	return leakJSON(beforeChatOut{BodyB64: req.BodyB64})
+	return leakJSON(in)
 }
 
 //go:wasmexport after_call

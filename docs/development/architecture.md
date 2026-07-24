@@ -41,13 +41,13 @@ flowchart TD
   A --> B --> C --> D --> E --> F --> G
 ```
 
-Provider adapters (`openai`, `anthropic`, `gemini`, `openai_compatible`, …) implement `ChatProvider` and register in a registry. Optional modality ports (`AudioBackend`, `MessagesBackend`) are exposed by the same adapters and resolved by routed `provider.type`. See [Providers](providers.md).
+Provider adapters (`openai`, `anthropic`, `gemini`, `openai_compatible`, …) implement `IRChatProvider` and register in a registry. Chat requests decode through a **client dialect** (`/openai/...`, `/anthropic/...`, or `/gemini/...`) into chat IR, then the adapter speaks the upstream API. Optional modality ports (`AudioBackend`, `EmbeddingsBackend`, `ImagesBackend`) remain OpenAI-transport based. See [API dialects](../api/dialects.md) and [Providers](providers.md).
 
 Also exposes:
 
-* `GET /v1/models` — virtual models from the key’s organization routes, enriched from the curated model catalog (`mode`, context limits, `supports_streaming` / `supports_tts` / `supports_stt`)
-* `POST /v1/chat/completions` — OpenAI-shaped chat via `ChatProvider` (adapters translate native APIs)
-* `POST /v1/messages` — Anthropic-shaped pass-through via `MessagesBackend`
+* `GET /openai/v1/models` (alias `/v1/models`) — virtual models from the key’s organization routes, enriched from the curated model catalog
+* `POST /openai/v1/chat/completions` (alias `/v1/chat/completions`) — OpenAI dialect via chat IR
+* `POST /anthropic/v1/messages` (alias `/v1/messages`) — Anthropic dialect via chat IR (any chat-capable provider)
 * `POST /v1/embeddings` — OpenAI-compatible embeddings via `EmbeddingsBackend`
 * `POST /v1/images/generations` — OpenAI-compatible image generation via `ImagesBackend` (optional org object-store persist)
 * `POST /v1/audio/speech` / `POST /v1/audio/transcriptions` — TTS/STT via `AudioBackend`

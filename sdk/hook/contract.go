@@ -1,12 +1,14 @@
-// Package hook defines the stable in-process lifecycle contract for gateway extensions.
+// Package hook defines the in-process lifecycle contract for gateway extensions.
 //
 // BeforeCall runs after auth on every modality and may mutate CallContext or deny.
 // AfterCall runs after the upstream attempt finishes.
-// BeforeChat / AfterChat remain available for chat body mutation and logging.
+// BeforeChat mutates typed chat IR; AfterChat observes completed chat attempts.
 package hook
 
 import (
 	"context"
+
+	"github.com/curefatih/afi/sdk/chatir"
 )
 
 // Principal is the authenticated API key identity for a call.
@@ -87,10 +89,10 @@ type AfterCallHook interface {
 	AfterCall(ctx context.Context, call *CallContext, info AfterCallInfo) error
 }
 
-// ChatHook mutates the OpenAI chat request body before provider dispatch.
+// ChatHook mutates a typed chat request before provider dispatch.
 type ChatHook interface {
 	Name() string
-	BeforeChat(ctx context.Context, body []byte) ([]byte, error)
+	BeforeChat(ctx context.Context, req chatir.Request) (chatir.Request, error)
 }
 
 // AfterChatInfo is passed to AfterChatHook after a chat attempt finishes.
@@ -100,9 +102,13 @@ type AfterChatInfo struct {
 	LatencyMs    int64
 	ProviderType string
 	TargetModel  string
+	// Dialect is the client wire format: "openai", "anthropic", or "gemini".
+	Dialect string
+	// Modality is the usage modality: "chat", "messages", or "generate_content".
+	Modality string
 }
 
-// AfterChatHook runs after the chat attempt completes (success or error).
+// AfterChatHook runs after a chat dialect attempt completes (success or error).
 type AfterChatHook interface {
 	Name() string
 	AfterChat(ctx context.Context, info AfterChatInfo) error

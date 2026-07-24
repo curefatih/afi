@@ -66,14 +66,12 @@ func (p *Pipeline) gateCall(ctx context.Context, w http.ResponseWriter, snap *sn
 		if p.Log != nil {
 			p.Log.Error("before_call hook", "err", err)
 		}
-		writeJSON(w, http.StatusInternalServerError, map[string]any{
-			"error": map[string]string{"message": "call hook failed", "type": "server_error"},
-		})
+		writeGateError(w, call, http.StatusInternalServerError, "call hook failed", "server_error")
 		return false
 	}
 	if !d.Allow {
 		applyResponseHeaders(w, call)
-		writeCallDeny(w, d)
+		writeCallDeny(w, d, call)
 		span.SetAttributes(attribute.String(telemetry.AttrOutcome, telemetry.OutcomeDeny))
 		return false
 	}
@@ -84,14 +82,12 @@ func (p *Pipeline) gateCall(ctx context.Context, w http.ResponseWriter, snap *sn
 			if p.Log != nil {
 				p.Log.Error("wasm before_call", "err", err)
 			}
-			writeJSON(w, http.StatusInternalServerError, map[string]any{
-				"error": map[string]string{"message": "call hook failed", "type": "server_error"},
-			})
+			writeGateError(w, call, http.StatusInternalServerError, "call hook failed", "server_error")
 			return false
 		}
 		if !d.Allow {
 			applyResponseHeaders(w, call)
-			writeCallDeny(w, d)
+			writeCallDeny(w, d, call)
 			span.SetAttributes(attribute.String(telemetry.AttrOutcome, telemetry.OutcomeDeny))
 			return false
 		}
@@ -109,14 +105,12 @@ func (p *Pipeline) applyBeforeCall(ctx context.Context, w http.ResponseWriter, h
 		if p.Log != nil {
 			p.Log.Error("before_call hook", "err", err, "hook", h.Name())
 		}
-		writeJSON(w, http.StatusInternalServerError, map[string]any{
-			"error": map[string]string{"message": "call hook failed", "type": "server_error"},
-		})
+		writeGateError(w, call, http.StatusInternalServerError, "call hook failed", "server_error")
 		return false
 	}
 	if !d.Allow {
 		applyResponseHeaders(w, call)
-		writeCallDeny(w, d)
+		writeCallDeny(w, d, call)
 		return false
 	}
 	return true

@@ -1,33 +1,30 @@
 # Gateway API (overlay)
 
-Point official OpenAI / Anthropic / MCP / A2A clients at the gateway base URL. AFI does **not** re-publish full vendor schemas.
+Point official OpenAI / Anthropic / Gemini / MCP / A2A clients at the gateway base URL. AFI does **not** re-publish full vendor schemas.
 
 - **Base URL:** `http://localhost:8080` (local)
-- **Auth:** `Authorization: Bearer <virtual-api-key>`
+- **Auth:** Bearer, Anthropic `x-api-key`, or Gemini `x-goog-api-key` / `?key=` using an AFI virtual key
 - **Tags:** optional `X-AFI-Tags: key:value,key:value`
 - **OpenAPI overlay:** [`api/openapi/gateway.openapi.yaml`](https://github.com/curefatih/afi/blob/main/api/openapi/gateway.openapi.yaml)
+
+**Chat dialects** (OpenAI, Anthropic, or Gemini client shape; any routed model): see **[API dialects](dialects.md)**.
 
 ## Paths
 
 | Method | Path | Notes |
 | ------ | ---- | ----- |
 | GET | `/healthz` | Snapshot version + registry info |
-| GET | `/v1/models` | OpenAI-shaped, route/catalog enriched |
-| POST | `/v1/chat/completions` | OpenAI-compatible |
-| POST | `/v1/embeddings` | OpenAI-compatible |
-| POST | `/v1/images/generations` | OpenAI-compatible (optional org object-store persist) |
-| POST | `/v1/audio/speech` | TTS |
-| POST | `/v1/audio/transcriptions` | STT |
-| POST | `/v1/messages` | Native Anthropic Messages |
+| GET | `/openai/v1/models` | OpenAI-shaped models (alias: `/v1/models`) |
+| POST | `/openai/v1/chat/completions` | OpenAI dialect chat (alias: `/v1/chat/completions`) |
+| POST | `/anthropic/v1/messages` | Anthropic dialect chat (alias: `/v1/messages`) |
+| POST | `/gemini/v1beta/models/{route}:generateContent` | Gemini dialect generateContent |
+| POST | `/gemini/v1beta/models/{route}:streamGenerateContent` | Gemini dialect SSE stream |
+| POST | `/openai/v1/embeddings` | Embeddings (alias: `/v1/embeddings`) |
+| POST | `/openai/v1/images/generations` | Images (alias: `/v1/images/generations`) |
+| POST | `/openai/v1/audio/speech` | TTS (alias: `/v1/audio/speech`) |
+| POST | `/openai/v1/audio/transcriptions` | STT (alias: `/v1/audio/transcriptions`) |
 | POST/GET/DELETE | `/mcp/{alias}` | MCP Streamable HTTP proxy |
 | POST | `/a2a/{alias}` | A2A JSON-RPC proxy |
 | GET | `/a2a/{alias}/.well-known/agent-card.json` | Agent Card (URL rewrite) |
 
-## Example (OpenAI SDK)
-
-```bash
-export OPENAI_BASE_URL=http://localhost:8080/v1
-export OPENAI_API_KEY=sk-your-afi-virtual-key
-```
-
-Use the OpenAI (or Anthropic) SDK as usual; AFI handles routing, quotas, policies, and usage.
+SDK setup and examples live on [API dialects](dialects.md).

@@ -620,8 +620,8 @@ func (*AfterCallResponse) Descriptor() ([]byte, []int) {
 }
 
 type BeforeChatRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Body          []byte                 `protobuf:"bytes,1,opt,name=body,proto3" json:"body,omitempty"`
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Request       *ChatIRCompletionRequest `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -656,16 +656,16 @@ func (*BeforeChatRequest) Descriptor() ([]byte, []int) {
 	return file_afi_extension_v1_hook_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *BeforeChatRequest) GetBody() []byte {
+func (x *BeforeChatRequest) GetRequest() *ChatIRCompletionRequest {
 	if x != nil {
-		return x.Body
+		return x.Request
 	}
 	return nil
 }
 
 type BeforeChatResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Body          []byte                 `protobuf:"bytes,1,opt,name=body,proto3" json:"body,omitempty"`
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Request       *ChatIRCompletionRequest `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -700,9 +700,9 @@ func (*BeforeChatResponse) Descriptor() ([]byte, []int) {
 	return file_afi_extension_v1_hook_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *BeforeChatResponse) GetBody() []byte {
+func (x *BeforeChatResponse) GetRequest() *ChatIRCompletionRequest {
 	if x != nil {
-		return x.Body
+		return x.Request
 	}
 	return nil
 }
@@ -867,7 +867,7 @@ var File_afi_extension_v1_hook_proto protoreflect.FileDescriptor
 
 const file_afi_extension_v1_hook_proto_rawDesc = "" +
 	"\n" +
-	"\x1bafi/extension/v1/hook.proto\x12\x10afi.extension.v1\x1a\x1cgoogle/protobuf/struct.proto\"\xbd\x01\n" +
+	"\x1bafi/extension/v1/hook.proto\x12\x10afi.extension.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1eafi/extension/v1/chat_ir.proto\"\xbd\x01\n" +
 	"\tPrincipal\x12'\n" +
 	"\x0forganization_id\x18\x01 \x01(\tR\x0eorganizationId\x12\x1d\n" +
 	"\n" +
@@ -928,11 +928,11 @@ const file_afi_extension_v1_hook_proto_rawDesc = "" +
 	"\x10AfterCallRequest\x121\n" +
 	"\x04call\x18\x01 \x01(\v2\x1d.afi.extension.v1.CallContextR\x04call\x123\n" +
 	"\x04info\x18\x02 \x01(\v2\x1f.afi.extension.v1.AfterCallInfoR\x04info\"\x13\n" +
-	"\x11AfterCallResponse\"'\n" +
-	"\x11BeforeChatRequest\x12\x12\n" +
-	"\x04body\x18\x01 \x01(\fR\x04body\"(\n" +
-	"\x12BeforeChatResponse\x12\x12\n" +
-	"\x04body\x18\x01 \x01(\fR\x04body\"\xa4\x01\n" +
+	"\x11AfterCallResponse\"X\n" +
+	"\x11BeforeChatRequest\x12C\n" +
+	"\arequest\x18\x01 \x01(\v2).afi.extension.v1.ChatIRCompletionRequestR\arequest\"Y\n" +
+	"\x12BeforeChatResponse\x12C\n" +
+	"\arequest\x18\x01 \x01(\v2).afi.extension.v1.ChatIRCompletionRequestR\arequest\"\xa4\x01\n" +
 	"\rAfterChatInfo\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12\x1d\n" +
@@ -965,26 +965,27 @@ func file_afi_extension_v1_hook_proto_rawDescGZIP() []byte {
 
 var file_afi_extension_v1_hook_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_afi_extension_v1_hook_proto_goTypes = []any{
-	(*Principal)(nil),          // 0: afi.extension.v1.Principal
-	(*RouteContext)(nil),       // 1: afi.extension.v1.RouteContext
-	(*CallContext)(nil),        // 2: afi.extension.v1.CallContext
-	(*CallDecision)(nil),       // 3: afi.extension.v1.CallDecision
-	(*BeforeCallRequest)(nil),  // 4: afi.extension.v1.BeforeCallRequest
-	(*BeforeCallResponse)(nil), // 5: afi.extension.v1.BeforeCallResponse
-	(*AfterCallInfo)(nil),      // 6: afi.extension.v1.AfterCallInfo
-	(*AfterCallRequest)(nil),   // 7: afi.extension.v1.AfterCallRequest
-	(*AfterCallResponse)(nil),  // 8: afi.extension.v1.AfterCallResponse
-	(*BeforeChatRequest)(nil),  // 9: afi.extension.v1.BeforeChatRequest
-	(*BeforeChatResponse)(nil), // 10: afi.extension.v1.BeforeChatResponse
-	(*AfterChatInfo)(nil),      // 11: afi.extension.v1.AfterChatInfo
-	(*AfterChatRequest)(nil),   // 12: afi.extension.v1.AfterChatRequest
-	(*AfterChatResponse)(nil),  // 13: afi.extension.v1.AfterChatResponse
-	nil,                        // 14: afi.extension.v1.CallContext.TagsEntry
-	nil,                        // 15: afi.extension.v1.CallContext.HeadersEntry
-	nil,                        // 16: afi.extension.v1.CallContext.RequestHeadersEntry
-	nil,                        // 17: afi.extension.v1.CallContext.ResponseHeadersEntry
-	nil,                        // 18: afi.extension.v1.CallDecision.HeadersEntry
-	(*structpb.Struct)(nil),    // 19: google.protobuf.Struct
+	(*Principal)(nil),               // 0: afi.extension.v1.Principal
+	(*RouteContext)(nil),            // 1: afi.extension.v1.RouteContext
+	(*CallContext)(nil),             // 2: afi.extension.v1.CallContext
+	(*CallDecision)(nil),            // 3: afi.extension.v1.CallDecision
+	(*BeforeCallRequest)(nil),       // 4: afi.extension.v1.BeforeCallRequest
+	(*BeforeCallResponse)(nil),      // 5: afi.extension.v1.BeforeCallResponse
+	(*AfterCallInfo)(nil),           // 6: afi.extension.v1.AfterCallInfo
+	(*AfterCallRequest)(nil),        // 7: afi.extension.v1.AfterCallRequest
+	(*AfterCallResponse)(nil),       // 8: afi.extension.v1.AfterCallResponse
+	(*BeforeChatRequest)(nil),       // 9: afi.extension.v1.BeforeChatRequest
+	(*BeforeChatResponse)(nil),      // 10: afi.extension.v1.BeforeChatResponse
+	(*AfterChatInfo)(nil),           // 11: afi.extension.v1.AfterChatInfo
+	(*AfterChatRequest)(nil),        // 12: afi.extension.v1.AfterChatRequest
+	(*AfterChatResponse)(nil),       // 13: afi.extension.v1.AfterChatResponse
+	nil,                             // 14: afi.extension.v1.CallContext.TagsEntry
+	nil,                             // 15: afi.extension.v1.CallContext.HeadersEntry
+	nil,                             // 16: afi.extension.v1.CallContext.RequestHeadersEntry
+	nil,                             // 17: afi.extension.v1.CallContext.ResponseHeadersEntry
+	nil,                             // 18: afi.extension.v1.CallDecision.HeadersEntry
+	(*structpb.Struct)(nil),         // 19: google.protobuf.Struct
+	(*ChatIRCompletionRequest)(nil), // 20: afi.extension.v1.ChatIRCompletionRequest
 }
 var file_afi_extension_v1_hook_proto_depIdxs = []int32{
 	0,  // 0: afi.extension.v1.CallContext.principal:type_name -> afi.extension.v1.Principal
@@ -1000,20 +1001,22 @@ var file_afi_extension_v1_hook_proto_depIdxs = []int32{
 	2,  // 10: afi.extension.v1.BeforeCallResponse.call:type_name -> afi.extension.v1.CallContext
 	2,  // 11: afi.extension.v1.AfterCallRequest.call:type_name -> afi.extension.v1.CallContext
 	6,  // 12: afi.extension.v1.AfterCallRequest.info:type_name -> afi.extension.v1.AfterCallInfo
-	11, // 13: afi.extension.v1.AfterChatRequest.info:type_name -> afi.extension.v1.AfterChatInfo
-	4,  // 14: afi.extension.v1.Hook.BeforeCall:input_type -> afi.extension.v1.BeforeCallRequest
-	7,  // 15: afi.extension.v1.Hook.AfterCall:input_type -> afi.extension.v1.AfterCallRequest
-	9,  // 16: afi.extension.v1.Hook.BeforeChat:input_type -> afi.extension.v1.BeforeChatRequest
-	12, // 17: afi.extension.v1.Hook.AfterChat:input_type -> afi.extension.v1.AfterChatRequest
-	5,  // 18: afi.extension.v1.Hook.BeforeCall:output_type -> afi.extension.v1.BeforeCallResponse
-	8,  // 19: afi.extension.v1.Hook.AfterCall:output_type -> afi.extension.v1.AfterCallResponse
-	10, // 20: afi.extension.v1.Hook.BeforeChat:output_type -> afi.extension.v1.BeforeChatResponse
-	13, // 21: afi.extension.v1.Hook.AfterChat:output_type -> afi.extension.v1.AfterChatResponse
-	18, // [18:22] is the sub-list for method output_type
-	14, // [14:18] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	20, // 13: afi.extension.v1.BeforeChatRequest.request:type_name -> afi.extension.v1.ChatIRCompletionRequest
+	20, // 14: afi.extension.v1.BeforeChatResponse.request:type_name -> afi.extension.v1.ChatIRCompletionRequest
+	11, // 15: afi.extension.v1.AfterChatRequest.info:type_name -> afi.extension.v1.AfterChatInfo
+	4,  // 16: afi.extension.v1.Hook.BeforeCall:input_type -> afi.extension.v1.BeforeCallRequest
+	7,  // 17: afi.extension.v1.Hook.AfterCall:input_type -> afi.extension.v1.AfterCallRequest
+	9,  // 18: afi.extension.v1.Hook.BeforeChat:input_type -> afi.extension.v1.BeforeChatRequest
+	12, // 19: afi.extension.v1.Hook.AfterChat:input_type -> afi.extension.v1.AfterChatRequest
+	5,  // 20: afi.extension.v1.Hook.BeforeCall:output_type -> afi.extension.v1.BeforeCallResponse
+	8,  // 21: afi.extension.v1.Hook.AfterCall:output_type -> afi.extension.v1.AfterCallResponse
+	10, // 22: afi.extension.v1.Hook.BeforeChat:output_type -> afi.extension.v1.BeforeChatResponse
+	13, // 23: afi.extension.v1.Hook.AfterChat:output_type -> afi.extension.v1.AfterChatResponse
+	20, // [20:24] is the sub-list for method output_type
+	16, // [16:20] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_afi_extension_v1_hook_proto_init() }
@@ -1021,6 +1024,7 @@ func file_afi_extension_v1_hook_proto_init() {
 	if File_afi_extension_v1_hook_proto != nil {
 		return
 	}
+	file_afi_extension_v1_chat_ir_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

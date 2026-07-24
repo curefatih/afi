@@ -3,7 +3,8 @@ package provider
 import (
 	"context"
 	"fmt"
-	"net/http"
+
+	"github.com/curefatih/afi/sdk/chatir"
 )
 
 // ExampleAdapter is a documentation stub showing the shape of a custom adapter.
@@ -16,15 +17,14 @@ func (ExampleAdapter) Capabilities() Capabilities {
 	return Capabilities{Chat: true, Stream: false}
 }
 
-func (ExampleAdapter) Chat(ctx context.Context, cfg ProviderConfig, targetModel string, body []byte, stream bool) (*http.Response, error) {
+func (ExampleAdapter) ChatIR(ctx context.Context, cfg ProviderConfig, targetModel string, req chatir.Request) (chatir.Result, error) {
 	_ = ctx
 	_ = cfg
 	_ = targetModel
-	_ = body
-	if stream {
-		return nil, fmt.Errorf("streaming is not supported for provider type %q", "example")
+	if req.Stream {
+		return chatir.Result{}, fmt.Errorf("streaming is not supported for provider type %q", "example")
 	}
-	return nil, fmt.Errorf("example adapter is a documentation stub only; use extensions/echo")
+	return chatir.Result{}, fmt.Errorf("example adapter is a documentation stub only; use extensions/echo")
 }
 
 // Ensure ExampleAdapter satisfies ChatProvider at compile time.

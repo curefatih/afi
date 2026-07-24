@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/curefatih/afi/internal/dataplane/dialect"
+	"github.com/curefatih/afi/internal/dataplane/ir"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
 )
 
@@ -195,21 +197,22 @@ func (c *HookChain) RunAfterCall(ctx context.Context, call *CallContext, info Af
 	}
 }
 
-func (c *HookChain) RunBeforeChat(ctx context.Context, body []byte) ([]byte, error) {
+// RunBeforeChat runs typed chat hooks in registration order.
+func (c *HookChain) RunBeforeChat(ctx context.Context, req ir.ChatRequest) (ir.ChatRequest, error) {
 	if c == nil {
-		return body, nil
+		return req, nil
 	}
 	c.mu.RLock()
 	hooks := append([]ChatHook(nil), c.before...)
 	c.mu.RUnlock()
 	var err error
 	for _, h := range hooks {
-		body, err = h.BeforeChat(ctx, body)
+		req, err = h.BeforeChat(ctx, req)
 		if err != nil {
-			return body, err
+			return req, err
 		}
 	}
-	return body, nil
+	return req, nil
 }
 
 func (c *HookChain) RunAfterChat(ctx context.Context, info AfterChatInfo) {
@@ -224,7 +227,7 @@ func (c *HookChain) RunAfterChat(ctx context.Context, info AfterChatInfo) {
 	}
 }
 
-func writeCallDeny(w http.ResponseWriter, d CallDecision) {
+func writeCallDeny(w http.ResponseWriter, d CallDecision, call *CallContext) {
 	status := d.Status
 	if status == 0 {
 		status = http.StatusForbidden
@@ -240,11 +243,18 @@ func writeCallDeny(w http.ResponseWriter, d CallDecision) {
 	if msg == "" {
 		msg = reason
 	}
-	writeJSON(w, status, map[string]any{
-		"error": map[string]string{
-			"message": msg,
-			"type":    reason,
-			"code":    reason,
-		},
-	})
+	dialect.WriteError(w, dialectFromCall(call), status, msg, reason)
+}
+
+func dialectFromCall(call *CallContext) ir.Dialect {
+	if call != nil && call.Metadata != nil {
+		if s, ok := call.Metadata["dialect"].(string); ok && s != "" {
+			return ir.Dialect(s)
+		}
+	}
+	return ir.DialectOpenAI
+}
+
+func writeGateError(w http.ResponseWriter, call *CallContext, status int, message, typ string) {
+	dialect.WriteError(w, dialectFromCall(call), status, message, typ)
 }

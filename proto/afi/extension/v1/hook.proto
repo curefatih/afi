@@ -5,6 +5,7 @@ package afi.extension.v1;
 option go_package = "github.com/curefatih/afi/gen/proto/afi/extension/v1;extensionv1";
 
 import "google/protobuf/struct.proto";
+import "afi/extension/v1/chat_ir.proto";
 
 message Principal {
   string organization_id = 1;
@@ -68,11 +69,11 @@ message AfterCallRequest {
 message AfterCallResponse {}
 
 message BeforeChatRequest {
-  bytes body = 1;
+  ChatIRCompletionRequest request = 1;
 }
 
 message BeforeChatResponse {
-  bytes body = 1;
+  ChatIRCompletionRequest request = 1;
 }
 
 message AfterChatInfo {

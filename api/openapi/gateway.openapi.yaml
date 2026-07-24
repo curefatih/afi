@@ -4,13 +4,14 @@ info:
   description: |
     Data-plane overlay for the AFI gateway (default `:8080`).
 
-    **Do not treat this as a full OpenAI/Anthropic/MCP/A2A schema.** Point official
+    **Do not treat this as a full OpenAI/Anthropic/Gemini/MCP/A2A schema.** Point official
     vendor SDKs at the gateway base URL. This document covers AFI-specific auth,
     headers, path map, and `/healthz`.
 
     External references:
     - OpenAI API: https://platform.openai.com/docs/api-reference
     - Anthropic Messages: https://docs.anthropic.com/en/api/messages
+    - Gemini API: https://ai.google.dev/api/generate-content
     - MCP Streamable HTTP: https://modelcontextprotocol.io
     - A2A protocol: https://a2a-protocol.org
   version: 1.0.0
@@ -25,6 +26,8 @@ servers:
 
 security:
   - virtualKeyAuth: []
+  - anthropicAPIKey: []
+  - geminiAPIKey: []
 
 tags:
   - name: Health
@@ -32,6 +35,8 @@ tags:
     description: OpenAI-shaped paths; request/response bodies follow OpenAI (or AFI-enriched models list).
   - name: Anthropic
     description: Native Anthropic Messages shape.
+  - name: Gemini
+    description: Native Gemini generateContent shape; model path segment is an AFI route alias.
   - name: MCP
     description: MCP Streamable HTTP proxy by alias.
   - name: A2A
@@ -61,7 +66,28 @@ paths:
       summary: List routable models
       description: |
         OpenAI-shaped model list enriched from org routes and the model catalog.
+        Alias of `GET /openai/v1/models`.
         See OpenAI Models API for the general shape.
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      responses:
+        "200":
+          description: Model list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /openai/v1/models:
+    get:
+      tags: [OpenAICompatible]
+      operationId: listModelsOpenAIDialect
+      summary: List routable models (OpenAI dialect)
+      description: |
+        Canonical OpenAI dialect models path. Same as `GET /v1/models`.
       parameters:
         - $ref: "#/components/parameters/AFITags"
       responses:
@@ -81,8 +107,8 @@ paths:
       operationId: chatCompletions
       summary: Chat completions
       description: |
-        OpenAI-compatible chat completions with AFI routing, quotas, policies, hooks,
-        and optional streaming. Body follows the OpenAI Chat Completions schema.
+        OpenAI dialect chat completions (alias of `POST /openai/v1/chat/completions`).
+        Routed via chat IR to any chat-capable provider. Body follows the OpenAI Chat Completions schema.
       externalDocs:
         url: https://platform.openai.com/docs/api-reference/chat
       parameters:
@@ -94,7 +120,41 @@ paths:
             schema:
               type: object
               additionalProperties: true
-              description: OpenAI chat completion request (passthrough).
+              description: OpenAI chat completion request.
+      responses:
+        "200":
+          description: Completion or SSE stream
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /openai/v1/chat/completions:
+    post:
+      tags: [OpenAICompatible]
+      operationId: chatCompletionsOpenAIDialect
+      summary: Chat completions (OpenAI dialect)
+      description: |
+        Canonical OpenAI dialect path. Same behavior as `POST /v1/chat/completions`.
+      externalDocs:
+        url: https://platform.openai.com/docs/api-reference/chat
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
       responses:
         "200":
           description: Completion or SSE stream
@@ -116,7 +176,40 @@ paths:
       tags: [OpenAICompatible]
       operationId: createEmbeddings
       summary: Embeddings
-      description: OpenAI-compatible embeddings. Body follows the OpenAI Embeddings schema.
+      description: |
+        OpenAI-compatible embeddings (alias of `POST /openai/v1/embeddings`).
+        Body follows the OpenAI Embeddings schema.
+      externalDocs:
+        url: https://platform.openai.com/docs/api-reference/embeddings
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Embedding response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /openai/v1/embeddings:
+    post:
+      tags: [OpenAICompatible]
+      operationId: createEmbeddingsOpenAIDialect
+      summary: Embeddings (OpenAI dialect)
+      description: |
+        Canonical OpenAI dialect embeddings path. Same as `POST /v1/embeddings`.
       externalDocs:
         url: https://platform.openai.com/docs/api-reference/embeddings
       parameters:
@@ -147,9 +240,41 @@ paths:
       operationId: createImage
       summary: Image generation
       description: |
-        OpenAI-compatible image generations. Body follows the OpenAI Images schema.
+        OpenAI-compatible image generations (alias of `POST /openai/v1/images/generations`).
+        Body follows the OpenAI Images schema.
         When the organization has object store enabled in the control plane, generated
         assets may be persisted and response URLs rewritten to presigned object URLs.
+      externalDocs:
+        url: https://platform.openai.com/docs/api-reference/images/create
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Image generation response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /openai/v1/images/generations:
+    post:
+      tags: [OpenAICompatible]
+      operationId: createImageOpenAIDialect
+      summary: Image generation (OpenAI dialect)
+      description: |
+        Canonical OpenAI dialect images path. Same as `POST /v1/images/generations`.
       externalDocs:
         url: https://platform.openai.com/docs/api-reference/images/create
       parameters:
@@ -179,7 +304,43 @@ paths:
       tags: [OpenAICompatible]
       operationId: audioSpeech
       summary: Text-to-speech
-      description: OpenAI-compatible TTS.
+      description: |
+        OpenAI-compatible TTS (alias of `POST /openai/v1/audio/speech`).
+      externalDocs:
+        url: https://platform.openai.com/docs/api-reference/audio/createSpeech
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Audio bytes
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /openai/v1/audio/speech:
+    post:
+      tags: [OpenAICompatible]
+      operationId: audioSpeechOpenAIDialect
+      summary: Text-to-speech (OpenAI dialect)
+      description: |
+        Canonical OpenAI dialect TTS path. Same as `POST /v1/audio/speech`.
       externalDocs:
         url: https://platform.openai.com/docs/api-reference/audio/createSpeech
       parameters:
@@ -213,7 +374,8 @@ paths:
       tags: [OpenAICompatible]
       operationId: audioTranscriptions
       summary: Speech-to-text
-      description: OpenAI-compatible transcriptions (multipart).
+      description: |
+        OpenAI-compatible transcriptions (multipart; alias of `POST /openai/v1/audio/transcriptions`).
       externalDocs:
         url: https://platform.openai.com/docs/api-reference/audio/createTranscription
       parameters:
@@ -238,14 +400,139 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
+  /openai/v1/audio/transcriptions:
+    post:
+      tags: [OpenAICompatible]
+      operationId: audioTranscriptionsOpenAIDialect
+      summary: Speech-to-text (OpenAI dialect)
+      description: |
+        Canonical OpenAI dialect STT path. Same as `POST /v1/audio/transcriptions`.
+      externalDocs:
+        url: https://platform.openai.com/docs/api-reference/audio/createTranscription
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Transcription
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /gemini/v1beta/models/{operation}:
+    post:
+      tags: [Gemini]
+      operationId: geminiGenerateContent
+      summary: Generate or stream content (Gemini dialect)
+      description: |
+        Native Gemini client shape. `{operation}` is `{route}:generateContent` or
+        `{route}:streamGenerateContent`, where `{route}` is an AFI route alias
+        (it may itself contain `:`). Streaming responses are Gemini SSE.
+      externalDocs:
+        url: https://ai.google.dev/api/generate-content
+      security:
+        - virtualKeyAuth: []
+        - geminiAPIKey: []
+        - geminiQueryKey: []
+      parameters:
+        - name: operation
+          in: path
+          required: true
+          description: |
+            `{route}:generateContent` or `{route}:streamGenerateContent`.
+            `{route}` is an AFI alias, not necessarily a Gemini model id.
+          schema:
+            type: string
+            examples:
+              - gpt-4o-mini:generateContent
+              - gpt-4o-mini:streamGenerateContent
+              - team:prod:generateContent
+        - name: alt
+          in: query
+          required: false
+          description: Use `sse` with `:streamGenerateContent` (Gemini client convention).
+          schema:
+            type: string
+            enum: [sse]
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Gemini GenerateContentResponse JSON, or SSE when streaming
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
   /v1/messages:
     post:
       tags: [Anthropic]
       operationId: anthropicMessages
       summary: Anthropic Messages
       description: |
-        Native Anthropic Messages API shape (not OpenAI chat). Requires an Anthropic
-        (or compatible) provider route.
+        Anthropic Messages dialect (alias of `POST /anthropic/v1/messages`).
+        Decoded to chat IR and served by any chat-capable routed provider.
+      externalDocs:
+        url: https://docs.anthropic.com/en/api/messages
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Message response or stream
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /anthropic/v1/messages:
+    post:
+      tags: [Anthropic]
+      operationId: anthropicMessagesDialect
+      summary: Anthropic Messages (dialect)
+      description: |
+        Canonical Anthropic dialect path. Same behavior as `POST /v1/messages`.
+        Set `ANTHROPIC_BASE_URL` to the gateway origin + `/anthropic`.
       externalDocs:
         url: https://docs.anthropic.com/en/api/messages
       parameters:
@@ -389,7 +676,24 @@ components:
       type: http
       scheme: bearer
       bearerFormat: API key
-      description: Virtual API key issued by the platform (typically `sk-…`).
+      description: |
+        Virtual API key issued by the platform (typically `sk-…`).
+        Anthropic dialect clients may instead send `x-api-key: <virtual-api-key>`.
+    anthropicAPIKey:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: Anthropic SDK-style virtual API key (same value as Bearer).
+    geminiAPIKey:
+      type: apiKey
+      in: header
+      name: x-goog-api-key
+      description: Gemini SDK-style virtual API key (same value as Bearer).
+    geminiQueryKey:
+      type: apiKey
+      in: query
+      name: key
+      description: Gemini REST query-style virtual API key (same value as Bearer).
 
   parameters:
     AFITags:

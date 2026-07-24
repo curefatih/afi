@@ -7,6 +7,8 @@
 // register at process startup via dataplane.Registry.RegisterSDK — see
 // github.com/curefatih/afi/extensions/echo for a working example.
 //
+// ChatProvider speaks typed chat IR (sdk/chatir).
+//
 // Process-isolated gRPC providers are supported via
 // github.com/curefatih/afi/internal/adapters/grpcprovider and
 // proto/afi/extension/v1 (see extensions/grpcecho). WASM is for lifecycle hooks

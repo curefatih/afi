@@ -29,6 +29,22 @@ curl -s http://localhost:8080/v1/chat/completions \
 
 Expect a JSON response with `choices[0].message.content`. Requires `OPENAI_API_KEY`.
 
+## Anthropic dialect (any routed chat model)
+
+```bash
+curl -s http://localhost:8080/anthropic/v1/messages \
+  -H "x-api-key: sk-project-local-dev-token-12345" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "max_tokens": 64,
+    "messages": [{"role": "user", "content": "ping"}]
+  }'
+```
+
+Expect Anthropic-shaped JSON (`type: "message"`, `content[].text`). Same AFI route as OpenAI chat; see [API dialects](../api/dialects.md).
+
 ## List models
 
 ```bash

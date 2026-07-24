@@ -3,13 +3,13 @@ package dataplane
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/curefatih/afi/internal/adapters/llm"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/curefatih/afi/internal/adapters/llm"
 	"github.com/curefatih/afi/internal/snapshot"
 )
 
@@ -61,6 +61,57 @@ func TestNativeMessagesPassThrough(t *testing.T) {
 
 	p := NewPipelineWithRegistry(holder, reg, slog.Default())
 	body := `{"model":"claude-sonnet","max_tokens":64,"messages":[{"role":"user","content":"hi"}]}`
+	for _, path := range []string{"/v1/messages", "/anthropic/v1/messages"} {
+		req := httptest.NewRequest(http.MethodPost, path, bytes.NewBufferString(body))
+		req.Header.Set("Authorization", "Bearer sk-good")
+		rr := httptest.NewRecorder()
+		p.Handler().ServeHTTP(rr, req)
+		if rr.Code != http.StatusOK {
+			t.Fatalf("%s status=%d body=%s", path, rr.Code, rr.Body.String())
+		}
+		raw, _ := io.ReadAll(rr.Body)
+		if !bytes.Contains(raw, []byte("native pong")) {
+			t.Fatalf("%s body=%s", path, raw)
+		}
+		if bytes.Contains(raw, []byte("chat.completion")) {
+			t.Fatalf("%s expected anthropic-shaped response, not openai", path)
+		}
+	}
+}
+
+func TestMessagesDialectOpenAIUpstream(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/chat/completions" {
+			http.Error(w, "bad path", http.StatusNotFound)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "chatcmpl-x",
+			"choices": []map[string]any{
+				{"message": map[string]string{"role": "assistant", "content": "from openai"}, "finish_reason": "stop"},
+			},
+			"usage": map[string]int{"prompt_tokens": 1, "completion_tokens": 2},
+		})
+	}))
+	defer upstream.Close()
+
+	t.Setenv("OPENAI_API_KEY", "ok")
+	client := llm.NewOpenAIClient(nil)
+	client.HTTP = upstream.Client()
+	holder := NewHolder()
+	holder.Set(snapshot.Compile(snapshot.Source{
+		APIKeys: []snapshot.APIKey{{
+			ID: "k", KeyHash: snapshot.HashKey("sk-good"), ProjectID: "p1", OrganizationID: "o1",
+		}},
+		Providers: []snapshot.Provider{{
+			ID: "prov", Type: "openai", BaseURL: upstream.URL, APIKeyEnv: "OPENAI_API_KEY",
+		}},
+		Routes: []snapshot.Route{{
+			OrganizationID: "o1", Model: "gpt-4o-mini", ProviderID: "prov", TargetModel: "gpt-4o-mini",
+		}},
+	}))
+	p := NewPipeline(holder, RegistryWithOpenAI(client), slog.Default())
+	body := `{"model":"gpt-4o-mini","max_tokens":64,"messages":[{"role":"user","content":"hi"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewBufferString(body))
 	req.Header.Set("Authorization", "Bearer sk-good")
 	rr := httptest.NewRecorder()
@@ -68,35 +119,180 @@ func TestNativeMessagesPassThrough(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
-	raw, _ := io.ReadAll(rr.Body)
-	if !bytes.Contains(raw, []byte("native pong")) {
+	raw := rr.Body.Bytes()
+	if !bytes.Contains(raw, []byte("from openai")) {
 		t.Fatalf("body=%s", raw)
 	}
 	if bytes.Contains(raw, []byte("chat.completion")) {
-		t.Fatal("expected anthropic-shaped response, not openai")
+		t.Fatal("expected anthropic dialect response")
+	}
+	var msg struct {
+		Type    string `json:"type"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(raw, &msg); err != nil {
+		t.Fatal(err)
+	}
+	if msg.Type != "message" || len(msg.Content) == 0 || msg.Content[0].Text != "from openai" {
+		t.Fatalf("%+v", msg)
 	}
 }
 
-func TestNativeMessagesRejectsNonAnthropic(t *testing.T) {
+func TestMessagesAcceptsXAPIKey(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "chatcmpl-x",
+			"choices": []map[string]any{
+				{"message": map[string]string{"role": "assistant", "content": "ok"}, "finish_reason": "stop"},
+			},
+			"usage": map[string]int{"prompt_tokens": 1, "completion_tokens": 1},
+		})
+	}))
+	defer upstream.Close()
+
+	t.Setenv("OPENAI_API_KEY", "ok")
+	client := llm.NewOpenAIClient(nil)
+	client.HTTP = upstream.Client()
 	holder := NewHolder()
 	holder.Set(snapshot.Compile(snapshot.Source{
 		APIKeys: []snapshot.APIKey{{
 			ID: "k", KeyHash: snapshot.HashKey("sk-good"), ProjectID: "p1", OrganizationID: "o1",
 		}},
 		Providers: []snapshot.Provider{{
-			ID: "prov", Type: "openai", BaseURL: "http://example.invalid", APIKeyEnv: "OPENAI_API_KEY",
+			ID: "prov", Type: "openai", BaseURL: upstream.URL, APIKeyEnv: "OPENAI_API_KEY",
 		}},
 		Routes: []snapshot.Route{{
 			OrganizationID: "o1", Model: "gpt-4o-mini", ProviderID: "prov", TargetModel: "gpt-4o-mini",
 		}},
 	}))
-	p := NewPipeline(holder, RegistryWithOpenAI(llm.NewOpenAIClient(nil)), slog.Default())
+	p := NewPipeline(holder, RegistryWithOpenAI(client), slog.Default())
 	body := `{"model":"gpt-4o-mini","max_tokens":64,"messages":[{"role":"user","content":"hi"}]}`
-	req := httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewBufferString(body))
-	req.Header.Set("Authorization", "Bearer sk-good")
+	req := httptest.NewRequest(http.MethodPost, "/anthropic/v1/messages", bytes.NewBufferString(body))
+	req.Header.Set("x-api-key", "sk-good")
+	req.Header.Set("anthropic-version", "2023-06-01")
 	rr := httptest.NewRecorder()
 	p.Handler().ServeHTTP(rr, req)
-	if rr.Code != http.StatusBadRequest {
+	if rr.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+// TestToolsViaAnthropicDialectToOpenAIUpstream verifies an Anthropic-dialect
+// request carrying tools is translated to OpenAI on the way out, and the
+// upstream's tool call is rendered back as an Anthropic tool_use block.
+func TestToolsViaAnthropicDialectToOpenAIUpstream(t *testing.T) {
+	var sawTools bool
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		if bytes.Contains(raw, []byte(`"tools"`)) && bytes.Contains(raw, []byte("get_weather")) {
+			sawTools = true
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "chatcmpl-x",
+			"choices": []map[string]any{
+				{
+					"message": map[string]any{
+						"role":    "assistant",
+						"content": nil,
+						"tool_calls": []map[string]any{{
+							"id":       "call_1",
+							"type":     "function",
+							"function": map[string]any{"name": "get_weather", "arguments": `{"city":"SF"}`},
+						}},
+					},
+					"finish_reason": "tool_calls",
+				},
+			},
+			"usage": map[string]int{"prompt_tokens": 1, "completion_tokens": 2},
+		})
+	}))
+	defer upstream.Close()
+
+	t.Setenv("OPENAI_API_KEY", "ok")
+	client := llm.NewOpenAIClient(nil)
+	client.HTTP = upstream.Client()
+	holder := NewHolder()
+	holder.Set(snapshot.Compile(snapshot.Source{
+		APIKeys: []snapshot.APIKey{{
+			ID: "k", KeyHash: snapshot.HashKey("sk-good"), ProjectID: "p1", OrganizationID: "o1",
+		}},
+		Providers: []snapshot.Provider{{
+			ID: "prov", Type: "openai", BaseURL: upstream.URL, APIKeyEnv: "OPENAI_API_KEY",
+		}},
+		Routes: []snapshot.Route{{
+			OrganizationID: "o1", Model: "gpt-4o-mini", ProviderID: "prov", TargetModel: "gpt-4o-mini",
+		}},
+	}))
+	p := NewPipeline(holder, RegistryWithOpenAI(client), slog.Default())
+	body := `{
+		"model":"gpt-4o-mini","max_tokens":64,
+		"tools":[{"name":"get_weather","input_schema":{"type":"object"}}],
+		"messages":[{"role":"user","content":"weather?"}]
+	}`
+	req := httptest.NewRequest(http.MethodPost, "/anthropic/v1/messages", bytes.NewBufferString(body))
+	req.Header.Set("x-api-key", "sk-good")
+	rr := httptest.NewRecorder()
+	p.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if !sawTools {
+		t.Fatal("upstream did not receive translated tools")
+	}
+	raw := rr.Body.Bytes()
+	if !bytes.Contains(raw, []byte(`"tool_use"`)) || !bytes.Contains(raw, []byte("get_weather")) {
+		t.Fatalf("expected anthropic tool_use block, body=%s", raw)
+	}
+	if !bytes.Contains(raw, []byte(`"stop_reason":"tool_use"`)) {
+		t.Fatalf("expected tool_use stop_reason, body=%s", raw)
+	}
+}
+
+func TestOpenAIDialectAliasPaths(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "chatcmpl-test",
+			"choices": []map[string]any{
+				{"message": map[string]string{"role": "assistant", "content": "pong"}, "finish_reason": "stop"},
+			},
+			"usage": map[string]int{"prompt_tokens": 3, "completion_tokens": 1},
+		})
+	}))
+	defer upstream.Close()
+
+	t.Setenv("OPENAI_API_KEY", "test-key")
+	holder := NewHolder()
+	holder.Set(snapshot.Compile(snapshot.Source{
+		APIKeys: []snapshot.APIKey{{
+			ID: "key1", KeyHash: snapshot.HashKey("sk-good"), ProjectID: "p1", OrganizationID: "o1",
+		}},
+		Providers: []snapshot.Provider{{
+			ID: "prov", Type: "openai", BaseURL: upstream.URL, APIKeyEnv: "OPENAI_API_KEY",
+		}},
+		Routes: []snapshot.Route{{
+			OrganizationID: "o1", Model: "gpt-4o-mini", ProviderID: "prov", TargetModel: "gpt-4o-mini",
+		}},
+	}))
+	client := llm.NewOpenAIClient(nil)
+	client.HTTP = upstream.Client()
+	p := NewPipeline(holder, RegistryWithOpenAI(client), slog.Default())
+
+	body := `{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hi"}]}`
+	for _, path := range []string{"/v1/chat/completions", "/openai/v1/chat/completions"} {
+		req := httptest.NewRequest(http.MethodPost, path, bytes.NewBufferString(body))
+		req.Header.Set("Authorization", "Bearer sk-good")
+		rr := httptest.NewRecorder()
+		p.Handler().ServeHTTP(rr, req)
+		if rr.Code != http.StatusOK {
+			t.Fatalf("%s status=%d body=%s", path, rr.Code, rr.Body.String())
+		}
+		if !bytes.Contains(rr.Body.Bytes(), []byte("pong")) {
+			t.Fatalf("%s body=%s", path, rr.Body.String())
+		}
+		if !bytes.Contains(rr.Body.Bytes(), []byte("chat.completion")) {
+			t.Fatalf("%s expected openai shape: %s", path, rr.Body.String())
+		}
 	}
 }

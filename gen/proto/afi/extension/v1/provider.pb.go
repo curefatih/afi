@@ -182,134 +182,6 @@ func (x *Capabilities) GetEmbedding() bool {
 	return false
 }
 
-type ChatRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Config        *ProviderConfig        `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
-	TargetModel   string                 `protobuf:"bytes,2,opt,name=target_model,json=targetModel,proto3" json:"target_model,omitempty"`
-	Body          []byte                 `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
-	Stream        bool                   `protobuf:"varint,4,opt,name=stream,proto3" json:"stream,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ChatRequest) Reset() {
-	*x = ChatRequest{}
-	mi := &file_afi_extension_v1_provider_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ChatRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ChatRequest) ProtoMessage() {}
-
-func (x *ChatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_afi_extension_v1_provider_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ChatRequest.ProtoReflect.Descriptor instead.
-func (*ChatRequest) Descriptor() ([]byte, []int) {
-	return file_afi_extension_v1_provider_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *ChatRequest) GetConfig() *ProviderConfig {
-	if x != nil {
-		return x.Config
-	}
-	return nil
-}
-
-func (x *ChatRequest) GetTargetModel() string {
-	if x != nil {
-		return x.TargetModel
-	}
-	return ""
-}
-
-func (x *ChatRequest) GetBody() []byte {
-	if x != nil {
-		return x.Body
-	}
-	return nil
-}
-
-func (x *ChatRequest) GetStream() bool {
-	if x != nil {
-		return x.Stream
-	}
-	return false
-}
-
-type ChatResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	StatusCode    int32                  `protobuf:"varint,1,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"`
-	Headers       map[string]string      `protobuf:"bytes,2,rep,name=headers,proto3" json:"headers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Body          []byte                 `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ChatResponse) Reset() {
-	*x = ChatResponse{}
-	mi := &file_afi_extension_v1_provider_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ChatResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ChatResponse) ProtoMessage() {}
-
-func (x *ChatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_afi_extension_v1_provider_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ChatResponse.ProtoReflect.Descriptor instead.
-func (*ChatResponse) Descriptor() ([]byte, []int) {
-	return file_afi_extension_v1_provider_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *ChatResponse) GetStatusCode() int32 {
-	if x != nil {
-		return x.StatusCode
-	}
-	return 0
-}
-
-func (x *ChatResponse) GetHeaders() map[string]string {
-	if x != nil {
-		return x.Headers
-	}
-	return nil
-}
-
-func (x *ChatResponse) GetBody() []byte {
-	if x != nil {
-		return x.Body
-	}
-	return nil
-}
-
 var File_afi_extension_v1_provider_proto protoreflect.FileDescriptor
 
 const file_afi_extension_v1_provider_proto_rawDesc = "" +
@@ -327,22 +199,7 @@ const file_afi_extension_v1_provider_proto_rawDesc = "" +
 	"\x06stream\x18\x02 \x01(\bR\x06stream\x12\x10\n" +
 	"\x03tts\x18\x03 \x01(\bR\x03tts\x12\x10\n" +
 	"\x03stt\x18\x04 \x01(\bR\x03stt\x12\x1c\n" +
-	"\tembedding\x18\x05 \x01(\bR\tembedding\"\x96\x01\n" +
-	"\vChatRequest\x128\n" +
-	"\x06config\x18\x01 \x01(\v2 .afi.extension.v1.ProviderConfigR\x06config\x12!\n" +
-	"\ftarget_model\x18\x02 \x01(\tR\vtargetModel\x12\x12\n" +
-	"\x04body\x18\x03 \x01(\fR\x04body\x12\x16\n" +
-	"\x06stream\x18\x04 \x01(\bR\x06stream\"\xc6\x01\n" +
-	"\fChatResponse\x12\x1f\n" +
-	"\vstatus_code\x18\x01 \x01(\x05R\n" +
-	"statusCode\x12E\n" +
-	"\aheaders\x18\x02 \x03(\v2+.afi.extension.v1.ChatResponse.HeadersEntryR\aheaders\x12\x12\n" +
-	"\x04body\x18\x03 \x01(\fR\x04body\x1a:\n" +
-	"\fHeadersEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012Q\n" +
-	"\bProvider\x12E\n" +
-	"\x04Chat\x12\x1d.afi.extension.v1.ChatRequest\x1a\x1e.afi.extension.v1.ChatResponseBAZ?github.com/curefatih/afi/gen/proto/afi/extension/v1;extensionv1b\x06proto3"
+	"\tembedding\x18\x05 \x01(\bR\tembeddingBAZ?github.com/curefatih/afi/gen/proto/afi/extension/v1;extensionv1b\x06proto3"
 
 var (
 	file_afi_extension_v1_provider_proto_rawDescOnce sync.Once
@@ -356,25 +213,18 @@ func file_afi_extension_v1_provider_proto_rawDescGZIP() []byte {
 	return file_afi_extension_v1_provider_proto_rawDescData
 }
 
-var file_afi_extension_v1_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_afi_extension_v1_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_afi_extension_v1_provider_proto_goTypes = []any{
 	(*ProviderConfig)(nil), // 0: afi.extension.v1.ProviderConfig
 	(*Capabilities)(nil),   // 1: afi.extension.v1.Capabilities
-	(*ChatRequest)(nil),    // 2: afi.extension.v1.ChatRequest
-	(*ChatResponse)(nil),   // 3: afi.extension.v1.ChatResponse
-	nil,                    // 4: afi.extension.v1.ChatResponse.HeadersEntry
 }
 var file_afi_extension_v1_provider_proto_depIdxs = []int32{
 	1, // 0: afi.extension.v1.ProviderConfig.capabilities:type_name -> afi.extension.v1.Capabilities
-	0, // 1: afi.extension.v1.ChatRequest.config:type_name -> afi.extension.v1.ProviderConfig
-	4, // 2: afi.extension.v1.ChatResponse.headers:type_name -> afi.extension.v1.ChatResponse.HeadersEntry
-	2, // 3: afi.extension.v1.Provider.Chat:input_type -> afi.extension.v1.ChatRequest
-	3, // 4: afi.extension.v1.Provider.Chat:output_type -> afi.extension.v1.ChatResponse
-	4, // [4:5] is the sub-list for method output_type
-	3, // [3:4] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_afi_extension_v1_provider_proto_init() }
@@ -388,9 +238,9 @@ func file_afi_extension_v1_provider_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_afi_extension_v1_provider_proto_rawDesc), len(file_afi_extension_v1_provider_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   2,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   0,
 		},
 		GoTypes:           file_afi_extension_v1_provider_proto_goTypes,
 		DependencyIndexes: file_afi_extension_v1_provider_proto_depIdxs,

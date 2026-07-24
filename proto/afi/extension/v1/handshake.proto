@@ -7,9 +7,11 @@ option go_package = "github.com/curefatih/afi/gen/proto/afi/extension/v1;extensi
 // Capability advertises what the plugin implements.
 enum Capability {
   CAPABILITY_UNSPECIFIED = 0;
+  // Typed chat IR provider (Provider.ChatIR / ChatIRStream).
   CAPABILITY_PROVIDER_CHAT = 1;
   CAPABILITY_HOOK_BEFORE_CALL = 2;
   CAPABILITY_HOOK_AFTER_CALL = 3;
+  // Typed chat IR mutation hook (Hook.BeforeChat).
   CAPABILITY_HOOK_BEFORE_CHAT = 4;
   CAPABILITY_HOOK_AFTER_CHAT = 5;
   // Reserved for follow-on host adapters (not wired in v1).
