@@ -111,6 +111,31 @@ func TestCostSelectorStableTies(t *testing.T) {
 	}
 }
 
+func TestCostSelectorAudioSpeechCheaperFirst(t *testing.T) {
+	t.Parallel()
+	// tts-1 ($0.000015/char) cheaper than tts-1-hd ($0.00003/char).
+	cands := []Candidate{
+		{ProviderID: "hd", ProviderType: "openai", TargetModel: "tts-1-hd"},
+		{ProviderID: "std", ProviderType: "openai", TargetModel: "tts-1"},
+	}
+	out := CostSelector{}.Order(cands, nil)
+	if out[0].ProviderID != "std" || out[1].ProviderID != "hd" {
+		t.Fatalf("tts cheaper first: %+v", out)
+	}
+}
+
+func TestCostSelectorAudioTranscriptionKnown(t *testing.T) {
+	t.Parallel()
+	cands := []Candidate{
+		{ProviderID: "unk", ProviderType: "openai", TargetModel: "afi-not-whisper"},
+		{ProviderID: "w", ProviderType: "openai", TargetModel: "whisper-1"},
+	}
+	out := CostSelector{}.Order(cands, nil)
+	if out[0].ProviderID != "w" || out[1].ProviderID != "unk" {
+		t.Fatalf("whisper known before unknown: %+v", out)
+	}
+}
+
 func TestForStrategyAdaptive(t *testing.T) {
 	t.Parallel()
 	store := NewMemorySignalStore()
