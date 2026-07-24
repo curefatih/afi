@@ -26,6 +26,7 @@ type Organization = tenancy.Organization
 type Team = tenancy.Team
 type TeamMember = tenancy.TeamMember
 type Project = tenancy.Project
+type Environment = tenancy.Environment
 type OrgMember = tenancy.OrgMember
 type OrgInvite = tenancy.OrgInvite
 type InviteOutcome = tenancy.InviteOutcome

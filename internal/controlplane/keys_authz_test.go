@@ -58,10 +58,10 @@ func (f *keysFake) GetAPIKeyOrgID(_ context.Context, keyID string) (string, erro
 	return k.OrganizationID, nil
 }
 
-func (f *keysFake) CreateAPIKey(_ context.Context, orgID, kind, ownerUserID, projectID, name, rawKey string) (*APIKey, error) {
+func (f *keysFake) CreateAPIKey(_ context.Context, orgID, kind, ownerUserID, projectID, environmentID, name, rawKey string) (*APIKey, error) {
 	k := &APIKey{
 		ID: "key_" + name, OrganizationID: orgID, Kind: kind, OwnerUserID: ownerUserID,
-		ProjectID: projectID, Name: name, KeyPrefix: KeyPrefix(rawKey), Key: rawKey,
+		ProjectID: projectID, EnvironmentID: environmentID, Name: name, KeyPrefix: KeyPrefix(rawKey), Key: rawKey,
 		CreatedAt: time.Now().UTC(),
 	}
 	f.keys[k.ID] = k

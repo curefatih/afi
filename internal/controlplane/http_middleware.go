@@ -430,6 +430,52 @@ func (s *Server) requireOrgMemberViaProject(next http.HandlerFunc) http.HandlerF
 	}
 }
 
+func (s *Server) requireOrgMemberViaEnvironment(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := s.members.GetEnvironmentOrgID(r.Context(), r.PathValue("environmentID"))
+		if errors.Is(err, kernel.ErrNotFound) {
+			writeErr(w, http.StatusNotFound, "not found")
+			return
+		}
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		claims := claimsFrom(r.Context())
+		ok, err := s.members.IsOrgMember(r.Context(), claims.UserID, orgID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !ok {
+			writeErr(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next(w, r)
+	}
+}
+
+func (s *Server) requireOrgAdminViaEnvironment(next http.HandlerFunc) http.HandlerFunc {
+	return s.requireOrgMemberViaEnvironment(func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := s.members.GetEnvironmentOrgID(r.Context(), r.PathValue("environmentID"))
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		claims := claimsFrom(r.Context())
+		ok, err := s.members.IsOrgAdmin(r.Context(), claims.UserID, orgID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !ok {
+			writeErr(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next(w, r)
+	})
+}
+
 func (s *Server) requireOrgMemberViaProvider(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		orgID, err := s.members.GetProviderOrgID(r.Context(), r.PathValue("providerID"))

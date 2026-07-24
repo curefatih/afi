@@ -109,6 +109,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/teams", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateTeam)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/projects", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListProjects)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/projects", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleCreateProject)))
+	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/projects/{projectID}/environments", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.requireOrgMemberViaProject(s.handleListEnvironments))))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/projects/{projectID}/environments", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.requireOrgAdminViaProject(s.handleCreateEnvironment))))
+	mux.HandleFunc("GET /api/v1/platform/environments/{environmentID}", s.requireAuth(s.requireOrgMemberViaEnvironment(s.handleGetEnvironment)))
+	mux.HandleFunc("DELETE /api/v1/platform/environments/{environmentID}", s.requireAuth(s.requireOrgAdminViaEnvironment(s.handleDeleteEnvironment)))
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/providers", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListProviders)))
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/providers/health", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleProviderHealth)))
