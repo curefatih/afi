@@ -326,17 +326,15 @@ targetLoop:
 		}
 		log.Error("upstream error", "err", lastErr)
 		p.recordUsage(UsageEvent{
-			OrganizationID: key.OrganizationID,
-			ProjectID:      key.ProjectID,
-			APIKeyID:       key.ID,
-			CredentialID:   usedCredentialID,
-			Model:          reqBody.Model,
-			ProviderType:   usedProvider.Type,
-			TargetModel:    usedTarget,
-			Status:         "error",
-			LatencyMs:      time.Since(start).Milliseconds(),
-			Modality:       ModalityChat,
-			Tags:           cloneTags(call.Tags),
+			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
+			CredentialID: usedCredentialID,
+			Model:        reqBody.Model,
+			ProviderType: usedProvider.Type,
+			TargetModel:  usedTarget,
+			Status:       "error",
+			LatencyMs:    time.Since(start).Milliseconds(),
+			Modality:     ModalityChat,
+			Tags:         cloneTags(call.Tags),
 		})
 		afterInfo := AfterCallInfo{
 			Status: "error", LatencyMs: time.Since(start).Milliseconds(),
@@ -414,9 +412,7 @@ targetLoop:
 	}
 
 	p.recordUsage(UsageEvent{
-		OrganizationID:   key.OrganizationID,
-		ProjectID:        key.ProjectID,
-		APIKeyID:         key.ID,
+		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
 		CredentialID:     usedCredentialID,
 		Model:            reqBody.Model,
 		ProviderType:     usedProvider.Type,
