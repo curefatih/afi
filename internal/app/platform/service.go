@@ -42,9 +42,15 @@ type ConfigAPI interface {
 	ListProjects(ctx context.Context, orgID, userID string) ([]tenancy.Project, error)
 	CreateProject(ctx context.Context, orgID, teamID, name string) (*tenancy.Project, error)
 
+	ListEnvironments(ctx context.Context, projectID string) ([]tenancy.Environment, error)
+	GetEnvironment(ctx context.Context, environmentID string) (*tenancy.Environment, error)
+	CreateEnvironment(ctx context.Context, orgID, projectID, name, slug string) (*tenancy.Environment, error)
+	DeleteEnvironment(ctx context.Context, environmentID string) error
+	GetEnvironmentOrgID(ctx context.Context, environmentID string) (string, error)
+
 	ListAPIKeys(ctx context.Context, projectID string) ([]access.APIKey, error)
 	ListOrgAPIKeys(ctx context.Context, orgID string) ([]access.APIKey, error)
-	CreateAPIKey(ctx context.Context, orgID, kind, ownerUserID, projectID, name, rawKey string) (*access.APIKey, error)
+	CreateAPIKey(ctx context.Context, orgID, kind, ownerUserID, projectID, environmentID, name, rawKey string) (*access.APIKey, error)
 	GetAPIKeyOrgID(ctx context.Context, keyID string) (string, error)
 	DeleteAPIKey(ctx context.Context, keyID string) error
 

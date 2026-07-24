@@ -146,8 +146,40 @@ func (s *Service) CreateProject(ctx context.Context, orgID, teamID, name string)
 	return p, nil
 }
 
-func (s *Service) CreateAPIKey(ctx context.Context, orgID, kind, ownerUserID, projectID, name, rawKey string) (*access.APIKey, error) {
-	k, err := s.API.CreateAPIKey(ctx, orgID, kind, ownerUserID, projectID, name, rawKey)
+func (s *Service) ListEnvironments(ctx context.Context, projectID string) ([]tenancy.Environment, error) {
+	return s.API.ListEnvironments(ctx, projectID)
+}
+
+func (s *Service) GetEnvironment(ctx context.Context, environmentID string) (*tenancy.Environment, error) {
+	return s.API.GetEnvironment(ctx, environmentID)
+}
+
+func (s *Service) CreateEnvironment(ctx context.Context, orgID, projectID, name, slug string) (*tenancy.Environment, error) {
+	e, err := s.API.CreateEnvironment(ctx, orgID, projectID, name, slug)
+	if err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventEnvironmentCreated, e.ID, orgID)
+	return e, nil
+}
+
+func (s *Service) DeleteEnvironment(ctx context.Context, environmentID string) error {
+	orgID, err := s.API.GetEnvironmentOrgID(ctx, environmentID)
+	if err != nil {
+		return err
+	}
+	if err := s.API.DeleteEnvironment(ctx, environmentID); err != nil {
+		return err
+	}
+	if err := s.publish(ctx, "deleted"); err != nil {
+		return err
+	}
+	s.emit(ctx, EventEnvironmentDeleted, environmentID, orgID)
+	return nil
+}
+
+func (s *Service) CreateAPIKey(ctx context.Context, orgID, kind, ownerUserID, projectID, environmentID, name, rawKey string) (*access.APIKey, error) {
+	k, err := s.API.CreateAPIKey(ctx, orgID, kind, ownerUserID, projectID, environmentID, name, rawKey)
 	if err != nil {
 		return nil, err
 	}
