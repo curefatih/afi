@@ -56,6 +56,15 @@ type ProjectRepository interface {
 	OrgID(ctx context.Context, projectID string) (string, error)
 }
 
+// EnvironmentRepository persists project environments.
+type EnvironmentRepository interface {
+	ListByProject(ctx context.Context, projectID string) ([]Environment, error)
+	Get(ctx context.Context, environmentID string) (*Environment, error)
+	Insert(ctx context.Context, e Environment) error
+	Delete(ctx context.Context, environmentID string) error
+	OrgID(ctx context.Context, environmentID string) (string, error)
+}
+
 // UserLookup resolves users by email for invites.
 type UserLookup interface {
 	FindByEmail(ctx context.Context, email string) (userID, name, userEmail string, err error)

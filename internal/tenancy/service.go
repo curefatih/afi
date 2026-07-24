@@ -3,6 +3,7 @@ package tenancy
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/curefatih/afi/internal/kernel"
@@ -50,6 +51,25 @@ func CreateProject(ctx context.Context, repo ProjectRepository, id, orgID, teamI
 		return nil, err
 	}
 	return p, nil
+}
+
+// CreateEnvironment validates and persists an environment under a project.
+func CreateEnvironment(ctx context.Context, repo EnvironmentRepository, projects ProjectRepository, id, orgID, projectID, name, slug string) (*Environment, error) {
+	projOrg, err := projects.OrgID(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	if projOrg != orgID {
+		return nil, fmt.Errorf("%w: project does not belong to organization", kernel.ErrInvalidRequest)
+	}
+	e, err := NewEnvironment(id, orgID, projectID, name, slug, timeNowUTC())
+	if err != nil {
+		return nil, err
+	}
+	if err := repo.Insert(ctx, *e); err != nil {
+		return nil, err
+	}
+	return e, nil
 }
 
 // AddOrgMemberByEmail invites an existing user as a member.

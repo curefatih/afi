@@ -53,3 +53,23 @@ func TestShouldDemoteActorOnOwnerTransfer(t *testing.T) {
 		t.Fatal("self promote should not demote")
 	}
 }
+
+func TestValidateEnvironmentSlug(t *testing.T) {
+	t.Parallel()
+	if err := ValidateEnvironmentSlug(""); err == nil {
+		t.Fatal("expected error")
+	}
+	if err := ValidateEnvironmentSlug("Prod"); err != nil {
+		t.Fatal(err) // Normalize lowercases
+	}
+	if err := ValidateEnvironmentSlug("prod!"); err == nil {
+		t.Fatal("expected error")
+	}
+	e, err := NewEnvironment("env_1", "org_1", "proj_1", "Production", "prod", time.Unix(1, 0).UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e.Slug != "prod" || e.Name != "Production" {
+		t.Fatalf("%+v", e)
+	}
+}
