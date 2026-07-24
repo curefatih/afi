@@ -7,13 +7,14 @@ type ProviderCapabilities struct {
 	TTS       bool `json:"tts"`
 	STT       bool `json:"stt"`
 	Embedding bool `json:"embedding"`
+	Image     bool `json:"image"`
 }
 
 // DefaultCapabilities returns catalog defaults for a provider type.
 func DefaultCapabilities(typ string) ProviderCapabilities {
 	switch typ {
 	case "openai", "openai_compatible":
-		return ProviderCapabilities{Chat: true, Stream: true, TTS: true, STT: true, Embedding: true}
+		return ProviderCapabilities{Chat: true, Stream: true, TTS: true, STT: true, Embedding: true, Image: true}
 	case "echo":
 		return ProviderCapabilities{Chat: true, Stream: false}
 	default:
@@ -25,10 +26,10 @@ func DefaultCapabilities(typ string) ProviderCapabilities {
 // NormalizeCapabilities fills empty capabilities from the type catalog.
 func NormalizeCapabilities(typ string, c ProviderCapabilities) ProviderCapabilities {
 	def := DefaultCapabilities(typ)
-	if !c.Chat && !c.Stream && !c.TTS && !c.STT && !c.Embedding {
+	if !c.Chat && !c.Stream && !c.TTS && !c.STT && !c.Embedding && !c.Image {
 		return def
 	}
-	// Older snapshots only stored chat/stream. Promote TTS/STT/embedding from type
+	// Older snapshots only stored chat/stream. Promote TTS/STT/embedding/image from type
 	// defaults when unset so openai providers keep working after modality cycles.
 	if !c.TTS && !c.STT && (def.TTS || def.STT) {
 		c.TTS = def.TTS
@@ -36,6 +37,9 @@ func NormalizeCapabilities(typ string, c ProviderCapabilities) ProviderCapabilit
 	}
 	if !c.Embedding && def.Embedding {
 		c.Embedding = true
+	}
+	if !c.Image && def.Image {
+		c.Image = true
 	}
 	return c
 }

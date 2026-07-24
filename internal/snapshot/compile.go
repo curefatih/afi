@@ -16,7 +16,8 @@ type Source struct {
 	WasmHooks      []WasmHook
 	MCPBackends    []MCPBackend
 	A2AAgents      []A2AAgent
-	DefaultRetries map[string]*RetryConfig // orgID → default
+	DefaultRetries map[string]*RetryConfig      // orgID → default
+	ObjectStores   map[string]*ObjectStoreConfig // orgID → optional asset store
 }
 
 // CredentialAssignment is a compile-time binding of credential → scope.
@@ -44,6 +45,7 @@ func Compile(src Source) *Snapshot {
 		A2AAgents:      make(map[string]A2AAgent, len(src.A2AAgents)),
 		A2ARoutes:      make(map[string]string, len(src.A2AAgents)),
 		DefaultRetries: make(map[string]*RetryConfig, len(src.DefaultRetries)),
+		ObjectStores:   make(map[string]*ObjectStoreConfig, len(src.ObjectStores)),
 	}
 	for _, k := range src.APIKeys {
 		if k.KeyHash == "" {
@@ -105,6 +107,16 @@ func Compile(src Source) *Snapshot {
 	}
 	if len(s.DefaultRetries) == 0 {
 		s.DefaultRetries = nil
+	}
+	for orgID, store := range src.ObjectStores {
+		if orgID == "" || store == nil {
+			continue
+		}
+		cp := *store
+		s.ObjectStores[orgID] = &cp
+	}
+	if len(s.ObjectStores) == 0 {
+		s.ObjectStores = nil
 	}
 	return s
 }
