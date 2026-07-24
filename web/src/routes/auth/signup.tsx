@@ -3,10 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { z } from "zod";
-import {
-	authFeaturesQueryOptions,
-	registerMutationOptions,
-} from "#/api/auth";
+import { authFeaturesQueryOptions, registerMutationOptions } from "#/api/auth";
 import { Button } from "#/components/ui/button";
 import {
 	Card,

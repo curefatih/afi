@@ -99,9 +99,7 @@ function RouteComponent() {
 							</form.Field>
 							<Field>
 								<Button type="submit" disabled={confirmMutation.isPending}>
-									{confirmMutation.isPending
-										? "Updating…"
-										: "Update password"}
+									{confirmMutation.isPending ? "Updating…" : "Update password"}
 								</Button>
 								<FieldDescription className="text-center">
 									<Link
