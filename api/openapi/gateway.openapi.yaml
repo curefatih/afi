@@ -25,6 +25,7 @@ servers:
 
 security:
   - virtualKeyAuth: []
+  - anthropicAPIKey: []
 
 tags:
   - name: Health
@@ -61,7 +62,28 @@ paths:
       summary: List routable models
       description: |
         OpenAI-shaped model list enriched from org routes and the model catalog.
+        Alias of `GET /openai/v1/models`.
         See OpenAI Models API for the general shape.
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      responses:
+        "200":
+          description: Model list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /openai/v1/models:
+    get:
+      tags: [OpenAICompatible]
+      operationId: listModelsOpenAIDialect
+      summary: List routable models (OpenAI dialect)
+      description: |
+        Canonical OpenAI dialect models path. Same as `GET /v1/models`.
       parameters:
         - $ref: "#/components/parameters/AFITags"
       responses:
@@ -81,8 +103,8 @@ paths:
       operationId: chatCompletions
       summary: Chat completions
       description: |
-        OpenAI-compatible chat completions with AFI routing, quotas, policies, hooks,
-        and optional streaming. Body follows the OpenAI Chat Completions schema.
+        OpenAI dialect chat completions (alias of `POST /openai/v1/chat/completions`).
+        Routed via chat IR to any chat-capable provider. Body follows the OpenAI Chat Completions schema.
       externalDocs:
         url: https://platform.openai.com/docs/api-reference/chat
       parameters:
@@ -94,7 +116,41 @@ paths:
             schema:
               type: object
               additionalProperties: true
-              description: OpenAI chat completion request (passthrough).
+              description: OpenAI chat completion request.
+      responses:
+        "200":
+          description: Completion or SSE stream
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /openai/v1/chat/completions:
+    post:
+      tags: [OpenAICompatible]
+      operationId: chatCompletionsOpenAIDialect
+      summary: Chat completions (OpenAI dialect)
+      description: |
+        Canonical OpenAI dialect path. Same behavior as `POST /v1/chat/completions`.
+      externalDocs:
+        url: https://platform.openai.com/docs/api-reference/chat
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
       responses:
         "200":
           description: Completion or SSE stream
@@ -244,8 +300,43 @@ paths:
       operationId: anthropicMessages
       summary: Anthropic Messages
       description: |
-        Native Anthropic Messages API shape (not OpenAI chat). Requires an Anthropic
-        (or compatible) provider route.
+        Anthropic Messages dialect (alias of `POST /anthropic/v1/messages`).
+        Decoded to chat IR and served by any chat-capable routed provider.
+      externalDocs:
+        url: https://docs.anthropic.com/en/api/messages
+      parameters:
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Message response or stream
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /anthropic/v1/messages:
+    post:
+      tags: [Anthropic]
+      operationId: anthropicMessagesDialect
+      summary: Anthropic Messages (dialect)
+      description: |
+        Canonical Anthropic dialect path. Same behavior as `POST /v1/messages`.
+        Set `ANTHROPIC_BASE_URL` to the gateway origin + `/anthropic`.
       externalDocs:
         url: https://docs.anthropic.com/en/api/messages
       parameters:
@@ -389,7 +480,14 @@ components:
       type: http
       scheme: bearer
       bearerFormat: API key
-      description: Virtual API key issued by the platform (typically `sk-…`).
+      description: |
+        Virtual API key issued by the platform (typically `sk-…`).
+        Anthropic dialect clients may instead send `x-api-key: <virtual-api-key>`.
+    anthropicAPIKey:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: Anthropic SDK-style virtual API key (same value as Bearer).
 
   parameters:
     AFITags:
