@@ -99,3 +99,34 @@ func TestResolveQuotaAPIKeyBeatsUser(t *testing.T) {
 		t.Fatalf("want api_key quota, got %+v ok=%v", q, ok)
 	}
 }
+
+func TestResolveQuotaPrefersProjectOverTeam(t *testing.T) {
+	t.Parallel()
+	snap := Compile(Source{
+		Quotas: []Quota{
+			{ID: "org", OrganizationID: "o1", ScopeType: ScopeOrganization, ScopeID: "o1", Metric: MetricRequests, LimitValue: 100, Window: WindowTotal},
+			{ID: "team", OrganizationID: "o1", ScopeType: ScopeTeam, ScopeID: "t1", Metric: MetricRequests, LimitValue: 40, Window: WindowTotal},
+			{ID: "proj", OrganizationID: "o1", ScopeType: ScopeProject, ScopeID: "p1", Metric: MetricRequests, LimitValue: 25, Window: WindowTotal},
+		},
+	})
+	key := APIKey{ID: "k1", ProjectID: "p1", TeamID: "t1", OrganizationID: "o1"}
+	q, ok := snap.ResolveQuota(key, MetricRequests, WindowTotal)
+	if !ok || q.ID != "proj" {
+		t.Fatalf("want project quota, got %+v ok=%v", q, ok)
+	}
+}
+
+func TestResolveQuotaFallsBackToTeam(t *testing.T) {
+	t.Parallel()
+	snap := Compile(Source{
+		Quotas: []Quota{
+			{ID: "org", OrganizationID: "o1", ScopeType: ScopeOrganization, ScopeID: "o1", Metric: MetricRequests, LimitValue: 100, Window: WindowTotal},
+			{ID: "team", OrganizationID: "o1", ScopeType: ScopeTeam, ScopeID: "t1", Metric: MetricRequests, LimitValue: 40, Window: WindowTotal},
+		},
+	})
+	key := APIKey{ID: "k1", ProjectID: "p1", TeamID: "t1", OrganizationID: "o1"}
+	q, ok := snap.ResolveQuota(key, MetricRequests, WindowTotal)
+	if !ok || q.ID != "team" {
+		t.Fatalf("want team quota, got %+v ok=%v", q, ok)
+	}
+}

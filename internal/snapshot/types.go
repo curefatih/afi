@@ -9,6 +9,7 @@ import (
 // Snapshot is an immutable compiled gateway configuration.
 const (
 	ScopeOrganization = "organization"
+	ScopeTeam         = "team"
 	ScopeProject      = "project"
 	ScopeUser         = "user"
 	ScopeAPIKey       = "api_key"
@@ -143,6 +144,8 @@ type APIKey struct {
 	KeyHash        string `json:"key_hash"`
 	KeyPrefix      string `json:"key_prefix"`
 	ProjectID      string `json:"project_id,omitempty"`
+	TeamID         string `json:"team_id,omitempty"`
+	EnvironmentID  string `json:"environment_id,omitempty"`
 	OrganizationID string `json:"organization_id"`
 	Name           string `json:"name"`
 	ID             string `json:"id,omitempty"`
@@ -338,7 +341,7 @@ func ValidQuotaWindow(window string) bool {
 }
 
 // ResolveQuota picks the most specific matching quota for the metric and window
-// (api_key > user > project > organization).
+// (api_key > user > project > team > organization).
 func (s *Snapshot) ResolveQuota(key APIKey, metric, window string) (Quota, bool) {
 	if s == nil {
 		return Quota{}, false
@@ -356,14 +359,18 @@ func (s *Snapshot) ResolveQuota(key APIKey, metric, window string) (Quota, bool)
 		switch q.ScopeType {
 		case ScopeAPIKey:
 			if q.ScopeID == key.ID {
-				rank = 4
+				rank = 5
 			}
 		case ScopeUser:
 			if key.OwnerUserID != "" && q.ScopeID == key.OwnerUserID {
-				rank = 3
+				rank = 4
 			}
 		case ScopeProject:
 			if key.ProjectID != "" && q.ScopeID == key.ProjectID {
+				rank = 3
+			}
+		case ScopeTeam:
+			if key.TeamID != "" && q.ScopeID == key.TeamID {
 				rank = 2
 			}
 		case ScopeOrganization:
