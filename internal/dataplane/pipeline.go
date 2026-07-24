@@ -371,6 +371,10 @@ func (p *Pipeline) bindProviderSecret(ctx context.Context, snap *snapshot.Snapsh
 		}
 	}
 	if strings.TrimSpace(provider.APIKeyEnv) == "" {
+		if provider.Type == "bedrock" {
+			// Empty api_key_env means the Bedrock adapter uses the AWS default credential chain.
+			return provider, "", nil
+		}
 		return provider, "", fmt.Errorf("no credential assigned for provider type %q and no api_key_env fallback", provider.Type)
 	}
 	return provider, "", nil

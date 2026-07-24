@@ -5,13 +5,13 @@ AFI exposes two HTTP surfaces:
 | Surface | Default | Auth | Contract |
 | ------- | ------- | ---- | -------- |
 | **Platform** (control plane) | `:8081` `/api/v1/platform` | Session JWT | [platform.openapi.yaml](https://github.com/curefatih/afi/blob/main/api/openapi/platform.openapi.yaml) |
-| **Gateway** (data plane) | `:8080` `/openai/*`, `/anthropic/*`, `/v1/*`, `/mcp/*`, `/a2a/*` | Virtual API key | [gateway.openapi.yaml](https://github.com/curefatih/afi/blob/main/api/openapi/gateway.openapi.yaml) (overlay) |
+| **Gateway** (data plane) | `:8080` `/openai/*`, `/anthropic/*`, `/gemini/*`, `/v1/*`, `/mcp/*`, `/a2a/*` | Virtual API key | [gateway.openapi.yaml](https://github.com/curefatih/afi/blob/main/api/openapi/gateway.openapi.yaml) (overlay) |
 
 Specs live in the repo under [`api/openapi/`](https://github.com/curefatih/afi/tree/main/api/openapi). Regenerate / check with `make openapi-check`.
 
 ## Dialects (chat)
 
-Use the **OpenAI, Anthropic, or Gemini SDK** against the gateway: the path picks the client wire format; routing picks any chat-capable upstream. Start with **[API dialects](dialects.md)**.
+Use the **OpenAI, Anthropic, or Gemini** client shape against the gateway: the path picks the client wire format; routing picks any chat-capable upstream, including AWS Bedrock. Start with **[API dialects](dialects.md)**.
 
 ## Client SDKs
 

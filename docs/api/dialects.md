@@ -4,7 +4,7 @@ Point your **existing** OpenAI, Anthropic, or Gemini client at AFI. The path you
 
 ```mermaid
 flowchart LR
-  sdk[OpenAI, Anthropic, or Gemini SDK]
+  sdk[OpenAI, Anthropic, or Gemini client]
   dialect[Dialect path]
   route[Routed model]
   up[Any chat provider]
@@ -20,7 +20,7 @@ flowchart LR
 | Anthropic SDK / Messages | `/anthropic/v1/...` (or `/v1/messages`) | `x-api-key: <virtual-key>` or Bearer |
 | Gemini SDK / `generate_content` | `/gemini/v1beta/models/{route}:...` | `x-goog-api-key`, `?key=`, or Bearer |
 
-The virtual API key is always an **AFI** key from the platform — not the upstream vendor key. Upstream credentials stay on the provider config (BYOK / env / vault).
+The virtual API key is always an **AFI** key from the platform — not the upstream vendor key. Upstream credentials stay on the provider config (BYOK / env / vault / AWS default chain for Bedrock).
 
 ## Why dialects matter
 
@@ -29,7 +29,7 @@ Without dialects, gateways usually force one client shape (almost always OpenAI)
 With dialects:
 
 * Keep your preferred SDK and prompts
-* Route `"model"` to OpenAI, Anthropic, Gemini, or `openai_compatible` (Ollama, etc.)
+* Route `"model"` to OpenAI, Anthropic, Gemini, Bedrock, or `openai_compatible` (Ollama, etc.)
 * Still get AFI auth, quotas, policies, failover, usage, and hooks
 
 ## Supported today
@@ -152,7 +152,7 @@ curl -s "http://localhost:8080/gemini/v1beta/models/gpt-4o-mini:generateContent"
 
 ## Model names are routes
 
-The model is the **AFI route alias** configured in the platform (Routing), not necessarily the upstream vendor id. OpenAI and Anthropic carry it in `"model"`; Gemini carries it in the `{route}` URL segment. Map `gpt-4o-mini` → OpenAI, `claude-sonnet` → Anthropic, or use either through Gemini-shaped `generateContent` — the client dialect stays unchanged while the provider follows the route.
+The model is the **AFI route alias** configured in the platform (Routing), not necessarily the upstream vendor id. OpenAI and Anthropic carry it in `"model"`; Gemini carries it in the `{route}` URL segment. A route may target OpenAI, Anthropic, Gemini, Bedrock, or an OpenAI-compatible provider while the client dialect stays unchanged.
 
 ## Tools and vision
 
@@ -171,11 +171,11 @@ curl -s http://localhost:8080/openai/v1/chat/completions \
   }'
 ```
 
-The model's tool call comes back in the caller's dialect (`tool_calls` for OpenAI, `tool_use` blocks for Anthropic, `functionCall` parts for Gemini), including when streaming. Feed tool results back as `role: "tool"` messages (OpenAI), `tool_result` blocks (Anthropic), or `functionResponse` parts (Gemini). Images are sent as `image_url`, `image`, or `inlineData` / `fileData` parts; inline base64 and hosted/file URIs round-trip.
+The model's tool call comes back in the caller's dialect (`tool_calls` for OpenAI, `tool_use` blocks for Anthropic, or `functionCall` parts for Gemini), including when streaming. Feed tool results back as `role: "tool"` messages (OpenAI), `tool_result` blocks (Anthropic), or `functionResponse` parts (Gemini). Images are sent as `image_url`, `image`, or `inlineData` / `fileData`; Bedrock-backed routes require inline base64 image data.
 
 ## Streaming
 
-All three dialects support streaming when the routed provider advertises `stream` capability. AFI translates stream events — including tool calls — so the client sees OpenAI chunks, Anthropic message events, or Gemini SSE candidates.
+All chat dialects support streaming when the routed provider advertises `stream` capability. AFI translates stream events — including tool calls — so the client sees OpenAI chunks, Anthropic message events, or Gemini SSE candidates.
 
 ## Known limitations
 

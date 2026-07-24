@@ -26,8 +26,8 @@ func WriteUpstreamError(w http.ResponseWriter, d ir.Dialect, status int, body []
 }
 
 // ParseErrorBody extracts a human message and machine type from common upstream
-// error JSON shapes (OpenAI, Anthropic, Gemini). Unknown bodies fall back to the
-// trimmed raw string when it looks like plain text.
+// error JSON shapes (OpenAI, Anthropic, Gemini, Bedrock). Unknown bodies fall
+// back to the trimmed raw string when it looks like plain text.
 func ParseErrorBody(body []byte) (message, typ string) {
 	body = bytesTrimSpace(body)
 	if len(body) == 0 {
@@ -69,9 +69,16 @@ func ParseErrorBody(body []byte) (message, typ string) {
 		}
 	}
 
-	// Loose fallbacks
+	// Bedrock / flat: {"message":"...","code":"..."}
 	if msg, ok := raw["message"].(string); ok && strings.TrimSpace(msg) != "" {
-		return strings.TrimSpace(msg), ""
+		et, _ := raw["code"].(string)
+		if et == "" {
+			et, _ = raw["type"].(string)
+		}
+		if et == "" {
+			et, _ = raw["__type"].(string)
+		}
+		return strings.TrimSpace(msg), et
 	}
 	return "", ""
 }

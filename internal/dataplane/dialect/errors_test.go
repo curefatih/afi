@@ -32,6 +32,13 @@ func TestParseErrorBodyGemini(t *testing.T) {
 	}
 }
 
+func TestParseErrorBodyBedrock(t *testing.T) {
+	msg, typ := dialect.ParseErrorBody([]byte(`{"message":"model unavailable","code":"ServiceUnavailableException"}`))
+	if msg != "model unavailable" || typ != "ServiceUnavailableException" {
+		t.Fatalf("msg=%q typ=%q", msg, typ)
+	}
+}
+
 func TestParseErrorBodyPlainText(t *testing.T) {
 	msg, typ := dialect.ParseErrorBody([]byte("upstream exploded"))
 	if msg != "upstream exploded" || typ != "" {

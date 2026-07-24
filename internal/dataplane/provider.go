@@ -2,6 +2,7 @@ package dataplane
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"sync"
 
@@ -80,7 +81,8 @@ func RegistryFromClients(c *llm.Clients) *Registry {
 		Register(newOpenAIChatProvider("openai", c.OpenAI, ProviderCaps{Chat: true, Stream: true, TTS: true, STT: true, Embedding: true})).
 		Register(newOpenAIChatProvider("openai_compatible", c.OpenAICompatible, ProviderCaps{Chat: true, Stream: true, TTS: true, STT: true, Embedding: true})).
 		Register(newAnthropicChatProvider(c.Anthropic)).
-		Register(newGeminiChatProvider(c.Gemini))
+		Register(newGeminiChatProvider(c.Gemini)).
+		Register(newBedrockChatProvider(c.Bedrock))
 }
 
 // RegistryWithOpenAI builds DefaultRegistry but uses the given OpenAI client for type "openai"
@@ -167,5 +169,26 @@ func (p *geminiChatProvider) Chat(ctx context.Context, provider snapshot.Provide
 }
 
 func (p *geminiChatProvider) ChatIR(ctx context.Context, provider snapshot.Provider, targetModel string, req ir.ChatRequest) (ir.ChatResult, error) {
+	return p.client.ChatIR(ctx, provider, targetModel, req)
+}
+
+type bedrockChatProvider struct {
+	client *llm.BedrockClient
+}
+
+func newBedrockChatProvider(client *llm.BedrockClient) *bedrockChatProvider {
+	return &bedrockChatProvider{client: client}
+}
+
+func (p *bedrockChatProvider) Type() string { return "bedrock" }
+func (p *bedrockChatProvider) Capabilities() ProviderCaps {
+	return ProviderCaps{Chat: true, Stream: true}
+}
+
+func (p *bedrockChatProvider) Chat(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
+	return nil, errors.New("bedrock provider requires ChatIR")
+}
+
+func (p *bedrockChatProvider) ChatIR(ctx context.Context, provider snapshot.Provider, targetModel string, req ir.ChatRequest) (ir.ChatResult, error) {
 	return p.client.ChatIR(ctx, provider, targetModel, req)
 }
