@@ -5,6 +5,8 @@ package usage
 type Event struct {
 	OrganizationID   string            `json:"organization_id"`
 	ProjectID        string            `json:"project_id"`
+	TeamID           string            `json:"team_id,omitempty"`
+	EnvironmentID    string            `json:"environment_id,omitempty"`
 	APIKeyID         string            `json:"api_key_id"`
 	CredentialID     string            `json:"credential_id,omitempty"`
 	UsedBYOK         bool              `json:"used_byok"`
