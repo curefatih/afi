@@ -9,6 +9,7 @@ Gateway chat dispatch uses a **registry** of in-process adapters. The pipeline l
 | `openai` | yes | yes | yes | yes | yes | yes | Chat + audio + `/embeddings` + `/images/generations` |
 | `anthropic` | yes | yes | no | no | no | no | Messages API → OpenAI-shaped responses/SSE |
 | `gemini` | yes | yes | no | no | no | no | `generateContent` / `streamGenerateContent` → OpenAI JSON/SSE |
+| `bedrock` | yes | yes | no | no | no | no | Bedrock **Converse** / **ConverseStream** (SigV4); tools + vision |
 | `openai_compatible` | yes | yes | yes | yes | yes | yes | Same wire protocol as OpenAI (incl. audio/embeddings/images if upstream supports it) |
 | `echo` | yes | no | no | no | no | no | **SDK extension** (`extensions/echo`) — no network; echoes last user message |
 
@@ -20,6 +21,7 @@ Capabilities (`chat`, `stream`, `tts`, `stt`, `embedding`, `image`) are stored o
 |---------|---------------|-------------|
 | `POST /openai/v1/chat/completions` (+ `/v1/...`) | `IRChatProvider.ChatIR` | `provider.type` |
 | `POST /anthropic/v1/messages` (+ `/v1/messages`) | same chat IR path | `provider.type` (any chat-capable provider) |
+| `POST /gemini/v1beta/models/{route}:...` | same chat IR path | `provider.type` (any chat-capable provider) |
 | `POST /openai/v1/audio/speech` / `transcriptions` (+ `/v1/audio/...`) | `AudioBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
 | `POST /openai/v1/embeddings` (+ `/v1/embeddings`) | `EmbeddingsBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
 | `POST /openai/v1/images/generations` (+ `/v1/images/generations`) | `ImagesBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
@@ -79,3 +81,15 @@ Example: [`extensions/grpcecho`](../../extensions/grpcecho).
 1. Create provider type `openai_compatible`, base URL `http://127.0.0.1:11434/v1`, env `OLLAMA_API_KEY` (any non-empty value if Ollama ignores auth).
 2. Add a route, e.g. requested model `llama3` → target `llama3.2`.
 3. Call the gateway with `"model":"llama3"`.
+
+## Example: AWS Bedrock
+
+1. Create provider type `bedrock`.
+2. Set `base_url` to the regional runtime endpoint, e.g. `https://bedrock-runtime.us-west-2.amazonaws.com` (region is parsed from the host).
+3. Auth:
+   - Leave `api_key_env` empty (and assign no BYOK credential) to use the **AWS default credential chain** (env vars, instance profile, IRSA, etc.).
+   - Or set `api_key_env` / BYOK to a secret whose value is `accessKeyID:secretAccessKey` or `accessKeyID:secretAccessKey:sessionToken`.
+4. Add a route whose `target_model` is a Bedrock model id or inference profile (e.g. `anthropic.claude-3-haiku-20240307-v1:0`).
+5. Call the route through the OpenAI-compatible `/openai/v1/chat/completions` (or `/v1/chat/completions`) interface. Anthropic and Gemini client dialects can also target the same route.
+
+Vision inputs to Bedrock require **inline base64** image bytes (URL-only images are rejected).

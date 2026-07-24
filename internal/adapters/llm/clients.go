@@ -10,6 +10,7 @@ type Clients struct {
 	OpenAICompatible *OpenAIClient
 	Anthropic        *AnthropicClient
 	Gemini           *GeminiClient
+	Bedrock          *BedrockClient
 }
 
 // NewClients constructs vendor clients with a shared secret resolver.
@@ -22,5 +23,6 @@ func NewClients(sec secrets.Resolver) *Clients {
 		OpenAICompatible: NewOpenAIClient(sec),
 		Anthropic:        NewAnthropicClient(sec),
 		Gemini:           NewGeminiClient(sec),
+		Bedrock:          NewBedrockClient(sec),
 	}
 }

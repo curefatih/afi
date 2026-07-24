@@ -17,6 +17,8 @@ func DefaultCapabilities(typ string) ProviderCapabilities {
 		return ProviderCapabilities{Chat: true, Stream: true, TTS: true, STT: true, Embedding: true, Image: true}
 	case "echo":
 		return ProviderCapabilities{Chat: true, Stream: false}
+	case "bedrock":
+		return ProviderCapabilities{Chat: true, Stream: true}
 	default:
 		// anthropic, gemini, …
 		return ProviderCapabilities{Chat: true, Stream: true}
@@ -55,6 +57,11 @@ func DefaultAPIKeyEnv(typ string) string {
 		return "OLLAMA_API_KEY"
 	case "echo":
 		return "ECHO_UNUSED"
+	case "bedrock":
+		// Empty means the Bedrock adapter uses the AWS default credential chain
+		// (env / instance profile / IRSA). Static keys use accessKey:secret[:token]
+		// via api_key_env or BYOK when configured.
+		return ""
 	default:
 		return "OPENAI_API_KEY"
 	}
