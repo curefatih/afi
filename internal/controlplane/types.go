@@ -36,6 +36,7 @@ type APIKey = access.APIKey
 type Provider = gatewayconfig.Provider
 type RouteFallback = gatewayconfig.RouteFallback
 type RetryConfig = gatewayconfig.RetryConfig
+type ObjectStoreConfig = gatewayconfig.ObjectStoreConfig
 type Route = gatewayconfig.Route
 type Quota = gatewayconfig.Quota
 type RequestPolicy = gatewayconfig.RequestPolicy

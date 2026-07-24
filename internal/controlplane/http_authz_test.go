@@ -295,6 +295,12 @@ func (f *fakePlatform) GetOrgDefaultRetry(context.Context, string) (*RetryConfig
 func (f *fakePlatform) SetOrgDefaultRetry(context.Context, string, *RetryConfig) error {
 	return nil
 }
+func (f *fakePlatform) GetOrgObjectStore(context.Context, string) (*ObjectStoreConfig, error) {
+	return nil, nil
+}
+func (f *fakePlatform) SetOrgObjectStore(context.Context, string, *ObjectStoreConfig) error {
+	return nil
+}
 func (f *fakePlatform) ListUsage(context.Context, string, UsageFilter) ([]UsageEvent, error) {
 	return nil, nil
 }
