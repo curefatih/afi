@@ -56,6 +56,21 @@ func TestMessage() Message {
 	}
 }
 
+// PasswordReset builds the password recovery email.
+func PasswordReset(resetURL string) Message {
+	subject := "Reset your AFI password"
+	text := fmt.Sprintf(
+		"Reset your AFI password using this link:\n%s\n\nThis link expires in one hour. If you did not request a reset, you can ignore this email.\n",
+		resetURL,
+	)
+	safeURL := html.EscapeString(resetURL)
+	htmlBody := fmt.Sprintf(
+		`<p>Reset your AFI password:</p><p><a href="%s">Choose a new password</a></p><p>This link expires in one hour. If you did not request a reset, you can ignore this email.</p>`,
+		safeURL,
+	)
+	return Message{Subject: subject, TextBody: text, HTMLBody: htmlBody}
+}
+
 // FormatAddress parses "Name <email>" or bare email for SMTP MAIL FROM / headers.
 func FormatAddress(from string) (display, email string) {
 	from = strings.TrimSpace(from)
