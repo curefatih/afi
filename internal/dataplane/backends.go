@@ -9,12 +9,13 @@ import (
 	"github.com/curefatih/afi/internal/snapshot"
 )
 
-// OpenAITransport is the outbound OpenAI-compatible HTTP surface used by chat + audio + embeddings.
+// OpenAITransport is the outbound OpenAI-compatible HTTP surface used by chat + audio + embeddings + images.
 type OpenAITransport interface {
 	ChatCompletions(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error)
 	AudioSpeech(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte) (*http.Response, error)
 	AudioTranscriptions(ctx context.Context, provider snapshot.Provider, targetModel, contentType string, body io.Reader) (*http.Response, error)
 	Embeddings(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte) (*http.Response, error)
+	Images(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte) (*http.Response, error)
 }
 
 // AnthropicTransport is the outbound Anthropic HTTP surface used by chat + /v1/messages.
@@ -33,6 +34,11 @@ type AudioBackend interface {
 // EmbeddingsBackend is the modality port for /v1/embeddings (OpenAI-compatible).
 type EmbeddingsBackend interface {
 	Embeddings(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte) (*http.Response, error)
+}
+
+// ImagesBackend is the modality port for /v1/images/generations (OpenAI-compatible).
+type ImagesBackend interface {
+	Images(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte) (*http.Response, error)
 }
 
 // MessagesBackend is the modality port for native Anthropic /v1/messages.
@@ -108,6 +114,15 @@ func (r *Registry) EmbeddingsBackend(typ string) (EmbeddingsBackend, bool) {
 	return t, true
 }
 
+// ImagesBackend returns the /v1/images/generations port for a provider type (OpenAI-compatible only).
+func (r *Registry) ImagesBackend(typ string) (ImagesBackend, bool) {
+	t, ok := r.OpenAITransport(typ)
+	if !ok {
+		return nil, false
+	}
+	return t, true
+}
+
 // MessagesBackend returns the native /v1/messages port for a provider type.
 func (r *Registry) MessagesBackend(typ string) (MessagesBackend, bool) {
 	t, ok := r.AnthropicTransport(typ)
@@ -137,6 +152,18 @@ func (p *Pipeline) embeddingsBackend(providerType string) (EmbeddingsBackend, er
 	b, ok := p.Providers.EmbeddingsBackend(providerType)
 	if !ok {
 		return nil, fmt.Errorf("embeddings backend not registered for type %q", providerType)
+	}
+	return b, nil
+}
+
+// imagesBackend resolves /v1/images/generations by the routed provider's type.
+func (p *Pipeline) imagesBackend(providerType string) (ImagesBackend, error) {
+	if p.Providers == nil {
+		return nil, fmt.Errorf("images backend not registered for type %q", providerType)
+	}
+	b, ok := p.Providers.ImagesBackend(providerType)
+	if !ok {
+		return nil, fmt.Errorf("images backend not registered for type %q", providerType)
 	}
 	return b, nil
 }

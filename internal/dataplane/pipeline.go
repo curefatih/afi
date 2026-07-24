@@ -33,6 +33,7 @@ const (
 	ModalityTTS       = "tts"
 	ModalitySTT       = "stt"
 	ModalityEmbedding = "embedding"
+	ModalityImage     = "image"
 	ModalityMCP       = "mcp"
 	ModalityA2A       = "a2a"
 )
@@ -80,6 +81,7 @@ func (p *Pipeline) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/chat/completions", p.handleChatCompletions)
 	mux.HandleFunc("POST /v1/messages", p.handleMessages)
 	mux.HandleFunc("POST /v1/embeddings", p.handleEmbeddings)
+	mux.HandleFunc("POST /v1/images/generations", p.handleImagesGenerations)
 	mux.HandleFunc("POST /v1/audio/speech", p.handleAudioSpeech)
 	mux.HandleFunc("POST /v1/audio/transcriptions", p.handleAudioTranscriptions)
 	mux.HandleFunc("POST /mcp/{alias}", p.handleMCP)
