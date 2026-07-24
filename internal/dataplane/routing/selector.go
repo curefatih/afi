@@ -166,13 +166,35 @@ func (CostSelector) Order(candidates []Candidate, _ *rand.Rand) []Candidate {
 	return out
 }
 
-// catalogUnitScore returns InputCostPerMTok + OutputCostPerMTok (nil as 0).
-// Both nil → unknown.
+// catalogUnitScore returns a comparable unit price for cost routing.
+// Chat/embeddings: InputCostPerMTok + OutputCostPerMTok (nil as 0; both nil → unknown).
+// TTS: InputCostPerCharacter. STT: InputCostPerSecond.
 func catalogUnitScore(providerType, targetModel string) (float64, bool) {
 	e, ok := modelcatalog.Lookup(providerType, targetModel)
 	if !ok {
 		return 0, false
 	}
+	switch e.Mode {
+	case modelcatalog.ModeAudioSpeech:
+		if e.InputCostPerCharacter == nil {
+			return 0, false
+		}
+		v := *e.InputCostPerCharacter
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return 0, false
+		}
+		return v, true
+	case modelcatalog.ModeAudioTranscription:
+		if e.InputCostPerSecond == nil {
+			return 0, false
+		}
+		v := *e.InputCostPerSecond
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return 0, false
+		}
+		return v, true
+	}
+
 	var sum float64
 	has := false
 	if e.InputCostPerMTok != nil {
