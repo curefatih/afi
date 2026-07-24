@@ -131,6 +131,12 @@ func (m *memAPI) GetOrgDefaultRetry(context.Context, string) (*gatewayconfig.Ret
 func (m *memAPI) SetOrgDefaultRetry(context.Context, string, *gatewayconfig.RetryConfig) error {
 	panic("unused")
 }
+func (m *memAPI) GetOrgObjectStore(context.Context, string) (*gatewayconfig.ObjectStoreConfig, error) {
+	panic("unused")
+}
+func (m *memAPI) SetOrgObjectStore(context.Context, string, *gatewayconfig.ObjectStoreConfig) error {
+	panic("unused")
+}
 func (m *memAPI) ListUsage(context.Context, string, usage.Filter) ([]usage.Record, error) {
 	return nil, nil
 }

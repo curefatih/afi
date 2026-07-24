@@ -62,6 +62,8 @@ type ConfigAPI interface {
 	DeleteRoute(ctx context.Context, routeID string) error
 	GetOrgDefaultRetry(ctx context.Context, orgID string) (*gatewayconfig.RetryConfig, error)
 	SetOrgDefaultRetry(ctx context.Context, orgID string, retry *gatewayconfig.RetryConfig) error
+	GetOrgObjectStore(ctx context.Context, orgID string) (*gatewayconfig.ObjectStoreConfig, error)
+	SetOrgObjectStore(ctx context.Context, orgID string, cfg *gatewayconfig.ObjectStoreConfig) error
 
 	ListUsage(ctx context.Context, orgID string, f usage.Filter) ([]usage.Record, error)
 	SummarizeUsage(ctx context.Context, orgID string, f usage.Filter) ([]usage.SummaryBucket, error)
