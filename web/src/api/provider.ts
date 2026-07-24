@@ -47,7 +47,14 @@ export const PROVIDER_TYPE_PRESETS: Record<
 		name: "OpenAI",
 		base_url: "https://api.openai.com/v1",
 		api_key_env: "OPENAI_API_KEY",
-		caps: { chat: true, stream: true, tts: true, stt: true, embedding: true, image: true },
+		caps: {
+			chat: true,
+			stream: true,
+			tts: true,
+			stt: true,
+			embedding: true,
+			image: true,
+		},
 	},
 	anthropic: {
 		name: "Anthropic",
@@ -65,7 +72,14 @@ export const PROVIDER_TYPE_PRESETS: Record<
 		name: "Ollama / compatible",
 		base_url: "http://127.0.0.1:11434/v1",
 		api_key_env: "OLLAMA_API_KEY",
-		caps: { chat: true, stream: true, tts: true, stt: true, embedding: true, image: true },
+		caps: {
+			chat: true,
+			stream: true,
+			tts: true,
+			stt: true,
+			embedding: true,
+			image: true,
+		},
 	},
 	echo: {
 		name: "Echo (extension)",

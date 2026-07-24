@@ -16,7 +16,7 @@ type Source struct {
 	WasmHooks      []WasmHook
 	MCPBackends    []MCPBackend
 	A2AAgents      []A2AAgent
-	DefaultRetries map[string]*RetryConfig      // orgID → default
+	DefaultRetries map[string]*RetryConfig       // orgID → default
 	ObjectStores   map[string]*ObjectStoreConfig // orgID → optional asset store
 }
 

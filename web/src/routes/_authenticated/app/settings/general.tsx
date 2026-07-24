@@ -444,29 +444,29 @@ function RouteComponent() {
 								</div>
 								<p className="text-muted-foreground text-xs">
 									Provide either a credential ID (secret plaintext must be JSON{" "}
-									<code>
-										{`{"access_key":"…","secret_key":"…"}`}
-									</code>
-									) or both access/secret env vars on the gateway process.
+									<code>{`{"access_key":"…","secret_key":"…"}`}</code>) or both
+									access/secret env vars on the gateway process.
 								</p>
 								<div className="flex justify-end">
 									<Button
 										disabled={updateObjectStore.isPending}
 										onClick={() => {
-											const payload: ObjectStoreConfig | null = storeDraft.enabled
-												? {
-														...storeDraft,
-														endpoint: storeDraft.endpoint?.trim() || undefined,
-														bucket: storeDraft.bucket?.trim() || undefined,
-														region: storeDraft.region?.trim() || undefined,
-														credential_id:
-															storeDraft.credential_id?.trim() || undefined,
-														access_key_env:
-															storeDraft.access_key_env?.trim() || undefined,
-														secret_key_env:
-															storeDraft.secret_key_env?.trim() || undefined,
-													}
-												: { enabled: false };
+											const payload: ObjectStoreConfig | null =
+												storeDraft.enabled
+													? {
+															...storeDraft,
+															endpoint:
+																storeDraft.endpoint?.trim() || undefined,
+															bucket: storeDraft.bucket?.trim() || undefined,
+															region: storeDraft.region?.trim() || undefined,
+															credential_id:
+																storeDraft.credential_id?.trim() || undefined,
+															access_key_env:
+																storeDraft.access_key_env?.trim() || undefined,
+															secret_key_env:
+																storeDraft.secret_key_env?.trim() || undefined,
+														}
+													: { enabled: false };
 											updateObjectStore.mutate(
 												{ orgId, object_store: payload },
 												{
@@ -493,9 +493,7 @@ function RouteComponent() {
 											);
 										}}
 									>
-										{updateObjectStore.isPending
-											? "Saving…"
-											: "Save & publish"}
+										{updateObjectStore.isPending ? "Saving…" : "Save & publish"}
 									</Button>
 								</div>
 							</>
