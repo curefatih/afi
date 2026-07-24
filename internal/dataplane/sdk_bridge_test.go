@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/curefatih/afi/internal/dataplane/ir"
 	"github.com/curefatih/afi/internal/snapshot"
 	sdkprovider "github.com/curefatih/afi/sdk/provider"
 )
@@ -21,10 +22,17 @@ func (stubSDK) Chat(ctx context.Context, cfg sdkprovider.ProviderConfig, targetM
 	_ = ctx
 	_ = cfg
 	_ = targetModel
+	_ = body
 	_ = stream
+	payload := []byte(`{
+		"id":"chatcmpl-stub",
+		"model":"m",
+		"choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],
+		"usage":{"prompt_tokens":1,"completion_tokens":1}
+	}`)
 	return &http.Response{
 		StatusCode: 200,
-		Body:       io.NopCloser(bytes.NewReader([]byte(`{"ok":true}`))),
+		Body:       io.NopCloser(bytes.NewReader(payload)),
 		Header:     make(http.Header),
 	}, nil
 }
@@ -43,5 +51,27 @@ func TestRegisterSDK(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		t.Fatalf("%d", resp.StatusCode)
+	}
+}
+
+func TestRegisterSDKChatIRBridge(t *testing.T) {
+	t.Parallel()
+	reg := NewRegistry().RegisterSDK(stubSDK{})
+	adapter, ok := reg.Get("stub_sdk")
+	if !ok {
+		t.Fatal("missing")
+	}
+	irp, ok := adapter.(IRChatProvider)
+	if !ok {
+		t.Fatal("expected IRChatProvider bridge")
+	}
+	result, err := irp.ChatIR(context.Background(), snapshot.Provider{Type: "stub_sdk"}, "m", ir.ChatRequest{
+		Messages: []ir.Message{{Role: "user", Content: "hi"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.StatusCode != 200 || result.Response == nil || result.Response.Content != "ok" {
+		t.Fatalf("result=%+v", result)
 	}
 }

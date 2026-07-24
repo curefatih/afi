@@ -1,6 +1,6 @@
 # grpcecho
 
-Sample **gRPC extension** plugin for AFI: process-isolated `ChatProvider` plus a demo `BeforeCall` that sets `X-Afi-Grpc-Echo: 1` on upstream request headers.
+Sample **gRPC extension** plugin for AFI: process-isolated chat provider (OpenAI-byte `Chat` plus typed `ChatIR` / `ChatIRStream`) and a demo `BeforeCall` that sets `X-Afi-Grpc-Echo: 1` on upstream request headers.
 
 ## Build
 

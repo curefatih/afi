@@ -63,7 +63,12 @@ Expect assistant content containing `echo:` (and `[hook:demo]` if the demo Befor
 
 ## gRPC extensions (process-isolated)
 
-Remote plugins speak [`proto/afi/extension/v1`](../../proto/afi/extension/v1/) and are discovered via gateway YAML `gateway.grpc_extensions` (command spawn or dial address). The host adapts them to `sdk/provider` / `sdk/hook`. Example: [`extensions/grpcecho`](../../extensions/grpcecho).
+Remote plugins speak [`proto/afi/extension/v1`](../../proto/afi/extension/v1/) and are discovered via gateway YAML `gateway.grpc_extensions` (command spawn or dial address). The host adapts them to `sdk/provider` / `sdk/hook`.
+
+* **OpenAI-byte chat:** advertise `CAPABILITY_PROVIDER_CHAT` and implement `Provider.Chat` (stable fallback).
+* **Typed chat IR:** also advertise `CAPABILITY_PROVIDER_CHAT_IR` and implement `ProviderIR.ChatIR` / `ChatIRStream`. The gateway prefers typed IR when present so plugins are not forced through OpenAI JSON encoding for tools/vision.
+
+Example: [`extensions/grpcecho`](../../extensions/grpcecho).
 
 ## Hooks (in-process)
 
