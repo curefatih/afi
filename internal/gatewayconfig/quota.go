@@ -51,7 +51,7 @@ func ValidateMetric(metric string) error {
 // ValidateScopeType ensures the scope type is known.
 func ValidateScopeType(scopeType string) error {
 	switch scopeType {
-	case snapshot.ScopeOrganization, snapshot.ScopeProject, snapshot.ScopeUser, snapshot.ScopeAPIKey:
+	case snapshot.ScopeOrganization, snapshot.ScopeTeam, snapshot.ScopeProject, snapshot.ScopeUser, snapshot.ScopeAPIKey:
 		return nil
 	case "":
 		return fmt.Errorf("%w: scope_type is required", kernel.ErrInvalidRequest)

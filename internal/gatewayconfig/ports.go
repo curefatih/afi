@@ -5,6 +5,7 @@ import "context"
 // MembershipReader resolves whether a quota scope belongs to an organization.
 type MembershipReader interface {
 	ProjectBelongsToOrg(ctx context.Context, projectID, orgID string) error
+	TeamBelongsToOrg(ctx context.Context, teamID, orgID string) error
 	UserIsOrgMember(ctx context.Context, userID, orgID string) error
 	APIKeyBelongsToOrg(ctx context.Context, keyID, orgID string) error
 }

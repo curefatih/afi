@@ -11,6 +11,7 @@ import (
 
 type memMembers struct {
 	projectOrg string
+	teamOrg    string
 	memberOK   bool
 	keyOrg     string
 }
@@ -18,6 +19,13 @@ type memMembers struct {
 func (m memMembers) ProjectBelongsToOrg(context.Context, string, string) error {
 	if m.projectOrg == "" {
 		return fmtInvalid("project not found")
+	}
+	return nil
+}
+
+func (m memMembers) TeamBelongsToOrg(context.Context, string, string) error {
+	if m.teamOrg == "" {
+		return fmtInvalid("team not found")
 	}
 	return nil
 }
