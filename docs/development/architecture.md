@@ -54,7 +54,7 @@ Also exposes:
 * `POST|GET|DELETE /mcp/{alias}` — MCP Streamable HTTP proxy to org-scoped upstream backends (snapshot `MCPBackends`). Platform UI: [MCP and A2A](../getting-started/web-ui/mcp-a2a.md).
 * `POST /a2a/{alias}` — A2A JSON-RPC proxy; `GET /a2a/{alias}/.well-known/agent-card.json` — Agent Card with gateway URL rewrite (snapshot `A2AAgents`). Platform UI: [MCP and A2A](../getting-started/web-ui/mcp-a2a.md).
 
-The playground honors streaming/TTS/STT capabilities per model. Chat (and Anthropic messages) select targets with route `routing_strategy` (`ordered`, `weighted`, `latency`, or `cost`), then retry/failover before the response body is committed to the client (audio has no failover in this build).
+The playground honors streaming/TTS/STT capabilities per model. Chat, Anthropic messages, and audio (TTS/STT) select targets with route `routing_strategy` (`ordered`, `weighted`, `latency`, or `cost`), then retry/failover before the response body is committed to the client.
 
 Pipeline stages stay stateless aside from the in-memory snapshot pointer. Quota counters and the usage outbox use Postgres as operational stores.
 
