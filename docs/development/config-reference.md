@@ -113,9 +113,9 @@ Written on first control-plane start (or `make seed`):
 | Route `retry` | optional per-route override; else org `default_retry` from Settings → General |
 | Org `default_retry` | optional org-wide `{max_attempts,backoff…}` applied when a route has no `retry` |
 | Gateway models | `GET /v1/models` lists org route model ids (`supports_streaming` / `supports_tts` / `supports_stt`) |
-| Gateway audio | `POST /v1/audio/speech`, `POST /v1/audio/transcriptions` (openai / openai_compatible; same route `fallbacks` / `retry` / `routing_strategy` as chat) |
-| Gateway embeddings | `POST /v1/embeddings` (openai / openai_compatible) |
-| Gateway images | `POST /v1/images/generations` (openai / openai_compatible; optional org object-store persist) |
+| Gateway audio | `POST /openai/v1/audio/speech`, `POST /openai/v1/audio/transcriptions` (aliases `/v1/audio/...`; openai / openai_compatible; same route `fallbacks` / `retry` / `routing_strategy` as chat) |
+| Gateway embeddings | `POST /openai/v1/embeddings` (alias `/v1/embeddings`; openai / openai_compatible) |
+| Gateway images | `POST /openai/v1/images/generations` (alias `/v1/images/generations`; openai / openai_compatible; optional org object-store persist) |
 
 ## Ports
 

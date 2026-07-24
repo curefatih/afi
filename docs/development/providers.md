@@ -20,9 +20,9 @@ Capabilities (`chat`, `stream`, `tts`, `stt`, `embedding`, `image`) are stored o
 |---------|---------------|-------------|
 | `POST /openai/v1/chat/completions` (+ `/v1/...`) | `IRChatProvider.ChatIR` | `provider.type` |
 | `POST /anthropic/v1/messages` (+ `/v1/messages`) | same chat IR path | `provider.type` (any chat-capable provider) |
-| `POST /v1/audio/speech` / `transcriptions` | `AudioBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
-| `POST /v1/embeddings` | `EmbeddingsBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
-| `POST /v1/images/generations` | `ImagesBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
+| `POST /openai/v1/audio/speech` / `transcriptions` (+ `/v1/audio/...`) | `AudioBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
+| `POST /openai/v1/embeddings` (+ `/v1/embeddings`) | `EmbeddingsBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
+| `POST /openai/v1/images/generations` (+ `/v1/images/generations`) | `ImagesBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
 
 Client **dialect** (path prefix) selects wire format; routing selects the upstream provider. See [API dialects](../api/dialects.md).
 
