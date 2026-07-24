@@ -36,6 +36,8 @@ func modalityFromPath(path string) string {
 		return ModalityChat
 	case strings.HasPrefix(path, "/anthropic/v1/messages"), strings.HasPrefix(path, "/v1/messages"):
 		return ModalityMessages
+	case strings.HasPrefix(path, "/gemini/v1beta/models/"):
+		return ModalityGenerateContent
 	case strings.HasPrefix(path, "/openai/v1/embeddings"), strings.HasPrefix(path, "/v1/embeddings"):
 		return ModalityEmbedding
 	case strings.HasPrefix(path, "/openai/v1/images/"), strings.HasPrefix(path, "/v1/images/"):

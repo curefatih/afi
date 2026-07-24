@@ -5,9 +5,9 @@
 The gateway runs an in-process hook chain on every modality (chat, messages, TTS, STT):
 
 1. **BeforeCall** — after auth, before routing/provider. Receives a mutable `CallContext` (principal, route, tags from `X-AFI-Tags`, metadata, body). May **allow**, **enrich**, or **deny** (`Allow=false` + status/reason).
-2. **BeforeChat** — OpenAI and Anthropic chat dialects; mutates the **OpenAI-shaped bridge body** after BeforeCall allows (existing `ChatHook`).
+2. **BeforeChat** — OpenAI, Anthropic, and Gemini chat dialects; mutates the **OpenAI-shaped bridge body** after BeforeCall allows (existing `ChatHook`).
 3. **AfterCall** — after the upstream attempt finishes (all modalities).
-4. **AfterChat** — OpenAI and Anthropic chat dialects; logging/side effects after AfterCall (`AfterChatInfo` includes `Dialect` and `Modality`).
+4. **AfterChat** — all three chat dialects; logging/side effects after AfterCall (`AfterChatInfo` includes `Dialect` and `Modality`).
 
 ### Chat dialect hook bodies
 
@@ -70,7 +70,7 @@ Guest ABI, limits, pooling benchmarks: [wasm.md](wasm.md). Example: [`extensions
 ## Future
 
 * Dialect-native or typed-IR **BeforeChat** mutation bodies (WASM/gRPC) — today mutation stays on the OpenAI bridge; see [dialects](../api/dialects.md)
-* gRPC auth / secrets / notifications host adapters (capabilities reserved; Chat + hooks shipped — see [design note](../../internal-docs/grpc-extension-runtime.md) and [`extensions/grpcecho`](../../extensions/grpcecho))
+* gRPC auth / secrets / notifications host adapters (capabilities reserved; Chat + hooks shipped — see [`extensions/grpcecho`](../../extensions/grpcecho))
 * Remote / HTTP-backed WASM artifact stores (beyond local `file://` paths)
 
 Redis rate limits and CEL request policies remain available via the built-in BeforeCall gates (see Quotas / Policies in the platform UI).

@@ -26,14 +26,15 @@ import (
 var ErrStreamUnsupported = errors.New("streaming is not supported for this provider")
 
 const (
-	ModalityChat      = "chat"
-	ModalityMessages  = "messages"
-	ModalityTTS       = "tts"
-	ModalitySTT       = "stt"
-	ModalityEmbedding = "embedding"
-	ModalityImage     = "image"
-	ModalityMCP       = "mcp"
-	ModalityA2A       = "a2a"
+	ModalityChat            = "chat"
+	ModalityMessages        = "messages"
+	ModalityGenerateContent = "generate_content"
+	ModalityTTS             = "tts"
+	ModalitySTT             = "stt"
+	ModalityEmbedding       = "embedding"
+	ModalityImage           = "image"
+	ModalityMCP             = "mcp"
+	ModalityA2A             = "a2a"
 )
 
 // UsageEvent is an alias for the canonical usage.Event emitted on the request path.
@@ -81,6 +82,7 @@ func (p *Pipeline) Handler() http.Handler {
 	mux.HandleFunc("POST /openai/v1/chat/completions", p.handleChatCompletions)
 	mux.HandleFunc("POST /v1/messages", p.handleMessages)
 	mux.HandleFunc("POST /anthropic/v1/messages", p.handleMessages)
+	mux.HandleFunc("POST /gemini/v1beta/models/{operation}", p.handleGeminiGenerateContent)
 	mux.HandleFunc("POST /v1/embeddings", p.handleEmbeddings)
 	mux.HandleFunc("POST /openai/v1/embeddings", p.handleEmbeddings)
 	mux.HandleFunc("POST /v1/images/generations", p.handleImagesGenerations)
@@ -100,7 +102,7 @@ func (p *Pipeline) Handler() http.Handler {
 func withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		allowHeaders := "Authorization, Content-Type, X-AFI-Tags, x-api-key, anthropic-version"
+		allowHeaders := "Authorization, Content-Type, X-AFI-Tags, x-api-key, x-goog-api-key, anthropic-version"
 		if reqHdrs := strings.TrimSpace(r.Header.Get("Access-Control-Request-Headers")); reqHdrs != "" {
 			allowHeaders = reqHdrs
 		}
@@ -419,6 +421,14 @@ func virtualAPIKey(r *http.Request) (string, error) {
 	}
 	if key := strings.TrimSpace(r.Header.Get("x-api-key")); key != "" {
 		return key, nil
+	}
+	if strings.HasPrefix(r.URL.Path, "/gemini/") {
+		if key := strings.TrimSpace(r.Header.Get("x-goog-api-key")); key != "" {
+			return key, nil
+		}
+		if key := strings.TrimSpace(r.URL.Query().Get("key")); key != "" {
+			return key, nil
+		}
 	}
 	return "", errors.New("missing bearer")
 }

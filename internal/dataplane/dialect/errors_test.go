@@ -90,3 +90,20 @@ func TestWriteErrorAnthropicNormalizesQuota(t *testing.T) {
 		t.Fatalf("type=%v body=%s", errObj["type"], rr.Body.String())
 	}
 }
+
+func TestWriteErrorGeminiUsesHTTPStatusVocabulary(t *testing.T) {
+	rr := httptest.NewRecorder()
+	dialect.WriteError(
+		rr, ir.DialectGemini, http.StatusUnauthorized,
+		"invalid api key", "invalid_request_error",
+	)
+	var out map[string]any
+	_ = json.Unmarshal(rr.Body.Bytes(), &out)
+	errObj := out["error"].(map[string]any)
+	if errObj["status"] != "UNAUTHENTICATED" {
+		t.Fatalf("status=%v body=%s", errObj["status"], rr.Body.String())
+	}
+	if errObj["code"] != float64(http.StatusUnauthorized) {
+		t.Fatalf("code=%v body=%s", errObj["code"], rr.Body.String())
+	}
+}

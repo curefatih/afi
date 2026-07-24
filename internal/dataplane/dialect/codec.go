@@ -25,6 +25,8 @@ func For(d ir.Dialect) (Codec, error) {
 		return OpenAI{}, nil
 	case ir.DialectAnthropic:
 		return Anthropic{}, nil
+	case ir.DialectGemini:
+		return Gemini{}, nil
 	default:
 		return nil, fmt.Errorf("unsupported dialect %q", d)
 	}
@@ -35,7 +37,11 @@ func WriteError(w http.ResponseWriter, d ir.Dialect, status int, message, typ st
 	if typ == "" {
 		typ = "invalid_request_error"
 	}
-	typ = normalizeErrorType(d, typ)
+	if d == ir.DialectGemini {
+		typ = geminiErrorStatus(status, typ)
+	} else {
+		typ = normalizeErrorType(d, typ)
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	var payload any
@@ -46,6 +52,14 @@ func WriteError(w http.ResponseWriter, d ir.Dialect, status int, message, typ st
 			"error": map[string]string{
 				"type":    typ,
 				"message": message,
+			},
+		}
+	case ir.DialectGemini:
+		payload = map[string]any{
+			"error": map[string]any{
+				"code":    status,
+				"message": message,
+				"status":  typ,
 			},
 		}
 	default:

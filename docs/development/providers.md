@@ -24,7 +24,7 @@ Capabilities (`chat`, `stream`, `tts`, `stt`, `embedding`, `image`) are stored o
 | `POST /v1/embeddings` | `EmbeddingsBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
 | `POST /v1/images/generations` | `ImagesBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
 
-Client **dialect** (path prefix) selects wire format; routing selects the upstream provider. Product guide: [API dialects](../api/dialects.md). Chat IR design: [`internal-docs/dialect-api-ir.md`](../../internal-docs/dialect-api-ir.md).
+Client **dialect** (path prefix) selects wire format; routing selects the upstream provider. See [API dialects](../api/dialects.md).
 
 Chat stays on `ChatProvider` / `IRChatProvider`. TTS/STT, embeddings, and images use **optional** transport interfaces — they are **not** methods on `ChatProvider`, so SDK chat extensions need no modality stubs.
 
@@ -63,7 +63,7 @@ Expect assistant content containing `echo:` (and `[hook:demo]` if the demo Befor
 
 ## gRPC extensions (process-isolated)
 
-Remote plugins speak [`proto/afi/extension/v1`](../../proto/afi/extension/v1/) and are discovered via gateway YAML `gateway.grpc_extensions` (command spawn or dial address). The host adapts them to `sdk/provider` / `sdk/hook`. Example: [`extensions/grpcecho`](../../extensions/grpcecho). Design note: [`internal-docs/grpc-extension-runtime.md`](../../internal-docs/grpc-extension-runtime.md).
+Remote plugins speak [`proto/afi/extension/v1`](../../proto/afi/extension/v1/) and are discovered via gateway YAML `gateway.grpc_extensions` (command spawn or dial address). The host adapts them to `sdk/provider` / `sdk/hook`. Example: [`extensions/grpcecho`](../../extensions/grpcecho).
 
 ## Hooks (in-process)
 

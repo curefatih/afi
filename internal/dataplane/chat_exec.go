@@ -3,8 +3,10 @@ package dataplane
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/curefatih/afi/internal/adapters/llm"
@@ -16,14 +18,56 @@ import (
 )
 
 func (p *Pipeline) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
-	p.executeChat(w, r, ir.DialectOpenAI, ModalityChat)
+	p.executeChat(w, r, ir.DialectOpenAI, ModalityChat, chatExecOptions{})
 }
 
 func (p *Pipeline) handleMessages(w http.ResponseWriter, r *http.Request) {
-	p.executeChat(w, r, ir.DialectAnthropic, ModalityMessages)
+	p.executeChat(w, r, ir.DialectAnthropic, ModalityMessages, chatExecOptions{})
 }
 
-func (p *Pipeline) executeChat(w http.ResponseWriter, r *http.Request, d ir.Dialect, modality string) {
+type chatExecOptions struct {
+	model  string
+	stream bool
+}
+
+func (p *Pipeline) handleGeminiGenerateContent(w http.ResponseWriter, r *http.Request) {
+	operation := r.PathValue("operation")
+	model, stream, ok := parseGeminiOperation(operation)
+	if !ok {
+		dialect.WriteError(
+			w, ir.DialectGemini, http.StatusNotFound,
+			fmt.Sprintf("unsupported Gemini operation %q", operation), "NOT_FOUND",
+		)
+		return
+	}
+	if model == "" {
+		dialect.WriteError(w, ir.DialectGemini, http.StatusBadRequest, "model route is required", "INVALID_ARGUMENT")
+		return
+	}
+	p.executeChat(w, r, ir.DialectGemini, ModalityGenerateContent, chatExecOptions{
+		model: model, stream: stream,
+	})
+}
+
+// parseGeminiOperation splits "{route}:generateContent" / "{route}:streamGenerateContent"
+// using a suffix match so route aliases may themselves contain ":".
+func parseGeminiOperation(operation string) (model string, stream bool, ok bool) {
+	if model, ok := strings.CutSuffix(operation, ":streamGenerateContent"); ok {
+		return model, true, true
+	}
+	if model, ok := strings.CutSuffix(operation, ":generateContent"); ok {
+		return model, false, true
+	}
+	return "", false, false
+}
+
+func (p *Pipeline) executeChat(
+	w http.ResponseWriter,
+	r *http.Request,
+	d ir.Dialect,
+	modality string,
+	opts chatExecOptions,
+) {
 	reqID := kernel.NewRequestID()
 	ctx := kernel.WithRequestID(r.Context(), reqID)
 	log := p.Log.With("request_id", reqID)
@@ -65,6 +109,12 @@ func (p *Pipeline) executeChat(w http.ResponseWriter, r *http.Request, d ir.Dial
 	if err != nil {
 		dialect.WriteError(w, d, http.StatusBadRequest, err.Error(), "invalid_request_error")
 		return
+	}
+	if opts.model != "" {
+		chatReq.Model = opts.model
+	}
+	if opts.stream {
+		chatReq.Stream = true
 	}
 
 	openaiBody, err := ir.EncodeOpenAI(chatReq)

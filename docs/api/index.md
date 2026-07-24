@@ -11,11 +11,11 @@ Specs live in the repo under [`api/openapi/`](https://github.com/curefatih/afi/t
 
 ## Dialects (chat)
 
-Use the **OpenAI or Anthropic SDK** against the gateway: the path picks the client wire format; routing picks any chat-capable upstream. Start with **[API dialects](dialects.md)**.
+Use the **OpenAI, Anthropic, or Gemini SDK** against the gateway: the path picks the client wire format; routing picks any chat-capable upstream. Start with **[API dialects](dialects.md)**.
 
 ## Client SDKs
 
-Thin platform clients (not for chat completions — use OpenAI/Anthropic SDKs against the gateway):
+Thin platform clients (not for chat completions — use OpenAI/Anthropic/Gemini SDKs against the gateway):
 
 - TypeScript: `clients/typescript` (`@afi-ai/platform-client`)
 - Python: `clients/python` (`afi-platform`)

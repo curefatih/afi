@@ -4,13 +4,14 @@ info:
   description: |
     Data-plane overlay for the AFI gateway (default `:8080`).
 
-    **Do not treat this as a full OpenAI/Anthropic/MCP/A2A schema.** Point official
+    **Do not treat this as a full OpenAI/Anthropic/Gemini/MCP/A2A schema.** Point official
     vendor SDKs at the gateway base URL. This document covers AFI-specific auth,
     headers, path map, and `/healthz`.
 
     External references:
     - OpenAI API: https://platform.openai.com/docs/api-reference
     - Anthropic Messages: https://docs.anthropic.com/en/api/messages
+    - Gemini API: https://ai.google.dev/api/generate-content
     - MCP Streamable HTTP: https://modelcontextprotocol.io
     - A2A protocol: https://a2a-protocol.org
   version: 1.0.0
@@ -26,6 +27,7 @@ servers:
 security:
   - virtualKeyAuth: []
   - anthropicAPIKey: []
+  - geminiAPIKey: []
 
 tags:
   - name: Health
@@ -33,6 +35,8 @@ tags:
     description: OpenAI-shaped paths; request/response bodies follow OpenAI (or AFI-enriched models list).
   - name: Anthropic
     description: Native Anthropic Messages shape.
+  - name: Gemini
+    description: Native Gemini generateContent shape; model path segment is an AFI route alias.
   - name: MCP
     description: MCP Streamable HTTP proxy by alias.
   - name: A2A
@@ -427,6 +431,95 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
+  /gemini/v1beta/models/{model}:generateContent:
+    post:
+      tags: [Gemini]
+      operationId: geminiGenerateContent
+      summary: Generate content (Gemini dialect)
+      description: |
+        Native Gemini generateContent client shape. `{model}` is an AFI route alias
+        and may target any chat-capable upstream provider.
+      externalDocs:
+        url: https://ai.google.dev/api/generate-content
+      security:
+        - virtualKeyAuth: []
+        - geminiAPIKey: []
+        - geminiQueryKey: []
+      parameters:
+        - name: model
+          in: path
+          required: true
+          description: AFI route alias, not necessarily a Gemini model id.
+          schema:
+            type: string
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Gemini GenerateContentResponse
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /gemini/v1beta/models/{model}:streamGenerateContent:
+    post:
+      tags: [Gemini]
+      operationId: geminiStreamGenerateContent
+      summary: Stream generate content (Gemini dialect)
+      description: |
+        Native Gemini streaming client shape. The gateway emits Gemini SSE events.
+        `{model}` is an AFI route alias and may target any streaming chat provider.
+      externalDocs:
+        url: https://ai.google.dev/api/generate-content
+      security:
+        - virtualKeyAuth: []
+        - geminiAPIKey: []
+        - geminiQueryKey: []
+      parameters:
+        - name: model
+          in: path
+          required: true
+          description: AFI route alias, not necessarily a Gemini model id.
+          schema:
+            type: string
+        - name: alt
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [sse]
+        - $ref: "#/components/parameters/AFITags"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Gemini SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
   /v1/messages:
     post:
       tags: [Anthropic]
@@ -621,6 +714,16 @@ components:
       in: header
       name: x-api-key
       description: Anthropic SDK-style virtual API key (same value as Bearer).
+    geminiAPIKey:
+      type: apiKey
+      in: header
+      name: x-goog-api-key
+      description: Gemini SDK-style virtual API key (same value as Bearer).
+    geminiQueryKey:
+      type: apiKey
+      in: query
+      name: key
+      description: Gemini REST query-style virtual API key (same value as Bearer).
 
   parameters:
     AFITags:

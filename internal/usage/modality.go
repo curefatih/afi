@@ -4,14 +4,15 @@ package usage
 type Modality string
 
 const (
-	ModalityChat      Modality = "chat"
-	ModalityMessages  Modality = "messages"
-	ModalityTTS       Modality = "tts"
-	ModalitySTT       Modality = "stt"
-	ModalityEmbedding Modality = "embedding"
-	ModalityImage     Modality = "image"
-	ModalityMCP       Modality = "mcp"
-	ModalityA2A       Modality = "a2a"
+	ModalityChat            Modality = "chat"
+	ModalityMessages        Modality = "messages"
+	ModalityGenerateContent Modality = "generate_content"
+	ModalityTTS             Modality = "tts"
+	ModalitySTT             Modality = "stt"
+	ModalityEmbedding       Modality = "embedding"
+	ModalityImage           Modality = "image"
+	ModalityMCP             Modality = "mcp"
+	ModalityA2A             Modality = "a2a"
 )
 
 func (m Modality) String() string {

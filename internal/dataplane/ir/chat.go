@@ -9,6 +9,7 @@ type Dialect string
 const (
 	DialectOpenAI    Dialect = "openai"
 	DialectAnthropic Dialect = "anthropic"
+	DialectGemini    Dialect = "gemini"
 )
 
 // ChatRequest is the dialect-neutral chat request.

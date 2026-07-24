@@ -111,6 +111,23 @@ func normalizeErrorType(d ir.Dialect, typ string) string {
 		default:
 			return typ
 		}
+	case ir.DialectGemini:
+		switch strings.ToLower(typ) {
+		case "invalid_request_error":
+			return "INVALID_ARGUMENT"
+		case "authentication_error":
+			return "UNAUTHENTICATED"
+		case "permission_error", "policy_violation", "hook_denied":
+			return "PERMISSION_DENIED"
+		case "rate_limit_error", "insufficient_quota":
+			return "RESOURCE_EXHAUSTED"
+		case "not_found_error":
+			return "NOT_FOUND"
+		case "server_error", "api_error", "overloaded_error":
+			return "INTERNAL"
+		default:
+			return strings.ToUpper(typ)
+		}
 	default: // OpenAI
 		switch strings.ToLower(typ) {
 		case "api_error", "overloaded_error":
@@ -121,6 +138,33 @@ func normalizeErrorType(d ir.Dialect, typ string) string {
 		default:
 			return typ
 		}
+	}
+}
+
+func geminiErrorStatus(status int, typ string) string {
+	upper := strings.ToUpper(strings.TrimSpace(typ))
+	switch upper {
+	case "INVALID_ARGUMENT", "UNAUTHENTICATED", "PERMISSION_DENIED",
+		"RESOURCE_EXHAUSTED", "NOT_FOUND", "INTERNAL", "UNAVAILABLE":
+		return upper
+	}
+	switch {
+	case status == http.StatusBadRequest:
+		return "INVALID_ARGUMENT"
+	case status == http.StatusUnauthorized:
+		return "UNAUTHENTICATED"
+	case status == http.StatusForbidden:
+		return "PERMISSION_DENIED"
+	case status == http.StatusNotFound:
+		return "NOT_FOUND"
+	case status == http.StatusTooManyRequests:
+		return "RESOURCE_EXHAUSTED"
+	case status == http.StatusServiceUnavailable:
+		return "UNAVAILABLE"
+	case status >= 500:
+		return "INTERNAL"
+	default:
+		return normalizeErrorType(ir.DialectGemini, typ)
 	}
 }
 

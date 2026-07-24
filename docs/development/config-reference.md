@@ -238,7 +238,7 @@ Compiled into the gateway snapshot. Resolution order: **route `retry` → org `d
 | `latency` | Lowest gateway-local EWMA latency among primary + fallbacks | Remaining by ascending EWMA (unknown → median of known) |
 | `cost` | Lowest embedded catalog unit price (`input+output` $/MTok) | Remaining by ascending price (unknown last) |
 
-Unknown strategies are rejected at write time. Adaptive signals are process-local (multi-instance skew accepted); see `internal-docs/weighted-adaptive-routing.md`.
+Unknown strategies are rejected at write time. Adaptive signals are process-local, so multi-instance deployments may observe temporary routing skew.
 
 ### CEL policies
 

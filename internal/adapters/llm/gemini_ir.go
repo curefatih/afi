@@ -11,49 +11,13 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/curefatih/afi/internal/dataplane/dialect"
 	"github.com/curefatih/afi/internal/dataplane/ir"
 	"github.com/curefatih/afi/internal/snapshot"
 )
 
 func irToGemini(req ir.ChatRequest) ([]byte, error) {
-	if len(req.Tools) > 0 || req.ToolChoice != nil {
-		return nil, ir.Unsupported("tools", "the selected provider (gemini) does not support tools through the gateway yet")
-	}
-	for _, m := range req.Messages {
-		if len(m.Parts) > 0 {
-			return nil, ir.Unsupported("vision", "the selected provider (gemini) does not support image input through the gateway yet")
-		}
-		if len(m.ToolCalls) > 0 || m.Role == "tool" {
-			return nil, ir.Unsupported("tools", "the selected provider (gemini) does not support tool messages through the gateway yet")
-		}
-	}
-	var contents []map[string]any
-	for _, m := range req.Messages {
-		switch m.Role {
-		case "user", "assistant":
-			role := "user"
-			if m.Role == "assistant" {
-				role = "model"
-			}
-			contents = append(contents, map[string]any{
-				"role":  role,
-				"parts": []map[string]string{{"text": m.Content}},
-			})
-		}
-	}
-	if len(contents) == 0 {
-		return nil, fmt.Errorf("at least one user/assistant message is required")
-	}
-	out := map[string]any{"contents": contents}
-	if req.System != "" {
-		out["systemInstruction"] = map[string]any{
-			"parts": []map[string]string{{"text": req.System}},
-		}
-	}
-	if req.Temperature != nil {
-		out["generationConfig"] = map[string]any{"temperature": *req.Temperature}
-	}
-	return json.Marshal(out)
+	return dialect.EncodeGeminiRequest(req)
 }
 
 func (c *GeminiClient) generateContentIR(ctx context.Context, provider snapshot.Provider, targetModel string, gemBody []byte, stream bool) (*http.Response, error) {
@@ -95,7 +59,12 @@ func geminiJSONToIR(raw []byte, model string) (ir.ChatResponse, error) {
 		Candidates []struct {
 			Content struct {
 				Parts []struct {
-					Text string `json:"text"`
+					Text         string `json:"text"`
+					FunctionCall *struct {
+						ID   string         `json:"id"`
+						Name string         `json:"name"`
+						Args map[string]any `json:"args"`
+					} `json:"functionCall"`
 				} `json:"parts"`
 			} `json:"content"`
 			FinishReason string `json:"finishReason"`
@@ -118,15 +87,33 @@ func geminiJSONToIR(raw []byte, model string) (ir.ChatResponse, error) {
 		return ir.ChatResponse{}, fmt.Errorf("gemini: empty candidates")
 	}
 	var text strings.Builder
+	var toolCalls []ir.ToolCall
+	callNumber := 0
 	for _, part := range in.Candidates[0].Content.Parts {
 		text.WriteString(part.Text)
+		if part.FunctionCall != nil {
+			id := part.FunctionCall.ID
+			if id == "" {
+				id = fmt.Sprintf("call_gemini_%d", callNumber)
+			}
+			callNumber++
+			args, _ := json.Marshal(part.FunctionCall.Args)
+			toolCalls = append(toolCalls, ir.ToolCall{
+				ID: id, Name: part.FunctionCall.Name, Arguments: string(args),
+			})
+		}
+	}
+	finishReason := mapGeminiFinish(in.Candidates[0].FinishReason)
+	if len(toolCalls) > 0 && finishReason == "stop" {
+		finishReason = "tool_calls"
 	}
 	return ir.ChatResponse{
 		ID:           "chatcmpl-gemini",
 		Model:        model,
 		Role:         "assistant",
 		Content:      text.String(),
-		FinishReason: mapGeminiFinish(in.Candidates[0].FinishReason),
+		ToolCalls:    toolCalls,
+		FinishReason: finishReason,
 		Usage: ir.Usage{
 			PromptTokens:     in.UsageMetadata.PromptTokenCount,
 			CompletionTokens: in.UsageMetadata.CandidatesTokenCount,
@@ -141,6 +128,7 @@ func parseGeminiSSEToIR(r io.Reader, model string) <-chan ir.StreamEvent {
 		scanner := bufio.NewScanner(r)
 		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 		started := false
+		nextToolIndex := 0
 		id := "chatcmpl-gemini"
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -156,6 +144,7 @@ func parseGeminiSSEToIR(r io.Reader, model string) <-chan ir.StreamEvent {
 				continue
 			}
 			text := extractGeminiDeltaText(raw)
+			calls := extractGeminiFunctionCalls(raw)
 			finish := extractGeminiFinish(raw)
 			if !started {
 				started = true
@@ -164,7 +153,21 @@ func parseGeminiSSEToIR(r io.Reader, model string) <-chan ir.StreamEvent {
 			if text != "" {
 				ch <- ir.StreamEvent{Kind: ir.StreamTextDelta, ID: id, Model: model, Text: text}
 			}
+			for _, call := range calls {
+				ch <- ir.StreamEvent{
+					Kind: ir.StreamToolCallStart, ID: id, Model: model,
+					ToolIndex: nextToolIndex, ToolID: call.ID, ToolName: call.Name,
+				}
+				ch <- ir.StreamEvent{
+					Kind: ir.StreamToolCallDelta, ID: id, Model: model,
+					ToolIndex: nextToolIndex, ArgsDelta: call.Arguments,
+				}
+				nextToolIndex++
+			}
 			if finish != "" {
+				if nextToolIndex > 0 && finish == "stop" {
+					finish = "tool_calls"
+				}
 				ch <- ir.StreamEvent{Kind: ir.StreamMessageEnd, ID: id, Model: model, FinishReason: finish}
 			}
 		}
@@ -173,4 +176,30 @@ func parseGeminiSSEToIR(r io.Reader, model string) <-chan ir.StreamEvent {
 		}
 	}()
 	return ch
+}
+
+func extractGeminiFunctionCalls(raw map[string]any) []ir.ToolCall {
+	candidates, _ := raw["candidates"].([]any)
+	if len(candidates) == 0 {
+		return nil
+	}
+	candidate, _ := candidates[0].(map[string]any)
+	content, _ := candidate["content"].(map[string]any)
+	parts, _ := content["parts"].([]any)
+	var calls []ir.ToolCall
+	for i, partRaw := range parts {
+		part, _ := partRaw.(map[string]any)
+		functionCall, _ := part["functionCall"].(map[string]any)
+		if functionCall == nil {
+			continue
+		}
+		id, _ := functionCall["id"].(string)
+		if id == "" {
+			id = fmt.Sprintf("call_gemini_%d", i)
+		}
+		name, _ := functionCall["name"].(string)
+		args, _ := json.Marshal(functionCall["args"])
+		calls = append(calls, ir.ToolCall{ID: id, Name: name, Arguments: string(args)})
+	}
+	return calls
 }
