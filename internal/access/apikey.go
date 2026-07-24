@@ -13,6 +13,7 @@ type APIKey struct {
 	ID             string    `json:"id"`
 	ProjectID      string    `json:"project_id,omitempty"`
 	OrganizationID string    `json:"organization_id"`
+	EnvironmentID  string    `json:"environment_id,omitempty"`
 	Name           string    `json:"name"`
 	Kind           string    `json:"kind"`
 	OwnerUserID    string    `json:"owner_user_id,omitempty"`
@@ -44,7 +45,7 @@ func NormalizeKind(kind string) string {
 }
 
 // ValidateKindRules enforces personal vs service_account invariants.
-func ValidateKindRules(kind, ownerUserID, projectID string) error {
+func ValidateKindRules(kind, ownerUserID, projectID, environmentID string) error {
 	k, err := ParseKeyKind(kind)
 	if err != nil {
 		return err
@@ -57,16 +58,22 @@ func ValidateKindRules(kind, ownerUserID, projectID string) error {
 		if projectID != "" {
 			return fmt.Errorf("%w: personal keys cannot have a project", kernel.ErrInvalidRequest)
 		}
+		if environmentID != "" {
+			return fmt.Errorf("%w: personal keys cannot have an environment", kernel.ErrInvalidRequest)
+		}
 	case KeyKindServiceAccount:
 		if ownerUserID != "" {
 			return fmt.Errorf("%w: service account keys cannot have an owner", kernel.ErrInvalidRequest)
+		}
+		if environmentID != "" && projectID == "" {
+			return fmt.Errorf("%w: environment requires a project", kernel.ErrInvalidRequest)
 		}
 	}
 	return nil
 }
 
 // NewAPIKey builds a validated key entity (does not check project membership).
-func NewAPIKey(id, orgID, kind, ownerUserID, projectID, name, rawKey string, now time.Time) (*APIKey, error) {
+func NewAPIKey(id, orgID, kind, ownerUserID, projectID, environmentID, name, rawKey string, now time.Time) (*APIKey, error) {
 	if id == "" || orgID == "" {
 		return nil, fmt.Errorf("%w: id and organization_id required", kernel.ErrInvalidRequest)
 	}
@@ -74,7 +81,7 @@ func NewAPIKey(id, orgID, kind, ownerUserID, projectID, name, rawKey string, now
 		return nil, fmt.Errorf("%w: raw key required", kernel.ErrInvalidRequest)
 	}
 	kind = NormalizeKind(kind)
-	if err := ValidateKindRules(kind, ownerUserID, projectID); err != nil {
+	if err := ValidateKindRules(kind, ownerUserID, projectID, environmentID); err != nil {
 		return nil, err
 	}
 	if now.IsZero() {
@@ -84,6 +91,7 @@ func NewAPIKey(id, orgID, kind, ownerUserID, projectID, name, rawKey string, now
 		ID:             id,
 		ProjectID:      projectID,
 		OrganizationID: orgID,
+		EnvironmentID:  environmentID,
 		Name:           name,
 		Kind:           kind,
 		OwnerUserID:    ownerUserID,

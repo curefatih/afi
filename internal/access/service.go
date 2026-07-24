@@ -13,14 +13,20 @@ func CreateAPIKey(
 	ctx context.Context,
 	repo APIKeyRepository,
 	projects ProjectOrgChecker,
-	id, orgID, kind, ownerUserID, projectID, name, rawKey string,
+	envs EnvironmentProjectChecker,
+	id, orgID, kind, ownerUserID, projectID, environmentID, name, rawKey string,
 ) (*APIKey, error) {
-	k, err := NewAPIKey(id, orgID, kind, ownerUserID, projectID, name, rawKey, timeNowUTC())
+	k, err := NewAPIKey(id, orgID, kind, ownerUserID, projectID, environmentID, name, rawKey, timeNowUTC())
 	if err != nil {
 		return nil, err
 	}
 	if projectID != "" {
 		if err := projects.ProjectBelongsToOrg(ctx, projectID, orgID); err != nil {
+			return nil, err
+		}
+	}
+	if environmentID != "" {
+		if err := envs.EnvironmentBelongsToProject(ctx, environmentID, projectID, orgID); err != nil {
 			return nil, err
 		}
 	}
