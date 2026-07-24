@@ -55,6 +55,8 @@ type Pipeline struct {
 	Metrics     *telemetry.GatewayMetrics
 	// RouteRand optional RNG for weighted routing (tests); nil uses math/rand global.
 	RouteRand *rand.Rand
+	// RouteSignals optional gateway-local EWMA store for latency/cost adaptive routing.
+	RouteSignals routing.SignalStore
 }
 
 // NewPipeline builds a pipeline with an explicit provider registry.
@@ -276,8 +278,10 @@ targetLoop:
 			usedProvider = bound
 			usedTarget = attempt.TargetModel
 			usedCredentialID = credID
+			attemptStart := time.Now()
 			resp, lastErr = p.callProvider(ctx, bound, attempt.TargetModel, body, reqBody.Stream, call)
 			if lastErr != nil {
+				p.observeRouteAttempt(attempt.Provider.ID, attempt.TargetModel, attemptStart, true)
 				log.Warn("upstream attempt failed", "provider", attempt.Provider.ID, "err", lastErr, "attempt", i, "try", try)
 				if errors.Is(lastErr, ErrStreamUnsupported) {
 					break targetLoop
@@ -293,6 +297,7 @@ targetLoop:
 				}
 				break targetLoop
 			}
+			p.observeRouteAttempt(attempt.Provider.ID, attempt.TargetModel, attemptStart, resp.StatusCode >= 400)
 			if shouldFailoverStatus(resp.StatusCode) {
 				if try+1 < maxTries || i+1 < len(attempts) {
 					log.Warn("upstream attempt status", "provider", attempt.Provider.ID, "status", resp.StatusCode, "attempt", i, "try", try)
@@ -447,10 +452,11 @@ func tokenMetrics(prompt, completion int64) map[string]any {
 
 func (p *Pipeline) buildAttempts(snap *snapshot.Snapshot, route snapshot.Route, primary snapshot.Provider) []routeAttempt {
 	cands := []routing.Candidate{{
-		ProviderID: primary.ID, TargetModel: route.TargetModel, Weight: route.Weight,
+		ProviderID: primary.ID, ProviderType: primary.Type, TargetModel: route.TargetModel, Weight: route.Weight,
 	}}
 	for _, fb := range route.Fallbacks {
-		if _, ok := snap.Providers[fb.ProviderID]; !ok {
+		prov, ok := snap.Providers[fb.ProviderID]
+		if !ok {
 			continue
 		}
 		target := fb.TargetModel
@@ -458,10 +464,10 @@ func (p *Pipeline) buildAttempts(snap *snapshot.Snapshot, route snapshot.Route, 
 			target = route.TargetModel
 		}
 		cands = append(cands, routing.Candidate{
-			ProviderID: fb.ProviderID, TargetModel: target, Weight: fb.Weight,
+			ProviderID: fb.ProviderID, ProviderType: prov.Type, TargetModel: target, Weight: fb.Weight,
 		})
 	}
-	ordered := routing.ForStrategy(route.RoutingStrategy).Order(cands, p.RouteRand)
+	ordered := routing.ForStrategy(route.RoutingStrategy, p.RouteSignals).Order(cands, p.RouteRand)
 	out := make([]routeAttempt, 0, len(ordered))
 	for _, c := range ordered {
 		prov, ok := snap.Providers[c.ProviderID]
@@ -471,6 +477,13 @@ func (p *Pipeline) buildAttempts(snap *snapshot.Snapshot, route snapshot.Route, 
 		out = append(out, routeAttempt{Provider: prov, TargetModel: c.TargetModel})
 	}
 	return out
+}
+
+func (p *Pipeline) observeRouteAttempt(providerID, targetModel string, started time.Time, failed bool) {
+	if p == nil || p.RouteSignals == nil {
+		return
+	}
+	p.RouteSignals.Observe(providerID, targetModel, time.Since(started).Milliseconds(), failed)
 }
 
 func shouldFailoverStatus(code int) bool {
