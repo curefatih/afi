@@ -23,6 +23,7 @@ tags:
 - name: Organizations
 - name: Teams
 - name: Projects
+- name: Environments
 - name: Keys
 - name: Providers
 - name: Routes
@@ -893,6 +894,103 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CreateProject'
+  /api/v1/platform/organizations/{orgID}/projects/{projectID}/environments:
+    parameters:
+      - name: orgID
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectID
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: listEnvironments
+      summary: List project environments
+      tags:
+      - Environments
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Environment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      operationId: createEnvironment
+      summary: Create project environment
+      tags:
+      - Environments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEnvironment'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Environment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/platform/environments/{environmentID}:
+    parameters:
+      - name: environmentID
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getEnvironment
+      summary: Get environment
+      tags:
+      - Environments
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Environment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deleteEnvironment
+      summary: Delete environment
+      tags:
+      - Environments
+      responses:
+        '204':
+          description: No Content
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/platform/organizations/{orgID}/providers:
     get:
       operationId: listProviders
@@ -2791,6 +2889,40 @@ components:
         created_at:
           type: string
           format: date-time
+    Environment:
+      type: object
+      required:
+      - id
+      - organization_id
+      - project_id
+      - name
+      - slug
+      - created_at
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        project_id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    CreateEnvironment:
+      type: object
+      required:
+      - name
+      - slug
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+          description: Lowercase alphanumeric with - or _; unique per project
     TeamMember:
       type: object
       required:
@@ -2871,6 +3003,8 @@ components:
           type: string
         organization_id:
           type: string
+        environment_id:
+          type: string
         name:
           type: string
         kind:
@@ -2903,6 +3037,9 @@ components:
           - service_account
         project_id:
           type: string
+        environment_id:
+          type: string
+          description: Optional; must belong to project_id (service_account only)
         key:
           type: string
     CreateProjectKey:
@@ -2914,6 +3051,9 @@ components:
           type: string
         key:
           type: string
+        environment_id:
+          type: string
+          description: Optional; must belong to the project
     ProviderCapabilities:
       type: object
       properties:
@@ -3117,6 +3257,13 @@ components:
           type: string
         scope_type:
           type: string
+          description: organization | team | project | user | api_key
+          enum:
+          - organization
+          - team
+          - project
+          - user
+          - api_key
         scope_id:
           type: string
         metric:
@@ -3138,6 +3285,13 @@ components:
       properties:
         scope_type:
           type: string
+          description: organization | team | project | user | api_key
+          enum:
+          - organization
+          - team
+          - project
+          - user
+          - api_key
         scope_id:
           type: string
         metric:

@@ -478,6 +478,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/organizations/{orgID}/projects/{projectID}/environments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgID: string;
+                projectID: string;
+            };
+            cookie?: never;
+        };
+        /** List project environments */
+        get: operations["listEnvironments"];
+        put?: never;
+        /** Create project environment */
+        post: operations["createEnvironment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/environments/{environmentID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                environmentID: string;
+            };
+            cookie?: never;
+        };
+        /** Get environment */
+        get: operations["getEnvironment"];
+        put?: never;
+        post?: never;
+        /** Delete environment */
+        delete: operations["deleteEnvironment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/organizations/{orgID}/providers": {
         parameters: {
             query?: never;
@@ -1326,6 +1367,20 @@ export interface components {
             /** Format: date-time */
             created_at?: string;
         };
+        Environment: {
+            id: string;
+            organization_id: string;
+            project_id: string;
+            name: string;
+            slug: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        CreateEnvironment: {
+            name: string;
+            /** @description Lowercase alphanumeric with - or _; unique per project */
+            slug: string;
+        };
         TeamMember: {
             user_id: string;
             name: string;
@@ -1358,6 +1413,7 @@ export interface components {
             id: string;
             project_id?: string;
             organization_id: string;
+            environment_id?: string;
             name: string;
             /** @enum {string} */
             kind: "personal" | "service_account";
@@ -1373,11 +1429,15 @@ export interface components {
             /** @enum {string} */
             kind: "personal" | "service_account";
             project_id?: string;
+            /** @description Optional; must belong to project_id (service_account only) */
+            environment_id?: string;
             key?: string;
         };
         CreateProjectKey: {
             name: string;
             key?: string;
+            /** @description Optional; must belong to the project */
+            environment_id?: string;
         };
         ProviderCapabilities: {
             chat?: boolean;
@@ -1458,7 +1518,11 @@ export interface components {
         Quota: {
             id: string;
             organization_id: string;
-            scope_type: string;
+            /**
+             * @description organization | team | project | user | api_key
+             * @enum {string}
+             */
+            scope_type: "organization" | "team" | "project" | "user" | "api_key";
             scope_id: string;
             metric: string;
             limit_value: number;
@@ -1467,7 +1531,11 @@ export interface components {
             created_at: string;
         };
         CreateQuota: {
-            scope_type: string;
+            /**
+             * @description organization | team | project | user | api_key
+             * @enum {string}
+             */
+            scope_type: "organization" | "team" | "project" | "user" | "api_key";
             scope_id: string;
             metric: string;
             limit_value: number;
@@ -2696,6 +2764,111 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listEnvironments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgID: string;
+                projectID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Environment"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createEnvironment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgID: string;
+                projectID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEnvironment"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Environment"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getEnvironment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                environmentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Environment"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteEnvironment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                environmentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
