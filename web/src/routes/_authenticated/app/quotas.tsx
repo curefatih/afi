@@ -78,7 +78,9 @@ function RouteComponent() {
 		const projects = new Map(
 			(org?.projects ?? []).map((p) => [p.id, p.name] as const),
 		);
-		const teams = new Map((org?.teams ?? []).map((t) => [t.id, t.name] as const));
+		const teams = new Map(
+			(org?.teams ?? []).map((t) => [t.id, t.name] as const),
+		);
 		const users = new Map(
 			(members.data ?? []).map((m) => [m.user_id, m.email] as const),
 		);
@@ -293,8 +295,7 @@ function RouteComponent() {
 									const next = v ?? "organization";
 									setScopeType(next);
 									if (next === "organization") setScopeID(orgId);
-									else if (next === "team")
-										setScopeID(org?.teams[0]?.id ?? "");
+									else if (next === "team") setScopeID(org?.teams[0]?.id ?? "");
 									else if (next === "project")
 										setScopeID(org?.projects[0]?.id ?? "");
 									else if (next === "user")

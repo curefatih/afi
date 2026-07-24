@@ -201,8 +201,8 @@ function RouteComponent() {
 								<EmptyHeader>
 									<EmptyTitle>No environments</EmptyTitle>
 									<EmptyDescription>
-										Create environments like dev, stage, or prod, then bind
-										keys to them.
+										Create environments like dev, stage, or prod, then bind keys
+										to them.
 									</EmptyDescription>
 								</EmptyHeader>
 								{isOrgAdmin ? (

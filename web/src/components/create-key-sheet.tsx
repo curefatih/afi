@@ -407,8 +407,8 @@ export function CreateKeySheet({
 											!envs.isError &&
 											(envs.data?.length ?? 0) === 0 ? (
 												<p className="text-muted-foreground text-xs">
-													No environments on this project yet. Create one on
-													the project page.
+													No environments on this project yet. Create one on the
+													project page.
 												</p>
 											) : null}
 										</Field>
