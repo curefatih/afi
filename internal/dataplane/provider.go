@@ -7,6 +7,7 @@ import (
 
 	"github.com/curefatih/afi/internal/adapters/llm"
 	"github.com/curefatih/afi/internal/adapters/secrets"
+	"github.com/curefatih/afi/internal/dataplane/ir"
 	"github.com/curefatih/afi/internal/snapshot"
 )
 
@@ -19,11 +20,16 @@ type ProviderCaps struct {
 	Embedding bool
 }
 
-// ChatProvider is the in-process adapter contract for gateway chat.
+// ChatProvider is the in-process adapter contract for gateway chat (legacy OpenAI-shaped bytes).
 type ChatProvider interface {
 	Type() string
 	Capabilities() ProviderCaps
 	Chat(ctx context.Context, p snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error)
+}
+
+// IRChatProvider is implemented by built-in adapters that speak chat IR.
+type IRChatProvider interface {
+	ChatIR(ctx context.Context, p snapshot.Provider, targetModel string, req ir.ChatRequest) (ir.ChatResult, error)
 }
 
 // Registry maps provider type strings to ChatProvider implementations.
@@ -104,6 +110,10 @@ func (p *openaiChatProvider) Chat(ctx context.Context, provider snapshot.Provide
 	return p.client.ChatCompletions(ctx, provider, targetModel, body, stream)
 }
 
+func (p *openaiChatProvider) ChatIR(ctx context.Context, provider snapshot.Provider, targetModel string, req ir.ChatRequest) (ir.ChatResult, error) {
+	return p.client.ChatIR(ctx, provider, targetModel, req)
+}
+
 func (p *openaiChatProvider) OpenAITransport() OpenAITransport {
 	if p.client == nil {
 		return nil
@@ -128,6 +138,10 @@ func (p *anthropicChatProvider) Chat(ctx context.Context, provider snapshot.Prov
 	return p.client.Messages(ctx, provider, targetModel, body, stream)
 }
 
+func (p *anthropicChatProvider) ChatIR(ctx context.Context, provider snapshot.Provider, targetModel string, req ir.ChatRequest) (ir.ChatResult, error) {
+	return p.client.ChatIR(ctx, provider, targetModel, req)
+}
+
 func (p *anthropicChatProvider) AnthropicTransport() AnthropicTransport {
 	if p.client == nil {
 		return nil
@@ -150,4 +164,8 @@ func (p *geminiChatProvider) Capabilities() ProviderCaps {
 
 func (p *geminiChatProvider) Chat(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
 	return p.client.GenerateContent(ctx, provider, targetModel, body, stream)
+}
+
+func (p *geminiChatProvider) ChatIR(ctx context.Context, provider snapshot.Provider, targetModel string, req ir.ChatRequest) (ir.ChatResult, error) {
+	return p.client.ChatIR(ctx, provider, targetModel, req)
 }

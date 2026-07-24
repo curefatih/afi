@@ -32,9 +32,9 @@ func (s *statusRecorder) Unwrap() http.ResponseWriter { return s.ResponseWriter 
 
 func modalityFromPath(path string) string {
 	switch {
-	case strings.HasPrefix(path, "/v1/chat/completions"):
+	case strings.HasPrefix(path, "/openai/v1/chat/completions"), strings.HasPrefix(path, "/v1/chat/completions"):
 		return ModalityChat
-	case strings.HasPrefix(path, "/v1/messages"):
+	case strings.HasPrefix(path, "/anthropic/v1/messages"), strings.HasPrefix(path, "/v1/messages"):
 		return ModalityMessages
 	case strings.HasPrefix(path, "/v1/embeddings"):
 		return ModalityEmbedding
