@@ -231,6 +231,37 @@ func (o *Organizations) SetDefaultRetry(ctx context.Context, orgID string, retry
 	return nil
 }
 
+func (o *Organizations) GetObjectStore(ctx context.Context, orgID string) (*gatewayconfig.ObjectStoreConfig, error) {
+	var raw []byte
+	err := o.Pool.QueryRow(ctx, `
+		SELECT object_store FROM organizations WHERE id = $1
+	`, orgID).Scan(&raw)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, kernel.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return DecodeObjectStore(raw), nil
+}
+
+func (o *Organizations) SetObjectStore(ctx context.Context, orgID string, cfg *gatewayconfig.ObjectStoreConfig) error {
+	raw, err := encodeObjectStore(cfg)
+	if err != nil {
+		return err
+	}
+	tag, err := o.Pool.Exec(ctx, `
+		UPDATE organizations SET object_store = $1 WHERE id = $2
+	`, raw, orgID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return kernel.ErrNotFound
+	}
+	return nil
+}
+
 func (o *Organizations) CreateWithOwner(ctx context.Context, org tenancy.Organization, ownerUserID string) error {
 	tx, err := o.Pool.Begin(ctx)
 	if err != nil {

@@ -183,6 +183,18 @@ func (s *Store) SetOrgDefaultRetry(ctx context.Context, orgID string, retry *Ret
 	return s.organizations().SetDefaultRetry(ctx, orgID, retry)
 }
 
+func (s *Store) GetOrgObjectStore(ctx context.Context, orgID string) (*gatewayconfig.ObjectStoreConfig, error) {
+	return s.organizations().GetObjectStore(ctx, orgID)
+}
+
+func (s *Store) SetOrgObjectStore(ctx context.Context, orgID string, cfg *gatewayconfig.ObjectStoreConfig) error {
+	cfg, err := gatewayconfig.NormalizeObjectStore(cfg)
+	if err != nil {
+		return err
+	}
+	return s.organizations().SetObjectStore(ctx, orgID, cfg)
+}
+
 func (s *Store) InviteOrgMember(ctx context.Context, orgID, email, invitedByUserID string) (*InviteOutcome, string, error) {
 	return tenancy.InviteOrgMember(ctx, s.organizations(), s.invitesRepo(), s, newPlatformID("inv"), orgID, email, invitedByUserID)
 }

@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 19
+const schemaVersion = 20
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS platform_event_outbox CASCADE;
@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS organizations (
     mail_provider TEXT NOT NULL DEFAULT '',
     byok_selector_header TEXT NOT NULL DEFAULT '',
     default_retry JSONB,
+    object_store JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -861,6 +862,12 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			ON password_reset_tokens (user_id);
 	`); err != nil {
 		return fmt.Errorf("cycle33 password reset tokens: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE organizations ADD COLUMN IF NOT EXISTS object_store JSONB;
+	`); err != nil {
+		return fmt.Errorf("cycle34 org object store: %w", err)
 	}
 	return nil
 }
