@@ -1,0 +1,31 @@
+# Local-only config for `make quickstart`.
+# Do NOT use these credentials on a public or shared host.
+
+database_url: "postgres://afi:afi-quickstart-db@postgres:5432/afi?sslmode=disable"
+redis_url: "redis://redis:6379/0"
+
+controlplane:
+  addr: ":8081"
+
+gateway:
+  addr: ":8080"
+  snapshot_poll_interval: "2s"
+
+auth:
+  jwt_secret: "afi-quickstart-jwt-secret-change-before-prod"
+  token_ttl: "24h"
+  internal_token: "afi-quickstart-internal-token"
+
+# Applied only when the database is empty (first control-plane start).
+seed:
+  virtual_api_key: "sk-project-local-dev-token-12345"
+  admin_email: "admin@afi.local"
+  admin_password: "admin"
+  admin_name: "Admin"
+  openai_base_url: "https://api.openai.com/v1"
+  openai_api_key_env: "OPENAI_API_KEY"
+  default_model: "gpt-4o-mini"
+
+events:
+  outbox_enabled: false
+  publisher: log

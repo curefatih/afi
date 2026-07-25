@@ -1,0 +1,171 @@
+---
+import config from 'virtual:starlight/user-config';
+
+import LanguageSelect from 'virtual:starlight/components/LanguageSelect';
+import Search from 'virtual:starlight/components/Search';
+import SiteTitle from 'virtual:starlight/components/SiteTitle';
+import SocialIcons from 'virtual:starlight/components/SocialIcons';
+import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
+
+const shouldRenderSearch =
+	config.pagefind || config.components.Search !== '@astrojs/starlight/components/Search.astro';
+
+const topics = Astro.locals.starlightSidebarTopics?.topics ?? [];
+---
+
+<div class="header afi-header">
+	<div class="afi-header-leading sl-flex">
+		<div class="title-wrapper sl-flex">
+			<SiteTitle />
+		</div>
+	</div>
+
+	<nav class="afi-topics print:hidden" aria-label="Documentation sections">
+		<ul>
+			{
+				topics.map((topic) => (
+					<li>
+						<a href={topic.link} aria-current={topic.isCurrent ? 'page' : undefined}>
+							{topic.label}
+						</a>
+					</li>
+				))
+			}
+		</ul>
+	</nav>
+
+	<div class="afi-header-trailing sl-flex print:hidden">
+		{shouldRenderSearch && <Search />}
+		<div class="sl-hidden md:sl-flex right-group">
+			<div class="sl-flex social-icons">
+				<SocialIcons />
+			</div>
+			<ThemeSelect />
+			<LanguageSelect />
+		</div>
+	</div>
+</div>
+
+<style>
+	@layer starlight.core {
+		.afi-header {
+			display: flex;
+			gap: 0.75rem;
+			justify-content: space-between;
+			align-items: center;
+			height: 100%;
+			min-width: 0;
+		}
+
+		.afi-header-leading {
+			align-items: center;
+			gap: 0.5rem;
+			min-width: 0;
+			flex-shrink: 0;
+		}
+
+		.title-wrapper {
+			overflow: clip;
+			padding: 0.15rem;
+			margin: -0.15rem;
+			min-width: 0;
+		}
+
+		.afi-header-trailing {
+			align-items: center;
+			gap: 0.75rem;
+			margin-inline-start: auto;
+			min-width: 0;
+		}
+
+		.right-group,
+		.social-icons {
+			gap: 0.75rem;
+			align-items: center;
+		}
+
+		.social-icons::after {
+			content: '';
+			height: 1.25rem;
+			border-inline-end: 1px solid var(--sl-color-hairline);
+		}
+
+		.afi-topics {
+			display: none;
+			min-width: 0;
+			flex: 1;
+			align-self: stretch;
+		}
+
+		.afi-topics ul {
+			display: flex;
+			align-items: stretch;
+			height: 100%;
+			gap: 0.15rem;
+			margin: 0;
+			padding: 0;
+			list-style: none;
+			overflow-x: auto;
+			scrollbar-width: none;
+		}
+
+		.afi-topics li {
+			display: flex;
+		}
+
+		.afi-topics ul::-webkit-scrollbar {
+			display: none;
+		}
+
+		.afi-topics a {
+			display: inline-flex;
+			align-items: center;
+			padding: 0 0.65rem;
+			border-radius: 0;
+			font-size: 0.8125rem;
+			font-weight: 500;
+			line-height: 1.2;
+			color: var(--sl-color-gray-2);
+			text-decoration: none;
+			border: none;
+			border-bottom: 3px solid transparent;
+			white-space: nowrap;
+			background: transparent;
+		}
+
+		.afi-topics a:hover,
+		.afi-topics a:focus-visible {
+			color: var(--sl-color-white);
+			background: transparent;
+		}
+
+		.afi-topics a[aria-current='page'] {
+			color: var(--sl-color-white);
+			background: transparent;
+			border-bottom-color: var(--afi-primary);
+			font-weight: 700;
+		}
+
+		:global([data-theme='light']) .afi-topics a {
+			color: var(--sl-color-gray-3);
+		}
+
+		:global([data-theme='light']) .afi-topics a:hover,
+		:global([data-theme='light']) .afi-topics a:focus-visible {
+			color: var(--afi-primary);
+			background: transparent;
+		}
+
+		:global([data-theme='light']) .afi-topics a[aria-current='page'] {
+			color: var(--afi-primary);
+			background: transparent;
+			border-bottom-color: var(--afi-primary);
+		}
+
+		@media (min-width: 72rem) {
+			.afi-topics {
+				display: block;
+			}
+		}
+	}
+</style>

@@ -10,38 +10,28 @@ AFI is a self-hostable LLM gateway with a **control plane** (configuration, iden
 
 | Tool | Notes |
 |------|--------|
-| Go | See `go.mod` (`1.25.x`) |
-| Docker | Postgres via Compose |
-| pnpm | Optional, for `web/` |
-| uv / uvx | Docs (`make doc-serve`) |
+| Docker | Compose v2 — enough for Quick start |
+| Go | See `go.mod` (`1.25.x`) — local development only |
+| pnpm | Optional, for `web/` and docs (`make doc-serve`) |
 | OpenAI API key | For live inference |
 
-## Quick start
+## Quick start (Docker Compose)
 
 ```bash
-# 1. Infrastructure
-make dev-up
+export OPENAI_API_KEY="sk-..."   # optional but needed for chat
+make quickstart
+```
 
-# 2. Provider key for the gateway
-export OPENAI_API_KEY="sk-..."
-# optional
-export ANTHROPIC_API_KEY="sk-ant-..."
-export GEMINI_API_KEY="..."
+Then open http://localhost:3000 (`admin@afi.local` / `admin`) or call the gateway:
 
-# 3. Control plane (migrate, seed, listen :8081)
-make run-controlplane
-
-# 4. Gateway (load snapshot, listen :8080) — second terminal
-make run-gateway
-
-# 5. Inference
+```bash
 curl -s http://localhost:8080/v1/chat/completions \
   -H "Authorization: Bearer sk-project-local-dev-token-12345" \
   -H "Content-Type: application/json" \
   -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"ping"}]}'
 ```
 
-Full checklist: [docs/getting-started/local-dev.md](docs/getting-started/local-dev.md).
+Guide: [docs/getting-started/quick-start.md](docs/getting-started/quick-start.md). Host-based Go workflow: [docs/getting-started/local-dev.md](docs/getting-started/local-dev.md).
 
 ## Components
 
@@ -57,12 +47,13 @@ Full checklist: [docs/getting-started/local-dev.md](docs/getting-started/local-d
 ## Common commands
 
 ```bash
+make quickstart         # full stack via Docker Compose
 make build              # bin/controlplane, bin/gateway, bin/afi
 make test               # unit tests (preferred quality bar)
 make verify             # smoke against a running local stack
 make seed               # CLI: seed local data + publish snapshot
 make snapshot-publish
-make doc-serve          # http://127.0.0.1:8000
+make doc-serve          # http://localhost:4321
 ```
 
 ## Architecture (short)

@@ -7,7 +7,17 @@ Run the full AFI stack (Postgres, Redis, control plane, gateway, worker, web) on
 * Docker with Compose v2
 * Outbound network for `docker pull` / builds (and upstream LLM APIs from the gateway)
 
-## Quick start
+## Try it first
+
+For a local trial with fixed defaults (no secret editing):
+
+```bash
+make quickstart
+```
+
+See [Quick start](../getting-started/quick-start.md). Use the steps below when you want your own secrets on a real host.
+
+## Setup
 
 ```bash
 # 1. Create local secret files from examples

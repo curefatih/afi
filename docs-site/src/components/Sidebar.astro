@@ -1,0 +1,32 @@
+---
+import Default from '@astrojs/starlight/components/Sidebar.astro';
+
+const topics = Astro.locals.starlightSidebarTopics?.topics ?? [];
+---
+
+{
+	topics.length > 0 && (
+		<nav class="afi-sidebar-topics-mobile print:hidden" aria-label="Documentation sections">
+			<ul>
+				{topics.map((topic) => (
+					<li>
+						<a href={topic.link} aria-current={topic.isCurrent ? 'page' : undefined}>
+							{topic.label}
+							{topic.badge && (
+								<span class="afi-section-pill" data-variant={topic.badge.variant}>
+									{typeof topic.badge.text === 'string'
+										? topic.badge.text
+										: Object.values(topic.badge.text)[0]}
+								</span>
+							)}
+						</a>
+					</li>
+				))}
+			</ul>
+		</nav>
+	)
+}
+
+<Default>
+	<slot />
+</Default>

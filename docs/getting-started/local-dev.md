@@ -1,13 +1,15 @@
 # Local development
 
-This is the golden path for running AFI on a developer machine.
+This is the golden path for running AFI on a developer machine with Go processes on the host.
+
+To try the full stack in Docker only (no Go install), use [Quick start](quick-start.md).
 
 ## Prerequisites
 
 * Go (version in `go.mod`)
 * Docker (Compose)
 * An OpenAI API key for live chat completions
-* Optional: pnpm (web UI), `uv`/`uvx` (MkDocs)
+* Optional: pnpm (web UI and docs site)
 
 ## 1. Start infrastructure
 
