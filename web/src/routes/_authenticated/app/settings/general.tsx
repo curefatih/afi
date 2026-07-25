@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Building2Icon } from "lucide-react";
+import { Building2Icon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -23,6 +23,11 @@ import {
 	validateRetry,
 } from "#/components/routing/retry-editor";
 import { Button } from "#/components/ui/button";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "#/components/ui/collapsible";
 import {
 	Empty,
 	EmptyContent,
@@ -296,214 +301,246 @@ function RouteComponent() {
 						</section>
 					</div>
 
-					<section className="space-y-3 rounded-md border p-4">
-						<div className="flex items-center justify-between gap-4">
-							<div>
-								<h2 className="text-sm font-medium">Object storage</h2>
-								<p className="text-muted-foreground text-sm">
-									Optionally persist generated images to an S3-compatible store.
-									When disabled, image responses pass through unchanged.
-								</p>
+					<section className="rounded-md border">
+						<Collapsible defaultOpen={false} className="group/collapsible">
+							<div className="flex items-center justify-between gap-4 p-4">
+								<CollapsibleTrigger className="flex flex-1 items-start gap-2 text-left">
+									<ChevronRightIcon className="mt-0.5 size-4 shrink-0 transition-transform duration-200 group-data-open/collapsible:rotate-90" />
+									<div>
+										<h2 className="text-sm font-medium">Object storage</h2>
+										<p className="text-muted-foreground text-sm">
+											Optionally persist generated images to an S3-compatible
+											store. When disabled, image responses pass through
+											unchanged.
+										</p>
+									</div>
+								</CollapsibleTrigger>
+								{storeLoaded ? (
+									<Switch
+										checked={storeDraft.enabled}
+										onCheckedChange={(checked) =>
+											setStoreDraft((d) => ({ ...d, enabled: checked }))
+										}
+									/>
+								) : null}
 							</div>
-							{storeLoaded ? (
-								<Switch
-									checked={storeDraft.enabled}
-									onCheckedChange={(checked) =>
-										setStoreDraft((d) => ({ ...d, enabled: checked }))
-									}
-								/>
-							) : null}
-						</div>
-						{storeLoaded ? (
-							<>
-								<div className="grid gap-3 sm:grid-cols-2">
-									<div className="grid gap-1">
-										<Label htmlFor="os-endpoint">Endpoint</Label>
-										<Input
-											id="os-endpoint"
-											value={storeDraft.endpoint ?? ""}
-											onChange={(e) =>
-												setStoreDraft((d) => ({
-													...d,
-													endpoint: e.target.value,
-												}))
-											}
-											placeholder="localhost:9000"
-											disabled={!storeDraft.enabled}
-										/>
-									</div>
-									<div className="grid gap-1">
-										<Label htmlFor="os-bucket">Bucket</Label>
-										<Input
-											id="os-bucket"
-											value={storeDraft.bucket ?? ""}
-											onChange={(e) =>
-												setStoreDraft((d) => ({ ...d, bucket: e.target.value }))
-											}
-											placeholder="afi-assets"
-											disabled={!storeDraft.enabled}
-										/>
-									</div>
-									<div className="grid gap-1">
-										<Label htmlFor="os-region">Region</Label>
-										<Input
-											id="os-region"
-											value={storeDraft.region ?? ""}
-											onChange={(e) =>
-												setStoreDraft((d) => ({ ...d, region: e.target.value }))
-											}
-											placeholder="us-east-1"
-											disabled={!storeDraft.enabled}
-										/>
-									</div>
-									<div className="grid gap-1">
-										<Label htmlFor="os-ttl">Presign TTL (seconds)</Label>
-										<Input
-											id="os-ttl"
-											type="number"
-											min={0}
-											value={storeDraft.presign_ttl_seconds ?? 3600}
-											onChange={(e) =>
-												setStoreDraft((d) => ({
-													...d,
-													presign_ttl_seconds: Number(e.target.value) || 0,
-												}))
-											}
-											disabled={!storeDraft.enabled}
-										/>
-									</div>
-									<div className="grid gap-1">
-										<Label htmlFor="os-cred">Credential ID</Label>
-										<Input
-											id="os-cred"
-											value={storeDraft.credential_id ?? ""}
-											onChange={(e) =>
-												setStoreDraft((d) => ({
-													...d,
-													credential_id: e.target.value,
-												}))
-											}
-											placeholder="cred_… (JSON access_key/secret_key)"
-											disabled={!storeDraft.enabled}
-										/>
-									</div>
-									<div className="grid gap-1 sm:col-span-2 sm:grid-cols-2 sm:gap-3">
-										<div className="grid gap-1">
-											<Label htmlFor="os-ak">Access key env</Label>
-											<Input
-												id="os-ak"
-												value={storeDraft.access_key_env ?? ""}
-												onChange={(e) =>
-													setStoreDraft((d) => ({
-														...d,
-														access_key_env: e.target.value,
-													}))
-												}
-												placeholder="MINIO_ACCESS_KEY"
-												disabled={!storeDraft.enabled}
-											/>
-										</div>
-										<div className="grid gap-1">
-											<Label htmlFor="os-sk">Secret key env</Label>
-											<Input
-												id="os-sk"
-												value={storeDraft.secret_key_env ?? ""}
-												onChange={(e) =>
-													setStoreDraft((d) => ({
-														...d,
-														secret_key_env: e.target.value,
-													}))
-												}
-												placeholder="MINIO_SECRET_KEY"
-												disabled={!storeDraft.enabled}
-											/>
-										</div>
-									</div>
-								</div>
-								<div className="flex flex-wrap items-center gap-4 text-sm">
-									<div className="flex items-center gap-2">
-										<Switch
-											id="object-store-use-ssl"
-											checked={!!storeDraft.use_ssl}
-											onCheckedChange={(checked) =>
-												setStoreDraft((d) => ({ ...d, use_ssl: checked }))
-											}
-											disabled={!storeDraft.enabled}
-										/>
-										<Label htmlFor="object-store-use-ssl">Use SSL</Label>
-									</div>
-									<div className="flex items-center gap-2">
-										<Switch
-											id="object-store-path-style"
-											checked={!!storeDraft.path_style}
-											onCheckedChange={(checked) =>
-												setStoreDraft((d) => ({ ...d, path_style: checked }))
-											}
-											disabled={!storeDraft.enabled}
-										/>
-										<Label htmlFor="object-store-path-style">
-											Path-style addressing
-										</Label>
-									</div>
-								</div>
-								<p className="text-muted-foreground text-xs">
-									Provide either a credential ID (secret plaintext must be JSON{" "}
-									<code>{`{"access_key":"…","secret_key":"…"}`}</code>) or both
-									access/secret env vars on the gateway process.
-								</p>
-								<div className="flex justify-end">
-									<Button
-										disabled={updateObjectStore.isPending}
-										onClick={() => {
-											const payload: ObjectStoreConfig | null =
-												storeDraft.enabled
-													? {
-															...storeDraft,
-															endpoint:
-																storeDraft.endpoint?.trim() || undefined,
-															bucket: storeDraft.bucket?.trim() || undefined,
-															region: storeDraft.region?.trim() || undefined,
-															credential_id:
-																storeDraft.credential_id?.trim() || undefined,
-															access_key_env:
-																storeDraft.access_key_env?.trim() || undefined,
-															secret_key_env:
-																storeDraft.secret_key_env?.trim() || undefined,
+							<CollapsibleContent className="space-y-3 border-t px-4 pb-4 pt-3">
+								{storeLoaded ? (
+									<>
+										<div className="grid gap-3 sm:grid-cols-2">
+											<div className="grid gap-1">
+												<Label htmlFor="os-endpoint">Endpoint</Label>
+												<Input
+													id="os-endpoint"
+													value={storeDraft.endpoint ?? ""}
+													onChange={(e) =>
+														setStoreDraft((d) => ({
+															...d,
+															endpoint: e.target.value,
+														}))
+													}
+													placeholder="localhost:9000"
+													disabled={!storeDraft.enabled}
+												/>
+											</div>
+											<div className="grid gap-1">
+												<Label htmlFor="os-bucket">Bucket</Label>
+												<Input
+													id="os-bucket"
+													value={storeDraft.bucket ?? ""}
+													onChange={(e) =>
+														setStoreDraft((d) => ({
+															...d,
+															bucket: e.target.value,
+														}))
+													}
+													placeholder="afi-assets"
+													disabled={!storeDraft.enabled}
+												/>
+											</div>
+											<div className="grid gap-1">
+												<Label htmlFor="os-region">Region</Label>
+												<Input
+													id="os-region"
+													value={storeDraft.region ?? ""}
+													onChange={(e) =>
+														setStoreDraft((d) => ({
+															...d,
+															region: e.target.value,
+														}))
+													}
+													placeholder="us-east-1"
+													disabled={!storeDraft.enabled}
+												/>
+											</div>
+											<div className="grid gap-1">
+												<Label htmlFor="os-ttl">Presign TTL (seconds)</Label>
+												<Input
+													id="os-ttl"
+													type="number"
+													min={0}
+													value={storeDraft.presign_ttl_seconds ?? 3600}
+													onChange={(e) =>
+														setStoreDraft((d) => ({
+															...d,
+															presign_ttl_seconds:
+																Number(e.target.value) || 0,
+														}))
+													}
+													disabled={!storeDraft.enabled}
+												/>
+											</div>
+											<div className="grid gap-1">
+												<Label htmlFor="os-cred">Credential ID</Label>
+												<Input
+													id="os-cred"
+													value={storeDraft.credential_id ?? ""}
+													onChange={(e) =>
+														setStoreDraft((d) => ({
+															...d,
+															credential_id: e.target.value,
+														}))
+													}
+													placeholder="cred_… (JSON access_key/secret_key)"
+													disabled={!storeDraft.enabled}
+												/>
+											</div>
+											<div className="grid gap-1 sm:col-span-2 sm:grid-cols-2 sm:gap-3">
+												<div className="grid gap-1">
+													<Label htmlFor="os-ak">Access key env</Label>
+													<Input
+														id="os-ak"
+														value={storeDraft.access_key_env ?? ""}
+														onChange={(e) =>
+															setStoreDraft((d) => ({
+																...d,
+																access_key_env: e.target.value,
+															}))
 														}
-													: { enabled: false };
-											updateObjectStore.mutate(
-												{ orgId, object_store: payload },
-												{
-													onSuccess: (res) => {
-														setStoreDraft(
-															res.object_store ?? emptyObjectStore(),
-														);
-														void qc.invalidateQueries({
-															queryKey: [
-																"organizations",
-																orgId,
-																"object-store",
-															],
-														});
-														toast.success("Object store saved & published");
-													},
-													onError: (e) =>
-														toast.error(
-															e instanceof Error
-																? e.message
-																: "Failed to save object store",
-														),
-												},
-											);
-										}}
-									>
-										{updateObjectStore.isPending ? "Saving…" : "Save & publish"}
-									</Button>
-								</div>
-							</>
-						) : (
-							<p className="text-muted-foreground text-sm">Loading…</p>
-						)}
+														placeholder="MINIO_ACCESS_KEY"
+														disabled={!storeDraft.enabled}
+													/>
+												</div>
+												<div className="grid gap-1">
+													<Label htmlFor="os-sk">Secret key env</Label>
+													<Input
+														id="os-sk"
+														value={storeDraft.secret_key_env ?? ""}
+														onChange={(e) =>
+															setStoreDraft((d) => ({
+																...d,
+																secret_key_env: e.target.value,
+															}))
+														}
+														placeholder="MINIO_SECRET_KEY"
+														disabled={!storeDraft.enabled}
+													/>
+												</div>
+											</div>
+										</div>
+										<div className="flex flex-wrap items-center gap-4 text-sm">
+											<div className="flex items-center gap-2">
+												<Switch
+													id="object-store-use-ssl"
+													checked={!!storeDraft.use_ssl}
+													onCheckedChange={(checked) =>
+														setStoreDraft((d) => ({
+															...d,
+															use_ssl: checked,
+														}))
+													}
+													disabled={!storeDraft.enabled}
+												/>
+												<Label htmlFor="object-store-use-ssl">Use SSL</Label>
+											</div>
+											<div className="flex items-center gap-2">
+												<Switch
+													id="object-store-path-style"
+													checked={!!storeDraft.path_style}
+													onCheckedChange={(checked) =>
+														setStoreDraft((d) => ({
+															...d,
+															path_style: checked,
+														}))
+													}
+													disabled={!storeDraft.enabled}
+												/>
+												<Label htmlFor="object-store-path-style">
+													Path-style addressing
+												</Label>
+											</div>
+										</div>
+										<p className="text-muted-foreground text-xs">
+											Provide either a credential ID (secret plaintext must be
+											JSON{" "}
+											<code>{`{"access_key":"…","secret_key":"…"}`}</code>) or
+											both access/secret env vars on the gateway process.
+										</p>
+										<div className="flex justify-end">
+											<Button
+												disabled={updateObjectStore.isPending}
+												onClick={() => {
+													const payload: ObjectStoreConfig | null =
+														storeDraft.enabled
+															? {
+																	...storeDraft,
+																	endpoint:
+																		storeDraft.endpoint?.trim() ||
+																		undefined,
+																	bucket:
+																		storeDraft.bucket?.trim() || undefined,
+																	region:
+																		storeDraft.region?.trim() || undefined,
+																	credential_id:
+																		storeDraft.credential_id?.trim() ||
+																		undefined,
+																	access_key_env:
+																		storeDraft.access_key_env?.trim() ||
+																		undefined,
+																	secret_key_env:
+																		storeDraft.secret_key_env?.trim() ||
+																		undefined,
+																}
+															: { enabled: false };
+													updateObjectStore.mutate(
+														{ orgId, object_store: payload },
+														{
+															onSuccess: (res) => {
+																setStoreDraft(
+																	res.object_store ?? emptyObjectStore(),
+																);
+																void qc.invalidateQueries({
+																	queryKey: [
+																		"organizations",
+																		orgId,
+																		"object-store",
+																	],
+																});
+																toast.success(
+																	"Object store saved & published",
+																);
+															},
+															onError: (e) =>
+																toast.error(
+																	e instanceof Error
+																		? e.message
+																		: "Failed to save object store",
+																),
+														},
+													);
+												}}
+											>
+												{updateObjectStore.isPending
+													? "Saving…"
+													: "Save & publish"}
+											</Button>
+										</div>
+									</>
+								) : (
+									<p className="text-muted-foreground text-sm">Loading…</p>
+								)}
+							</CollapsibleContent>
+						</Collapsible>
 					</section>
 				</>
 			) : null}

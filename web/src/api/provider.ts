@@ -81,6 +81,12 @@ export const PROVIDER_TYPE_PRESETS: Record<
 			image: true,
 		},
 	},
+	elevenlabs: {
+		name: "ElevenLabs",
+		base_url: "https://api.elevenlabs.io",
+		api_key_env: "ELEVENLABS_API_KEY",
+		caps: { chat: false, stream: false, tts: true, stt: true },
+	},
 	echo: {
 		name: "Echo (extension)",
 		base_url: "http://localhost/echo",

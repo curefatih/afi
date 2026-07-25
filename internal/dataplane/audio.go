@@ -31,8 +31,12 @@ func audioModelHint(requested, target, kind string) bool {
 			if strings.Contains(s, "tts") {
 				return true
 			}
+			// ElevenLabs TTS model ids (eleven_multilingual_v2, eleven_flash_v2_5, …).
+			if strings.Contains(s, "eleven_") && !strings.Contains(s, "scribe") {
+				return true
+			}
 		case "stt":
-			if strings.Contains(s, "whisper") || strings.Contains(s, "transcribe") || strings.Contains(s, "stt") {
+			if strings.Contains(s, "whisper") || strings.Contains(s, "transcribe") || strings.Contains(s, "stt") || strings.Contains(s, "scribe") {
 				return true
 			}
 		}
@@ -40,12 +44,12 @@ func audioModelHint(requested, target, kind string) bool {
 	return false
 }
 
-func audioOpenAICompatible(typ string) bool {
-	return typ == "openai" || typ == "openai_compatible"
+func audioProviderTypeSupported(typ string) bool {
+	return typ == "openai" || typ == "openai_compatible" || typ == "elevenlabs"
 }
 
 func audioProviderUsable(prov snapshot.Provider, needTTS, needSTT bool) bool {
-	if !audioOpenAICompatible(prov.Type) {
+	if !audioProviderTypeSupported(prov.Type) {
 		return false
 	}
 	caps := snapshot.NormalizeCapabilities(prov.Type, prov.Capabilities)
@@ -59,7 +63,7 @@ func audioProviderUsable(prov snapshot.Provider, needTTS, needSTT bool) bool {
 }
 
 // buildAudioAttempts orders primary + fallbacks for TTS or STT, skipping providers
-// that are not openai/openai_compatible or lack the required capability.
+// that lack an audio backend or the required capability.
 func (p *Pipeline) buildAudioAttempts(snap *snapshot.Snapshot, route snapshot.Route, primary snapshot.Provider, needTTS, needSTT bool) []routeAttempt {
 	var cands []routing.Candidate
 	if audioProviderUsable(primary, needTTS, needSTT) {
@@ -157,10 +161,10 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	caps := snapshot.NormalizeCapabilities(provider.Type, provider.Capabilities)
-	if !audioOpenAICompatible(provider.Type) || !caps.TTS {
+	if !audioProviderTypeSupported(provider.Type) || !caps.TTS {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": map[string]string{
-				"message": "TTS requires an openai or openai_compatible provider with tts capability",
+				"message": "TTS requires an openai, openai_compatible, or elevenlabs provider with tts capability",
 				"type":    "invalid_request_error",
 			},
 		})
@@ -169,7 +173,7 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 	if !modelLooksLikeTTS(reqBody.Model, route.TargetModel) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": map[string]string{
-				"message": "model is not a TTS model (use tts-1 or a *tts* route)",
+				"message": "model is not a TTS model (use tts-1, eleven_* , or a *tts* route)",
 				"type":    "invalid_request_error",
 			},
 		})
@@ -379,10 +383,10 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	caps := snapshot.NormalizeCapabilities(provider.Type, provider.Capabilities)
-	if !audioOpenAICompatible(provider.Type) || !caps.STT {
+	if !audioProviderTypeSupported(provider.Type) || !caps.STT {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": map[string]string{
-				"message": "STT requires an openai or openai_compatible provider with stt capability",
+				"message": "STT requires an openai, openai_compatible, or elevenlabs provider with stt capability",
 				"type":    "invalid_request_error",
 			},
 		})
@@ -391,7 +395,7 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 	if !modelLooksLikeSTT(model, route.TargetModel) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": map[string]string{
-				"message": "model is not an STT model (use whisper-1 or a *transcribe* route, not tts-*)",
+				"message": "model is not an STT model (use whisper-1, scribe_*, or a *transcribe* route, not tts-*)",
 				"type":    "invalid_request_error",
 			},
 		})

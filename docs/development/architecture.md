@@ -41,7 +41,7 @@ flowchart TD
   A --> B --> C --> D --> E --> F --> G
 ```
 
-Provider adapters (`openai`, `anthropic`, `gemini`, `openai_compatible`, …) implement `IRChatProvider` and register in a registry. Chat requests decode through a **client dialect** (`/openai/...`, `/anthropic/...`, or `/gemini/...`) into chat IR, then the adapter speaks the upstream API. Optional modality ports (`AudioBackend`, `EmbeddingsBackend`, `ImagesBackend`) remain OpenAI-transport based. See [API dialects](../api/dialects.md) and [Providers](providers.md).
+Provider adapters (`openai`, `anthropic`, `gemini`, `bedrock`, `elevenlabs`, `openai_compatible`, …) register in a registry. Chat-capable adapters implement `IRChatProvider`; requests decode through a **client dialect** (`/openai/...`, `/anthropic/...`, or `/gemini/...`) into chat IR, then the adapter speaks the upstream API. Optional modality ports (`AudioBackend`, `EmbeddingsBackend`, `ImagesBackend`) are resolved by provider type — OpenAI-compatible types via `OpenAITransportProvider`, ElevenLabs via `AudioTransportProvider`. See [API dialects](../api/dialects.md) and [Providers](providers.md).
 
 Also exposes:
 

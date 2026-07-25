@@ -10,6 +10,7 @@ Gateway chat dispatch uses a **registry** of in-process adapters. The pipeline l
 | `anthropic` | yes | yes | no | no | no | no | Messages API → OpenAI-shaped responses/SSE |
 | `gemini` | yes | yes | no | no | no | no | `generateContent` / `streamGenerateContent` → OpenAI JSON/SSE |
 | `bedrock` | yes | yes | no | no | no | no | Bedrock **Converse** / **ConverseStream** (SigV4); tools + vision |
+| `elevenlabs` | no | no | yes | yes | no | no | TTS/STT via ElevenLabs API (`xi-api-key`); OpenAI audio dialect in, vendor wire out |
 | `openai_compatible` | yes | yes | yes | yes | yes | yes | Same wire protocol as OpenAI (incl. audio/embeddings/images if upstream supports it) |
 | `echo` | yes | no | no | no | no | no | **SDK extension** (`extensions/echo`) — no network; echoes last user message |
 
@@ -22,7 +23,7 @@ Capabilities (`chat`, `stream`, `tts`, `stt`, `embedding`, `image`) are stored o
 | `POST /openai/v1/chat/completions` (+ `/v1/...`) | `IRChatProvider.ChatIR` | `provider.type` |
 | `POST /anthropic/v1/messages` (+ `/v1/messages`) | same chat IR path | `provider.type` (any chat-capable provider) |
 | `POST /gemini/v1beta/models/{route}:...` | same chat IR path | `provider.type` (any chat-capable provider) |
-| `POST /openai/v1/audio/speech` / `transcriptions` (+ `/v1/audio/...`) | `AudioBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
+| `POST /openai/v1/audio/speech` / `transcriptions` (+ `/v1/audio/...`) | `AudioBackend` (via `AudioTransportProvider` or `OpenAITransportProvider`) | routed `provider.type` |
 | `POST /openai/v1/embeddings` (+ `/v1/embeddings`) | `EmbeddingsBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
 | `POST /openai/v1/images/generations` (+ `/v1/images/generations`) | `ImagesBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
 
@@ -93,3 +94,12 @@ Example: [`extensions/grpcecho`](../../extensions/grpcecho).
 5. Call the route through the OpenAI-compatible `/openai/v1/chat/completions` (or `/v1/chat/completions`) interface. Anthropic and Gemini client dialects can also target the same route.
 
 Vision inputs to Bedrock require **inline base64** image bytes (URL-only images are rejected).
+
+## Example: ElevenLabs (TTS / STT)
+
+1. Create provider type `elevenlabs`, base URL `https://api.elevenlabs.io`, env `ELEVENLABS_API_KEY`.
+2. Add a TTS route, e.g. requested model `eleven-tts` → target `eleven_multilingual_v2` (or `eleven_turbo_v2_5` / `eleven_flash_v2_5`).
+3. Call OpenAI-shaped `POST /v1/audio/speech` with `"model":"eleven-tts"`. Optional `"voice"` may be an ElevenLabs voice id; OpenAI voice names map to a default voice.
+4. For STT, route target `scribe_v2` and call `POST /v1/audio/transcriptions` (multipart `model` + `file`).
+
+The gateway keeps the OpenAI client dialect and translates to ElevenLabs `/v1/text-to-speech/{voice_id}` and `/v1/speech-to-text`.

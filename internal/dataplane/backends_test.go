@@ -15,6 +15,9 @@ func TestRegistryAudioBackendByType(t *testing.T) {
 	if _, ok := reg.AudioBackend("openai_compatible"); !ok {
 		t.Fatal("expected openai_compatible audio backend")
 	}
+	if _, ok := reg.AudioBackend("elevenlabs"); !ok {
+		t.Fatal("expected elevenlabs audio backend")
+	}
 	if _, ok := reg.AudioBackend("anthropic"); ok {
 		t.Fatal("anthropic must not expose audio backend")
 	}

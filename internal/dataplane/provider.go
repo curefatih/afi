@@ -82,7 +82,8 @@ func RegistryFromClients(c *llm.Clients) *Registry {
 		Register(newOpenAIChatProvider("openai_compatible", c.OpenAICompatible, ProviderCaps{Chat: true, Stream: true, TTS: true, STT: true, Embedding: true})).
 		Register(newAnthropicChatProvider(c.Anthropic)).
 		Register(newGeminiChatProvider(c.Gemini)).
-		Register(newBedrockChatProvider(c.Bedrock))
+		Register(newBedrockChatProvider(c.Bedrock)).
+		Register(newElevenLabsProvider(c.ElevenLabs))
 }
 
 // RegistryWithOpenAI builds DefaultRegistry but uses the given OpenAI client for type "openai"
@@ -191,4 +192,28 @@ func (p *bedrockChatProvider) Chat(ctx context.Context, provider snapshot.Provid
 
 func (p *bedrockChatProvider) ChatIR(ctx context.Context, provider snapshot.Provider, targetModel string, req ir.ChatRequest) (ir.ChatResult, error) {
 	return p.client.ChatIR(ctx, provider, targetModel, req)
+}
+
+type elevenLabsProvider struct {
+	client *llm.ElevenLabsClient
+}
+
+func newElevenLabsProvider(client *llm.ElevenLabsClient) *elevenLabsProvider {
+	return &elevenLabsProvider{client: client}
+}
+
+func (p *elevenLabsProvider) Type() string { return "elevenlabs" }
+func (p *elevenLabsProvider) Capabilities() ProviderCaps {
+	return ProviderCaps{TTS: true, STT: true}
+}
+
+func (p *elevenLabsProvider) Chat(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
+	return nil, errors.New("elevenlabs provider does not support chat")
+}
+
+func (p *elevenLabsProvider) AudioBackend() AudioBackend {
+	if p.client == nil {
+		return nil
+	}
+	return p.client
 }

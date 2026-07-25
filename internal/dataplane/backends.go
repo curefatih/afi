@@ -24,11 +24,16 @@ type AnthropicTransport interface {
 	Messages(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error)
 }
 
-// AudioBackend is the modality port for TTS/STT. OpenAI-compatible ChatProviders
-// that implement OpenAITransportProvider expose this via the registry.
+// AudioBackend is the modality port for TTS/STT.
 type AudioBackend interface {
 	AudioSpeech(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte) (*http.Response, error)
 	AudioTranscriptions(ctx context.Context, provider snapshot.Provider, targetModel, contentType string, body io.Reader) (*http.Response, error)
+}
+
+// AudioTransportProvider is implemented by ChatProvider adapters that expose TTS/STT
+// without a full OpenAI transport (e.g. elevenlabs).
+type AudioTransportProvider interface {
+	AudioBackend() AudioBackend
 }
 
 // EmbeddingsBackend is the modality port for /v1/embeddings (OpenAI-compatible).
@@ -97,8 +102,21 @@ func (r *Registry) AnthropicTransport(typ string) (AnthropicTransport, bool) {
 	return t, true
 }
 
-// AudioBackend returns the TTS/STT port for a provider type (OpenAI-compatible only).
+// AudioBackend returns the TTS/STT port for a provider type.
 func (r *Registry) AudioBackend(typ string) (AudioBackend, bool) {
+	if r == nil {
+		return nil, false
+	}
+	cp, ok := r.Get(typ)
+	if !ok {
+		return nil, false
+	}
+	if a, ok := cp.(AudioTransportProvider); ok {
+		b := a.AudioBackend()
+		if b != nil {
+			return b, true
+		}
+	}
 	t, ok := r.OpenAITransport(typ)
 	if !ok {
 		return nil, false

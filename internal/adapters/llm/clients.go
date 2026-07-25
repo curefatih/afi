@@ -11,6 +11,7 @@ type Clients struct {
 	Anthropic        *AnthropicClient
 	Gemini           *GeminiClient
 	Bedrock          *BedrockClient
+	ElevenLabs       *ElevenLabsClient
 }
 
 // NewClients constructs vendor clients with a shared secret resolver.
@@ -24,5 +25,6 @@ func NewClients(sec secrets.Resolver) *Clients {
 		Anthropic:        NewAnthropicClient(sec),
 		Gemini:           NewGeminiClient(sec),
 		Bedrock:          NewBedrockClient(sec),
+		ElevenLabs:       NewElevenLabsClient(sec),
 	}
 }

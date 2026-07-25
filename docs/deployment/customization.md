@@ -112,6 +112,7 @@ Provider rows store an **environment variable name** (`api_key_env`), not the se
 | `ANTHROPIC_API_KEY` | `anthropic` | Anthropic routes |
 | `GEMINI_API_KEY` | `gemini` | Gemini routes |
 | `OLLAMA_API_KEY` | `openai_compatible` | Any non-empty value if the backend ignores auth |
+| `ELEVENLABS_API_KEY` | `elevenlabs` | ElevenLabs TTS/STT routes |
 | `ECHO_UNUSED` | `echo` | Echo extension (unused) |
 | *custom* | whatever you set on the provider | Must exist in the **gateway** environment |
 

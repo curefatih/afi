@@ -19,6 +19,8 @@ func DefaultCapabilities(typ string) ProviderCapabilities {
 		return ProviderCapabilities{Chat: true, Stream: false}
 	case "bedrock":
 		return ProviderCapabilities{Chat: true, Stream: true}
+	case "elevenlabs":
+		return ProviderCapabilities{TTS: true, STT: true}
 	default:
 		// anthropic, gemini, …
 		return ProviderCapabilities{Chat: true, Stream: true}
@@ -62,6 +64,8 @@ func DefaultAPIKeyEnv(typ string) string {
 		// (env / instance profile / IRSA). Static keys use accessKey:secret[:token]
 		// via api_key_env or BYOK when configured.
 		return ""
+	case "elevenlabs":
+		return "ELEVENLABS_API_KEY"
 	default:
 		return "OPENAI_API_KEY"
 	}

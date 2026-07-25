@@ -2,11 +2,13 @@ package dataplane
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -170,6 +172,64 @@ func TestAudioSpeechRejectsAnthropic(t *testing.T) {
 	p.Handler().ServeHTTP(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestAudioSpeechElevenLabs(t *testing.T) {
+	var gotPath, gotKey string
+	var gotBody map[string]any
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotKey = r.Header.Get("xi-api-key")
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "audio/mpeg")
+		_, _ = w.Write([]byte("el-audio"))
+	}))
+	t.Cleanup(upstream.Close)
+
+	t.Setenv("ELEVENLABS_API_KEY", "el-gateway")
+	c := llm.NewClients(nil)
+	c.ElevenLabs = llm.NewElevenLabsClient(nil)
+	c.ElevenLabs.HTTP = upstream.Client()
+
+	raw := "sk-eleven-audio"
+	holder := NewHolder()
+	holder.Set(snapshot.Compile(snapshot.Source{
+		APIKeys: []snapshot.APIKey{{
+			ID: "k1", KeyHash: snapshot.HashKey(raw), KeyPrefix: "sk-eleven",
+			OrganizationID: "o1", ProjectID: "p1", Name: "t", Kind: snapshot.KeyKindServiceAccount,
+		}},
+		Providers: []snapshot.Provider{{
+			ID: "prov_el", Type: "elevenlabs", BaseURL: upstream.URL,
+			APIKeyEnv: "ELEVENLABS_API_KEY", Name: "ElevenLabs",
+			Capabilities: snapshot.DefaultCapabilities("elevenlabs"),
+		}},
+		Routes: []snapshot.Route{{
+			OrganizationID: "o1", Model: "eleven-tts", ProviderID: "prov_el", TargetModel: "eleven_multilingual_v2",
+		}},
+	}))
+
+	p := NewPipelineWithRegistry(holder, RegistryFromClients(c), slog.Default())
+	req := httptest.NewRequest(http.MethodPost, "/v1/audio/speech", bytes.NewBufferString(
+		`{"model":"eleven-tts","input":"hello eleven","voice":"alloy"}`,
+	))
+	req.Header.Set("Authorization", "Bearer "+raw)
+	rr := httptest.NewRecorder()
+	p.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if rr.Body.String() != "el-audio" {
+		t.Fatalf("body=%q", rr.Body.String())
+	}
+	if gotKey != "el-gateway" {
+		t.Fatalf("xi-api-key=%q", gotKey)
+	}
+	if !strings.HasPrefix(gotPath, "/v1/text-to-speech/") {
+		t.Fatalf("path=%q", gotPath)
+	}
+	if gotBody["text"] != "hello eleven" || gotBody["model_id"] != "eleven_multilingual_v2" {
+		t.Fatalf("body=%v", gotBody)
 	}
 }
 

@@ -107,13 +107,14 @@ Written on first control-plane start (or `make seed`):
 | Seeded audio routes | `tts-1`, `whisper-1` → `prov_openai` |
 | Seeded providers | `prov_openai`, `prov_anthropic`, `prov_gemini`, `prov_ollama` (`openai_compatible` → `http://127.0.0.1:11434/v1`, no default route) |
 | `OLLAMA_API_KEY` | _(any value if Ollama ignores auth)_ | gateway → openai_compatible |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key | gateway → elevenlabs (TTS/STT) |
 | Route `fallbacks` | optional `[{provider_id,target_model,weight?}]` for 5xx/timeout/429 failover (list order after first pick) |
 | Route `routing_strategy` | `ordered` (default), `weighted`, `latency`, or `cost` — first-target selection before retry/failover |
 | Route `weight` | primary target weight for `weighted` (default `1`); each fallback may set `weight` |
 | Route `retry` | optional per-route override; else org `default_retry` from Settings → General |
 | Org `default_retry` | optional org-wide `{max_attempts,backoff…}` applied when a route has no `retry` |
 | Gateway models | `GET /v1/models` lists org route model ids (`supports_streaming` / `supports_tts` / `supports_stt`) |
-| Gateway audio | `POST /openai/v1/audio/speech`, `POST /openai/v1/audio/transcriptions` (aliases `/v1/audio/...`; openai / openai_compatible; same route `fallbacks` / `retry` / `routing_strategy` as chat) |
+| Gateway audio | `POST /openai/v1/audio/speech`, `POST /openai/v1/audio/transcriptions` (aliases `/v1/audio/...`; openai / openai_compatible / elevenlabs; same route `fallbacks` / `retry` / `routing_strategy` as chat) |
 | Gateway embeddings | `POST /openai/v1/embeddings` (alias `/v1/embeddings`; openai / openai_compatible) |
 | Gateway images | `POST /openai/v1/images/generations` (alias `/v1/images/generations`; openai / openai_compatible; optional org object-store persist) |
 
