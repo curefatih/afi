@@ -79,7 +79,7 @@ test-web:
 test-all: test test-web
 
 format-web:
-	cd web && pnpm format --write
+	cd web && pnpm format --write && pnpm check --write
 
 format-go:
 	$(GO) fmt ./...

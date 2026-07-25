@@ -202,7 +202,9 @@ function RouteComponent() {
 		setEditBase(p.base_url);
 		setEditEnv(p.api_key_env);
 		const style =
-			typeof p.config?.api_style === "string" ? p.config.api_style : "deployments";
+			typeof p.config?.api_style === "string"
+				? p.config.api_style
+				: "deployments";
 		const ver =
 			typeof p.config?.api_version === "string" ? p.config.api_version : "";
 		setEditApiStyle(style || "deployments");
@@ -586,9 +588,7 @@ function RouteComponent() {
 										<Label>API style</Label>
 										<Select
 											value={editApiStyle}
-											onValueChange={(v) =>
-												setEditApiStyle(v ?? "deployments")
-											}
+											onValueChange={(v) => setEditApiStyle(v ?? "deployments")}
 										>
 											<SelectTrigger className="w-full">
 												<SelectValue />
