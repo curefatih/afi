@@ -165,8 +165,10 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
-# mkdocs documentation
+# docs site (Astro Starlight) build output
 /site
+docs-site/dist/
+docs-site/.astro/
 
 # mypy
 .mypy_cache/
@@ -182,6 +184,7 @@ configs/dev.yaml
 
 # pnpm
 pnpm-lock.yaml
+!docs-site/pnpm-lock.yaml
 .pnpm-debug.log
 node_modules/
 .pnpm-store/

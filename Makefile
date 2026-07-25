@@ -1,10 +1,10 @@
-.PHONY: doc-serve doc-build doc-deploy \
+.PHONY: doc-serve doc-build doc-preview \
 	dev-up dev-down dev-build dev-restart \
 	obs-up obs-down \
 	build test test-web test-all format format-web format-go tidy tidy-go verify \
 	run-controlplane run-gateway run-worker run-all run-a2a-echo \
 	seed snapshot-publish \
-	deploy-init deploy-up deploy-down deploy-logs deploy-health \
+	quickstart deploy-init deploy-up deploy-down deploy-logs deploy-health \
 	build-release build-images brand-assets \
 	openapi-lint openapi-drift openapi-gen openapi-check \
 	proto-gen proto-check
@@ -20,13 +20,13 @@ brand-assets:
 	./scripts/generate-brand-assets.sh
 
 doc-serve:
-	uvx --from mkdocs-material mkdocs serve
+	cd docs-site && pnpm install && pnpm dev
 
 doc-build:
-	uvx --from mkdocs-material mkdocs build
+	cd docs-site && pnpm install && pnpm build
 
-doc-deploy:
-	uvx --from mkdocs-material mkdocs gh-deploy
+doc-preview:
+	cd docs-site && pnpm preview
 
 dev-up:
 	docker compose -f docker-compose.yml up -d
@@ -173,7 +173,11 @@ snapshot-publish:
 	$(GO) run ./cmd/cli snapshot publish
 
 # --- Self-hosted deploy (Docker Compose) ---
-# See docs/deployment.md and docs/deployment/customization.md
+# See docs/getting-started/quick-start.md and docs/deployment.md
+
+# Local-only full stack (no Go/Node required). Writes deploy/.env + deploy/afi.yaml defaults.
+quickstart:
+	bash scripts/quickstart.sh
 
 deploy-init:
 	@test -f deploy/.env || cp deploy/env.example deploy/.env

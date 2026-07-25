@@ -8,6 +8,10 @@ const srcDocs = path.resolve(root, '../docs');
 const destDocs = path.resolve(root, 'src/content/docs');
 const destPublic = path.resolve(root, 'public');
 const destAssets = path.resolve(root, 'src/assets');
+const repoRoot = path.resolve(root, '..');
+
+const GITHUB_BLOB = 'https://github.com/curefatih/afi/blob/main';
+const GITHUB_TREE = 'https://github.com/curefatih/afi/tree/main';
 
 const SKIP_NAMES = new Set(['llms.txt']);
 const SKIP_DIRS = new Set(['assets']);
@@ -41,10 +45,93 @@ function yamlQuote(value) {
 }
 
 /**
+ * Map a docs-relative markdown path (posix, may include .md / index.md) to a site URL.
+ * @param {string} docsRel
+ */
+function docsPathToUrl(docsRel) {
+	let clean = docsRel.replace(/\\/g, '/');
+	if (clean.endsWith('.md')) clean = clean.slice(0, -3);
+	if (clean.endsWith('/index')) clean = clean.slice(0, -'/index'.length);
+	if (clean === 'index' || clean === '') return '/';
+	return `/${clean}/`;
+}
+
+/**
+ * @param {string} href
+ * @param {string} fromRel  e.g. getting-started/local-dev.md
+ * @param {Set<string>} docFiles
+ */
+function rewriteHref(href, fromRel, docFiles) {
+	const trimmed = href.trim();
+	if (!trimmed) return href;
+	if (/^(https?:|mailto:|tel:|#)/i.test(trimmed)) return href;
+	if (trimmed.startsWith('/assets/')) return href;
+
+	const hashIndex = trimmed.indexOf('#');
+	const hash = hashIndex >= 0 ? trimmed.slice(hashIndex) : '';
+	const pathPart = hashIndex >= 0 ? trimmed.slice(0, hashIndex) : trimmed;
+
+	if (!pathPart) return href; // pure hash
+
+	// Already site-root absolute docs path.
+	if (pathPart.startsWith('/') && !pathPart.startsWith('/assets/')) {
+		const noSlash = pathPart.replace(/\/+$/, '') || '';
+		const candidate = noSlash.replace(/^\//, '');
+		if (
+			docFiles.has(`${candidate}.md`) ||
+			docFiles.has(`${candidate}/index.md`) ||
+			candidate === ''
+		) {
+			const url = candidate === '' ? '/' : `/${candidate}/`;
+			return `${url}${hash}`;
+		}
+		return href;
+	}
+
+	const fromDir = path.posix.dirname(fromRel.replace(/\\/g, '/'));
+
+	// Resolve against the docs tree, then see if it escapes into the repo.
+	const absFromDocs = path.resolve(srcDocs, fromDir === '.' ? '.' : fromDir, pathPart);
+	const relFromDocs = path.relative(srcDocs, absFromDocs).replace(/\\/g, '/');
+
+	if (relFromDocs.startsWith('..')) {
+		const absFromRepo = path.resolve(path.dirname(path.join(srcDocs, fromRel)), pathPart);
+		const relFromRepo = path.relative(repoRoot, absFromRepo).replace(/\\/g, '/');
+		if (relFromRepo.startsWith('..')) return href;
+
+		const isDir =
+			fs.existsSync(absFromRepo) && fs.statSync(absFromRepo).isDirectory();
+		return `${isDir ? GITHUB_TREE : GITHUB_BLOB}/${relFromRepo}${hash}`;
+	}
+
+	// Prefer exact .md, then index.md under a directory name.
+	let docsRel = relFromDocs;
+	if (docsRel.endsWith('/')) docsRel = docsRel.slice(0, -1);
+
+	if (docFiles.has(docsRel)) {
+		return `${docsPathToUrl(docsRel)}${hash}`;
+	}
+	if (docFiles.has(`${docsRel}.md`)) {
+		return `${docsPathToUrl(`${docsRel}.md`)}${hash}`;
+	}
+	if (docFiles.has(`${docsRel}/index.md`)) {
+		return `${docsPathToUrl(`${docsRel}/index.md`)}${hash}`;
+	}
+
+	// Fallback: treat as docs page path without verifying.
+	if (docsRel.endsWith('.md') || !docsRel.includes('.')) {
+		return `${docsPathToUrl(docsRel.endsWith('.md') ? docsRel : `${docsRel}.md`)}${hash}`;
+	}
+
+	return href;
+}
+
+/**
  * @param {string} content
  * @param {string} relPath
+ * @param {Set<string>} docFiles
  */
-function transform(content, relPath) {
+function transform(content, relPath, docFiles) {
 	let body = content.replace(/^\uFEFF/, '');
 
 	if (body.startsWith('---\n')) {
@@ -64,8 +151,11 @@ function transform(content, relPath) {
 	body = body.replace(/\]\((?:\.\.\/)*(?:\.\/)?assets\//g, '](/assets/');
 	body = body.replace(/(src|href)="(?:\.\.\/)*(?:\.\/)?assets\//g, '$1="/assets/');
 
-	// Starlight routes omit the .md extension.
-	body = body.replace(/\]\(([^)\s]+)\.md(#[^)]*)?\)/g, ']($1$2)');
+	// Rewrite markdown links to absolute docs URLs or GitHub repo URLs.
+	body = body.replace(/\]\(([^)\s]+)\)/g, (full, href) => {
+		const next = rewriteHref(href, relPath.replace(/\\/g, '/'), docFiles);
+		return `](${next})`;
+	});
 
 	const description =
 		relPath === 'index.md'
@@ -116,11 +206,13 @@ function main() {
 	fs.mkdirSync(destDocs, { recursive: true });
 
 	const files = walk(srcDocs);
+	const docFiles = new Set(files.map((f) => f.replace(/\\/g, '/')));
+
 	for (const rel of files) {
 		const src = path.join(srcDocs, rel);
 		const dest = path.join(destDocs, rel);
 		fs.mkdirSync(path.dirname(dest), { recursive: true });
-		const transformed = transform(fs.readFileSync(src, 'utf8'), rel);
+		const transformed = transform(fs.readFileSync(src, 'utf8'), rel, docFiles);
 		fs.writeFileSync(dest, transformed);
 		console.log(`synced ${rel}`);
 	}
