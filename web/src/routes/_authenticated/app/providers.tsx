@@ -172,11 +172,15 @@ function RouteComponent() {
 	const [type, setType] = useState("openai");
 	const [baseURL, setBaseURL] = useState("https://api.openai.com/v1");
 	const [apiKeyEnv, setApiKeyEnv] = useState("OPENAI_API_KEY");
+	const [apiStyle, setApiStyle] = useState("deployments");
+	const [apiVersion, setApiVersion] = useState("");
 	const [error, setError] = useState<string | null>(null);
 
 	const [editName, setEditName] = useState("");
 	const [editBase, setEditBase] = useState("");
 	const [editEnv, setEditEnv] = useState("");
+	const [editApiStyle, setEditApiStyle] = useState("deployments");
+	const [editApiVersion, setEditApiVersion] = useState("");
 	const [editError, setEditError] = useState<string | null>(null);
 
 	const applyTypeDefaults = (next: string) => {
@@ -186,6 +190,10 @@ function RouteComponent() {
 		setName(p.name);
 		setBaseURL(p.base_url);
 		setApiKeyEnv(p.api_key_env);
+		if (next === "azure_openai") {
+			setApiStyle("deployments");
+			setApiVersion("");
+		}
 	};
 
 	const openEdit = (p: Provider) => {
@@ -193,11 +201,28 @@ function RouteComponent() {
 		setEditName(p.name);
 		setEditBase(p.base_url);
 		setEditEnv(p.api_key_env);
+		const style =
+			typeof p.config?.api_style === "string"
+				? p.config.api_style
+				: "deployments";
+		const ver =
+			typeof p.config?.api_version === "string" ? p.config.api_version : "";
+		setEditApiStyle(style || "deployments");
+		setEditApiVersion(ver);
 		setEditError(null);
+	};
+
+	const azureConfig = (style: string, version: string) => {
+		const cfg: Record<string, string> = { api_style: style || "deployments" };
+		if (version.trim()) cfg.api_version = version.trim();
+		return cfg;
 	};
 
 	const typeCaps = presets[type]?.caps;
 	const typeAuthOptional = presets[type]?.auth_mode === "optional";
+	const editAuthOptional = edit
+		? presets[edit.type]?.auth_mode === "optional"
+		: false;
 
 	return (
 		<PageBody>
@@ -231,7 +256,7 @@ function RouteComponent() {
 							</EmptyMedia>
 							<EmptyTitle>No providers</EmptyTitle>
 							<EmptyDescription>
-								Add OpenAI, Anthropic, Gemini, ElevenLabs, or an
+								Add OpenAI, Anthropic, Gemini, Azure OpenAI, ElevenLabs, or an
 								OpenAI-compatible base URL. Then create routes under Routing.
 								{!isOrgAdmin
 									? " Only organization owners and admins can create providers."
@@ -346,6 +371,9 @@ function RouteComponent() {
 									api_key_env: apiKeyEnv,
 									type,
 									capabilities: typeCaps,
+									...(type === "azure_openai"
+										? { config: azureConfig(apiStyle, apiVersion) }
+										: {}),
 								},
 								{
 									onError: (err) =>
@@ -421,6 +449,45 @@ function RouteComponent() {
 								}
 							/>
 						</div>
+						{type === "azure_openai" ? (
+							<>
+								<div className="space-y-1">
+									<Label>API style</Label>
+									<Select
+										value={apiStyle}
+										onValueChange={(v) => setApiStyle(v ?? "deployments")}
+									>
+										<SelectTrigger className="w-full">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="deployments">
+												Deployments (classic)
+											</SelectItem>
+											<SelectItem value="openai_v1">OpenAI v1</SelectItem>
+										</SelectContent>
+									</Select>
+									<p className="text-muted-foreground text-xs">
+										{apiStyle === "openai_v1"
+											? "Base URL should include /openai/v1 (e.g. https://res.openai.azure.com/openai/v1)."
+											: "Base URL is the resource root (e.g. https://res.openai.azure.com). Route target_model is the deployment name."}
+									</p>
+								</div>
+								<div className="space-y-1">
+									<Label htmlFor="prov-api-version">API version</Label>
+									<Input
+										id="prov-api-version"
+										value={apiVersion}
+										onChange={(e) => setApiVersion(e.target.value)}
+										placeholder={
+											apiStyle === "deployments"
+												? "default 2024-10-21"
+												: "optional"
+										}
+									/>
+								</div>
+							</>
+						) : null}
 						{error ? <p className="text-destructive text-xs">{error}</p> : null}
 						<SheetFooter>
 							<Button
@@ -464,6 +531,11 @@ function RouteComponent() {
 										name: editName,
 										base_url: editBase,
 										api_key_env: editEnv,
+										...(edit.type === "azure_openai"
+											? {
+													config: azureConfig(editApiStyle, editApiVersion),
+												}
+											: {}),
 									},
 									{
 										onError: (err) =>
@@ -502,9 +574,48 @@ function RouteComponent() {
 									id="edit-env"
 									value={editEnv}
 									onChange={(e) => setEditEnv(e.target.value)}
-									required
+									required={!editAuthOptional}
+									placeholder={
+										editAuthOptional
+											? "optional — vendor default credentials"
+											: undefined
+									}
 								/>
 							</div>
+							{edit.type === "azure_openai" ? (
+								<>
+									<div className="space-y-1">
+										<Label>API style</Label>
+										<Select
+											value={editApiStyle}
+											onValueChange={(v) => setEditApiStyle(v ?? "deployments")}
+										>
+											<SelectTrigger className="w-full">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="deployments">
+													Deployments (classic)
+												</SelectItem>
+												<SelectItem value="openai_v1">OpenAI v1</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
+									<div className="space-y-1">
+										<Label htmlFor="edit-api-version">API version</Label>
+										<Input
+											id="edit-api-version"
+											value={editApiVersion}
+											onChange={(e) => setEditApiVersion(e.target.value)}
+											placeholder={
+												editApiStyle === "deployments"
+													? "default 2024-10-21"
+													: "optional"
+											}
+										/>
+									</div>
+								</>
+							) : null}
 							{editError ? (
 								<p className="text-destructive text-xs">{editError}</p>
 							) : null}

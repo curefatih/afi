@@ -1,6 +1,7 @@
 package gatewayconfig
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ type Provider struct {
 	BaseURL        string                        `json:"base_url"`
 	APIKeyEnv      string                        `json:"api_key_env"`
 	Capabilities   snapshot.ProviderCapabilities `json:"capabilities"`
+	Config         json.RawMessage               `json:"config,omitempty"`
 	CreatedAt      time.Time                     `json:"created_at"`
 }
 
@@ -42,8 +44,24 @@ type Route struct {
 	CreatedAt       time.Time       `json:"created_at"`
 }
 
+// NormalizeProviderConfig returns a JSON object; nil/empty become {}.
+func NormalizeProviderConfig(raw json.RawMessage) (json.RawMessage, error) {
+	if len(raw) == 0 {
+		return json.RawMessage(`{}`), nil
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return nil, fmt.Errorf("%w: config must be a JSON object", kernel.ErrInvalidRequest)
+	}
+	out, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NewProvider builds a validated provider entity.
-func NewProvider(id, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities, now time.Time) (*Provider, error) {
+func NewProvider(id, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities, config json.RawMessage, now time.Time) (*Provider, error) {
 	name = strings.TrimSpace(name)
 	typ = strings.TrimSpace(typ)
 	if id == "" || orgID == "" {
@@ -53,6 +71,10 @@ func NewProvider(id, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.
 		return nil, fmt.Errorf("%w: name and type required", kernel.ErrInvalidRequest)
 	}
 	caps = snapshot.NormalizeCapabilities(typ, caps)
+	cfg, err := NormalizeProviderConfig(config)
+	if err != nil {
+		return nil, err
+	}
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
@@ -64,6 +86,7 @@ func NewProvider(id, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.
 		BaseURL:        baseURL,
 		APIKeyEnv:      apiKeyEnv,
 		Capabilities:   caps,
+		Config:         cfg,
 		CreatedAt:      now.UTC(),
 	}, nil
 }

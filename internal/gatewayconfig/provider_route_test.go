@@ -10,7 +10,7 @@ import (
 
 func TestNewProviderRequiresNameType(t *testing.T) {
 	t.Parallel()
-	_, err := NewProvider("p1", "o1", "", "openai", "https://x", "KEY", snapshot.ProviderCapabilities{}, timeNowUTC())
+	_, err := NewProvider("p1", "o1", "", "openai", "https://x", "KEY", snapshot.ProviderCapabilities{}, nil, timeNowUTC())
 	if !errors.Is(err, kernel.ErrInvalidRequest) {
 		t.Fatalf("err=%v", err)
 	}

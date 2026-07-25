@@ -12,6 +12,9 @@ func init() {
 	registerBuiltin("openai_compatible", func(sec secrets.Resolver) ChatProvider {
 		return newOpenAIChatProvider("openai_compatible", llm.NewOpenAIClient(sec), providerCapsFromSpec("openai_compatible"))
 	})
+	registerBuiltin("azure_openai", func(sec secrets.Resolver) ChatProvider {
+		return newOpenAIChatProvider("azure_openai", llm.NewAzureOpenAIClient(sec), providerCapsFromSpec("azure_openai"))
+	})
 	registerBuiltin("anthropic", func(sec secrets.Resolver) ChatProvider {
 		return newAnthropicChatProvider(llm.NewAnthropicClient(sec))
 	})

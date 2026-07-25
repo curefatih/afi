@@ -3,6 +3,7 @@ package controlplane
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -294,10 +295,10 @@ func (f *fakePlatform) ListProviders(context.Context, string) ([]Provider, error
 func (f *fakePlatform) ListProviderHealth(context.Context, string, time.Time, time.Time) ([]ProviderHealth, error) {
 	return nil, nil
 }
-func (f *fakePlatform) CreateProvider(context.Context, string, string, string, string, string, snapshot.ProviderCapabilities) (*Provider, error) {
+func (f *fakePlatform) CreateProvider(context.Context, string, string, string, string, string, snapshot.ProviderCapabilities, json.RawMessage) (*Provider, error) {
 	return nil, errors.New("unused")
 }
-func (f *fakePlatform) UpdateProvider(context.Context, string, string, string, string) (*Provider, error) {
+func (f *fakePlatform) UpdateProvider(context.Context, string, string, string, string, *json.RawMessage) (*Provider, error) {
 	return nil, errors.New("unused")
 }
 func (f *fakePlatform) DeleteProvider(context.Context, string) error        { return nil }

@@ -9,11 +9,12 @@ Built-in types, default credentials, UI presets, and local-dev seed rows all com
 | Type | Chat | Stream | TTS | STT | Embedding | Image | Notes |
 |------|------|--------|-----|-----|-----------|-------|-------|
 | `openai` | yes | yes | yes | yes | yes | yes | Chat + audio + `/embeddings` + `/images/generations` |
+| `openai_compatible` | yes | yes | yes | yes | yes | yes | Same wire protocol as OpenAI (incl. audio/embeddings/images if upstream supports it) |
+| `azure_openai` | yes | yes | yes | yes | yes | yes | Azure OpenAI; `api-key` auth; `config.api_style` = `deployments` (default) or `openai_v1` |
 | `anthropic` | yes | yes | no | no | no | no | Messages API → OpenAI-shaped responses/SSE |
 | `gemini` | yes | yes | no | no | no | no | `generateContent` / `streamGenerateContent` → OpenAI JSON/SSE |
 | `bedrock` | yes | yes | no | no | no | no | Bedrock **Converse** / **ConverseStream** (SigV4); tools + vision |
 | `elevenlabs` | no | no | yes | yes | no | no | TTS/STT via ElevenLabs API (`xi-api-key`); OpenAI audio dialect in, vendor wire out |
-| `openai_compatible` | yes | yes | yes | yes | yes | yes | Same wire protocol as OpenAI (incl. audio/embeddings/images if upstream supports it) |
 | `echo` | yes | no | no | no | no | no | **SDK extension** (`extensions/echo`) — no network; echoes last user message |
 
 Capabilities (`chat`, `stream`, `tts`, `stt`, `embedding`, `image`) are stored on the provider in the snapshot (defaults applied per type when empty). Streaming/TTS/STT/embeddings/images requests against unsupported providers return `400`.
@@ -98,6 +99,19 @@ Example: [`extensions/grpcecho`](../../extensions/grpcecho).
 5. Call the route through the OpenAI-compatible `/openai/v1/chat/completions` (or `/v1/chat/completions`) interface. Anthropic and Gemini client dialects can also target the same route.
 
 Vision inputs to Bedrock require **inline base64** image bytes (URL-only images are rejected).
+
+## Example: Azure OpenAI
+
+1. Create provider type `azure_openai`.
+2. Set `base_url`:
+   - **deployments** (default): resource root, e.g. `https://myresource.openai.azure.com`
+   - **openai_v1**: include the v1 prefix, e.g. `https://myresource.openai.azure.com/openai/v1`
+3. Set provider `config`:
+   - `api_style`: `deployments` or `openai_v1`
+   - `api_version` (optional): defaults to `2024-10-21` for deployments; for `openai_v1` only sent when set
+4. Set `api_key_env` to `AZURE_OPENAI_API_KEY` (or your BYOK credential). The gateway sends the `api-key` header.
+5. Add a route whose `target_model` is the **deployment name**.
+6. Call through `/openai/v1/chat/completions` (or `/v1/...`). Anthropic and Gemini client dialects can target the same route.
 
 ## Example: ElevenLabs (TTS / STT)
 

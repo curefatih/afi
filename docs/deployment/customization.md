@@ -111,6 +111,7 @@ Default env names come from the provider-type catalog (`internal/providercatalog
 | Typical env var | Default for provider type | When needed |
 |-----------------|---------------------------|-------------|
 | `OPENAI_API_KEY` | `openai` | OpenAI / compatible routes |
+| `AZURE_OPENAI_API_KEY` | `azure_openai` | Azure OpenAI routes (`api-key` header) |
 | `ANTHROPIC_API_KEY` | `anthropic` | Anthropic routes |
 | `GEMINI_API_KEY` | `gemini` | Gemini routes |
 | `OLLAMA_API_KEY` | `openai_compatible` | Any non-empty value if the backend ignores auth |

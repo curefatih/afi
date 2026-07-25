@@ -1043,6 +1043,48 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CreateProvider'
+  /api/v1/platform/provider-types:
+    get:
+      operationId: listProviderTypes
+      summary: List provider type presets
+      tags:
+      - Providers
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProviderType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      description: Authenticated catalog of UI-visible provider types (defaults for create-provider).
+  /api/v1/platform/model-catalog:
+    get:
+      operationId: listModelCatalog
+      summary: List curated model catalog
+      tags:
+      - Providers
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModelCatalogEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      description: Curated target models for routing UI; optional provider_type filter.
+      parameters:
+      - name: provider_type
+        in: query
+        required: false
+        schema:
+          type: string
   /api/v1/platform/organizations/{orgID}/providers/health:
     get:
       operationId: providerHealth
@@ -3069,6 +3111,44 @@ components:
           type: boolean
         image:
           type: boolean
+    ProviderType:
+      type: object
+      required:
+      - type
+      - name
+      - base_url
+      - api_key_env
+      - auth_mode
+      - capabilities
+      properties:
+        type:
+          type: string
+        name:
+          type: string
+        base_url:
+          type: string
+        api_key_env:
+          type: string
+        auth_mode:
+          type: string
+          description: api_key or optional
+        capabilities:
+          $ref: '#/components/schemas/ProviderCapabilities'
+    ModelCatalogEntry:
+      type: object
+      required:
+      - provider_type
+      - id
+      - mode
+      properties:
+        provider_type:
+          type: string
+        id:
+          type: string
+          description: Target model id
+        mode:
+          type: string
+          description: chat, embedding, image, audio_speech, audio_transcription, …
     Provider:
       type: object
       required:
@@ -3095,6 +3175,9 @@ components:
           type: string
         capabilities:
           $ref: '#/components/schemas/ProviderCapabilities'
+        config:
+          type: object
+          additionalProperties: true
         created_at:
           type: string
           format: date-time
@@ -3114,6 +3197,9 @@ components:
           type: string
         capabilities:
           $ref: '#/components/schemas/ProviderCapabilities'
+        config:
+          type: object
+          additionalProperties: true
     UpdateProvider:
       type: object
       required:
@@ -3127,6 +3213,9 @@ components:
           type: string
         api_key_env:
           type: string
+        config:
+          type: object
+          additionalProperties: true
     ProviderHealth:
       type: object
       properties:

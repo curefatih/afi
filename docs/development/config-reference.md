@@ -105,7 +105,7 @@ Written on first control-plane start (or `make seed`):
 | Platform password | `admin` |
 | Default model route | `gpt-4o-mini` → OpenAI `gpt-4o-mini` |
 | Seeded audio routes | `tts-1`, `whisper-1` → `prov_openai` |
-| Seeded providers | `prov_openai`, `prov_anthropic`, `prov_gemini`, `prov_ollama` (`openai_compatible` → `http://127.0.0.1:11434/v1`, no default route) |
+| Seeded providers | `prov_openai`, `prov_anthropic`, `prov_gemini`, `prov_ollama` (`openai_compatible` → `http://127.0.0.1:11434/v1`), `prov_bedrock`, `prov_azure_openai`, `prov_elevenlabs` (no default routes for ollama/bedrock/azure) |
 | `OLLAMA_API_KEY` | _(any value if Ollama ignores auth)_ | gateway → openai_compatible |
 | `ELEVENLABS_API_KEY` | ElevenLabs API key | gateway → elevenlabs (TTS/STT) |
 | Route `fallbacks` | optional `[{provider_id,target_model,weight?}]` for 5xx/timeout/429 failover (list order after first pick) |

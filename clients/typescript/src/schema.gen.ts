@@ -540,6 +540,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/provider-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List provider type presets
+         * @description Authenticated catalog of UI-visible provider types (defaults for create-provider).
+         */
+        get: operations["listProviderTypes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/model-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List curated model catalog
+         * @description Curated target models for routing UI; optional provider_type filter.
+         */
+        get: operations["listModelCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/organizations/{orgID}/providers/health": {
         parameters: {
             query?: never;
@@ -1447,6 +1487,22 @@ export interface components {
             embedding?: boolean;
             image?: boolean;
         };
+        ProviderType: {
+            type: string;
+            name: string;
+            base_url: string;
+            api_key_env: string;
+            /** @description api_key or optional */
+            auth_mode: string;
+            capabilities: components["schemas"]["ProviderCapabilities"];
+        };
+        ModelCatalogEntry: {
+            provider_type: string;
+            /** @description Target model id */
+            id: string;
+            /** @description chat, embedding, image, audio_speech, audio_transcription, … */
+            mode: string;
+        };
         Provider: {
             id: string;
             organization_id: string;
@@ -1455,6 +1511,9 @@ export interface components {
             base_url: string;
             api_key_env: string;
             capabilities: components["schemas"]["ProviderCapabilities"];
+            config?: {
+                [key: string]: unknown;
+            };
             /** Format: date-time */
             created_at: string;
         };
@@ -1464,11 +1523,17 @@ export interface components {
             base_url: string;
             api_key_env?: string;
             capabilities?: components["schemas"]["ProviderCapabilities"];
+            config?: {
+                [key: string]: unknown;
+            };
         };
         UpdateProvider: {
             name: string;
             base_url: string;
             api_key_env: string;
+            config?: {
+                [key: string]: unknown;
+            };
         };
         ProviderHealth: {
             provider_id?: string;
@@ -2928,6 +2993,50 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listProviderTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderType"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    listModelCatalog: {
+        parameters: {
+            query?: {
+                provider_type?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelCatalogEntry"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     providerHealth: {

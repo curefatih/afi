@@ -13,6 +13,9 @@ func TestRegistryAudioBackendByType(t *testing.T) {
 	if _, ok := reg.AudioBackend("openai_compatible"); !ok {
 		t.Fatal("expected openai_compatible audio backend")
 	}
+	if _, ok := reg.AudioBackend("azure_openai"); !ok {
+		t.Fatal("expected azure_openai audio backend")
+	}
 	if _, ok := reg.AudioBackend("elevenlabs"); !ok {
 		t.Fatal("expected elevenlabs audio backend")
 	}
@@ -57,6 +60,9 @@ func TestRegistryEmbeddingsBackendByType(t *testing.T) {
 	if _, ok := reg.EmbeddingsBackend("openai_compatible"); !ok {
 		t.Fatal("expected openai_compatible embeddings backend")
 	}
+	if _, ok := reg.EmbeddingsBackend("azure_openai"); !ok {
+		t.Fatal("expected azure_openai embeddings backend")
+	}
 	if _, ok := reg.EmbeddingsBackend("anthropic"); ok {
 		t.Fatal("anthropic must not expose embeddings backend")
 	}
@@ -65,7 +71,7 @@ func TestRegistryEmbeddingsBackendByType(t *testing.T) {
 func TestDefaultRegistryIncludesBuiltins(t *testing.T) {
 	t.Parallel()
 	reg := DefaultRegistry()
-	for _, typ := range []string{"openai", "openai_compatible", "anthropic", "gemini", "bedrock", "elevenlabs"} {
+	for _, typ := range []string{"openai", "openai_compatible", "azure_openai", "anthropic", "gemini", "bedrock", "elevenlabs"} {
 		if _, ok := reg.Get(typ); !ok {
 			t.Fatalf("missing builtin %q", typ)
 		}

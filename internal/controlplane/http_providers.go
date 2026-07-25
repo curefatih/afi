@@ -54,6 +54,7 @@ func (s *Server) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 		BaseURL      string                        `json:"base_url"`
 		APIKeyEnv    string                        `json:"api_key_env"`
 		Capabilities snapshot.ProviderCapabilities `json:"capabilities"`
+		Config       json.RawMessage               `json:"config"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" || body.BaseURL == "" {
 		writeErr(w, http.StatusBadRequest, "name and base_url required")
@@ -69,8 +70,12 @@ func (s *Server) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 	if !caps.Chat && !caps.Stream && !caps.TTS && !caps.STT && !caps.Embedding && !caps.Image {
 		caps = snapshot.DefaultCapabilities(body.Type)
 	}
-	p, err := s.app.CreateProvider(r.Context(), r.PathValue("orgID"), body.Name, body.Type, body.BaseURL, body.APIKeyEnv, caps)
+	p, err := s.app.CreateProvider(r.Context(), r.PathValue("orgID"), body.Name, body.Type, body.BaseURL, body.APIKeyEnv, caps, body.Config)
 	if err != nil {
+		if errors.Is(err, kernel.ErrInvalidRequest) {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -79,9 +84,10 @@ func (s *Server) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleUpdateProvider(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Name      string `json:"name"`
-		BaseURL   string `json:"base_url"`
-		APIKeyEnv string `json:"api_key_env"`
+		Name      string           `json:"name"`
+		BaseURL   string           `json:"base_url"`
+		APIKeyEnv string           `json:"api_key_env"`
+		Config    *json.RawMessage `json:"config"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" || body.BaseURL == "" {
 		writeErr(w, http.StatusBadRequest, "name and base_url required")
@@ -90,9 +96,13 @@ func (s *Server) handleUpdateProvider(w http.ResponseWriter, r *http.Request) {
 	if body.APIKeyEnv == "" {
 		body.APIKeyEnv = "OPENAI_API_KEY"
 	}
-	p, err := s.app.UpdateProvider(r.Context(), r.PathValue("providerID"), body.Name, body.BaseURL, body.APIKeyEnv)
+	p, err := s.app.UpdateProvider(r.Context(), r.PathValue("providerID"), body.Name, body.BaseURL, body.APIKeyEnv, body.Config)
 	if errors.Is(err, kernel.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if err != nil {

@@ -35,7 +35,7 @@ func decodeCapabilities(typ string, raw []byte) snapshot.ProviderCapabilities {
 
 func (p *Providers) ListByOrg(ctx context.Context, orgID string) ([]gatewayconfig.Provider, error) {
 	rows, err := p.Pool.Query(ctx, `
-		SELECT id, organization_id, name, type, base_url, api_key_env, capabilities, created_at
+		SELECT id, organization_id, name, type, base_url, api_key_env, capabilities, config, created_at
 		FROM providers WHERE organization_id = $1 ORDER BY created_at
 	`, orgID)
 	if err != nil {
@@ -45,11 +45,12 @@ func (p *Providers) ListByOrg(ctx context.Context, orgID string) ([]gatewayconfi
 	var out []gatewayconfig.Provider
 	for rows.Next() {
 		var item gatewayconfig.Provider
-		var caps []byte
-		if err := rows.Scan(&item.ID, &item.OrganizationID, &item.Name, &item.Type, &item.BaseURL, &item.APIKeyEnv, &caps, &item.CreatedAt); err != nil {
+		var caps, cfg []byte
+		if err := rows.Scan(&item.ID, &item.OrganizationID, &item.Name, &item.Type, &item.BaseURL, &item.APIKeyEnv, &caps, &cfg, &item.CreatedAt); err != nil {
 			return nil, err
 		}
 		item.Capabilities = decodeCapabilities(item.Type, caps)
+		item.Config = normalizeStoredConfig(cfg)
 		out = append(out, item)
 	}
 	return out, rows.Err()
@@ -60,23 +61,38 @@ func (p *Providers) Insert(ctx context.Context, item gatewayconfig.Provider) err
 	if err != nil {
 		return err
 	}
+	cfg, err := gatewayconfig.NormalizeProviderConfig(item.Config)
+	if err != nil {
+		return err
+	}
 	_, err = p.Pool.Exec(ctx, `
-		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, capabilities, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-	`, item.ID, item.OrganizationID, item.Name, item.Type, item.BaseURL, item.APIKeyEnv, raw, item.CreatedAt)
+		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, capabilities, config, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+	`, item.ID, item.OrganizationID, item.Name, item.Type, item.BaseURL, item.APIKeyEnv, raw, cfg, item.CreatedAt)
 	return err
 }
 
-func (p *Providers) Update(ctx context.Context, providerID, name, baseURL, apiKeyEnv string) (*gatewayconfig.Provider, error) {
+func (p *Providers) Update(ctx context.Context, providerID, name, baseURL, apiKeyEnv string, config *json.RawMessage) (*gatewayconfig.Provider, error) {
 	item := &gatewayconfig.Provider{}
-	var caps []byte
-	err := p.Pool.QueryRow(ctx, `
-		UPDATE providers SET name=$2, base_url=$3, api_key_env=$4
-		WHERE id=$1
-		RETURNING id, organization_id, name, type, base_url, api_key_env, capabilities, created_at
-	`, providerID, name, baseURL, apiKeyEnv).Scan(
-		&item.ID, &item.OrganizationID, &item.Name, &item.Type, &item.BaseURL, &item.APIKeyEnv, &caps, &item.CreatedAt,
-	)
+	var caps, storedCfg []byte
+	var err error
+	if config != nil {
+		err = p.Pool.QueryRow(ctx, `
+			UPDATE providers SET name=$2, base_url=$3, api_key_env=$4, config=$5
+			WHERE id=$1
+			RETURNING id, organization_id, name, type, base_url, api_key_env, capabilities, config, created_at
+		`, providerID, name, baseURL, apiKeyEnv, *config).Scan(
+			&item.ID, &item.OrganizationID, &item.Name, &item.Type, &item.BaseURL, &item.APIKeyEnv, &caps, &storedCfg, &item.CreatedAt,
+		)
+	} else {
+		err = p.Pool.QueryRow(ctx, `
+			UPDATE providers SET name=$2, base_url=$3, api_key_env=$4
+			WHERE id=$1
+			RETURNING id, organization_id, name, type, base_url, api_key_env, capabilities, config, created_at
+		`, providerID, name, baseURL, apiKeyEnv).Scan(
+			&item.ID, &item.OrganizationID, &item.Name, &item.Type, &item.BaseURL, &item.APIKeyEnv, &caps, &storedCfg, &item.CreatedAt,
+		)
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, kernel.ErrNotFound
 	}
@@ -84,7 +100,15 @@ func (p *Providers) Update(ctx context.Context, providerID, name, baseURL, apiKe
 		return nil, err
 	}
 	item.Capabilities = decodeCapabilities(item.Type, caps)
+	item.Config = normalizeStoredConfig(storedCfg)
 	return item, nil
+}
+
+func normalizeStoredConfig(raw []byte) json.RawMessage {
+	if len(raw) == 0 {
+		return json.RawMessage(`{}`)
+	}
+	return json.RawMessage(raw)
 }
 
 func (p *Providers) Delete(ctx context.Context, providerID string) error {

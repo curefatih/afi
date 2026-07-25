@@ -160,6 +160,8 @@ type Provider struct {
 	APIKeyEnv    string               `json:"api_key_env"`
 	Name         string               `json:"name"`
 	Capabilities ProviderCapabilities `json:"capabilities"`
+	// Config is opaque provider-type settings (e.g. azure_openai api_style).
+	Config json.RawMessage `json:"config,omitempty"`
 	// InlineAPIKey is request-scoped; set by the gateway after credential resolution.
 	// Never persisted in snapshots (json:"-").
 	InlineAPIKey string `json:"-"`

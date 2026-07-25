@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -399,12 +400,12 @@ func (s *Store) ListProviderHealth(ctx context.Context, orgID string, from, to t
 	return s.usageQueries().ListProviderHealth(ctx, orgID, from, to)
 }
 
-func (s *Store) CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities) (*Provider, error) {
-	return gatewayconfig.CreateProvider(ctx, s.providers(), newPlatformID("prov"), orgID, name, typ, baseURL, apiKeyEnv, caps)
+func (s *Store) CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities, config json.RawMessage) (*Provider, error) {
+	return gatewayconfig.CreateProvider(ctx, s.providers(), newPlatformID("prov"), orgID, name, typ, baseURL, apiKeyEnv, caps, config)
 }
 
-func (s *Store) UpdateProvider(ctx context.Context, providerID, name, baseURL, apiKeyEnv string) (*Provider, error) {
-	return s.providers().Update(ctx, providerID, name, baseURL, apiKeyEnv)
+func (s *Store) UpdateProvider(ctx context.Context, providerID, name, baseURL, apiKeyEnv string, config *json.RawMessage) (*Provider, error) {
+	return gatewayconfig.UpdateProvider(ctx, s.providers(), providerID, name, baseURL, apiKeyEnv, config)
 }
 
 func (s *Store) DeleteProvider(ctx context.Context, providerID string) error {
