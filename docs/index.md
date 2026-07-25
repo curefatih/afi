@@ -45,4 +45,4 @@ flowchart TB
 * Web UI: Providers, Routing, MCP, A2A, Keys, Quotas, Policies, chat/TTS/STT playground against the gateway
 * Docs via `make doc-serve`
 
-Published at Sat Jul 25 14:00
+Published at Sat Jul 25 14:20
