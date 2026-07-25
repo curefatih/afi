@@ -3,11 +3,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PlusIcon, RouteIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { modelCatalogQueryOptions } from "#/api/model-catalog";
 import {
 	orgDefaultRetryQueryOptions,
 	orgMembersQueryOptions,
 } from "#/api/organization";
-import { modelCatalogQueryOptions } from "#/api/model-catalog";
 import { providersQueryOptions } from "#/api/provider";
 import {
 	createRouteMutationOptions,
