@@ -2,6 +2,7 @@ package gatewayconfig
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/curefatih/afi/internal/kernel"
@@ -12,7 +13,7 @@ import (
 type ProviderRepository interface {
 	ListByOrg(ctx context.Context, orgID string) ([]Provider, error)
 	Insert(ctx context.Context, p Provider) error
-	Update(ctx context.Context, providerID, name, baseURL, apiKeyEnv string) (*Provider, error)
+	Update(ctx context.Context, providerID, name, baseURL, apiKeyEnv string, config *json.RawMessage) (*Provider, error)
 	Delete(ctx context.Context, providerID string) error
 	OrgID(ctx context.Context, providerID string) (string, error)
 }
@@ -32,8 +33,9 @@ func CreateProvider(
 	repo ProviderRepository,
 	id, orgID, name, typ, baseURL, apiKeyEnv string,
 	caps snapshot.ProviderCapabilities,
+	config json.RawMessage,
 ) (*Provider, error) {
-	p, err := NewProvider(id, orgID, name, typ, baseURL, apiKeyEnv, caps, timeNowUTC())
+	p, err := NewProvider(id, orgID, name, typ, baseURL, apiKeyEnv, caps, config, timeNowUTC())
 	if err != nil {
 		return nil, err
 	}
@@ -41,6 +43,25 @@ func CreateProvider(
 		return nil, err
 	}
 	return p, nil
+}
+
+// UpdateProvider validates and persists provider field updates.
+// When config is nil, the stored config JSON is left unchanged.
+func UpdateProvider(
+	ctx context.Context,
+	repo ProviderRepository,
+	providerID, name, baseURL, apiKeyEnv string,
+	config *json.RawMessage,
+) (*Provider, error) {
+	if config != nil {
+		cfg, err := NormalizeProviderConfig(*config)
+		if err != nil {
+			return nil, err
+		}
+		c := cfg
+		config = &c
+	}
+	return repo.Update(ctx, providerID, name, baseURL, apiKeyEnv, config)
 }
 
 // AssertProviderInOrg ensures providerID belongs to orgID.

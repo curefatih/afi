@@ -2,6 +2,7 @@ package platform_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -122,10 +123,10 @@ func (m *memAPI) ListProviders(context.Context, string) ([]gatewayconfig.Provide
 func (m *memAPI) ListProviderHealth(context.Context, string, time.Time, time.Time) ([]usage.ProviderHealth, error) {
 	return nil, nil
 }
-func (m *memAPI) CreateProvider(context.Context, string, string, string, string, string, snapshot.ProviderCapabilities) (*gatewayconfig.Provider, error) {
+func (m *memAPI) CreateProvider(context.Context, string, string, string, string, string, snapshot.ProviderCapabilities, json.RawMessage) (*gatewayconfig.Provider, error) {
 	panic("unused")
 }
-func (m *memAPI) UpdateProvider(context.Context, string, string, string, string) (*gatewayconfig.Provider, error) {
+func (m *memAPI) UpdateProvider(context.Context, string, string, string, string, *json.RawMessage) (*gatewayconfig.Provider, error) {
 	panic("unused")
 }
 func (m *memAPI) GetProviderOrgID(context.Context, string) (string, error)          { return "org_1", nil }

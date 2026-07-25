@@ -88,13 +88,18 @@ func RegistryWithOpenAI(openai *llm.OpenAIClient) *Registry {
 	return reg
 }
 
+type openAIHTTPClient interface {
+	OpenAITransport
+	ChatIR(ctx context.Context, p snapshot.Provider, targetModel string, req ir.ChatRequest) (ir.ChatResult, error)
+}
+
 type openaiChatProvider struct {
 	typ    string
-	client *llm.OpenAIClient
+	client openAIHTTPClient
 	caps   ProviderCaps
 }
 
-func newOpenAIChatProvider(typ string, client *llm.OpenAIClient, caps ProviderCaps) *openaiChatProvider {
+func newOpenAIChatProvider(typ string, client openAIHTTPClient, caps ProviderCaps) *openaiChatProvider {
 	return &openaiChatProvider{typ: typ, client: client, caps: caps}
 }
 

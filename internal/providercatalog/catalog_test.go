@@ -4,7 +4,7 @@ import "testing"
 
 func TestBuiltinSpecsRegistered(t *testing.T) {
 	t.Parallel()
-	want := []string{"openai", "openai_compatible", "anthropic", "gemini", "bedrock", "elevenlabs", "echo"}
+	want := []string{"openai", "openai_compatible", "azure_openai", "anthropic", "gemini", "bedrock", "elevenlabs", "echo"}
 	for _, typ := range want {
 		if _, ok := Lookup(typ); !ok {
 			t.Fatalf("missing spec %q", typ)
@@ -39,6 +39,10 @@ func TestCatalogAliases(t *testing.T) {
 	if len(got) != 1 || got[0] != "openai" {
 		t.Fatalf("got=%v", got)
 	}
+	got = CatalogAliases("azure_openai")
+	if len(got) != 1 || got[0] != "openai" {
+		t.Fatalf("azure alias=%v", got)
+	}
 	if CatalogAliases("anthropic") != nil {
 		t.Fatal("anthropic should have no alias")
 	}
@@ -52,6 +56,10 @@ func TestSeedProviderID(t *testing.T) {
 	}
 	s, _ = Lookup("bedrock")
 	if s.SeedProviderID() != "prov_bedrock" {
+		t.Fatal(s.SeedProviderID())
+	}
+	s, _ = Lookup("azure_openai")
+	if s.SeedProviderID() != "prov_azure_openai" {
 		t.Fatal(s.SeedProviderID())
 	}
 }

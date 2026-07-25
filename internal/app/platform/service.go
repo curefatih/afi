@@ -2,6 +2,7 @@ package platform
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/curefatih/afi/internal/access"
@@ -56,8 +57,8 @@ type ConfigAPI interface {
 
 	ListProviders(ctx context.Context, orgID string) ([]gatewayconfig.Provider, error)
 	ListProviderHealth(ctx context.Context, orgID string, from, to time.Time) ([]usage.ProviderHealth, error)
-	CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities) (*gatewayconfig.Provider, error)
-	UpdateProvider(ctx context.Context, providerID, name, baseURL, apiKeyEnv string) (*gatewayconfig.Provider, error)
+	CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities, config json.RawMessage) (*gatewayconfig.Provider, error)
+	UpdateProvider(ctx context.Context, providerID, name, baseURL, apiKeyEnv string, config *json.RawMessage) (*gatewayconfig.Provider, error)
 	GetProviderOrgID(ctx context.Context, providerID string) (string, error)
 	DeleteProvider(ctx context.Context, providerID string) error
 

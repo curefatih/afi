@@ -2,6 +2,7 @@ package platform
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/curefatih/afi/internal/access"
 	"github.com/curefatih/afi/internal/credentials"
@@ -205,8 +206,8 @@ func (s *Service) DeleteAPIKey(ctx context.Context, keyID string) error {
 	return nil
 }
 
-func (s *Service) CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities) (*gatewayconfig.Provider, error) {
-	p, err := s.API.CreateProvider(ctx, orgID, name, typ, baseURL, apiKeyEnv, caps)
+func (s *Service) CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities, config json.RawMessage) (*gatewayconfig.Provider, error) {
+	p, err := s.API.CreateProvider(ctx, orgID, name, typ, baseURL, apiKeyEnv, caps, config)
 	if err != nil {
 		return nil, err
 	}
@@ -217,8 +218,8 @@ func (s *Service) CreateProvider(ctx context.Context, orgID, name, typ, baseURL,
 	return p, nil
 }
 
-func (s *Service) UpdateProvider(ctx context.Context, providerID, name, baseURL, apiKeyEnv string) (*gatewayconfig.Provider, error) {
-	p, err := s.API.UpdateProvider(ctx, providerID, name, baseURL, apiKeyEnv)
+func (s *Service) UpdateProvider(ctx context.Context, providerID, name, baseURL, apiKeyEnv string, config *json.RawMessage) (*gatewayconfig.Provider, error) {
+	p, err := s.API.UpdateProvider(ctx, providerID, name, baseURL, apiKeyEnv, config)
 	if err != nil {
 		return nil, err
 	}

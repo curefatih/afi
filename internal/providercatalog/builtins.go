@@ -25,6 +25,18 @@ func init() {
 		CatalogAlias:     "openai",
 	})
 	RegisterSpec(Spec{
+		Type:             "azure_openai",
+		DisplayName:      "Azure OpenAI",
+		DefaultBaseURL:   "https://YOUR_RESOURCE.openai.azure.com",
+		DefaultAPIKeyEnv: "AZURE_OPENAI_API_KEY",
+		Capabilities:     Capabilities{Chat: true, Stream: true, TTS: true, STT: true, Embedding: true, Image: true},
+		AuthMode:         AuthAPIKey,
+		UIVisible:        true,
+		Seed:             true,
+		SeedID:           "prov_azure_openai",
+		CatalogAlias:     "openai",
+	})
+	RegisterSpec(Spec{
 		Type:             "anthropic",
 		DisplayName:      "Anthropic",
 		DefaultBaseURL:   "https://api.anthropic.com/v1",

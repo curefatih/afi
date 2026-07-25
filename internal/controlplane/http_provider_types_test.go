@@ -24,7 +24,7 @@ func TestListProviderTypes(t *testing.T) {
 	for _, item := range list {
 		byType[item.Type] = item
 	}
-	for _, typ := range []string{"openai", "anthropic", "gemini", "bedrock", "elevenlabs", "openai_compatible", "echo"} {
+	for _, typ := range []string{"openai", "anthropic", "gemini", "bedrock", "azure_openai", "elevenlabs", "openai_compatible", "echo"} {
 		if _, ok := byType[typ]; !ok {
 			t.Fatalf("missing type %q in %v", typ, byType)
 		}
@@ -34,5 +34,8 @@ func TestListProviderTypes(t *testing.T) {
 	}
 	if byType["bedrock"].Name == "" || byType["elevenlabs"].APIKeyEnv != "ELEVENLABS_API_KEY" {
 		t.Fatalf("incomplete catalog entries: %+v", byType)
+	}
+	if byType["azure_openai"].APIKeyEnv != "AZURE_OPENAI_API_KEY" {
+		t.Fatalf("azure_openai api_key_env=%q", byType["azure_openai"].APIKeyEnv)
 	}
 }

@@ -297,8 +297,8 @@ func upsertCatalogProviderTx(ctx context.Context, db seedExecer, orgID string, n
 		return err
 	}
 	_, err = db.Exec(ctx, `
-		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, capabilities, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
+		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, capabilities, config, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, '{}'::jsonb, $8)
 		ON CONFLICT (id) DO UPDATE SET
 			base_url = EXCLUDED.base_url,
 			api_key_env = EXCLUDED.api_key_env,

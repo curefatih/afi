@@ -2,6 +2,7 @@ package gatewayconfig
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -14,7 +15,7 @@ type memProviders struct {
 
 func (m *memProviders) ListByOrg(context.Context, string) ([]Provider, error) { return nil, nil }
 func (m *memProviders) Insert(context.Context, Provider) error                { return nil }
-func (m *memProviders) Update(context.Context, string, string, string, string) (*Provider, error) {
+func (m *memProviders) Update(context.Context, string, string, string, string, *json.RawMessage) (*Provider, error) {
 	return nil, nil
 }
 func (m *memProviders) Delete(context.Context, string) error { return nil }

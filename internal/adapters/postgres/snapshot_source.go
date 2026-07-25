@@ -58,7 +58,7 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	}
 
 	provRows, err := l.Pool.Query(ctx, `
-		SELECT id, type, base_url, api_key_env, name, capabilities FROM providers
+		SELECT id, type, base_url, api_key_env, name, capabilities, config FROM providers
 	`)
 	if err != nil {
 		return src, err
@@ -66,11 +66,12 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 	defer provRows.Close()
 	for provRows.Next() {
 		var p snapshot.Provider
-		var caps []byte
-		if err := provRows.Scan(&p.ID, &p.Type, &p.BaseURL, &p.APIKeyEnv, &p.Name, &caps); err != nil {
+		var caps, cfg []byte
+		if err := provRows.Scan(&p.ID, &p.Type, &p.BaseURL, &p.APIKeyEnv, &p.Name, &caps, &cfg); err != nil {
 			return src, err
 		}
 		p.Capabilities = DecodeCapabilities(p.Type, caps)
+		p.Config = normalizeStoredConfig(cfg)
 		src.Providers = append(src.Providers, p)
 	}
 	if err := provRows.Err(); err != nil {
