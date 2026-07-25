@@ -128,7 +128,7 @@ Written on first control-plane start (or `make seed`):
 | 6379 | Redis (timed quota windows) |
 | 5050 | Adminer |
 | 3000 | Web UI |
-| 8000 | MkDocs (`make doc-serve`) |
+| 4321 | Docs site (`make doc-serve`) |
 
 ## Platform config APIs
 

@@ -46,7 +46,8 @@ clients/              # Thin TS/Python platform HTTP clients
 web/                  # Platform UI (TanStack / Vite)
 configs/              # Local/dev defaults
 deploy/               # Compose stack, example env/YAML, nginx for web
-docs/                 # Public MkDocs site
+docs/                 # Public docs content (Markdown)
+docs-site/            # Astro Starlight site that renders docs/
 Dockerfile            # Multi-stage Go service image (AFI_SERVICE=…)
 Dockerfile.web        # Vite build + nginx
 scripts/              # verify-local, deploy-*, build-release, proto-gen
