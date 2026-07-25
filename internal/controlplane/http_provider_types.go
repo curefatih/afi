@@ -7,12 +7,12 @@ import (
 )
 
 type providerTypeDTO struct {
-	Type           string                         `json:"type"`
-	Name           string                         `json:"name"`
-	BaseURL        string                         `json:"base_url"`
-	APIKeyEnv      string                         `json:"api_key_env"`
-	AuthMode       string                         `json:"auth_mode"`
-	Capabilities   providercatalog.Capabilities   `json:"capabilities"`
+	Type         string                       `json:"type"`
+	Name         string                       `json:"name"`
+	BaseURL      string                       `json:"base_url"`
+	APIKeyEnv    string                       `json:"api_key_env"`
+	AuthMode     string                       `json:"auth_mode"`
+	Capabilities providercatalog.Capabilities `json:"capabilities"`
 }
 
 func (s *Server) handleListProviderTypes(w http.ResponseWriter, r *http.Request) {

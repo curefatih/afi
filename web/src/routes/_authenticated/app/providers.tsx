@@ -231,8 +231,8 @@ function RouteComponent() {
 							</EmptyMedia>
 							<EmptyTitle>No providers</EmptyTitle>
 							<EmptyDescription>
-								Add OpenAI, Anthropic, Gemini, ElevenLabs, or an OpenAI-compatible
-								base URL. Then create routes under Routing.
+								Add OpenAI, Anthropic, Gemini, ElevenLabs, or an
+								OpenAI-compatible base URL. Then create routes under Routing.
 								{!isOrgAdmin
 									? " Only organization owners and admins can create providers."
 									: ""}

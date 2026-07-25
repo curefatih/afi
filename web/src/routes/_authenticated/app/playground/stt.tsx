@@ -273,7 +273,9 @@ function RouteComponent() {
 			if (ct.includes("application/json")) {
 				const data = (await res.json()) as { text?: string };
 				setTranscript(
-					typeof data.text === "string" ? data.text : JSON.stringify(data, null, 2),
+					typeof data.text === "string"
+						? data.text
+						: JSON.stringify(data, null, 2),
 				);
 			} else {
 				setTranscript(await res.text());
@@ -316,9 +318,7 @@ function RouteComponent() {
 							<SelectContent>
 								{models.map((m) => (
 									<SelectItem key={m.id} value={m.id}>
-										{m.provider_type
-											? `${m.id} · ${m.provider_type}`
-											: m.id}
+										{m.provider_type ? `${m.id} · ${m.provider_type}` : m.id}
 									</SelectItem>
 								))}
 							</SelectContent>

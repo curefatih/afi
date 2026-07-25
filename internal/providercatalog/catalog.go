@@ -49,7 +49,7 @@ type Spec struct {
 }
 
 var (
-	mu    sync.RWMutex
+	mu     sync.RWMutex
 	byType = map[string]Spec{}
 )
 

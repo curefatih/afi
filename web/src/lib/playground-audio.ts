@@ -86,7 +86,11 @@ export function parseExtraConfig(raw: string): ParseExtraResult {
 	if (!text) return { ok: true, value: {} };
 	try {
 		const parsed: unknown = JSON.parse(text);
-		if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+		if (
+			parsed === null ||
+			typeof parsed !== "object" ||
+			Array.isArray(parsed)
+		) {
 			return { ok: false, error: "Extra config must be a JSON object" };
 		}
 		return { ok: true, value: parsed as Record<string, unknown> };
@@ -157,7 +161,11 @@ export function appendSTTFormFields(
 
 	for (const [k, v] of Object.entries(extra.value)) {
 		if (v === undefined || v === null) continue;
-		if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
+		if (
+			typeof v === "string" ||
+			typeof v === "number" ||
+			typeof v === "boolean"
+		) {
 			form.set(k, String(v));
 		} else {
 			form.set(k, JSON.stringify(v));

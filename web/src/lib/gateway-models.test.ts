@@ -75,9 +75,10 @@ describe("playground audio config", () => {
 			),
 		).toBe("tts-1");
 		expect(
-			pickPreferredModel([{ id: "custom-tts", mode: "audio_speech" }], [
-				"tts-1",
-			]),
+			pickPreferredModel(
+				[{ id: "custom-tts", mode: "audio_speech" }],
+				["tts-1"],
+			),
 		).toBe("custom-tts");
 	});
 
@@ -87,9 +88,9 @@ describe("playground audio config", () => {
 				(v) => v.id === "alloy",
 			),
 		).toBe(true);
-		expect(
-			defaultVoiceForModel({ id: "x", provider_type: "elevenlabs" }),
-		).toBe("21m00Tcm4TlvDq8ikWAM");
+		expect(defaultVoiceForModel({ id: "x", provider_type: "elevenlabs" })).toBe(
+			"21m00Tcm4TlvDq8ikWAM",
+		);
 		expect(voicePresetsForModel({ id: "x", provider_type: "custom" })).toEqual(
 			[],
 		);

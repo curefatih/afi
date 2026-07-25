@@ -383,8 +383,7 @@ function RouteComponent() {
 													onChange={(e) =>
 														setStoreDraft((d) => ({
 															...d,
-															presign_ttl_seconds:
-																Number(e.target.value) || 0,
+															presign_ttl_seconds: Number(e.target.value) || 0,
 														}))
 													}
 													disabled={!storeDraft.enabled}
@@ -472,9 +471,8 @@ function RouteComponent() {
 										</div>
 										<p className="text-muted-foreground text-xs">
 											Provide either a credential ID (secret plaintext must be
-											JSON{" "}
-											<code>{`{"access_key":"…","secret_key":"…"}`}</code>) or
-											both access/secret env vars on the gateway process.
+											JSON <code>{`{"access_key":"…","secret_key":"…"}`}</code>)
+											or both access/secret env vars on the gateway process.
 										</p>
 										<div className="flex justify-end">
 											<Button
@@ -485,8 +483,7 @@ function RouteComponent() {
 															? {
 																	...storeDraft,
 																	endpoint:
-																		storeDraft.endpoint?.trim() ||
-																		undefined,
+																		storeDraft.endpoint?.trim() || undefined,
 																	bucket:
 																		storeDraft.bucket?.trim() || undefined,
 																	region:
@@ -516,9 +513,7 @@ function RouteComponent() {
 																		"object-store",
 																	],
 																});
-																toast.success(
-																	"Object store saved & published",
-																);
+																toast.success("Object store saved & published");
 															},
 															onError: (e) =>
 																toast.error(

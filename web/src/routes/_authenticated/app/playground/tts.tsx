@@ -75,8 +75,7 @@ function RouteComponent() {
 			custom &&
 			!opts.some(
 				(p) =>
-					p.id === custom ||
-					p.label.toLowerCase() === custom.toLowerCase(),
+					p.id === custom || p.label.toLowerCase() === custom.toLowerCase(),
 			)
 		) {
 			opts.unshift({ id: custom, label: custom });
@@ -228,9 +227,7 @@ function RouteComponent() {
 							<SelectContent>
 								{models.map((m) => (
 									<SelectItem key={m.id} value={m.id}>
-										{m.provider_type
-											? `${m.id} · ${m.provider_type}`
-											: m.id}
+										{m.provider_type ? `${m.id} · ${m.provider_type}` : m.id}
 									</SelectItem>
 								))}
 							</SelectContent>
@@ -257,7 +254,10 @@ function RouteComponent() {
 								className="w-full font-mono text-sm"
 								showClear={!!voice}
 							/>
-							<ComboboxContent align="start" className="w-[var(--anchor-width)]">
+							<ComboboxContent
+								align="start"
+								className="w-[var(--anchor-width)]"
+							>
 								<ComboboxEmpty>
 									{voice.trim()
 										? `Press Enter or select “${voice.trim()}”`
@@ -273,8 +273,7 @@ function RouteComponent() {
 												<ComboboxItem key={item.id} value={item}>
 													{isCustom ? (
 														<span>
-															Use{" "}
-															<span className="font-mono">{item.id}</span>
+															Use <span className="font-mono">{item.id}</span>
 														</span>
 													) : (
 														<>

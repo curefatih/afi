@@ -3,7 +3,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PlusIcon, RouteIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { orgDefaultRetryQueryOptions, orgMembersQueryOptions } from "#/api/organization";
+import {
+	orgDefaultRetryQueryOptions,
+	orgMembersQueryOptions,
+} from "#/api/organization";
 import { modelCatalogQueryOptions } from "#/api/model-catalog";
 import { providersQueryOptions } from "#/api/provider";
 import {
@@ -453,8 +456,8 @@ function RouteComponent() {
 									</SelectContent>
 								</Select>
 								<p className="text-muted-foreground text-xs">
-									Suggestions for {selectedProviderType}. You can still type
-									any requested / target model below.
+									Suggestions for {selectedProviderType}. You can still type any
+									requested / target model below.
 								</p>
 							</div>
 						) : null}
