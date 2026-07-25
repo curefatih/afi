@@ -3095,6 +3095,9 @@ components:
           type: string
         capabilities:
           $ref: '#/components/schemas/ProviderCapabilities'
+        config:
+          type: object
+          additionalProperties: true
         created_at:
           type: string
           format: date-time
@@ -3114,6 +3117,9 @@ components:
           type: string
         capabilities:
           $ref: '#/components/schemas/ProviderCapabilities'
+        config:
+          type: object
+          additionalProperties: true
     UpdateProvider:
       type: object
       required:
@@ -3127,6 +3133,9 @@ components:
           type: string
         api_key_env:
           type: string
+        config:
+          type: object
+          additionalProperties: true
     ProviderHealth:
       type: object
       properties:

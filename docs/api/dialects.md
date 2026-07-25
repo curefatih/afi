@@ -29,7 +29,7 @@ Without dialects, gateways usually force one client shape (almost always OpenAI)
 With dialects:
 
 * Keep your preferred SDK and prompts
-* Route `"model"` to OpenAI, Anthropic, Gemini, Bedrock, or `openai_compatible` (Ollama, etc.)
+* Route `"model"` to OpenAI, Anthropic, Gemini, Bedrock, Azure OpenAI, or `openai_compatible` (Ollama, etc.)
 * Still get AFI auth, quotas, policies, failover, usage, and hooks
 
 ## Supported today

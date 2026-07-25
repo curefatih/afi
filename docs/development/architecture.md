@@ -41,7 +41,7 @@ flowchart TD
   A --> B --> C --> D --> E --> F --> G
 ```
 
-Provider adapters (`openai`, `anthropic`, `gemini`, `bedrock`, `elevenlabs`, `openai_compatible`, …) self-register via the provider-type catalog and dataplane factories (`DefaultRegistry`). Chat-capable adapters implement `IRChatProvider`; requests decode through a **client dialect** (`/openai/...`, `/anthropic/...`, or `/gemini/...`) into chat IR, then the adapter speaks the upstream API. Optional modality ports (`AudioBackend`, `EmbeddingsBackend`, `ImagesBackend`) are resolved by registry lookup + capabilities — not hard-coded type allowlists. See [API dialects](../api/dialects.md) and [Providers](providers.md).
+Provider adapters (`openai`, `anthropic`, `gemini`, `bedrock`, `azure_openai`, `elevenlabs`, `openai_compatible`, …) self-register via the provider-type catalog and dataplane factories (`DefaultRegistry`). Chat-capable adapters implement `IRChatProvider`; requests decode through a **client dialect** (`/openai/...`, `/anthropic/...`, or `/gemini/...`) into chat IR, then the adapter speaks the upstream API. Optional modality ports (`AudioBackend`, `EmbeddingsBackend`, `ImagesBackend`) are resolved by registry lookup + capabilities — not hard-coded type allowlists. See [API dialects](../api/dialects.md) and [Providers](providers.md).
 
 Also exposes:
 
@@ -63,7 +63,7 @@ Pipeline stages stay stateless aside from the in-memory snapshot pointer. Quota 
 Snapshots contain:
 
 * Virtual API keys (hashes) → org binding, optional project, kind, owner user id
-* Providers (type, base URL, API key env ref, capabilities)
+* Providers (type, base URL, API key env ref, capabilities, optional opaque `config`)
 * Provider credentials (env ref, encrypted_db ciphertext, or vault secret_ref) + assignments (provider type × org/project/api_key scope)
 * Static model routes (optional fallbacks and retry config)
 * Optional per-org object store config (S3-compatible asset persistence for image generations)
