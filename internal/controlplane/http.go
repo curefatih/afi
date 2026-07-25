@@ -120,6 +120,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PATCH /api/v1/platform/providers/{providerID}", s.requireAuth(s.requireOrgAdminViaProvider(s.handleUpdateProvider)))
 	mux.HandleFunc("DELETE /api/v1/platform/providers/{providerID}", s.requireAuth(s.requireOrgAdminViaProvider(s.handleDeleteProvider)))
 	mux.HandleFunc("GET /api/v1/platform/provider-types", s.requireAuth(s.handleListProviderTypes))
+	mux.HandleFunc("GET /api/v1/platform/model-catalog", s.requireAuth(s.handleListModelCatalog))
 
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/routes", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListRoutes)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/routes", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateRoute)))

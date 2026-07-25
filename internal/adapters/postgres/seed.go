@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/curefatih/afi/internal/modelcatalog"
 	"github.com/curefatih/afi/internal/providercatalog"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -82,6 +84,36 @@ func (w *SeedWriter) EnsureAudioRoutes(ctx context.Context, orgID, providerID st
 		}
 	}
 	return changed, nil
+}
+
+// EnsureElevenLabs upserts the ElevenLabs provider and curated TTS/STT routes.
+func (w *SeedWriter) EnsureElevenLabs(ctx context.Context, orgID string, now time.Time) error {
+	return ensureElevenLabsTx(ctx, w.Pool, orgID, now)
+}
+
+func ensureElevenLabsTx(ctx context.Context, db seedExecer, orgID string, now time.Time) error {
+	spec, ok := providercatalog.Lookup("elevenlabs")
+	if !ok {
+		return fmt.Errorf("elevenlabs provider type not in catalog")
+	}
+	providerID := spec.SeedProviderID()
+	if err := upsertCatalogProviderTx(ctx, db, orgID, now, spec, providerID, spec.DefaultBaseURL, spec.DefaultAPIKeyEnv); err != nil {
+		return fmt.Errorf("ensure elevenlabs provider: %w", err)
+	}
+	for _, m := range modelcatalog.List("elevenlabs") {
+		routeID := "route_" + strings.ReplaceAll(m.ID, "-", "_")
+		_, err := db.Exec(ctx, `
+			INSERT INTO routes (id, organization_id, model, provider_id, target_model, created_at)
+			VALUES ($1, $2, $3, $4, $3, $5)
+			ON CONFLICT (organization_id, model) DO UPDATE SET
+				provider_id = EXCLUDED.provider_id,
+				target_model = EXCLUDED.target_model
+		`, routeID, orgID, m.ID, providerID, now)
+		if err != nil {
+			return fmt.Errorf("ensure elevenlabs route %s: %w", m.ID, err)
+		}
+	}
+	return nil
 }
 
 // LocalDevSeed holds values for the standard local-dev dataset.
@@ -220,6 +252,10 @@ func (w *SeedWriter) SeedLocalDev(ctx context.Context, s LocalDevSeed) error {
 		if err != nil {
 			return fmt.Errorf("audio route %s: %w", audio.model, err)
 		}
+	}
+
+	if err := ensureElevenLabsTx(ctx, tx, s.OrgID, s.Now); err != nil {
+		return err
 	}
 
 	_, err = tx.Exec(ctx, `

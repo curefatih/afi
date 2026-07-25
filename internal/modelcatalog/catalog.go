@@ -3,6 +3,7 @@ package modelcatalog
 import (
 	_ "embed"
 	"encoding/json"
+	"sort"
 	"strings"
 	"sync"
 
@@ -72,6 +73,53 @@ func Lookup(providerType, model string) (Entry, bool) {
 		}
 	}
 	return Entry{}, false
+}
+
+// Listed is a curated catalog row for UI / seed helpers.
+type Listed struct {
+	ProviderType string `json:"provider_type"`
+	ID           string `json:"id"`
+	Mode         string `json:"mode"`
+	Entry        Entry  `json:"-"`
+}
+
+// List returns curated models for a provider type (empty providerType → all).
+func List(providerType string) []Listed {
+	load()
+	if loadErr != nil {
+		return nil
+	}
+	want := strings.ToLower(strings.TrimSpace(providerType))
+	out := make([]Listed, 0)
+	for key, e := range entries {
+		prov, id, ok := splitCatalogKey(key)
+		if !ok {
+			continue
+		}
+		if want != "" && prov != want {
+			continue
+		}
+		mode := e.Mode
+		if mode == "" {
+			mode = ModeChat
+		}
+		out = append(out, Listed{ProviderType: prov, ID: id, Mode: mode, Entry: e})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].ProviderType != out[j].ProviderType {
+			return out[i].ProviderType < out[j].ProviderType
+		}
+		return out[i].ID < out[j].ID
+	})
+	return out
+}
+
+func splitCatalogKey(key string) (providerType, model string, ok bool) {
+	i := strings.IndexByte(key, '/')
+	if i <= 0 || i >= len(key)-1 {
+		return "", "", false
+	}
+	return key[:i], key[i+1:], true
 }
 
 func providerAliases(providerType string) []string {

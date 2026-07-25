@@ -23,12 +23,39 @@ func TestLookupChatAndAudio(t *testing.T) {
 	if !ok || !stt.IsSTT() {
 		t.Fatalf("stt alias=%+v ok=%v", stt, ok)
 	}
+	el, ok := Lookup("elevenlabs", "eleven_multilingual_v2")
+	if !ok || !el.IsTTS() {
+		t.Fatalf("elevenlabs tts=%+v ok=%v", el, ok)
+	}
 	emb, ok := Lookup("openai", "text-embedding-3-small")
 	if !ok || !emb.IsEmbedding() || emb.InputCostPerMTok == nil {
 		t.Fatalf("emb=%+v ok=%v", emb, ok)
 	}
 	if _, ok := Lookup("openai", "does-not-exist"); ok {
 		t.Fatal("expected miss")
+	}
+}
+
+func TestListElevenLabs(t *testing.T) {
+	t.Parallel()
+	list := List("elevenlabs")
+	if len(list) < 4 {
+		t.Fatalf("elevenlabs catalog=%d", len(list))
+	}
+	var sawTTS, sawSTT bool
+	for _, m := range list {
+		if m.ProviderType != "elevenlabs" {
+			t.Fatalf("unexpected provider %q", m.ProviderType)
+		}
+		if m.Mode == ModeAudioSpeech {
+			sawTTS = true
+		}
+		if m.Mode == ModeAudioTranscription {
+			sawSTT = true
+		}
+	}
+	if !sawTTS || !sawSTT {
+		t.Fatalf("expected tts and stt entries: %+v", list)
 	}
 }
 
