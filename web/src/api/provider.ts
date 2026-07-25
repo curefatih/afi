@@ -23,6 +23,9 @@ export type ProviderHealth = {
 	status: ProviderHealthStatus;
 };
 
+/** Opaque provider-type settings (e.g. azure_openai api_style). */
+export type ProviderConfig = Record<string, unknown>;
+
 export type Provider = {
 	id: string;
 	organization_id: string;
@@ -31,6 +34,7 @@ export type Provider = {
 	base_url: string;
 	api_key_env: string;
 	capabilities: ProviderCapabilities;
+	config?: ProviderConfig;
 	created_at: string;
 };
 
@@ -104,6 +108,7 @@ export type CreateProviderInput = {
 	base_url: string;
 	api_key_env?: string;
 	capabilities?: ProviderCapabilities;
+	config?: ProviderConfig;
 };
 
 export const createProviderMutationOptions = () =>
@@ -120,6 +125,7 @@ export type UpdateProviderInput = {
 	name: string;
 	base_url: string;
 	api_key_env: string;
+	config?: ProviderConfig;
 };
 
 export const updateProviderMutationOptions = () =>
