@@ -10,6 +10,15 @@ import {
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "#/components/ui/collapsible";
+import {
+	Combobox,
+	ComboboxCollection,
+	ComboboxContent,
+	ComboboxEmpty,
+	ComboboxInput,
+	ComboboxItem,
+	ComboboxList,
+} from "#/components/ui/combobox";
 import { Input } from "#/components/ui/input";
 import { JsonCodeEditor } from "#/components/ui/json-code-editor";
 import { Label } from "#/components/ui/label";
@@ -26,6 +35,7 @@ import { type GatewayModel, isTTSModel } from "#/lib/gateway-models";
 import { pageTitle } from "#/lib/page-meta";
 import {
 	EMPTY_EXTRA_JSON,
+	type PlaygroundVoice,
 	TTS_RESPONSE_FORMATS,
 	buildTTSRequestBody,
 	defaultVoiceForModel,
@@ -58,6 +68,32 @@ function RouteComponent() {
 		[models, model],
 	);
 	const voicePresets = voicePresetsForModel(selectedModel);
+	const voiceOptions = useMemo(() => {
+		const opts: PlaygroundVoice[] = [...voicePresets];
+		const custom = voice.trim();
+		if (
+			custom &&
+			!opts.some(
+				(p) =>
+					p.id === custom ||
+					p.label.toLowerCase() === custom.toLowerCase(),
+			)
+		) {
+			opts.unshift({ id: custom, label: custom });
+		}
+		return opts;
+	}, [voicePresets, voice]);
+	const selectedVoice = useMemo(() => {
+		const match = voiceOptions.find((p) => p.id === voice);
+		if (match) return match;
+		if (voice.trim()) return { id: voice, label: voice };
+		return null;
+	}, [voiceOptions, voice]);
+
+	const setVoiceValue = (next: string) => {
+		voiceTouchedRef.current = true;
+		setVoice(next);
+	};
 
 	useEffect(() => {
 		let cancelled = false;
@@ -203,55 +239,65 @@ function RouteComponent() {
 
 					<div className="space-y-1.5">
 						<Label htmlFor="tts-voice">Voice</Label>
-						<Input
-							id="tts-voice"
-							value={voice}
-							onChange={(e) => {
-								voiceTouchedRef.current = true;
-								setVoice(e.target.value);
-							}}
-							placeholder="Voice name or id (provider-specific)"
-							className="font-mono text-sm"
-						/>
-						{voicePresets.length > 0 ? (
-							<div className="space-y-1.5">
-								<Label className="text-muted-foreground font-normal">
-									Preset for {selectedModel?.provider_type}
-								</Label>
-								<Select
-									value={
-										voicePresets.some((p) => p.id === voice) ? voice : ""
-									}
-									onValueChange={(v) => {
-										if (!v) return;
-										voiceTouchedRef.current = true;
-										setVoice(v);
-									}}
-								>
-									<SelectTrigger className="w-full">
-										<SelectValue placeholder="Apply a preset…" />
-									</SelectTrigger>
-									<SelectContent>
-										{voicePresets.map((v) => (
-											<SelectItem key={v.id} value={v.id}>
-												{v.label}
-												{v.label !== v.id ? (
-													<span className="text-muted-foreground">
-														{" "}
-														· {v.id}
-													</span>
-												) : null}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-							</div>
-						) : (
-							<p className="text-muted-foreground text-xs">
-								No presets for this provider — enter any voice the upstream
-								accepts.
-							</p>
-						)}
+						<Combobox
+							items={voiceOptions}
+							value={selectedVoice}
+							onValueChange={(item) => setVoiceValue(item?.id ?? "")}
+							onInputValueChange={(next) => setVoiceValue(next)}
+							itemToStringLabel={(item) => item.id}
+							isItemEqualToValue={(a, b) => a.id === b.id}
+						>
+							<ComboboxInput
+								id="tts-voice"
+								placeholder={
+									voicePresets.length > 0
+										? "Select or type a voice id…"
+										: "Type a voice name or id…"
+								}
+								className="w-full font-mono text-sm"
+								showClear={!!voice}
+							/>
+							<ComboboxContent align="start" className="w-[var(--anchor-width)]">
+								<ComboboxEmpty>
+									{voice.trim()
+										? `Press Enter or select “${voice.trim()}”`
+										: "Type a voice id"}
+								</ComboboxEmpty>
+								<ComboboxList>
+									<ComboboxCollection>
+										{(item: PlaygroundVoice) => {
+											const isCustom =
+												!voicePresets.some((p) => p.id === item.id) &&
+												item.id === voice.trim();
+											return (
+												<ComboboxItem key={item.id} value={item}>
+													{isCustom ? (
+														<span>
+															Use{" "}
+															<span className="font-mono">{item.id}</span>
+														</span>
+													) : (
+														<>
+															<span>{item.label}</span>
+															{item.label !== item.id ? (
+																<span className="text-muted-foreground font-mono text-xs">
+																	{item.id}
+																</span>
+															) : null}
+														</>
+													)}
+												</ComboboxItem>
+											);
+										}}
+									</ComboboxCollection>
+								</ComboboxList>
+							</ComboboxContent>
+						</Combobox>
+						<p className="text-muted-foreground text-xs">
+							{voicePresets.length > 0
+								? `Presets for ${selectedModel?.provider_type ?? "this provider"}; type any other voice id to use it.`
+								: "No curated presets for this provider — enter any voice the upstream accepts."}
+						</p>
 					</div>
 
 					<div className="grid gap-4 sm:grid-cols-2">

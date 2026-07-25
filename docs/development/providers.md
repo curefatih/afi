@@ -2,6 +2,8 @@
 
 Gateway chat dispatch uses a **registry** of in-process adapters. The pipeline looks up `provider.type` and calls `ChatIR` — it does not hard-code vendor branches.
 
+Built-in types, default credentials, UI presets, and local-dev seed rows all come from a single catalog in [`internal/providercatalog`](../../internal/providercatalog). Each in-tree adapter registers a factory via `registerBuiltin` in [`internal/dataplane`](../../internal/dataplane).
+
 ## Built-in types
 
 | Type | Chat | Stream | TTS | STT | Embedding | Image | Notes |
@@ -37,21 +39,23 @@ Adapters that do not implement the transport provider interface simply cannot se
 
 ## Adding a provider (in-tree)
 
-1. Implement `dataplane.IRChatProvider` (`Type`, `Capabilities`, `ChatIR`) on a `ChatProvider` registered in the registry.
-2. Register it in `dataplane.DefaultRegistry()` / `RegistryFromClients` (or your gateway bootstrap).
-   Outbound HTTP clients live in `internal/adapters/llm` and resolve keys via `adapters/secrets`.
-3. Prefer reusing [`internal/dataplane/openaichat`](../../internal/dataplane/openaichat) helpers for OpenAI-shaped JSON/SSE.
-4. Document the type, default `api_key_env`, and capabilities in this page.
-5. Optionally seed an inactive provider (no route) like `prov_ollama`.
+1. Implement the outbound client under [`internal/adapters/llm`](../../internal/adapters/llm) (and tests).
+2. Add a `providercatalog.Spec` in [`internal/providercatalog/builtins.go`](../../internal/providercatalog/builtins.go) (type, display name, default base URL / `api_key_env`, capabilities, `AuthMode`, `UIVisible`, `Seed`, optional `CatalogAlias` / `SeedRoute`).
+3. Register a factory with `registerBuiltin(type, factory)` in [`internal/dataplane/register_builtins.go`](../../internal/dataplane/register_builtins.go) (or a new `register_*.go` in the same package) that wraps the client as a `ChatProvider` / modality ports.
+4. Prefer reusing [`internal/dataplane/openaichat`](../../internal/dataplane/openaichat) helpers for OpenAI-shaped JSON/SSE.
+5. Optionally add curated model rows to [`internal/modelcatalog/catalog.json`](../../internal/modelcatalog/catalog.json) (pricing/context windows stay manual).
 
-You should **not** need to edit `callProviderIR` or add a new `switch` case in the pipeline.
+That single Spec + factory covers: gateway registry, capability/env defaults, auth rules (`AuthOptional` for empty `api_key_env`), UI presets (`GET /api/v1/platform/provider-types`), and local-dev seed rows.
+
+You should **not** need to edit `callProviderIR`, modality type allowlists, `Clients` structs, or hard-coded UI preset maps.
 
 ## Adding an extension (SDK)
 
 1. Implement [`sdk/provider.ChatProvider`](../../sdk/provider) in a package under [`extensions/`](../../extensions/) (or an external module).
-2. In [`cmd/gateway`](../../cmd/gateway), call `reg.RegisterSDK(your.New())` after `DefaultRegistry()`.
-3. Create a control-plane provider with matching `type` and a route (seed does this for `echo` → model `echo-demo`).
-4. Restart the gateway so the adapter is registered.
+2. Add a metadata-only Spec in `providercatalog/builtins.go` (no `registerBuiltin` factory).
+3. In [`cmd/gateway`](../../cmd/gateway), call `reg.RegisterSDK(your.New())` after `DefaultRegistry()`.
+4. Create a control-plane provider with matching `type` and a route (seed does this for `echo` → model `echo-demo`).
+5. Restart the gateway so the adapter is registered.
 
 Working example: [`extensions/echo`](../../extensions/echo) — verify with:
 
