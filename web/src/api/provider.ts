@@ -34,66 +34,49 @@ export type Provider = {
 	created_at: string;
 };
 
-export const PROVIDER_TYPE_PRESETS: Record<
+export type ProviderTypePreset = {
+	type: string;
+	name: string;
+	base_url: string;
+	api_key_env: string;
+	auth_mode: string;
+	capabilities: ProviderCapabilities;
+};
+
+export type ProviderTypePresetMap = Record<
 	string,
 	{
 		name: string;
 		base_url: string;
 		api_key_env: string;
 		caps: ProviderCapabilities;
+		auth_mode: string;
 	}
-> = {
-	openai: {
-		name: "OpenAI",
-		base_url: "https://api.openai.com/v1",
-		api_key_env: "OPENAI_API_KEY",
-		caps: {
-			chat: true,
-			stream: true,
-			tts: true,
-			stt: true,
-			embedding: true,
-			image: true,
-		},
-	},
-	anthropic: {
-		name: "Anthropic",
-		base_url: "https://api.anthropic.com/v1",
-		api_key_env: "ANTHROPIC_API_KEY",
-		caps: { chat: true, stream: true, tts: false, stt: false },
-	},
-	gemini: {
-		name: "Gemini",
-		base_url: "https://generativelanguage.googleapis.com/v1beta",
-		api_key_env: "GEMINI_API_KEY",
-		caps: { chat: true, stream: true, tts: false, stt: false },
-	},
-	openai_compatible: {
-		name: "Ollama / compatible",
-		base_url: "http://127.0.0.1:11434/v1",
-		api_key_env: "OLLAMA_API_KEY",
-		caps: {
-			chat: true,
-			stream: true,
-			tts: true,
-			stt: true,
-			embedding: true,
-			image: true,
-		},
-	},
-	elevenlabs: {
-		name: "ElevenLabs",
-		base_url: "https://api.elevenlabs.io",
-		api_key_env: "ELEVENLABS_API_KEY",
-		caps: { chat: false, stream: false, tts: true, stt: true },
-	},
-	echo: {
-		name: "Echo (extension)",
-		base_url: "http://localhost/echo",
-		api_key_env: "ECHO_UNUSED",
-		caps: { chat: true, stream: false, tts: false, stt: false },
-	},
-};
+>;
+
+export function providerTypesToPresetMap(
+	types: ProviderTypePreset[],
+): ProviderTypePresetMap {
+	const out: ProviderTypePresetMap = {};
+	for (const t of types) {
+		out[t.type] = {
+			name: t.name,
+			base_url: t.base_url,
+			api_key_env: t.api_key_env,
+			caps: t.capabilities,
+			auth_mode: t.auth_mode,
+		};
+	}
+	return out;
+}
+
+export const providerTypesQueryOptions = () =>
+	queryOptions({
+		queryKey: ["provider-types"],
+		queryFn: () =>
+			apiFetch<ProviderTypePreset[]>(`/api/v1/platform/provider-types`),
+		staleTime: 60_000,
+	});
 
 export const providersQueryOptions = (orgId: string) =>
 	queryOptions({

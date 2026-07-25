@@ -16,7 +16,10 @@ import {
 } from "#/api/credentials";
 import { orgKeysQueryOptions } from "#/api/keys";
 import { orgMembersQueryOptions } from "#/api/organization";
-import { PROVIDER_TYPE_PRESETS } from "#/api/provider";
+import {
+	providerTypesQueryOptions,
+	providerTypesToPresetMap,
+} from "#/api/provider";
 import { InfoAlert } from "#/components/info-alert";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
@@ -64,10 +67,6 @@ export const Route = createFileRoute("/_authenticated/app/secrets")({
 	component: RouteComponent,
 });
 
-const PROVIDER_TYPES = Object.keys(PROVIDER_TYPE_PRESETS).filter(
-	(t) => t !== "echo",
-);
-
 function RouteComponent() {
 	const org = useActiveOrg();
 	const orgId = org?.id ?? "";
@@ -76,6 +75,15 @@ function RouteComponent() {
 	const credentials = useQuery(credentialsQueryOptions(orgId));
 	const assignments = useQuery(credentialAssignmentsQueryOptions(orgId));
 	const members = useQuery(orgMembersQueryOptions(orgId));
+	const providerTypes = useQuery(providerTypesQueryOptions());
+	const presets = useMemo(
+		() => providerTypesToPresetMap(providerTypes.data ?? []),
+		[providerTypes.data],
+	);
+	const providerTypeKeys = useMemo(
+		() => Object.keys(presets).filter((t) => t !== "echo"),
+		[presets],
+	);
 
 	const [createOpen, setCreateOpen] = useState(false);
 	const [assignFor, setAssignFor] = useState<Credential | null>(null);
@@ -316,6 +324,8 @@ function RouteComponent() {
 				open={createOpen}
 				onOpenChange={setCreateOpen}
 				pending={create.isPending}
+				presets={presets}
+				providerTypes={providerTypeKeys}
 				onSubmit={(input) => create.mutate({ orgId, ...input })}
 			/>
 			<AssignCredentialSheet
@@ -345,11 +355,15 @@ function CreateCredentialSheet({
 	open,
 	onOpenChange,
 	pending,
+	presets,
+	providerTypes,
 	onSubmit,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	pending: boolean;
+	presets: ReturnType<typeof providerTypesToPresetMap>;
+	providerTypes: string[];
 	onSubmit: (input: {
 		name: string;
 		provider_type: string;
@@ -358,19 +372,18 @@ function CreateCredentialSheet({
 		secret_value?: string;
 	}) => void;
 }) {
+	const defaultEnv = presets.openai?.api_key_env ?? "OPENAI_API_KEY";
 	const [name, setName] = useState("");
 	const [providerType, setProviderType] = useState("openai");
 	const [storageKind, setStorageKind] = useState<CredentialStorageKind>("env");
-	const [secretRef, setSecretRef] = useState(
-		PROVIDER_TYPE_PRESETS.openai.api_key_env,
-	);
+	const [secretRef, setSecretRef] = useState(defaultEnv);
 	const [secretValue, setSecretValue] = useState("");
 
 	const reset = () => {
 		setName("");
 		setProviderType("openai");
 		setStorageKind("env");
-		setSecretRef(PROVIDER_TYPE_PRESETS.openai.api_key_env);
+		setSecretRef(presets.openai?.api_key_env ?? "OPENAI_API_KEY");
 		setSecretValue("");
 	};
 
@@ -412,7 +425,7 @@ function CreateCredentialSheet({
 							onValueChange={(v) => {
 								const next = v ?? "openai";
 								setProviderType(next);
-								const preset = PROVIDER_TYPE_PRESETS[next];
+								const preset = presets[next];
 								if (preset && storageKind === "env") {
 									setSecretRef(preset.api_key_env);
 								}
@@ -422,9 +435,9 @@ function CreateCredentialSheet({
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								{PROVIDER_TYPES.map((t) => (
+								{providerTypes.map((t) => (
 									<SelectItem key={t} value={t}>
-										{PROVIDER_TYPE_PRESETS[t]?.name ?? t}
+										{presets[t]?.name ?? t}
 									</SelectItem>
 								))}
 							</SelectContent>
