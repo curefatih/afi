@@ -20,6 +20,10 @@ func TestDefaultCapabilities(t *testing.T) {
 	if !echo.Chat || echo.Stream || echo.TTS || echo.STT || echo.Embedding || echo.Image {
 		t.Fatalf("echo=%+v", echo)
 	}
+	el := DefaultCapabilities("elevenlabs")
+	if el.Chat || el.Stream || !el.TTS || !el.STT || el.Embedding || el.Image {
+		t.Fatalf("elevenlabs=%+v", el)
+	}
 }
 
 func TestNormalizeCapabilitiesEmpty(t *testing.T) {
@@ -47,5 +51,19 @@ func TestDefaultAPIKeyEnv(t *testing.T) {
 	t.Parallel()
 	if DefaultAPIKeyEnv("openai_compatible") != "OLLAMA_API_KEY" {
 		t.Fatal(DefaultAPIKeyEnv("openai_compatible"))
+	}
+	if DefaultAPIKeyEnv("elevenlabs") != "ELEVENLABS_API_KEY" {
+		t.Fatal(DefaultAPIKeyEnv("elevenlabs"))
+	}
+	if DefaultAPIKeyEnv("bedrock") != "" {
+		t.Fatalf("bedrock default env should be empty, got %q", DefaultAPIKeyEnv("bedrock"))
+	}
+}
+
+func TestDefaultCapabilitiesBedrock(t *testing.T) {
+	t.Parallel()
+	b := DefaultCapabilities("bedrock")
+	if !b.Chat || !b.Stream || b.TTS || b.Embedding {
+		t.Fatalf("bedrock=%+v", b)
 	}
 }

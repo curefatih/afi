@@ -7,12 +7,13 @@ import { orgMembersQueryOptions } from "#/api/organization";
 import {
 	createProviderMutationOptions,
 	deleteProviderMutationOptions,
-	PROVIDER_TYPE_PRESETS,
 	type Provider,
 	type ProviderHealth,
 	type ProviderHealthStatus,
 	providerHealthQueryOptions,
 	providersQueryOptions,
+	providerTypesQueryOptions,
+	providerTypesToPresetMap,
 	updateProviderMutationOptions,
 } from "#/api/provider";
 import { InfoAlert } from "#/components/info-alert";
@@ -118,6 +119,11 @@ function RouteComponent() {
 	const user = useAuthUser();
 	const qc = useQueryClient();
 	const providers = useQuery(providersQueryOptions(orgId));
+	const providerTypes = useQuery(providerTypesQueryOptions());
+	const presets = useMemo(
+		() => providerTypesToPresetMap(providerTypes.data ?? []),
+		[providerTypes.data],
+	);
 	const health = useQuery(providerHealthQueryOptions(orgId));
 	const members = useQuery(orgMembersQueryOptions(orgId));
 	const healthById = new Map(
@@ -162,11 +168,10 @@ function RouteComponent() {
 		},
 	});
 
-	const preset = PROVIDER_TYPE_PRESETS.openai;
-	const [name, setName] = useState(preset.name);
+	const [name, setName] = useState("OpenAI");
 	const [type, setType] = useState("openai");
-	const [baseURL, setBaseURL] = useState(preset.base_url);
-	const [apiKeyEnv, setApiKeyEnv] = useState(preset.api_key_env);
+	const [baseURL, setBaseURL] = useState("https://api.openai.com/v1");
+	const [apiKeyEnv, setApiKeyEnv] = useState("OPENAI_API_KEY");
 	const [error, setError] = useState<string | null>(null);
 
 	const [editName, setEditName] = useState("");
@@ -176,7 +181,7 @@ function RouteComponent() {
 
 	const applyTypeDefaults = (next: string) => {
 		setType(next);
-		const p = PROVIDER_TYPE_PRESETS[next];
+		const p = presets[next];
 		if (!p) return;
 		setName(p.name);
 		setBaseURL(p.base_url);
@@ -191,7 +196,8 @@ function RouteComponent() {
 		setEditError(null);
 	};
 
-	const typeCaps = PROVIDER_TYPE_PRESETS[type]?.caps;
+	const typeCaps = presets[type]?.caps;
+	const typeAuthOptional = presets[type]?.auth_mode === "optional";
 
 	return (
 		<PageBody>
@@ -225,8 +231,8 @@ function RouteComponent() {
 							</EmptyMedia>
 							<EmptyTitle>No providers</EmptyTitle>
 							<EmptyDescription>
-								Add OpenAI, Anthropic, Gemini, or an OpenAI-compatible base URL.
-								Then create routes under Routing.
+								Add OpenAI, Anthropic, Gemini, ElevenLabs, or an
+								OpenAI-compatible base URL. Then create routes under Routing.
 								{!isOrgAdmin
 									? " Only organization owners and admins can create providers."
 									: ""}
@@ -339,6 +345,7 @@ function RouteComponent() {
 									base_url: baseURL,
 									api_key_env: apiKeyEnv,
 									type,
+									capabilities: typeCaps,
 								},
 								{
 									onError: (err) =>
@@ -359,9 +366,9 @@ function RouteComponent() {
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									{Object.keys(PROVIDER_TYPE_PRESETS).map((t) => (
+									{Object.keys(presets).map((t) => (
 										<SelectItem key={t} value={t}>
-											{t}
+											{presets[t]?.name ?? t}
 										</SelectItem>
 									))}
 								</SelectContent>
@@ -374,6 +381,8 @@ function RouteComponent() {
 										typeCaps.stream && "stream",
 										typeCaps.tts && "tts",
 										typeCaps.stt && "stt",
+										typeCaps.embedding && "embedding",
+										typeCaps.image && "image",
 									]
 										.filter(Boolean)
 										.join(", ")}
@@ -404,7 +413,12 @@ function RouteComponent() {
 								id="prov-env"
 								value={apiKeyEnv}
 								onChange={(e) => setApiKeyEnv(e.target.value)}
-								required
+								required={!typeAuthOptional}
+								placeholder={
+									typeAuthOptional
+										? "optional — vendor default credentials"
+										: undefined
+								}
 							/>
 						</div>
 						{error ? <p className="text-destructive text-xs">{error}</p> : null}

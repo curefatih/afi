@@ -40,6 +40,9 @@ func (s *Seeder) SeedIfEmpty(ctx context.Context) error {
 	if err := s.EnsureLocalAudioRoutes(ctx); err != nil {
 		return err
 	}
+	if err := s.EnsureElevenLabs(ctx); err != nil {
+		return err
+	}
 	return s.EnsureEchoExtension(ctx)
 }
 
@@ -81,6 +84,22 @@ func (s *Seeder) EnsureLocalAudioRoutes(ctx context.Context) error {
 		return err
 	}
 	// Always republish so capability normalize (tts/stt) reaches the gateway after upgrades.
+	return s.PublishSnapshot(ctx)
+}
+
+// EnsureElevenLabs upserts prov_elevenlabs + curated TTS/STT routes for org_local.
+func (s *Seeder) EnsureElevenLabs(ctx context.Context) error {
+	orgID := "org_local"
+	exists, err := s.seed.OrgExists(ctx, orgID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+	if err := s.seed.EnsureElevenLabs(ctx, orgID, time.Now().UTC()); err != nil {
+		return err
+	}
 	return s.PublishSnapshot(ctx)
 }
 

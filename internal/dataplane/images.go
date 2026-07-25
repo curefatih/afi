@@ -38,8 +38,15 @@ func modelLooksLikeImage(requested, target string) bool {
 	return false
 }
 
-func imagesOpenAICompatible(typ string) bool {
-	return typ == "openai" || typ == "openai_compatible"
+func imagesProviderUsable(p *Pipeline, typ string, caps snapshot.ProviderCapabilities) bool {
+	if !caps.Image {
+		return false
+	}
+	if p == nil || p.Providers == nil {
+		return false
+	}
+	_, ok := p.Providers.ImagesBackend(typ)
+	return ok
 }
 
 func (p *Pipeline) handleImagesGenerations(w http.ResponseWriter, r *http.Request) {
@@ -103,10 +110,10 @@ func (p *Pipeline) handleImagesGenerations(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	caps := snapshot.NormalizeCapabilities(provider.Type, provider.Capabilities)
-	if !imagesOpenAICompatible(provider.Type) || !caps.Image {
+	if !imagesProviderUsable(p, provider.Type, caps) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": map[string]string{
-				"message": "images require an openai or openai_compatible provider with image capability",
+				"message": "images require a provider with image capability and an images backend",
 				"type":    "invalid_request_error",
 			},
 		})

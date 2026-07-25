@@ -2,6 +2,7 @@
 export type GatewayModel = {
 	id: string;
 	mode?: string;
+	provider_type?: string;
 	supports_streaming?: boolean;
 	supports_tts?: boolean;
 	supports_stt?: boolean;

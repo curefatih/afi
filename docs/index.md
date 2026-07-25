@@ -38,7 +38,7 @@ flowchart TB
 * Personal and service-account API keys; quotas on org / project / user / api_key
 * Gateway: virtual API key auth → quotas → routes (with failover) → provider registry
 * OpenAI, Anthropic, and Gemini **[API dialects](api/dialects.md)** — `/openai/v1/...`, `/anthropic/v1/...`, and `/gemini/v1beta/...`
-* OpenAI-compatible `POST /openai/v1/audio/speech` and `POST /openai/v1/audio/transcriptions` (aliases `/v1/audio/...`; openai / openai_compatible)
+* OpenAI-compatible `POST /openai/v1/audio/speech` and `POST /openai/v1/audio/transcriptions` (aliases `/v1/audio/...`; openai / openai_compatible / elevenlabs)
 * OpenAI-compatible `POST /openai/v1/embeddings` and `POST /openai/v1/images/generations` (aliases `/v1/...`; openai / openai_compatible)
 * Streaming for OpenAI, Anthropic, Gemini, and `openai_compatible` (capability-gated)
 * Usage outbox + worker with optional `cost_usd`

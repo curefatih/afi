@@ -1,10 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Loader2Icon, MicIcon, SquareIcon } from "lucide-react";
+import {
+	ChevronRightIcon,
+	Loader2Icon,
+	MicIcon,
+	SquareIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { BowlAudioPlayer } from "#/components/playground/bowl-audio-player";
 import { Button } from "#/components/ui/button";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "#/components/ui/collapsible";
 import { Input } from "#/components/ui/input";
+import { JsonCodeEditor } from "#/components/ui/json-code-editor";
 import { Label } from "#/components/ui/label";
 import {
 	Select,
@@ -14,9 +25,16 @@ import {
 	SelectValue,
 } from "#/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
+import { Textarea } from "#/components/ui/textarea";
 import { GATEWAY_API_KEY, GATEWAY_API_URL } from "#/lib/gateway-base";
 import { type GatewayModel, isSTTModel } from "#/lib/gateway-models";
 import { pageTitle } from "#/lib/page-meta";
+import {
+	appendSTTFormFields,
+	EMPTY_EXTRA_JSON,
+	pickPreferredModel,
+	STT_RESPONSE_FORMATS,
+} from "#/lib/playground-audio";
 
 export const Route = createFileRoute("/_authenticated/app/playground/stt")({
 	...pageTitle("STT"),
@@ -51,6 +69,10 @@ function formatDuration(ms: number): string {
 function RouteComponent() {
 	const [models, setModels] = useState<GatewayModel[]>([]);
 	const [model, setModel] = useState("");
+	const [language, setLanguage] = useState("");
+	const [prompt, setPrompt] = useState("");
+	const [responseFormat, setResponseFormat] = useState("");
+	const [extraJSON, setExtraJSON] = useState(EMPTY_EXTRA_JSON);
 	const [file, setFile] = useState<File | null>(null);
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 	const [transcript, setTranscript] = useState("");
@@ -88,9 +110,7 @@ function RouteComponent() {
 				setModels(list);
 				setModel((prev) => {
 					if (list.some((m) => m.id === prev)) return prev;
-					return (
-						list.find((m) => m.id === "whisper-1")?.id ?? list[0]?.id ?? ""
-					);
+					return pickPreferredModel(list, ["whisper-1"]);
 				});
 				setModelsError(null);
 			} catch (e) {
@@ -223,13 +243,23 @@ function RouteComponent() {
 
 	const transcribe = async () => {
 		if (!file || !model || busy || recording) return;
+		const form = new FormData();
+		form.append("file", file, file.name || "audio.webm");
+		const fields = appendSTTFormFields(form, {
+			model,
+			language,
+			prompt,
+			responseFormat,
+			extraJSON,
+		});
+		if (!fields.ok) {
+			setError(fields.error);
+			return;
+		}
 		setBusy(true);
 		setError(null);
 		setTranscript("");
 		try {
-			const form = new FormData();
-			form.append("file", file, file.name || "audio.webm");
-			form.append("model", model);
 			const res = await fetch(`${GATEWAY_API_URL}/v1/audio/transcriptions`, {
 				method: "POST",
 				headers: { Authorization: `Bearer ${GATEWAY_API_KEY}` },
@@ -239,8 +269,17 @@ function RouteComponent() {
 				const errBody = await res.text();
 				throw new Error(errBody || `HTTP ${res.status}`);
 			}
-			const data = (await res.json()) as { text?: string };
-			setTranscript(data.text ?? JSON.stringify(data));
+			const ct = res.headers.get("Content-Type") ?? "";
+			if (ct.includes("application/json")) {
+				const data = (await res.json()) as { text?: string };
+				setTranscript(
+					typeof data.text === "string"
+						? data.text
+						: JSON.stringify(data, null, 2),
+				);
+			} else {
+				setTranscript(await res.text());
+			}
 		} catch (e) {
 			setError(e instanceof Error ? e.message : "STT failed");
 		} finally {
@@ -252,8 +291,8 @@ function RouteComponent() {
 		<PageBody>
 			<PageHeader
 				title="Speech to text"
-				description="OpenAI-compatible transcriptions via the gateway."
-				info="Lists catalog models with mode audio_transcription (e.g. whisper-1). Upload a file or record from the microphone."
+				description="Call gateway /v1/audio/transcriptions with any routed STT model."
+				info="Pick a route from /v1/models (mode audio_transcription). Optional language/prompt/format apply to OpenAI-shaped APIs; use Advanced for any extra multipart fields."
 			/>
 			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(280px,1fr)]">
 				<div className="space-y-5">
@@ -262,14 +301,14 @@ function RouteComponent() {
 					) : null}
 					{models.length === 0 && !modelsError ? (
 						<p className="text-muted-foreground text-sm">
-							No STT routes. Add <code className="text-xs">whisper-1</code>{" "}
-							under{" "}
+							No STT routes yet. Add a transcription route under{" "}
 							<Link to="/app/routing" className="underline">
 								Routing
 							</Link>{" "}
-							or run <code className="text-xs">make seed</code>.
+							(any provider with STT), then refresh.
 						</p>
 					) : null}
+
 					<div className="space-y-1.5">
 						<Label>Model</Label>
 						<Select value={model} onValueChange={(v) => setModel(v ?? "")}>
@@ -279,11 +318,57 @@ function RouteComponent() {
 							<SelectContent>
 								{models.map((m) => (
 									<SelectItem key={m.id} value={m.id}>
-										{m.id}
+										{m.provider_type ? `${m.id} · ${m.provider_type}` : m.id}
 									</SelectItem>
 								))}
 							</SelectContent>
 						</Select>
+					</div>
+
+					<div className="grid gap-4 sm:grid-cols-2 max-w-2xl">
+						<div className="space-y-1.5">
+							<Label htmlFor="stt-language">Language (optional)</Label>
+							<Input
+								id="stt-language"
+								value={language}
+								onChange={(e) => setLanguage(e.target.value)}
+								placeholder="e.g. en"
+								className="font-mono text-sm"
+							/>
+						</div>
+						<div className="space-y-1.5">
+							<Label>Response format</Label>
+							<Select
+								value={responseFormat || "__default__"}
+								onValueChange={(v) =>
+									setResponseFormat(!v || v === "__default__" ? "" : v)
+								}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder="Provider default" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="__default__">Provider default</SelectItem>
+									{STT_RESPONSE_FORMATS.filter(Boolean).map((f) => (
+										<SelectItem key={f} value={f}>
+											{f}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
+
+					<div className="space-y-1.5 max-w-2xl">
+						<Label htmlFor="stt-prompt">Prompt (optional)</Label>
+						<Textarea
+							id="stt-prompt"
+							value={prompt}
+							onChange={(e) => setPrompt(e.target.value)}
+							placeholder="Optional vocabulary / style hints"
+							rows={2}
+							className="min-h-16 text-sm"
+						/>
 					</div>
 
 					<div className="space-y-1.5">
@@ -306,7 +391,7 @@ function RouteComponent() {
 									onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
 								/>
 								<p className="text-muted-foreground text-sm">
-									mp3, wav, m4a, webm, and other OpenAI-supported formats.
+									Any audio format your routed provider accepts.
 								</p>
 							</TabsContent>
 							<TabsContent value="mic" className="space-y-3 pt-3">
@@ -384,6 +469,32 @@ function RouteComponent() {
 							</div>
 						) : null}
 					</div>
+
+					<section className="rounded-md border max-w-2xl">
+						<Collapsible defaultOpen={false} className="group/collapsible">
+							<div className="p-3">
+								<CollapsibleTrigger className="flex w-full items-start gap-2 text-left">
+									<ChevronRightIcon className="mt-0.5 size-4 shrink-0 transition-transform duration-200 group-data-open/collapsible:rotate-90" />
+									<div>
+										<p className="text-sm font-medium">Advanced config</p>
+										<p className="text-muted-foreground text-xs">
+											JSON object appended as multipart fields. Form fields
+											above override the same keys.
+										</p>
+									</div>
+								</CollapsibleTrigger>
+							</div>
+							<CollapsibleContent className="space-y-2 border-t px-3 pb-3 pt-3">
+								<JsonCodeEditor
+									id="stt-extra"
+									value={extraJSON}
+									onChange={setExtraJSON}
+									minHeight="8rem"
+									placeholder='{"temperature":0}'
+								/>
+							</CollapsibleContent>
+						</Collapsible>
+					</section>
 
 					{error ? (
 						<pre className="text-destructive max-h-40 overflow-auto rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs whitespace-pre-wrap">

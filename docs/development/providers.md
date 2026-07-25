@@ -2,6 +2,8 @@
 
 Gateway chat dispatch uses a **registry** of in-process adapters. The pipeline looks up `provider.type` and calls `ChatIR` — it does not hard-code vendor branches.
 
+Built-in types, default credentials, UI presets, and local-dev seed rows all come from a single catalog in [`internal/providercatalog`](../../internal/providercatalog). Each in-tree adapter registers a factory via `registerBuiltin` in [`internal/dataplane`](../../internal/dataplane).
+
 ## Built-in types
 
 | Type | Chat | Stream | TTS | STT | Embedding | Image | Notes |
@@ -10,6 +12,7 @@ Gateway chat dispatch uses a **registry** of in-process adapters. The pipeline l
 | `anthropic` | yes | yes | no | no | no | no | Messages API → OpenAI-shaped responses/SSE |
 | `gemini` | yes | yes | no | no | no | no | `generateContent` / `streamGenerateContent` → OpenAI JSON/SSE |
 | `bedrock` | yes | yes | no | no | no | no | Bedrock **Converse** / **ConverseStream** (SigV4); tools + vision |
+| `elevenlabs` | no | no | yes | yes | no | no | TTS/STT via ElevenLabs API (`xi-api-key`); OpenAI audio dialect in, vendor wire out |
 | `openai_compatible` | yes | yes | yes | yes | yes | yes | Same wire protocol as OpenAI (incl. audio/embeddings/images if upstream supports it) |
 | `echo` | yes | no | no | no | no | no | **SDK extension** (`extensions/echo`) — no network; echoes last user message |
 
@@ -22,7 +25,7 @@ Capabilities (`chat`, `stream`, `tts`, `stt`, `embedding`, `image`) are stored o
 | `POST /openai/v1/chat/completions` (+ `/v1/...`) | `IRChatProvider.ChatIR` | `provider.type` |
 | `POST /anthropic/v1/messages` (+ `/v1/messages`) | same chat IR path | `provider.type` (any chat-capable provider) |
 | `POST /gemini/v1beta/models/{route}:...` | same chat IR path | `provider.type` (any chat-capable provider) |
-| `POST /openai/v1/audio/speech` / `transcriptions` (+ `/v1/audio/...`) | `AudioBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
+| `POST /openai/v1/audio/speech` / `transcriptions` (+ `/v1/audio/...`) | `AudioBackend` (via `AudioTransportProvider` or `OpenAITransportProvider`) | routed `provider.type` |
 | `POST /openai/v1/embeddings` (+ `/v1/embeddings`) | `EmbeddingsBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
 | `POST /openai/v1/images/generations` (+ `/v1/images/generations`) | `ImagesBackend` (via `OpenAITransportProvider`) | routed `provider.type` |
 
@@ -36,21 +39,23 @@ Adapters that do not implement the transport provider interface simply cannot se
 
 ## Adding a provider (in-tree)
 
-1. Implement `dataplane.IRChatProvider` (`Type`, `Capabilities`, `ChatIR`) on a `ChatProvider` registered in the registry.
-2. Register it in `dataplane.DefaultRegistry()` / `RegistryFromClients` (or your gateway bootstrap).
-   Outbound HTTP clients live in `internal/adapters/llm` and resolve keys via `adapters/secrets`.
-3. Prefer reusing [`internal/dataplane/openaichat`](../../internal/dataplane/openaichat) helpers for OpenAI-shaped JSON/SSE.
-4. Document the type, default `api_key_env`, and capabilities in this page.
-5. Optionally seed an inactive provider (no route) like `prov_ollama`.
+1. Implement the outbound client under [`internal/adapters/llm`](../../internal/adapters/llm) (and tests).
+2. Add a `providercatalog.Spec` in [`internal/providercatalog/builtins.go`](../../internal/providercatalog/builtins.go) (type, display name, default base URL / `api_key_env`, capabilities, `AuthMode`, `UIVisible`, `Seed`, optional `CatalogAlias` / `SeedRoute`).
+3. Register a factory with `registerBuiltin(type, factory)` in [`internal/dataplane/register_builtins.go`](../../internal/dataplane/register_builtins.go) (or a new `register_*.go` in the same package) that wraps the client as a `ChatProvider` / modality ports.
+4. Prefer reusing [`internal/dataplane/openaichat`](../../internal/dataplane/openaichat) helpers for OpenAI-shaped JSON/SSE.
+5. Optionally add curated model rows to [`internal/modelcatalog/catalog.json`](../../internal/modelcatalog/catalog.json) (pricing/context windows stay manual).
 
-You should **not** need to edit `callProviderIR` or add a new `switch` case in the pipeline.
+That single Spec + factory covers: gateway registry, capability/env defaults, auth rules (`AuthOptional` for empty `api_key_env`), UI presets (`GET /api/v1/platform/provider-types`), and local-dev seed rows.
+
+You should **not** need to edit `callProviderIR`, modality type allowlists, `Clients` structs, or hard-coded UI preset maps.
 
 ## Adding an extension (SDK)
 
 1. Implement [`sdk/provider.ChatProvider`](../../sdk/provider) in a package under [`extensions/`](../../extensions/) (or an external module).
-2. In [`cmd/gateway`](../../cmd/gateway), call `reg.RegisterSDK(your.New())` after `DefaultRegistry()`.
-3. Create a control-plane provider with matching `type` and a route (seed does this for `echo` → model `echo-demo`).
-4. Restart the gateway so the adapter is registered.
+2. Add a metadata-only Spec in `providercatalog/builtins.go` (no `registerBuiltin` factory).
+3. In [`cmd/gateway`](../../cmd/gateway), call `reg.RegisterSDK(your.New())` after `DefaultRegistry()`.
+4. Create a control-plane provider with matching `type` and a route (seed does this for `echo` → model `echo-demo`).
+5. Restart the gateway so the adapter is registered.
 
 Working example: [`extensions/echo`](../../extensions/echo) — verify with:
 
@@ -93,3 +98,12 @@ Example: [`extensions/grpcecho`](../../extensions/grpcecho).
 5. Call the route through the OpenAI-compatible `/openai/v1/chat/completions` (or `/v1/chat/completions`) interface. Anthropic and Gemini client dialects can also target the same route.
 
 Vision inputs to Bedrock require **inline base64** image bytes (URL-only images are rejected).
+
+## Example: ElevenLabs (TTS / STT)
+
+1. Create provider type `elevenlabs`, base URL `https://api.elevenlabs.io`, env `ELEVENLABS_API_KEY`.
+2. Add a TTS route, e.g. requested model `eleven-tts` → target `eleven_multilingual_v2` (or `eleven_turbo_v2_5` / `eleven_flash_v2_5`).
+3. Call OpenAI-shaped `POST /v1/audio/speech` with `"model":"eleven-tts"`. Optional `"voice"` may be an ElevenLabs voice id; OpenAI voice names map to a default voice.
+4. For STT, route target `scribe_v2` and call `POST /v1/audio/transcriptions` (multipart `model` + `file`).
+
+The gateway keeps the OpenAI client dialect and translates to ElevenLabs `/v1/text-to-speech/{voice_id}` and `/v1/speech-to-text`.

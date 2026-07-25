@@ -29,7 +29,27 @@
     "input_cost_per_character": 0.00003,
     "supports_streaming": false
   },
+  "elevenlabs/eleven_multilingual_v2": {
+    "mode": "audio_speech",
+    "input_cost_per_character": 0.00018,
+    "supports_streaming": false
+  },
+  "elevenlabs/eleven_turbo_v2_5": {
+    "mode": "audio_speech",
+    "input_cost_per_character": 0.0001,
+    "supports_streaming": false
+  },
+  "elevenlabs/eleven_flash_v2_5": {
+    "mode": "audio_speech",
+    "input_cost_per_character": 0.00008,
+    "supports_streaming": false
+  },
   "openai/whisper-1": {
+    "mode": "audio_transcription",
+    "input_cost_per_second": 0.0001,
+    "supports_streaming": false
+  },
+  "elevenlabs/scribe_v2": {
     "mode": "audio_transcription",
     "input_cost_per_second": 0.0001,
     "supports_streaming": false

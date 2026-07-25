@@ -106,16 +106,20 @@ See [Observability](observability.md) for OTLP / Prometheus / local Grafana (`ma
 
 Provider rows store an **environment variable name** (`api_key_env`), not the secret. The gateway resolves secrets at runtime via `os.Getenv`.
 
+Default env names come from the provider-type catalog (`internal/providercatalog`). Typical values:
+
 | Typical env var | Default for provider type | When needed |
 |-----------------|---------------------------|-------------|
 | `OPENAI_API_KEY` | `openai` | OpenAI / compatible routes |
 | `ANTHROPIC_API_KEY` | `anthropic` | Anthropic routes |
 | `GEMINI_API_KEY` | `gemini` | Gemini routes |
 | `OLLAMA_API_KEY` | `openai_compatible` | Any non-empty value if the backend ignores auth |
+| `ELEVENLABS_API_KEY` | `elevenlabs` | ElevenLabs TTS/STT routes |
+| _(empty)_ | `bedrock` | Uses AWS default credential chain when unset |
 | `ECHO_UNUSED` | `echo` | Echo extension (unused) |
 | *custom* | whatever you set on the provider | Must exist in the **gateway** environment |
 
-You can rename `api_key_env` per provider in the UI/API; inject that exact name into the gateway container/process.
+You can rename `api_key_env` per provider in the UI/API; inject that exact name into the gateway container/process. List catalog defaults via `GET /api/v1/platform/provider-types`.
 
 ---
 

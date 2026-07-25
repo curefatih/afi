@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PlusIcon, RouteIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { modelCatalogQueryOptions } from "#/api/model-catalog";
 import {
 	orgDefaultRetryQueryOptions,
 	orgMembersQueryOptions,
@@ -170,8 +171,33 @@ function RouteComponent() {
 	const providerList = providers.data ?? [];
 	const routeList = routes.data ?? [];
 	const selectedProvider = providerId || providerList[0]?.id || "";
+	const selectedProviderType =
+		providerList.find((p) => p.id === selectedProvider)?.type ?? "";
+	const catalog = useQuery({
+		...modelCatalogQueryOptions(selectedProviderType || undefined),
+		enabled: !!selectedProviderType,
+	});
+	const catalogModels = catalog.data ?? [];
+	const editProviderType =
+		providerList.find((p) => p.id === editProviderId)?.type ?? "";
+	const editCatalog = useQuery({
+		...modelCatalogQueryOptions(editProviderType || undefined),
+		enabled: !!edit && !!editProviderType,
+	});
+	const editCatalogModels = editCatalog.data ?? [];
 	const providerName = (id: string) =>
 		providerList.find((p) => p.id === id)?.name ?? id;
+
+	const applyCatalogModel = (id: string) => {
+		if (!id) return;
+		setModel(id);
+		setTargetModel(id);
+	};
+	const applyEditCatalogModel = (id: string) => {
+		if (!id) return;
+		setEditModel(id);
+		setEditTargetModel(id);
+	};
 
 	const canAddRoute = isOrgAdmin && !!orgId && providerList.length > 0;
 
@@ -386,24 +412,6 @@ function RouteComponent() {
 						}}
 					>
 						<div className="space-y-1">
-							<Label htmlFor="route-model">Requested model</Label>
-							<Input
-								id="route-model"
-								value={model}
-								onChange={(e) => setModel(e.target.value)}
-								required
-							/>
-						</div>
-						<div className="space-y-1">
-							<Label htmlFor="route-target">Target model</Label>
-							<Input
-								id="route-target"
-								value={targetModel}
-								onChange={(e) => setTargetModel(e.target.value)}
-								placeholder={model}
-							/>
-						</div>
-						<div className="space-y-1">
 							<Label>Provider</Label>
 							<Select
 								value={selectedProvider}
@@ -420,6 +428,56 @@ function RouteComponent() {
 									))}
 								</SelectContent>
 							</Select>
+						</div>
+						{catalogModels.length > 0 ? (
+							<div className="space-y-1">
+								<Label>Catalog model</Label>
+								<Select
+									value={
+										catalogModels.some((m) => m.id === targetModel)
+											? targetModel
+											: ""
+									}
+									onValueChange={(v) => applyCatalogModel(v ?? "")}
+								>
+									<SelectTrigger className="w-full">
+										<SelectValue placeholder="Pick a curated model…" />
+									</SelectTrigger>
+									<SelectContent>
+										{catalogModels.map((m) => (
+											<SelectItem key={m.id} value={m.id}>
+												{m.id}
+												<span className="text-muted-foreground">
+													{" "}
+													· {m.mode}
+												</span>
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<p className="text-muted-foreground text-xs">
+									Suggestions for {selectedProviderType}. You can still type any
+									requested / target model below.
+								</p>
+							</div>
+						) : null}
+						<div className="space-y-1">
+							<Label htmlFor="route-model">Requested model</Label>
+							<Input
+								id="route-model"
+								value={model}
+								onChange={(e) => setModel(e.target.value)}
+								required
+							/>
+						</div>
+						<div className="space-y-1">
+							<Label htmlFor="route-target">Target model</Label>
+							<Input
+								id="route-target"
+								value={targetModel}
+								onChange={(e) => setTargetModel(e.target.value)}
+								placeholder={model}
+							/>
 						</div>
 						<div className="space-y-1">
 							<Label>Routing strategy</Label>
@@ -543,24 +601,6 @@ function RouteComponent() {
 							}}
 						>
 							<div className="space-y-1">
-								<Label htmlFor="edit-route-model">Requested model</Label>
-								<Input
-									id="edit-route-model"
-									value={editModel}
-									onChange={(e) => setEditModel(e.target.value)}
-									required
-								/>
-							</div>
-							<div className="space-y-1">
-								<Label htmlFor="edit-route-target">Target model</Label>
-								<Input
-									id="edit-route-target"
-									value={editTargetModel}
-									onChange={(e) => setEditTargetModel(e.target.value)}
-									placeholder={editModel}
-								/>
-							</div>
-							<div className="space-y-1">
 								<Label>Provider</Label>
 								<Select
 									value={editProviderId}
@@ -577,6 +617,52 @@ function RouteComponent() {
 										))}
 									</SelectContent>
 								</Select>
+							</div>
+							{editCatalogModels.length > 0 ? (
+								<div className="space-y-1">
+									<Label>Catalog model</Label>
+									<Select
+										value={
+											editCatalogModels.some((m) => m.id === editTargetModel)
+												? editTargetModel
+												: ""
+										}
+										onValueChange={(v) => applyEditCatalogModel(v ?? "")}
+									>
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Pick a curated model…" />
+										</SelectTrigger>
+										<SelectContent>
+											{editCatalogModels.map((m) => (
+												<SelectItem key={m.id} value={m.id}>
+													{m.id}
+													<span className="text-muted-foreground">
+														{" "}
+														· {m.mode}
+													</span>
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							) : null}
+							<div className="space-y-1">
+								<Label htmlFor="edit-route-model">Requested model</Label>
+								<Input
+									id="edit-route-model"
+									value={editModel}
+									onChange={(e) => setEditModel(e.target.value)}
+									required
+								/>
+							</div>
+							<div className="space-y-1">
+								<Label htmlFor="edit-route-target">Target model</Label>
+								<Input
+									id="edit-route-target"
+									value={editTargetModel}
+									onChange={(e) => setEditTargetModel(e.target.value)}
+									placeholder={editModel}
+								/>
 							</div>
 							<div className="space-y-1">
 								<Label>Routing strategy</Label>
