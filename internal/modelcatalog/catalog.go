@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"sync"
+
+	"github.com/curefatih/afi/internal/providercatalog"
 )
 
 // Mode values align with LiteLLM model_prices_and_context_window.json.
@@ -73,12 +75,7 @@ func Lookup(providerType, model string) (Entry, bool) {
 }
 
 func providerAliases(providerType string) []string {
-	switch providerType {
-	case "openai_compatible":
-		return []string{"openai"}
-	default:
-		return nil
-	}
+	return providercatalog.CatalogAliases(providerType)
 }
 
 // IsChat reports whether the entry is a chat/completions model.

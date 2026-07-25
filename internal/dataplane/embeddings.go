@@ -24,8 +24,15 @@ func modelLooksLikeEmbedding(requested, target string) bool {
 	return false
 }
 
-func embeddingsOpenAICompatible(typ string) bool {
-	return typ == "openai" || typ == "openai_compatible"
+func embeddingsProviderUsable(p *Pipeline, typ string, caps snapshot.ProviderCapabilities) bool {
+	if !caps.Embedding {
+		return false
+	}
+	if p == nil || p.Providers == nil {
+		return false
+	}
+	_, ok := p.Providers.EmbeddingsBackend(typ)
+	return ok
 }
 
 func (p *Pipeline) handleEmbeddings(w http.ResponseWriter, r *http.Request) {
@@ -95,10 +102,10 @@ func (p *Pipeline) handleEmbeddings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	caps := snapshot.NormalizeCapabilities(provider.Type, provider.Capabilities)
-	if !embeddingsOpenAICompatible(provider.Type) || !caps.Embedding {
+	if !embeddingsProviderUsable(p, provider.Type, caps) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": map[string]string{
-				"message": "embeddings require an openai or openai_compatible provider with embedding capability",
+				"message": "embeddings require a provider with embedding capability and an embeddings backend",
 				"type":    "invalid_request_error",
 			},
 		})

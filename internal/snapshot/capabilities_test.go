@@ -55,4 +55,15 @@ func TestDefaultAPIKeyEnv(t *testing.T) {
 	if DefaultAPIKeyEnv("elevenlabs") != "ELEVENLABS_API_KEY" {
 		t.Fatal(DefaultAPIKeyEnv("elevenlabs"))
 	}
+	if DefaultAPIKeyEnv("bedrock") != "" {
+		t.Fatalf("bedrock default env should be empty, got %q", DefaultAPIKeyEnv("bedrock"))
+	}
+}
+
+func TestDefaultCapabilitiesBedrock(t *testing.T) {
+	t.Parallel()
+	b := DefaultCapabilities("bedrock")
+	if !b.Chat || !b.Stream || b.TTS || b.Embedding {
+		t.Fatalf("bedrock=%+v", b)
+	}
 }

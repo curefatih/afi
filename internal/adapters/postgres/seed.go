@@ -2,9 +2,12 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/curefatih/afi/internal/providercatalog"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -31,27 +34,23 @@ func (w *SeedWriter) ProviderExists(ctx context.Context, providerID string) (boo
 
 // UpsertEchoExtension upserts the echo provider + echo-demo route for an org.
 func (w *SeedWriter) UpsertEchoExtension(ctx context.Context, orgID string, now time.Time) error {
-	_, err := w.Pool.Exec(ctx, `
-		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, capabilities, created_at)
-		VALUES ($1, $2, $3, 'echo', $4, $5, $6::jsonb, $7)
-		ON CONFLICT (id) DO UPDATE SET
-			base_url = EXCLUDED.base_url,
-			api_key_env = EXCLUDED.api_key_env,
-			name = EXCLUDED.name,
-			type = EXCLUDED.type,
-			capabilities = EXCLUDED.capabilities
-	`, "prov_echo", orgID, "Echo (extension)", "http://localhost/echo", "ECHO_UNUSED",
-		`{"chat":true,"stream":false,"tts":false,"stt":false}`, now)
-	if err != nil {
+	spec, ok := providercatalog.Lookup("echo")
+	if !ok {
+		return fmt.Errorf("echo provider type not in catalog")
+	}
+	if err := upsertCatalogProvider(ctx, w.Pool, orgID, now, spec, spec.SeedProviderID(), spec.DefaultBaseURL, spec.DefaultAPIKeyEnv); err != nil {
 		return fmt.Errorf("ensure echo provider: %w", err)
 	}
-	_, err = w.Pool.Exec(ctx, `
+	if spec.SeedRoute == nil {
+		return nil
+	}
+	_, err := w.Pool.Exec(ctx, `
 		INSERT INTO routes (id, organization_id, model, provider_id, target_model, created_at)
-		VALUES ($1, $2, $3, $4, $3, $5)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (organization_id, model) DO UPDATE SET
 			provider_id = EXCLUDED.provider_id,
 			target_model = EXCLUDED.target_model
-	`, "route_echo", orgID, "echo-demo", "prov_echo", now)
+	`, spec.SeedRoute.ID, orgID, spec.SeedRoute.Model, spec.SeedProviderID(), spec.SeedRoute.TargetModel, now)
 	if err != nil {
 		return fmt.Errorf("ensure echo route: %w", err)
 	}
@@ -170,78 +169,30 @@ func (w *SeedWriter) SeedLocalDev(ctx context.Context, s LocalDevSeed) error {
 		return fmt.Errorf("project: %w", err)
 	}
 
-	_, err = tx.Exec(ctx, `
-		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, created_at)
-		VALUES ($1, $2, $3, 'openai', $4, $5, $6)
-		ON CONFLICT (id) DO UPDATE SET
-			base_url = EXCLUDED.base_url,
-			api_key_env = EXCLUDED.api_key_env,
-			name = EXCLUDED.name
-	`, s.ProviderID, s.OrgID, "OpenAI", s.OpenAIBaseURL, s.OpenAIAPIKeyEnv, s.Now)
-	if err != nil {
-		return fmt.Errorf("provider: %w", err)
-	}
-
-	_, err = tx.Exec(ctx, `
-		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, created_at)
-		VALUES ($1, $2, $3, 'anthropic', $4, $5, $6)
-		ON CONFLICT (id) DO UPDATE SET
-			base_url = EXCLUDED.base_url,
-			api_key_env = EXCLUDED.api_key_env,
-			name = EXCLUDED.name
-	`, "prov_anthropic", s.OrgID, "Anthropic", "https://api.anthropic.com/v1", "ANTHROPIC_API_KEY", s.Now)
-	if err != nil {
-		return fmt.Errorf("anthropic provider: %w", err)
-	}
-
-	_, err = tx.Exec(ctx, `
-		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, created_at)
-		VALUES ($1, $2, $3, 'gemini', $4, $5, $6)
-		ON CONFLICT (id) DO UPDATE SET
-			base_url = EXCLUDED.base_url,
-			api_key_env = EXCLUDED.api_key_env,
-			name = EXCLUDED.name
-	`, "prov_gemini", s.OrgID, "Gemini", "https://generativelanguage.googleapis.com/v1beta", "GEMINI_API_KEY", s.Now)
-	if err != nil {
-		return fmt.Errorf("gemini provider: %w", err)
-	}
-
-	_, err = tx.Exec(ctx, `
-		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, created_at)
-		VALUES ($1, $2, $3, 'openai_compatible', $4, $5, $6)
-		ON CONFLICT (id) DO UPDATE SET
-			base_url = EXCLUDED.base_url,
-			api_key_env = EXCLUDED.api_key_env,
-			name = EXCLUDED.name,
-			type = EXCLUDED.type
-	`, "prov_ollama", s.OrgID, "Ollama (compatible)", "http://127.0.0.1:11434/v1", "OLLAMA_API_KEY", s.Now)
-	if err != nil {
-		return fmt.Errorf("ollama provider: %w", err)
-	}
-
-	_, err = tx.Exec(ctx, `
-		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, capabilities, created_at)
-		VALUES ($1, $2, $3, 'echo', $4, $5, $6::jsonb, $7)
-		ON CONFLICT (id) DO UPDATE SET
-			base_url = EXCLUDED.base_url,
-			api_key_env = EXCLUDED.api_key_env,
-			name = EXCLUDED.name,
-			type = EXCLUDED.type,
-			capabilities = EXCLUDED.capabilities
-	`, "prov_echo", s.OrgID, "Echo (extension)", "http://localhost/echo", "ECHO_UNUSED",
-		`{"chat":true,"stream":false,"tts":false,"stt":false}`, s.Now)
-	if err != nil {
-		return fmt.Errorf("echo provider: %w", err)
-	}
-	_, err = tx.Exec(ctx, `
-		INSERT INTO routes (id, organization_id, model, provider_id, target_model, created_at)
-		VALUES ($1, $2, $3, $4, $3, $5)
-		ON CONFLICT (organization_id, model) DO UPDATE SET
-			provider_id = EXCLUDED.provider_id,
-			target_model = EXCLUDED.target_model
-	`, "route_echo", s.OrgID, "echo-demo", "prov_echo", s.Now)
-	if err != nil {
-		return fmt.Errorf("echo route: %w", err)
+	for _, spec := range providercatalog.Seedable() {
+		id := spec.SeedProviderID()
+		baseURL := spec.DefaultBaseURL
+		apiKeyEnv := spec.DefaultAPIKeyEnv
+		if spec.Type == "openai" {
+			id = s.ProviderID
+			baseURL = s.OpenAIBaseURL
+			apiKeyEnv = s.OpenAIAPIKeyEnv
+		}
+		if err := upsertCatalogProviderTx(ctx, tx, s.OrgID, s.Now, spec, id, baseURL, apiKeyEnv); err != nil {
+			return fmt.Errorf("provider %s: %w", spec.Type, err)
+		}
+		if spec.SeedRoute != nil {
+			_, err = tx.Exec(ctx, `
+				INSERT INTO routes (id, organization_id, model, provider_id, target_model, created_at)
+				VALUES ($1, $2, $3, $4, $5, $6)
+				ON CONFLICT (organization_id, model) DO UPDATE SET
+					provider_id = EXCLUDED.provider_id,
+					target_model = EXCLUDED.target_model
+			`, spec.SeedRoute.ID, s.OrgID, spec.SeedRoute.Model, id, spec.SeedRoute.TargetModel, s.Now)
+			if err != nil {
+				return fmt.Errorf("%s route: %w", spec.Type, err)
+			}
+		}
 	}
 
 	_, err = tx.Exec(ctx, `
@@ -286,4 +237,38 @@ func (w *SeedWriter) SeedLocalDev(ctx context.Context, s LocalDevSeed) error {
 	}
 
 	return tx.Commit(ctx)
+}
+
+func capsJSON(c providercatalog.Capabilities) (string, error) {
+	b, err := json.Marshal(c)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+type seedExecer interface {
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+}
+
+func upsertCatalogProvider(ctx context.Context, db seedExecer, orgID string, now time.Time, spec providercatalog.Spec, id, baseURL, apiKeyEnv string) error {
+	return upsertCatalogProviderTx(ctx, db, orgID, now, spec, id, baseURL, apiKeyEnv)
+}
+
+func upsertCatalogProviderTx(ctx context.Context, db seedExecer, orgID string, now time.Time, spec providercatalog.Spec, id, baseURL, apiKeyEnv string) error {
+	caps, err := capsJSON(spec.Capabilities)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(ctx, `
+		INSERT INTO providers (id, organization_id, name, type, base_url, api_key_env, capabilities, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
+		ON CONFLICT (id) DO UPDATE SET
+			base_url = EXCLUDED.base_url,
+			api_key_env = EXCLUDED.api_key_env,
+			name = EXCLUDED.name,
+			type = EXCLUDED.type,
+			capabilities = EXCLUDED.capabilities
+	`, id, orgID, spec.DisplayName, spec.Type, baseURL, apiKeyEnv, caps, now)
+	return err
 }

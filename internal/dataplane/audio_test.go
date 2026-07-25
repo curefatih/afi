@@ -77,11 +77,8 @@ func TestAudioSpeechViaOpenAICompatibleType(t *testing.T) {
 	t.Cleanup(upstream.Close)
 
 	t.Setenv("OLLAMA_API_KEY", "x")
-	c := llm.NewClients(nil)
-	c.OpenAICompatible = llm.NewOpenAIClient(nil)
-	c.OpenAICompatible.HTTP = upstream.Client()
-	// Leave OpenAI unset so resolution must use openai_compatible by route type.
-	c.OpenAI = nil
+	compat := llm.NewOpenAIClient(nil)
+	compat.HTTP = upstream.Client()
 
 	raw := "sk-compat-audio"
 	holder := NewHolder()
@@ -100,7 +97,8 @@ func TestAudioSpeechViaOpenAICompatibleType(t *testing.T) {
 		}},
 	}))
 
-	reg := RegistryFromClients(c)
+	reg := DefaultRegistry()
+	reg.Register(newOpenAIChatProvider("openai_compatible", compat, providerCapsFromSpec("openai_compatible")))
 	p := NewPipelineWithRegistry(holder, reg, slog.Default())
 	req := httptest.NewRequest(http.MethodPost, "/v1/audio/speech", bytes.NewBufferString(
 		`{"model":"tts-1","input":"hi","voice":"alloy"}`,
@@ -188,9 +186,8 @@ func TestAudioSpeechElevenLabs(t *testing.T) {
 	t.Cleanup(upstream.Close)
 
 	t.Setenv("ELEVENLABS_API_KEY", "el-gateway")
-	c := llm.NewClients(nil)
-	c.ElevenLabs = llm.NewElevenLabsClient(nil)
-	c.ElevenLabs.HTTP = upstream.Client()
+	el := llm.NewElevenLabsClient(nil)
+	el.HTTP = upstream.Client()
 
 	raw := "sk-eleven-audio"
 	holder := NewHolder()
@@ -209,7 +206,9 @@ func TestAudioSpeechElevenLabs(t *testing.T) {
 		}},
 	}))
 
-	p := NewPipelineWithRegistry(holder, RegistryFromClients(c), slog.Default())
+	reg := DefaultRegistry()
+	reg.Register(newElevenLabsProvider(el))
+	p := NewPipelineWithRegistry(holder, reg, slog.Default())
 	req := httptest.NewRequest(http.MethodPost, "/v1/audio/speech", bytes.NewBufferString(
 		`{"model":"eleven-tts","input":"hello eleven","voice":"alloy"}`,
 	))

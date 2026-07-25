@@ -19,6 +19,7 @@ type ProviderCaps struct {
 	TTS       bool
 	STT       bool
 	Embedding bool
+	Image     bool
 }
 
 // ChatProvider is the in-process adapter contract for gateway chat HTTP transport.
@@ -67,33 +68,24 @@ func (r *Registry) Types() []string {
 	return out
 }
 
-// DefaultRegistry registers built-in OpenAI, Anthropic, Gemini, and openai_compatible adapters.
+// DefaultRegistry registers all in-tree adapters via registerBuiltin factories.
 func DefaultRegistry() *Registry {
-	return RegistryFromClients(llm.NewClients(secrets.Default()))
+	return buildBuiltinRegistry(secrets.Default())
 }
 
-// RegistryFromClients wires ChatProvider adapters over outbound LLM clients.
-func RegistryFromClients(c *llm.Clients) *Registry {
-	if c == nil {
-		c = llm.NewClients(nil)
-	}
-	return NewRegistry().
-		Register(newOpenAIChatProvider("openai", c.OpenAI, ProviderCaps{Chat: true, Stream: true, TTS: true, STT: true, Embedding: true})).
-		Register(newOpenAIChatProvider("openai_compatible", c.OpenAICompatible, ProviderCaps{Chat: true, Stream: true, TTS: true, STT: true, Embedding: true})).
-		Register(newAnthropicChatProvider(c.Anthropic)).
-		Register(newGeminiChatProvider(c.Gemini)).
-		Register(newBedrockChatProvider(c.Bedrock)).
-		Register(newElevenLabsProvider(c.ElevenLabs))
+// RegistryWithSecrets builds the builtin registry with a custom secret resolver.
+func RegistryWithSecrets(sec secrets.Resolver) *Registry {
+	return buildBuiltinRegistry(sec)
 }
 
 // RegistryWithOpenAI builds DefaultRegistry but uses the given OpenAI client for type "openai"
 // (tests inject mock HTTP transports).
 func RegistryWithOpenAI(openai *llm.OpenAIClient) *Registry {
-	c := llm.NewClients(nil)
+	reg := DefaultRegistry()
 	if openai != nil {
-		c.OpenAI = openai
+		reg.Register(newOpenAIChatProvider("openai", openai, providerCapsFromSpec("openai")))
 	}
-	return RegistryFromClients(c)
+	return reg
 }
 
 type openaiChatProvider struct {
@@ -134,7 +126,7 @@ func newAnthropicChatProvider(client *llm.AnthropicClient) *anthropicChatProvide
 
 func (p *anthropicChatProvider) Type() string { return "anthropic" }
 func (p *anthropicChatProvider) Capabilities() ProviderCaps {
-	return ProviderCaps{Chat: true, Stream: true}
+	return providerCapsFromSpec("anthropic")
 }
 
 func (p *anthropicChatProvider) Chat(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
@@ -162,7 +154,7 @@ func newGeminiChatProvider(client *llm.GeminiClient) *geminiChatProvider {
 
 func (p *geminiChatProvider) Type() string { return "gemini" }
 func (p *geminiChatProvider) Capabilities() ProviderCaps {
-	return ProviderCaps{Chat: true, Stream: true}
+	return providerCapsFromSpec("gemini")
 }
 
 func (p *geminiChatProvider) Chat(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
@@ -183,7 +175,7 @@ func newBedrockChatProvider(client *llm.BedrockClient) *bedrockChatProvider {
 
 func (p *bedrockChatProvider) Type() string { return "bedrock" }
 func (p *bedrockChatProvider) Capabilities() ProviderCaps {
-	return ProviderCaps{Chat: true, Stream: true}
+	return providerCapsFromSpec("bedrock")
 }
 
 func (p *bedrockChatProvider) Chat(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {
@@ -204,7 +196,7 @@ func newElevenLabsProvider(client *llm.ElevenLabsClient) *elevenLabsProvider {
 
 func (p *elevenLabsProvider) Type() string { return "elevenlabs" }
 func (p *elevenLabsProvider) Capabilities() ProviderCaps {
-	return ProviderCaps{TTS: true, STT: true}
+	return providerCapsFromSpec("elevenlabs")
 }
 
 func (p *elevenLabsProvider) Chat(ctx context.Context, provider snapshot.Provider, targetModel string, body []byte, stream bool) (*http.Response, error) {

@@ -65,7 +65,11 @@ func (s *Server) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 	if body.APIKeyEnv == "" {
 		body.APIKeyEnv = snapshot.DefaultAPIKeyEnv(body.Type)
 	}
-	p, err := s.app.CreateProvider(r.Context(), r.PathValue("orgID"), body.Name, body.Type, body.BaseURL, body.APIKeyEnv, body.Capabilities)
+	caps := body.Capabilities
+	if !caps.Chat && !caps.Stream && !caps.TTS && !caps.STT && !caps.Embedding && !caps.Image {
+		caps = snapshot.DefaultCapabilities(body.Type)
+	}
+	p, err := s.app.CreateProvider(r.Context(), r.PathValue("orgID"), body.Name, body.Type, body.BaseURL, body.APIKeyEnv, caps)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return

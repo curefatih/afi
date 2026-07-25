@@ -17,6 +17,7 @@ import (
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/modelcatalog"
 	"github.com/curefatih/afi/internal/policy"
+	"github.com/curefatih/afi/internal/providercatalog"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/telemetry"
 	"github.com/curefatih/afi/internal/usage"
@@ -290,6 +291,7 @@ func modelListItem(virtualModel, targetModel, providerType string, caps snapshot
 		"id":                 virtualModel,
 		"object":             "model",
 		"owned_by":           "afi",
+		"provider_type":      providerType,
 		"mode":               mode,
 		"supports_streaming": stream,
 		"supports_tts":       tts,
@@ -371,8 +373,8 @@ func (p *Pipeline) bindProviderSecret(ctx context.Context, snap *snapshot.Snapsh
 		}
 	}
 	if strings.TrimSpace(provider.APIKeyEnv) == "" {
-		if provider.Type == "bedrock" {
-			// Empty api_key_env means the Bedrock adapter uses the AWS default credential chain.
+		if providercatalog.AllowsEmptyAPIKey(provider.Type) {
+			// AuthOptional types (e.g. Bedrock) use a vendor default credential chain.
 			return provider, "", nil
 		}
 		return provider, "", fmt.Errorf("no credential assigned for provider type %q and no api_key_env fallback", provider.Type)

@@ -1,5 +1,9 @@
 package snapshot
 
+import (
+	"github.com/curefatih/afi/internal/providercatalog"
+)
+
 // ProviderCapabilities describes what a provider adapter can do.
 type ProviderCapabilities struct {
 	Chat      bool `json:"chat"`
@@ -12,19 +16,11 @@ type ProviderCapabilities struct {
 
 // DefaultCapabilities returns catalog defaults for a provider type.
 func DefaultCapabilities(typ string) ProviderCapabilities {
-	switch typ {
-	case "openai", "openai_compatible":
-		return ProviderCapabilities{Chat: true, Stream: true, TTS: true, STT: true, Embedding: true, Image: true}
-	case "echo":
-		return ProviderCapabilities{Chat: true, Stream: false}
-	case "bedrock":
-		return ProviderCapabilities{Chat: true, Stream: true}
-	case "elevenlabs":
-		return ProviderCapabilities{TTS: true, STT: true}
-	default:
-		// anthropic, gemini, …
-		return ProviderCapabilities{Chat: true, Stream: true}
+	if s, ok := providercatalog.Lookup(typ); ok {
+		return capsFromCatalog(s.Capabilities)
 	}
+	// Unknown types default to chat+stream (historical behavior for anthropic/gemini-like).
+	return ProviderCapabilities{Chat: true, Stream: true}
 }
 
 // NormalizeCapabilities fills empty capabilities from the type catalog.
@@ -50,23 +46,15 @@ func NormalizeCapabilities(typ string, c ProviderCapabilities) ProviderCapabilit
 
 // DefaultAPIKeyEnv returns the usual env var name for a provider type.
 func DefaultAPIKeyEnv(typ string) string {
-	switch typ {
-	case "anthropic":
-		return "ANTHROPIC_API_KEY"
-	case "gemini":
-		return "GEMINI_API_KEY"
-	case "openai_compatible":
-		return "OLLAMA_API_KEY"
-	case "echo":
-		return "ECHO_UNUSED"
-	case "bedrock":
-		// Empty means the Bedrock adapter uses the AWS default credential chain
-		// (env / instance profile / IRSA). Static keys use accessKey:secret[:token]
-		// via api_key_env or BYOK when configured.
-		return ""
-	case "elevenlabs":
-		return "ELEVENLABS_API_KEY"
-	default:
-		return "OPENAI_API_KEY"
+	if s, ok := providercatalog.Lookup(typ); ok {
+		return s.DefaultAPIKeyEnv
+	}
+	return "OPENAI_API_KEY"
+}
+
+func capsFromCatalog(c providercatalog.Capabilities) ProviderCapabilities {
+	return ProviderCapabilities{
+		Chat: c.Chat, Stream: c.Stream, TTS: c.TTS, STT: c.STT,
+		Embedding: c.Embedding, Image: c.Image,
 	}
 }
