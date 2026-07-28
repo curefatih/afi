@@ -12,8 +12,12 @@
 #   SKIP_PUBLISH=1  — build only (implies no npm publish)
 #   COMMIT_BUMP=1   — commit package.json version changes (CI)
 #   VERSION         — explicit version to publish (skips auto-bump)
-#   NODE_AUTH_TOKEN — npm auth token (required to publish)
+#   NODE_AUTH_TOKEN — npm token fallback (granular + Bypass 2FA). Optional when
+#                     GitHub Actions OIDC trusted publishing is configured.
+#   NPM_TRUSTED_PUBLISHING=1 — prefer OIDC; unset NODE_AUTH_TOKEN for publish
+#                              so a bad classic token cannot force E403.
 set -euo pipefail
+
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=semver.sh
@@ -89,13 +93,32 @@ if [[ "${DRY_RUN}" == "1" || "${SKIP_PUBLISH}" == "1" ]]; then
   exit 0
 fi
 
-if [[ -z "${NODE_AUTH_TOKEN:-}" && -z "${NPM_TOKEN:-}" ]]; then
-  echo "ERROR: set NODE_AUTH_TOKEN (or NPM_TOKEN) to publish" >&2
+# GitHub Actions exposes ACTIONS_ID_TOKEN_REQUEST_URL when id-token: write is set.
+oidc_ready=0
+if [[ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" && -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]]; then
+  oidc_ready=1
+fi
+
+if [[ "${NPM_TRUSTED_PUBLISHING:-0}" == "1" && "${oidc_ready}" == "1" ]]; then
+  # Avoid classic-token E403: npm prefers OIDC when the env is present and no
+  # NODE_AUTH_TOKEN is forcing token auth.
+  unset NODE_AUTH_TOKEN NPM_TOKEN || true
+  echo "==> Publish ${PKG_NAME}@${next_v} (OIDC trusted publishing)"
+elif [[ -n "${NODE_AUTH_TOKEN:-}" || -n "${NPM_TOKEN:-}" ]]; then
+  export NODE_AUTH_TOKEN="${NODE_AUTH_TOKEN:-${NPM_TOKEN}}"
+  echo "==> Publish ${PKG_NAME}@${next_v} (token)"
+else
+  echo "ERROR: set NODE_AUTH_TOKEN (granular access token with Bypass 2FA)," >&2
+  echo "       or configure npm Trusted Publisher + id-token: write for OIDC." >&2
   exit 1
 fi
-export NODE_AUTH_TOKEN="${NODE_AUTH_TOKEN:-${NPM_TOKEN}}"
 
-echo "==> Publish ${PKG_NAME}@${next_v}"
+npm_major="$(npm --version | cut -d. -f1)"
+if [[ "${oidc_ready}" == "1" && "${npm_major}" -lt 11 ]]; then
+  echo "ERROR: npm $(npm --version) is too old for trusted publishing (need >= 11.5.1)" >&2
+  exit 1
+fi
+
 npm publish --access public
 
 if [[ "${COMMIT_BUMP}" == "1" ]]; then
