@@ -211,7 +211,7 @@ export function CreateSigningKeySheet({
 										onBlur={field.handleBlur}
 									/>
 									<p className="text-muted-foreground text-xs">
-										Sent as the X-AFI-Key-Id header on signed requests.
+										Used as the RFC 9421 signature keyid parameter.
 									</p>
 									{!field.state.meta.isValid ? (
 										<FieldError errors={field.state.meta.errors} />

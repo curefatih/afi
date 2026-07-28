@@ -109,7 +109,7 @@ function RouteComponent() {
 			<PageHeader
 				title="Signing Keys"
 				description="Register Ed25519 public keys for signed gateway requests."
-				info="Services sign each request with their private key and send X-AFI-* headers. This is an alternative to virtual API keys."
+				info="Services authenticate with RFC 9421 HTTP Message Signatures (Signature / Signature-Input / Content-Digest). This is an alternative to virtual API keys."
 				actions={
 					isOrgAdmin ? (
 						<Button onClick={() => setCreateOpen(true)} disabled={!orgId}>
