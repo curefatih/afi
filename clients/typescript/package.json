@@ -15,10 +15,10 @@
     "dist",
     "src"
   ],
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "test": "node --experimental-strip-types --test src/client.test.ts"
-  },
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"test": "node --experimental-strip-types --test src/client.test.ts src/httpsign.test.ts"
+	},
   "devDependencies": {
     "typescript": "^5.8.2"
   },

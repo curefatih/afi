@@ -10,3 +10,11 @@ Thin clients generated / maintained against [`../api/openapi/platform.openapi.ya
 These are **not** the in-process extension SDKs under [`../sdk/`](../sdk/).
 
 Gateway callers should keep using official OpenAI / Anthropic / MCP / A2A SDKs with the gateway base URL — see [`../api/openapi/gateway.openapi.yaml`](../api/openapi/gateway.openapi.yaml).
+
+For **signed-request auth** (RFC 9421) instead of a virtual API key, use the shared helpers:
+
+| Language | Helper |
+| -------- | ------ |
+| Go | [`../sdk/httpsign`](../sdk/httpsign) — `SignRequest`, `Client` |
+| Python | `afi_platform.sign_headers` |
+| TypeScript | `signHeaders` from `@afi-ai/platform-client` |
