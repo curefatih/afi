@@ -51,7 +51,7 @@ docs/                 # Public docs content (Markdown)
 docs-site/            # Astro Starlight site that renders docs/
 Dockerfile            # Multi-stage Go service image (AFI_SERVICE=…)
 Dockerfile.web        # Vite build + nginx
-scripts/              # verify-local, deploy-*, build-release, proto-gen
+scripts/              # verify-local, deploy-*, build-release, release-client-*, proto-gen
 ```
 
 Platform events (bus + durable outbox): [Platform domain events](platform-events.md).
