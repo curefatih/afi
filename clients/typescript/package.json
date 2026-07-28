@@ -12,18 +12,27 @@
     }
   },
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
-	"scripts": {
-		"build": "tsc -p tsconfig.json",
-		"test": "node --experimental-strip-types --test src/client.test.ts src/httpsign.test.ts"
-	},
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --experimental-strip-types --test src/client.test.ts src/httpsign.test.ts"
+  },
   "devDependencies": {
+    "@types/node": "^22.20.1",
     "typescript": "^5.8.2"
   },
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/curefatih/afi.git",
+    "directory": "clients/typescript"
   },
   "license": "Apache-2.0"
 }
