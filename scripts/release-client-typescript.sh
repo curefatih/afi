@@ -99,24 +99,22 @@ if [[ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" && -n "${ACTIONS_ID_TOKEN_REQUEST_T
   oidc_ready=1
 fi
 
-# Prefer OIDC whenever GitHub can mint an ID token. A leftover NODE_AUTH_TOKEN
-# (from setup-node / secrets) forces token auth and yields E403/E404 under the
-# GAT bypass-2FA restrictions — scrub it before publish.
+# Prefer OIDC whenever GitHub can mint an ID token. Never leave an
+# _authToken in .npmrc — setup-node(registry-url) and leftover secrets force
+# GAT token auth and yield E404 under bypass-2FA restrictions.
 if [[ "${oidc_ready}" == "1" && "${NPM_FORCE_TOKEN:-0}" != "1" ]]; then
   unset NODE_AUTH_TOKEN NPM_TOKEN || true
-  # setup-node writes //registry…:_authToken=${NODE_AUTH_TOKEN}; remove so npm
-  # does not try token auth with an empty/stale value.
-  for rc in "${PKG_DIR}/.npmrc" "${HOME}/.npmrc"; do
+  for rc in "${ROOT}/.npmrc" "${PKG_DIR}/.npmrc" "${HOME}/.npmrc"; do
     if [[ -f "${rc}" ]] && grep -q '_authToken' "${rc}"; then
-      # Drop only auth lines; keep registry= etc.
       tmp="$(mktemp)"
       grep -v '_authToken' "${rc}" >"${tmp}" && mv "${tmp}" "${rc}"
+      echo "    scrubbed _authToken from ${rc}"
     fi
   done
   echo "==> Publish ${PKG_NAME}@${next_v} (OIDC trusted publishing)"
-  echo "    Ensure npm Trusted Publisher is set for this package:"
+  echo "    npm $(npm --version)  node $(node --version)"
+  echo "    Trusted Publisher must allow npm publish for workflow release-clients.yml:"
   echo "    https://www.npmjs.com/package/${PKG_NAME}/access"
-  echo "    → Trusted Publisher → GitHub Actions → workflow release-clients.yml"
 elif [[ -n "${NODE_AUTH_TOKEN:-}" || -n "${NPM_TOKEN:-}" ]]; then
   export NODE_AUTH_TOKEN="${NODE_AUTH_TOKEN:-${NPM_TOKEN}}"
   echo "==> Publish ${PKG_NAME}@${next_v} (token)"
@@ -133,12 +131,23 @@ if [[ "${oidc_ready}" == "1" && ( "${npm_major}" -lt 11 || ( "${npm_major}" -eq 
   exit 1
 fi
 
-if ! npm publish --access public; then
+publish_args=(--access public)
+# Explicit provenance is required for reliable OIDC publishes (npm docs say
+# automatic; in practice --provenance is often needed).
+if [[ "${oidc_ready}" == "1" && "${NPM_FORCE_TOKEN:-0}" != "1" ]]; then
+  publish_args+=(--provenance)
+fi
+
+if ! npm publish "${publish_args[@]}"; then
   echo >&2
   echo "ERROR: npm publish failed." >&2
-  echo "If you saw E404 with OIDC: the package exists but Trusted Publisher is" >&2
-  echo "missing or mismatches (repo curefatih/afi, workflow release-clients.yml)." >&2
-  echo "Configure it at: https://www.npmjs.com/package/${PKG_NAME}/access" >&2
+  echo "Checklist for E404 with OIDC:" >&2
+  echo "  1. Open https://www.npmjs.com/package/${PKG_NAME}/access" >&2
+  echo "  2. Trusted Publisher → GitHub Actions:" >&2
+  echo "       Owner: curefatih  Repo: afi  Workflow: release-clients.yml" >&2
+  echo "  3. Allowed actions must include 'npm publish' (required after May 2026)" >&2
+  echo "  4. Environment must be blank unless this job sets that environment" >&2
+  echo "  5. Delete GitHub secret NPM_TOKEN if it still exists" >&2
   exit 1
 fi
 

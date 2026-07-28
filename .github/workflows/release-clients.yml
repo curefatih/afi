@@ -3,19 +3,14 @@
 # - push to main under clients/** → detect which client(s) changed and publish
 # - workflow_dispatch → optional CLIENTS override (typescript|python|all)
 #
-# Auth:
-#   TypeScript (npm): OIDC trusted publishing (preferred). Optional NPM_TOKEN
-#     fallback must be a granular access token with "Bypass 2FA" / publish rights.
-#   Python (PyPI): PYPI_API_TOKEN secret
+# npm (OIDC trusted publishing — no NPM_TOKEN):
+#   https://www.npmjs.com/package/@afi-ai/platform-client/access
+#   → Trusted Publisher → GitHub Actions
+#     Owner: curefatih | Repo: afi | Workflow: release-clients.yml
+#     Allowed actions: include "npm publish"
+#     Environment: leave blank (must match this workflow)
 #
-# npm setup (one-time, package already published at 1.0.0):
-#   On npmjs.com → @afi-ai/platform-client → Trusted Publisher → GitHub Actions:
-#     owner curefatih, repo afi, workflow filename release-clients.yml
-#   Do not set NPM_TOKEN in GitHub secrets (it forces token auth over OIDC).
-#
-# Versioning: if the local version is already on the registry, the release
-# script bumps the patch, publishes, commits the bump, and tags
-# clients-{typescript|python}-vX.Y.Z (GITHUB_TOKEN pushes do not re-trigger).
+# Python: PYPI_API_TOKEN secret (or PyPI trusted publisher)
 
 name: Release clients
 
@@ -48,7 +43,7 @@ on:
 
 permissions:
   contents: write
-  id-token: write # npm / PyPI OIDC trusted publishing
+  id-token: write
 
 concurrency:
   group: release-clients-${{ github.ref }}
@@ -58,24 +53,37 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # Node 24 ships npm >= 11.5.1 required for trusted publishing OIDC.
+      # Do NOT set registry-url here — it writes _authToken=${NODE_AUTH_TOKEN}
+      # into .npmrc and forces token auth, which breaks OIDC (E404).
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           cache: npm
           cache-dependency-path: clients/typescript/package-lock.json
+
+      # Trusted publishing needs npm >= 11.5.1; pin latest on the runner.
+      - name: Ensure npm for OIDC
+        run: |
+          npm install -g npm@latest
+          node -v
+          npm -v
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || {
+            echo "ERROR: ACTIONS_ID_TOKEN_REQUEST_URL missing — id-token: write not effective" >&2
+            exit 1
+          }
 
       - uses: actions/setup-python@v5
         with:
@@ -126,9 +134,6 @@ jobs:
       - name: Release
         if: steps.resolve.outputs.clients != ''
         env:
-          # Do not pass NPM_TOKEN here — it forces token auth and breaks OIDC
-          # (E404 when Trusted Publisher is expected). Local/manual token publish
-          # can still set NODE_AUTH_TOKEN / NPM_FORCE_TOKEN=1 explicitly.
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
           TWINE_USERNAME: __token__
           DRY_RUN: ${{ steps.resolve.outputs.dry_run }}
