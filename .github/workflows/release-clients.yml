@@ -8,11 +8,10 @@
 #     fallback must be a granular access token with "Bypass 2FA" / publish rights.
 #   Python (PyPI): PYPI_API_TOKEN secret
 #
-# npm setup (one-time):
-#   1. First publish: create the package (manual 2FA, or granular token once).
-#   2. On npmjs.com → @afi-ai/platform-client → Settings → Trusted Publisher:
-#        GitHub Actions, repo curefatih/afi, workflow release-clients.yml
-#   3. After OIDC works, remove NPM_TOKEN from repo secrets.
+# npm setup (one-time, package already published at 1.0.0):
+#   On npmjs.com → @afi-ai/platform-client → Trusted Publisher → GitHub Actions:
+#     owner curefatih, repo afi, workflow filename release-clients.yml
+#   Do not set NPM_TOKEN in GitHub secrets (it forces token auth over OIDC).
 #
 # Versioning: if the local version is already on the registry, the release
 # script bumps the patch, publishes, commits the bump, and tags
@@ -127,17 +126,15 @@ jobs:
       - name: Release
         if: steps.resolve.outputs.clients != ''
         env:
-          # Prefer OIDC; only set token fallback when the secret exists.
-          # Classic npm tokens fail with E403 under 2FA — use a granular
-          # access token with "Bypass two-factor authentication", or OIDC.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Do not pass NPM_TOKEN here — it forces token auth and breaks OIDC
+          # (E404 when Trusted Publisher is expected). Local/manual token publish
+          # can still set NODE_AUTH_TOKEN / NPM_FORCE_TOKEN=1 explicitly.
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
           TWINE_USERNAME: __token__
           DRY_RUN: ${{ steps.resolve.outputs.dry_run }}
           COMMIT_BUMP: ${{ steps.resolve.outputs.commit_bump }}
           CLIENTS: ${{ steps.resolve.outputs.clients }}
           BASE_REF: ${{ steps.resolve.outputs.base_ref }}
-          NPM_TRUSTED_PUBLISHING: "1"
         run: bash scripts/release-clients.sh
 
       - name: Push version bumps

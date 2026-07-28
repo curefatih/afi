@@ -27,15 +27,19 @@ Pushes to `main` that touch `clients/typescript` or `clients/python` run [`.gith
 
 ### npm auth (TypeScript)
 
-Prefer [trusted publishing](https://docs.npmjs.com/trusted-publishers/) (OIDC) — no long-lived write token:
+`@afi-ai/platform-client@1.0.0` is already on npm. CI publishes via [trusted publishing](https://docs.npmjs.com/trusted-publishers/) (OIDC) — **required** for automated releases (GAT bypass tokens are being restricted for direct publish).
 
-1. Publish the package once (local `npm publish` with 2FA, or a one-time [granular access token](https://docs.npmjs.com/about-access-tokens) with **Bypass two-factor authentication**).
-2. On npmjs.com → `@afi-ai/platform-client` → **Settings → Trusted Publisher** → GitHub Actions:
-   - Repository: `curefatih/afi`
-   - Workflow filename: `release-clients.yml`
-3. Remove any classic `NPM_TOKEN` secret (classic tokens get `E403` under 2FA).
+Configure once on npmjs.com:
 
-Optional CI fallback: repo secret `NPM_TOKEN` must be a **granular** token with publish + Bypass 2FA — not a classic token.
+1. Open https://www.npmjs.com/package/@afi-ai/platform-client → **Settings** / **Access** → **Trusted Publisher**
+2. Add **GitHub Actions**:
+   - Organization or user: `curefatih`
+   - Repository: `afi`
+   - Workflow filename: `release-clients.yml` (filename only, including `.yml`)
+3. Remove repo secret `NPM_TOKEN` if present (it interferes with OIDC)
+4. Re-run **Release clients** on `main` (or merge this branch and dispatch)
+
+Without that Trusted Publisher row, CI gets `E404` on `npm publish` even though the package exists.
 
 ### PyPI auth (Python)
 

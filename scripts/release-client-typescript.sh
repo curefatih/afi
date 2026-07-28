@@ -99,11 +99,24 @@ if [[ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" && -n "${ACTIONS_ID_TOKEN_REQUEST_T
   oidc_ready=1
 fi
 
-if [[ "${NPM_TRUSTED_PUBLISHING:-0}" == "1" && "${oidc_ready}" == "1" ]]; then
-  # Avoid classic-token E403: npm prefers OIDC when the env is present and no
-  # NODE_AUTH_TOKEN is forcing token auth.
+# Prefer OIDC whenever GitHub can mint an ID token. A leftover NODE_AUTH_TOKEN
+# (from setup-node / secrets) forces token auth and yields E403/E404 under the
+# GAT bypass-2FA restrictions — scrub it before publish.
+if [[ "${oidc_ready}" == "1" && "${NPM_FORCE_TOKEN:-0}" != "1" ]]; then
   unset NODE_AUTH_TOKEN NPM_TOKEN || true
+  # setup-node writes //registry…:_authToken=${NODE_AUTH_TOKEN}; remove so npm
+  # does not try token auth with an empty/stale value.
+  for rc in "${PKG_DIR}/.npmrc" "${HOME}/.npmrc"; do
+    if [[ -f "${rc}" ]] && grep -q '_authToken' "${rc}"; then
+      # Drop only auth lines; keep registry= etc.
+      tmp="$(mktemp)"
+      grep -v '_authToken' "${rc}" >"${tmp}" && mv "${tmp}" "${rc}"
+    fi
+  done
   echo "==> Publish ${PKG_NAME}@${next_v} (OIDC trusted publishing)"
+  echo "    Ensure npm Trusted Publisher is set for this package:"
+  echo "    https://www.npmjs.com/package/${PKG_NAME}/access"
+  echo "    → Trusted Publisher → GitHub Actions → workflow release-clients.yml"
 elif [[ -n "${NODE_AUTH_TOKEN:-}" || -n "${NPM_TOKEN:-}" ]]; then
   export NODE_AUTH_TOKEN="${NODE_AUTH_TOKEN:-${NPM_TOKEN}}"
   echo "==> Publish ${PKG_NAME}@${next_v} (token)"
@@ -114,12 +127,20 @@ else
 fi
 
 npm_major="$(npm --version | cut -d. -f1)"
-if [[ "${oidc_ready}" == "1" && "${npm_major}" -lt 11 ]]; then
+npm_minor="$(npm --version | cut -d. -f2)"
+if [[ "${oidc_ready}" == "1" && ( "${npm_major}" -lt 11 || ( "${npm_major}" -eq 11 && "${npm_minor}" -lt 5 ) ) ]]; then
   echo "ERROR: npm $(npm --version) is too old for trusted publishing (need >= 11.5.1)" >&2
   exit 1
 fi
 
-npm publish --access public
+if ! npm publish --access public; then
+  echo >&2
+  echo "ERROR: npm publish failed." >&2
+  echo "If you saw E404 with OIDC: the package exists but Trusted Publisher is" >&2
+  echo "missing or mismatches (repo curefatih/afi, workflow release-clients.yml)." >&2
+  echo "Configure it at: https://www.npmjs.com/package/${PKG_NAME}/access" >&2
+  exit 1
+fi
 
 if [[ "${COMMIT_BUMP}" == "1" ]]; then
   echo "==> Commit version bump / tag"
