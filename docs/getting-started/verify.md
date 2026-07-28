@@ -54,6 +54,80 @@ curl -s http://localhost:8080/v1/models \
 
 Expect `object: "list"` with route model ids (at least `gpt-4o-mini` after seed).
 
+## Signed request auth (alternative to API keys)
+
+Register a public key for the org, then sign each request with [HTTP Message Signatures (RFC 9421)](https://www.rfc-editor.org/rfc/rfc9421). API keys remain valid; this is an additional auth mode.
+
+Cover `@method`, `@path`, `@query`, and `content-digest`. Include `keyid`, `created`, `nonce`, and `alg="ed25519"` on signature params. Prefer label `sig1`.
+
+```bash
+TOKEN=$(curl -s http://localhost:8081/api/v1/platform/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@afi.local","password":"admin"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["token"])')
+
+openssl genpkey -algorithm Ed25519 -out /tmp/afi-signer.key
+openssl pkey -in /tmp/afi-signer.key -pubout -out /tmp/afi-signer.pub
+
+python3 - <<'PY'
+import json, pathlib, urllib.request
+token = pathlib.Path("/dev/stdin").read_text().strip()
+pub = pathlib.Path("/tmp/afi-signer.pub").read_text()
+req = urllib.request.Request(
+    "http://localhost:8081/api/v1/platform/organizations/org_local/signing-keys",
+    data=json.dumps({
+        "key_id": "local-signer",
+        "name": "Local signer",
+        "algorithm": "ed25519",
+        "public_key_pem": pub,
+    }).encode(),
+    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+    method="POST",
+)
+print(urllib.request.urlopen(req).read().decode())
+PY <<<"$TOKEN"
+```
+
+Then call the gateway with a signed request (Python helper from `afi-platform`):
+
+```bash
+pip install -e clients/python
+
+python3 - <<'PY'
+import json, pathlib, urllib.request
+from afi_platform import sign_headers
+
+body = json.dumps({
+    "model": "gpt-4o-mini",
+    "messages": [{"role": "user", "content": "ping"}],
+}, separators=(",", ":")).encode()
+url = "http://localhost:8080/v1/chat/completions"
+headers = {
+    "Content-Type": "application/json",
+    **sign_headers(
+        method="POST",
+        url=url,
+        body=body,
+        private_key_pem=pathlib.Path("/tmp/afi-signer.key").read_bytes(),
+        key_id="local-signer",
+    ),
+}
+req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+print(urllib.request.urlopen(req).read().decode())
+PY
+```
+
+Go equivalent (`sdk/httpsign`):
+
+```go
+priv, _ := httpsign.ParsePrivateKeyPEM(pemBytes)
+req, _ := http.NewRequest(http.MethodPost, "http://localhost:8080/v1/chat/completions", bytes.NewReader(body))
+req.Header.Set("Content-Type", "application/json")
+_ = httpsign.SignRequest(req, priv, "local-signer", "")
+resp, _ := http.DefaultClient.Do(req)
+```
+
+Or use a signing client: `httpsign.Client(priv, "local-signer").Post(...)`.
+
 ## Anthropic route (optional)
 
 Seed includes `prov_anthropic`. Create a route (or use Routing UI), then:

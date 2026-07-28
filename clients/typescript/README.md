@@ -18,3 +18,20 @@ const orgs = await client.listOrganizations();
 ```
 
 OpenAPI types are generated into `src/schema.gen.ts` via `make openapi-gen`.
+
+## Gateway signed requests
+
+```ts
+import { signHeaders } from "@afi-ai/platform-client";
+
+const headers = {
+  "Content-Type": "application/json",
+  ...signHeaders({
+    method: "POST",
+    url: "http://localhost:8080/v1/chat/completions",
+    body,
+    privateKeyPem,
+    keyId: "local-signer",
+  }),
+};
+```

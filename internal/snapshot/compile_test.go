@@ -8,6 +8,10 @@ func TestCompile(t *testing.T) {
 		APIKeys: []APIKey{{
 			KeyHash: HashKey(raw), KeyPrefix: "sk-test", ProjectID: "p1", OrganizationID: "o1", Name: "dev",
 		}},
+		SigningKeys: []SigningKey{{
+			ID: "sig_1", KeyID: "kid-1", ProjectID: "p1", OrganizationID: "o1", Name: "svc",
+			Algorithm: "ed25519", PublicKeyPEM: "pem", Status: "active",
+		}},
 		Providers: []Provider{{
 			ID: "prov_openai", Type: "openai", BaseURL: "https://api.openai.com/v1",
 			APIKeyEnv: "OPENAI_API_KEY", Name: "OpenAI",
@@ -25,6 +29,10 @@ func TestCompile(t *testing.T) {
 	k, ok := snap.LookupKey(raw)
 	if !ok || k.ProjectID != "p1" {
 		t.Fatalf("lookup key failed: %+v", k)
+	}
+	sk, ok := snap.LookupSigningKey("kid-1")
+	if !ok || sk.ID != "sig_1" {
+		t.Fatalf("lookup signing key failed: %+v", sk)
 	}
 
 	r, p, ok := snap.LookupRoute("o1", "gpt-4o-mini")

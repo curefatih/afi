@@ -7,6 +7,7 @@ import (
 // Source is the control-plane view used to compile a snapshot.
 type Source struct {
 	APIKeys        []APIKey
+	SigningKeys    []SigningKey
 	Providers      []Provider
 	Routes         []Route
 	Credentials    []Credential
@@ -33,6 +34,7 @@ func Compile(src Source) *Snapshot {
 	s := &Snapshot{
 		CreatedAt:      time.Now().UTC(),
 		APIKeys:        make(map[string]APIKey, len(src.APIKeys)),
+		SigningKeys:    make(map[string]SigningKey, len(src.SigningKeys)),
 		Providers:      make(map[string]Provider, len(src.Providers)),
 		Routes:         make(map[string]Route, len(src.Routes)),
 		Credentials:    make(map[string]Credential, len(src.Credentials)),
@@ -52,6 +54,12 @@ func Compile(src Source) *Snapshot {
 			continue
 		}
 		s.APIKeys[k.KeyHash] = k
+	}
+	for _, k := range src.SigningKeys {
+		if k.KeyID == "" {
+			continue
+		}
+		s.SigningKeys[k.KeyID] = k
 	}
 	for _, p := range src.Providers {
 		p.Capabilities = NormalizeCapabilities(p.Type, p.Capabilities)
@@ -117,6 +125,9 @@ func Compile(src Source) *Snapshot {
 	}
 	if len(s.ObjectStores) == 0 {
 		s.ObjectStores = nil
+	}
+	if len(s.SigningKeys) == 0 {
+		s.SigningKeys = nil
 	}
 	return s
 }

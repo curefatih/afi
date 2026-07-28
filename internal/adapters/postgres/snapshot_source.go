@@ -57,6 +57,38 @@ func (l *SnapshotSourceLoader) Load(ctx context.Context) (snapshot.Source, error
 		return src, err
 	}
 
+	signerRows, err := l.Pool.Query(ctx, `
+		SELECT s.id, s.key_id, s.project_id, s.organization_id, s.environment_id, s.name, s.algorithm, s.public_key_pem, s.status, p.team_id
+		FROM signing_keys s
+		LEFT JOIN projects p ON p.id = s.project_id
+	`)
+	if err != nil {
+		return src, err
+	}
+	defer signerRows.Close()
+	for signerRows.Next() {
+		var k snapshot.SigningKey
+		var projectID, environmentID, teamID *string
+		if err := signerRows.Scan(
+			&k.ID, &k.KeyID, &projectID, &k.OrganizationID, &environmentID, &k.Name, &k.Algorithm, &k.PublicKeyPEM, &k.Status, &teamID,
+		); err != nil {
+			return src, err
+		}
+		if projectID != nil {
+			k.ProjectID = *projectID
+		}
+		if environmentID != nil {
+			k.EnvironmentID = *environmentID
+		}
+		if teamID != nil {
+			k.TeamID = *teamID
+		}
+		src.SigningKeys = append(src.SigningKeys, k)
+	}
+	if err := signerRows.Err(); err != nil {
+		return src, err
+	}
+
 	provRows, err := l.Pool.Query(ctx, `
 		SELECT id, type, base_url, api_key_env, name, capabilities, config FROM providers
 	`)

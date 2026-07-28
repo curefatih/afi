@@ -56,6 +56,13 @@ func (f *fakeMembers) GetAPIKeyOrgID(_ context.Context, keyID string) (string, e
 	return "", kernel.ErrNotFound
 }
 
+func (f *fakeMembers) GetSigningKeyOrgID(_ context.Context, signingKeyID string) (string, error) {
+	if signingKeyID == "sig_ok" {
+		return "org_a", nil
+	}
+	return "", kernel.ErrNotFound
+}
+
 func (f *fakeMembers) GetTeamOrgID(_ context.Context, teamID string) (string, error) {
 	if f.teamOrg != nil {
 		if org, ok := f.teamOrg[teamID]; ok {
@@ -290,6 +297,19 @@ func (f *fakePlatform) GetAPIKey(context.Context, string) (*APIKey, error) {
 func (f *fakePlatform) CreateAPIKey(context.Context, string, string, string, string, string, string, string) (*APIKey, error) {
 	return nil, errors.New("unused")
 }
+func (f *fakePlatform) ListSigningKeys(context.Context, string) ([]SigningKey, error) {
+	return nil, nil
+}
+func (f *fakePlatform) CreateSigningKey(context.Context, string, string, string, string, string, string, string) (*SigningKey, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) UpdateSigningKey(context.Context, string, string, string) (*SigningKey, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) RotateSigningKey(context.Context, string, string) (*SigningKey, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) DeleteSigningKey(context.Context, string) error            { return nil }
 func (f *fakePlatform) DeleteAPIKey(context.Context, string) error                { return kernel.ErrNotFound }
 func (f *fakePlatform) ListProviders(context.Context, string) ([]Provider, error) { return nil, nil }
 func (f *fakePlatform) ListProviderHealth(context.Context, string, time.Time, time.Time) ([]ProviderHealth, error) {

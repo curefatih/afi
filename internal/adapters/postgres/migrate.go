@@ -907,6 +907,28 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	`); err != nil {
 		return fmt.Errorf("cycle36 provider config: %w", err)
 	}
+	if _, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS signing_keys (
+			id TEXT PRIMARY KEY,
+			key_id TEXT NOT NULL UNIQUE,
+			project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
+			organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+			environment_id TEXT REFERENCES environments(id) ON DELETE SET NULL,
+			name TEXT NOT NULL,
+			algorithm TEXT NOT NULL DEFAULT 'ed25519',
+			public_key_pem TEXT NOT NULL,
+			status TEXT NOT NULL DEFAULT 'active',
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			CONSTRAINT signing_keys_status_check CHECK (status IN ('active', 'disabled'))
+		);
+		CREATE INDEX IF NOT EXISTS signing_keys_org_idx ON signing_keys (organization_id);
+		ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS auth_method TEXT NOT NULL DEFAULT 'api_key';
+		ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS signing_key_id TEXT NOT NULL DEFAULT '';
+		ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS signer_key_id TEXT NOT NULL DEFAULT '';
+	`); err != nil {
+		return fmt.Errorf("cycle37 signing keys: %w", err)
+	}
 	return nil
 }
 

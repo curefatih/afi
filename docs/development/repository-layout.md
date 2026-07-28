@@ -39,6 +39,7 @@ extensions/           # Examples: echo, demohook, tagquota, wasmhook, grpcecho (
 examples/             # Standalone samples (e.g. a2a-echo upstream for gateway testing)
 sdk/provider/         # Documented ChatProvider contract
 sdk/hook/             # Lifecycle hook contracts (Go + WASM ABI docs)
+sdk/httpsign/         # RFC 9421 gateway request signing helpers
 api/openapi/          # Public OpenAPI 3.1 (platform + gateway overlay)
 proto/                # gRPC extension contract (afi/extension/v1)
 gen/proto/            # Generated Go from proto (committed)
@@ -85,6 +86,7 @@ Platform events (bus + durable outbox): [Platform domain events](platform-events
 | `internal/dataplane` | Auth → quota → route → provider registry (+ failover, `/v1/models`) |
 | `sdk/provider` | Documented adapter contract for multi-model extensibility |
 | `sdk/hook` | Lifecycle hook contracts (Go + WASM ABI docs) |
+| `sdk/httpsign` | RFC 9421 / Content-Digest signing for gateway clients |
 | `api/openapi` | Public OpenAPI contracts (platform + gateway overlay) |
 | `clients/*` | Thin TypeScript / Python platform HTTP clients |
 | `extensions/*` | Example SDK providers + hooks registered from `cmd/gateway` |

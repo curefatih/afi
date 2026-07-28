@@ -66,9 +66,13 @@ const platformNav = [
 		icon: <UserRoundIcon />,
 	},
 	{
-		title: "API Keys",
+		title: "Keys",
 		url: "/app/keys",
 		icon: <KeyRoundIcon />,
+		items: [
+			{ title: "API Keys", url: "/app/keys" },
+			{ title: "Signing Keys", url: "/app/signing-keys" },
+		],
 	},
 	{
 		title: "Playground",

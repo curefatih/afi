@@ -8,6 +8,9 @@ type Event struct {
 	TeamID           string            `json:"team_id,omitempty"`
 	EnvironmentID    string            `json:"environment_id,omitempty"`
 	APIKeyID         string            `json:"api_key_id"`
+	SigningKeyID     string            `json:"signing_key_id,omitempty"`
+	SignerKeyID      string            `json:"signer_key_id,omitempty"`
+	AuthMethod       string            `json:"auth_method,omitempty"`
 	CredentialID     string            `json:"credential_id,omitempty"`
 	UsedBYOK         bool              `json:"used_byok"`
 	Model            string            `json:"model"`

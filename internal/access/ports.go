@@ -21,3 +21,14 @@ type APIKeyRepository interface {
 	Delete(ctx context.Context, keyID string) error
 	OrgID(ctx context.Context, keyID string) (string, error)
 }
+
+// SigningKeyRepository persists service signing keys backed by public keys.
+type SigningKeyRepository interface {
+	ListByOrg(ctx context.Context, orgID string) ([]SigningKey, error)
+	Get(ctx context.Context, id string) (*SigningKey, error)
+	Insert(ctx context.Context, key SigningKey) error
+	UpdateMeta(ctx context.Context, id, name, status string) (*SigningKey, error)
+	UpdatePublicKey(ctx context.Context, id, publicKeyPEM string) (*SigningKey, error)
+	Delete(ctx context.Context, id string) error
+	OrgID(ctx context.Context, id string) (string, error)
+}

@@ -17,3 +17,20 @@ print(client.list_organizations())
 ```
 
 Contract: [`../../api/openapi/platform.openapi.yaml`](../../api/openapi/platform.openapi.yaml).
+
+## Gateway signed requests
+
+```python
+from afi_platform import sign_headers
+
+headers = {
+    "Content-Type": "application/json",
+    **sign_headers(
+        method="POST",
+        url="http://localhost:8080/v1/chat/completions",
+        body=body,
+        private_key_pem=open("signer.pem", "rb").read(),
+        key_id="local-signer",
+    ),
+}
+```

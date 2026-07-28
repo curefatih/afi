@@ -29,13 +29,6 @@ func (p *Pipeline) handleMCP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rawKey, err := bearerToken(r.Header.Get("Authorization"))
-	if err != nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "missing or invalid authorization", "type": "invalid_request_error"},
-		})
-		return
-	}
 	snap := p.Holder.Get()
 	if snap == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
@@ -43,15 +36,10 @@ func (p *Pipeline) handleMCP(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	key, ok := snap.LookupKey(rawKey)
-	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "invalid api key", "type": "invalid_request_error"},
-		})
-		return
-	}
-
-	var body []byte
+	var (
+		body []byte
+		err  error
+	)
 	if r.Method == http.MethodPost {
 		body, err = io.ReadAll(io.LimitReader(r.Body, mcpBodyLimit))
 		if err != nil {
@@ -61,17 +49,28 @@ func (p *Pipeline) handleMCP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	principal, err := authenticateGatewayRequest(ctx, snap, p.Replay, r, body)
+	if err != nil {
+		status := http.StatusUnauthorized
+		if err == kernel.ErrNotFound {
+			status = http.StatusServiceUnavailable
+		}
+		writeJSON(w, status, map[string]any{
+			"error": map[string]string{"message": authErrMessage(err), "type": "invalid_request_error"},
+		})
+		return
+	}
 
 	path := "/mcp/" + alias
 	stream := strings.Contains(strings.ToLower(r.Header.Get("Accept")), "text/event-stream")
-	call := newCallContext(key, alias, path, ModalityMCP, stream, body, TagsFromRequest(r))
+	call := newCallContext(principal, alias, path, ModalityMCP, stream, body, TagsFromRequest(r))
 	call.Headers = HeadersForPolicy(r.Header)
 	if !p.gateCall(ctx, w, snap, call) {
 		return
 	}
 	body = call.Body
 
-	backend, ok := snap.LookupMCPBackend(key.OrganizationID, alias)
+	backend, ok := snap.LookupMCPBackend(principal.OrganizationID, alias)
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]any{
 			"error": map[string]string{"message": "unknown mcp alias", "type": "invalid_request_error"},
@@ -138,7 +137,8 @@ func (p *Pipeline) handleMCP(w http.ResponseWriter, r *http.Request) {
 		status = "error"
 		metrics["latency_ms"] = time.Since(start).Milliseconds()
 		p.recordUsage(UsageEvent{
-			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
+			OrganizationID: principal.OrganizationID, ProjectID: principal.ProjectID, TeamID: principal.TeamID, EnvironmentID: principal.EnvironmentID,
+			APIKeyID: principal.APIKeyID, SigningKeyID: principal.SigningKeyID, SignerKeyID: principal.KeyID, AuthMethod: principal.AuthMethod,
 			Model: alias, ProviderType: "mcp", TargetModel: backend.ID,
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			Modality: ModalityMCP, Metrics: metrics, Tags: cloneTags(call.Tags),
@@ -160,7 +160,8 @@ func (p *Pipeline) handleMCP(w http.ResponseWriter, r *http.Request) {
 	}
 	metrics["latency_ms"] = time.Since(start).Milliseconds()
 	p.recordUsage(UsageEvent{
-		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
+		OrganizationID: principal.OrganizationID, ProjectID: principal.ProjectID, TeamID: principal.TeamID, EnvironmentID: principal.EnvironmentID,
+		APIKeyID: principal.APIKeyID, SigningKeyID: principal.SigningKeyID, SignerKeyID: principal.KeyID, AuthMethod: principal.AuthMethod,
 		Model: alias, ProviderType: "mcp", TargetModel: backend.ID,
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		Modality: ModalityMCP, Metrics: metrics, Tags: cloneTags(call.Tags),

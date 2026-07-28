@@ -68,6 +68,10 @@ func (s *Service) ListVisibleOrgAPIKeys(ctx context.Context, orgID, viewerUserID
 	return filtered, nil
 }
 
+func (s *Service) ListSigningKeys(ctx context.Context, orgID string) ([]access.SigningKey, error) {
+	return s.API.ListSigningKeys(ctx, orgID)
+}
+
 func (s *Service) ListProviders(ctx context.Context, orgID string) ([]gatewayconfig.Provider, error) {
 	return s.API.ListProviders(ctx, orgID)
 }

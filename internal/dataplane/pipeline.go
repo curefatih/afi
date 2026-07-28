@@ -53,6 +53,7 @@ type Pipeline struct {
 	Credentials secrets.CredentialOpener
 	Secrets     secrets.Resolver
 	HTTP        *http.Client
+	Replay      ReplayStore
 	Metrics     *telemetry.GatewayMetrics
 	// RouteRand optional RNG for weighted routing (tests); nil uses math/rand global.
 	RouteRand *rand.Rand
@@ -66,7 +67,7 @@ func NewPipeline(holder *Holder, reg *Registry, log *slog.Logger) *Pipeline {
 	if reg == nil {
 		reg = NewRegistry()
 	}
-	return &Pipeline{Holder: holder, Providers: reg, Log: log}
+	return &Pipeline{Holder: holder, Providers: reg, Log: log, Replay: newMemoryReplayStore()}
 }
 
 // NewPipelineWithRegistry uses an explicit provider registry.
@@ -196,13 +197,6 @@ func shouldFailoverError(err error) bool {
 }
 
 func (p *Pipeline) handleModels(w http.ResponseWriter, r *http.Request) {
-	rawKey, err := bearerToken(r.Header.Get("Authorization"))
-	if err != nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "missing or invalid authorization", "type": "invalid_request_error"},
-		})
-		return
-	}
 	snap := p.Holder.Get()
 	if snap == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
@@ -210,17 +204,22 @@ func (p *Pipeline) handleModels(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	key, ok := snap.LookupKey(rawKey)
-	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "invalid api key", "type": "invalid_request_error"},
+	principal, err := authenticateGatewayRequest(r.Context(), snap, p.Replay, r, nil)
+	if err != nil {
+		status := http.StatusUnauthorized
+		msg := authErrMessage(err)
+		if errors.Is(err, kernel.ErrNotFound) {
+			status = http.StatusServiceUnavailable
+		}
+		writeJSON(w, status, map[string]any{
+			"error": map[string]string{"message": msg, "type": "invalid_request_error"},
 		})
 		return
 	}
 
 	data := make([]map[string]any, 0)
 	for _, route := range snap.Routes {
-		if route.OrganizationID != key.OrganizationID {
+		if route.OrganizationID != principal.OrganizationID {
 			continue
 		}
 		providerType := "openai"
@@ -443,16 +442,4 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
-}
-
-// AuthenticateKey is exported for unit tests.
-func AuthenticateKey(snap *snapshot.Snapshot, rawKey string) (snapshot.APIKey, error) {
-	if snap == nil {
-		return snapshot.APIKey{}, kernel.ErrNotFound
-	}
-	k, ok := snap.LookupKey(rawKey)
-	if !ok {
-		return snapshot.APIKey{}, kernel.ErrUnauthorized
-	}
-	return k, nil
 }

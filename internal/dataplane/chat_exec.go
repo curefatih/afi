@@ -80,21 +80,9 @@ func (p *Pipeline) executeChat(
 		return
 	}
 
-	rawKey, err := virtualAPIKey(r)
-	if err != nil {
-		dialect.WriteError(w, d, http.StatusUnauthorized, "missing or invalid authorization", "invalid_request_error")
-		return
-	}
-
 	snap := p.Holder.Get()
 	if snap == nil {
 		dialect.WriteError(w, d, http.StatusServiceUnavailable, "no snapshot loaded", "server_error")
-		return
-	}
-
-	key, ok := snap.LookupKey(rawKey)
-	if !ok {
-		dialect.WriteError(w, d, http.StatusUnauthorized, "invalid api key", "invalid_request_error")
 		return
 	}
 
@@ -103,6 +91,16 @@ func (p *Pipeline) executeChat(
 		dialect.WriteError(w, d, http.StatusBadRequest, "failed to read body", "invalid_request_error")
 		return
 	}
+	principal, err := authenticateGatewayRequest(ctx, snap, p.Replay, r, body)
+	if err != nil {
+		status := http.StatusUnauthorized
+		if errors.Is(err, kernel.ErrNotFound) {
+			status = http.StatusServiceUnavailable
+		}
+		dialect.WriteError(w, d, status, authErrMessage(err), "invalid_request_error")
+		return
+	}
+	key := principal.PolicyKey()
 
 	chatReq, err := codec.DecodeRequest(body)
 	if err != nil {
@@ -117,7 +115,7 @@ func (p *Pipeline) executeChat(
 	}
 
 	path := r.URL.Path
-	call := newCallContext(key, chatReq.Model, path, modality, chatReq.Stream, append([]byte(nil), body...), TagsFromRequest(r))
+	call := newCallContext(principal, chatReq.Model, path, modality, chatReq.Stream, append([]byte(nil), body...), TagsFromRequest(r))
 	call.Headers = HeadersForPolicy(r.Header)
 	if call.Metadata == nil {
 		call.Metadata = map[string]any{}
@@ -266,7 +264,8 @@ targetLoop:
 		}
 		log.Error("upstream error", "err", lastErr)
 		p.recordUsage(UsageEvent{
-			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
+			OrganizationID: principal.OrganizationID, ProjectID: principal.ProjectID, TeamID: principal.TeamID, EnvironmentID: principal.EnvironmentID,
+			APIKeyID: principal.APIKeyID, SigningKeyID: principal.SigningKeyID, SignerKeyID: principal.KeyID, AuthMethod: principal.AuthMethod,
 			CredentialID: usedCredentialID,
 			Model:        chatReq.Model,
 			ProviderType: usedProvider.Type,
@@ -335,7 +334,11 @@ targetLoop:
 	}
 
 	p.recordUsage(UsageEvent{
-		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
+		OrganizationID: principal.OrganizationID, ProjectID: principal.ProjectID, TeamID: principal.TeamID, EnvironmentID: principal.EnvironmentID,
+		APIKeyID:         principal.APIKeyID,
+		SigningKeyID:     principal.SigningKeyID,
+		SignerKeyID:      principal.KeyID,
+		AuthMethod:       principal.AuthMethod,
 		CredentialID:     usedCredentialID,
 		Model:            chatReq.Model,
 		ProviderType:     usedProvider.Type,

@@ -15,7 +15,12 @@ import (
 type Principal struct {
 	OrganizationID string
 	ProjectID      string
+	TeamID         string
+	EnvironmentID  string
 	APIKeyID       string
+	SigningKeyID   string
+	KeyID          string
+	AuthMethod     string
 	Kind           string
 	OwnerUserID    string
 	Name           string

@@ -22,6 +22,7 @@ import { Route as AuthResetPasswordTokenRouteImport } from './routes/auth/reset-
 import { Route as AuthInviteTokenRouteImport } from './routes/auth/invite.$token'
 import { Route as AuthenticatedAppUsersRouteImport } from './routes/_authenticated/app/users'
 import { Route as AuthenticatedAppUsageRouteImport } from './routes/_authenticated/app/usage'
+import { Route as AuthenticatedAppSigningKeysRouteImport } from './routes/_authenticated/app/signing-keys'
 import { Route as AuthenticatedAppSecretsRouteImport } from './routes/_authenticated/app/secrets'
 import { Route as AuthenticatedAppRoutingRouteImport } from './routes/_authenticated/app/routing'
 import { Route as AuthenticatedAppQuotasRouteImport } from './routes/_authenticated/app/quotas'
@@ -115,6 +116,12 @@ const AuthenticatedAppUsageRoute = AuthenticatedAppUsageRouteImport.update({
   path: '/usage',
   getParentRoute: () => AuthenticatedAppRouteRoute,
 } as any)
+const AuthenticatedAppSigningKeysRoute =
+  AuthenticatedAppSigningKeysRouteImport.update({
+    id: '/signing-keys',
+    path: '/signing-keys',
+    getParentRoute: () => AuthenticatedAppRouteRoute,
+  } as any)
 const AuthenticatedAppSecretsRoute = AuthenticatedAppSecretsRouteImport.update({
   id: '/secrets',
   path: '/secrets',
@@ -290,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/app/quotas': typeof AuthenticatedAppQuotasRoute
   '/app/routing': typeof AuthenticatedAppRoutingRoute
   '/app/secrets': typeof AuthenticatedAppSecretsRoute
+  '/app/signing-keys': typeof AuthenticatedAppSigningKeysRoute
   '/app/usage': typeof AuthenticatedAppUsageRoute
   '/app/users': typeof AuthenticatedAppUsersRoute
   '/auth/invite/$token': typeof AuthInviteTokenRoute
@@ -331,6 +339,7 @@ export interface FileRoutesByTo {
   '/app/quotas': typeof AuthenticatedAppQuotasRoute
   '/app/routing': typeof AuthenticatedAppRoutingRoute
   '/app/secrets': typeof AuthenticatedAppSecretsRoute
+  '/app/signing-keys': typeof AuthenticatedAppSigningKeysRoute
   '/app/usage': typeof AuthenticatedAppUsageRoute
   '/app/users': typeof AuthenticatedAppUsersRoute
   '/auth/invite/$token': typeof AuthInviteTokenRoute
@@ -374,6 +383,7 @@ export interface FileRoutesById {
   '/_authenticated/app/quotas': typeof AuthenticatedAppQuotasRoute
   '/_authenticated/app/routing': typeof AuthenticatedAppRoutingRoute
   '/_authenticated/app/secrets': typeof AuthenticatedAppSecretsRoute
+  '/_authenticated/app/signing-keys': typeof AuthenticatedAppSigningKeysRoute
   '/_authenticated/app/usage': typeof AuthenticatedAppUsageRoute
   '/_authenticated/app/users': typeof AuthenticatedAppUsersRoute
   '/auth/invite/$token': typeof AuthInviteTokenRoute
@@ -418,6 +428,7 @@ export interface FileRouteTypes {
     | '/app/quotas'
     | '/app/routing'
     | '/app/secrets'
+    | '/app/signing-keys'
     | '/app/usage'
     | '/app/users'
     | '/auth/invite/$token'
@@ -459,6 +470,7 @@ export interface FileRouteTypes {
     | '/app/quotas'
     | '/app/routing'
     | '/app/secrets'
+    | '/app/signing-keys'
     | '/app/usage'
     | '/app/users'
     | '/auth/invite/$token'
@@ -501,6 +513,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/quotas'
     | '/_authenticated/app/routing'
     | '/_authenticated/app/secrets'
+    | '/_authenticated/app/signing-keys'
     | '/_authenticated/app/usage'
     | '/_authenticated/app/users'
     | '/auth/invite/$token'
@@ -619,6 +632,13 @@ declare module '@tanstack/react-router' {
       path: '/usage'
       fullPath: '/app/usage'
       preLoaderRoute: typeof AuthenticatedAppUsageRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/_authenticated/app/signing-keys': {
+      id: '/_authenticated/app/signing-keys'
+      path: '/signing-keys'
+      fullPath: '/app/signing-keys'
+      preLoaderRoute: typeof AuthenticatedAppSigningKeysRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
     '/_authenticated/app/secrets': {
@@ -851,6 +871,7 @@ interface AuthenticatedAppRouteRouteChildren {
   AuthenticatedAppQuotasRoute: typeof AuthenticatedAppQuotasRoute
   AuthenticatedAppRoutingRoute: typeof AuthenticatedAppRoutingRoute
   AuthenticatedAppSecretsRoute: typeof AuthenticatedAppSecretsRoute
+  AuthenticatedAppSigningKeysRoute: typeof AuthenticatedAppSigningKeysRoute
   AuthenticatedAppUsageRoute: typeof AuthenticatedAppUsageRoute
   AuthenticatedAppUsersRoute: typeof AuthenticatedAppUsersRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
@@ -884,6 +905,7 @@ const AuthenticatedAppRouteRouteChildren: AuthenticatedAppRouteRouteChildren = {
   AuthenticatedAppQuotasRoute: AuthenticatedAppQuotasRoute,
   AuthenticatedAppRoutingRoute: AuthenticatedAppRoutingRoute,
   AuthenticatedAppSecretsRoute: AuthenticatedAppSecretsRoute,
+  AuthenticatedAppSigningKeysRoute: AuthenticatedAppSigningKeysRoute,
   AuthenticatedAppUsageRoute: AuthenticatedAppUsageRoute,
   AuthenticatedAppUsersRoute: AuthenticatedAppUsersRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
