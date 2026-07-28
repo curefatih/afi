@@ -1,9 +1,18 @@
-# Full AFI stack for self-hosted deployments.
-# Usage:
-#   cp deploy/env.example deploy/.env
-#   cp deploy/afi.example.yaml deploy/afi.yaml
-#   # edit secrets in both files
+# AFI Docker Compose stack with deployment profiles.
+#
+# Profiles (pass via `make deploy-up PROFILE=…` or `--profile`):
+#   full          — entire stack (default)
+#   infra         — postgres + redis
+#   controlplane  — postgres + redis + control plane
+#   dataplane     — postgres + redis + gateway (data plane)
+#   worker        — postgres + worker
+#   web           — platform UI only (point VITE_* at reachable APIs)
+#
+# Examples:
 #   make deploy-up
+#   make deploy-up PROFILE=controlplane
+#   make deploy-dataplane
+#   make deploy-up PROFILE="controlplane dataplane worker"
 #
 # Infra-only local development remains: docker-compose.yml + make dev-up
 
@@ -12,6 +21,7 @@ name: afi
 services:
   postgres:
     image: postgres:16-alpine
+    profiles: ["full", "infra", "controlplane", "dataplane", "worker"]
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-afi}
@@ -29,6 +39,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    profiles: ["full", "infra", "controlplane", "dataplane"]
     restart: unless-stopped
     ports:
       - "${REDIS_HOST_PORT:-6379}:6379"
@@ -41,6 +52,7 @@ services:
       retries: 10
 
   controlplane:
+    profiles: ["full", "controlplane"]
     build:
       context: ..
       dockerfile: Dockerfile
@@ -72,6 +84,7 @@ services:
       - "${CONTROLPLANE_HOST_PORT:-8081}:8081"
 
   gateway:
+    profiles: ["full", "dataplane"]
     build:
       context: ..
       dockerfile: Dockerfile
@@ -84,8 +97,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      controlplane:
-        condition: service_started
     environment:
       AFI_CONFIG: /config/afi.yaml
       AFI_DATABASE_URL: ${AFI_DATABASE_URL}
@@ -102,6 +113,7 @@ services:
       - "${GATEWAY_HOST_PORT:-8080}:8080"
 
   worker:
+    profiles: ["full", "worker"]
     build:
       context: ..
       dockerfile: Dockerfile
@@ -112,8 +124,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      controlplane:
-        condition: service_started
     environment:
       AFI_CONFIG: /config/afi.yaml
       AFI_DATABASE_URL: ${AFI_DATABASE_URL}
@@ -128,6 +138,7 @@ services:
       - ./afi.yaml:/config/afi.yaml:ro
 
   web:
+    profiles: ["full", "web"]
     build:
       context: ..
       dockerfile: Dockerfile.web
@@ -137,15 +148,13 @@ services:
         VITE_GATEWAY_API_KEY: ${VITE_GATEWAY_API_KEY:-}
     image: afi-web:local
     restart: unless-stopped
-    depends_on:
-      - controlplane
-      - gateway
     ports:
       - "${WEB_HOST_PORT:-3000}:80"
 
-  # Optional brokers — uncomment and set AFI_EVENTS_* when enabling platform events.
+  # Optional brokers — uncomment, add profiles (e.g. ["full"]), and set AFI_EVENTS_* .
   # nats:
   #   image: nats:2.10-alpine
+  #   profiles: ["full"]
   #   restart: unless-stopped
   #   command: ["-js", "-m", "8222"]
   #   ports:

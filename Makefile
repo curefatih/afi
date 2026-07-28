@@ -5,6 +5,7 @@
 	run-controlplane run-gateway run-worker run-all run-a2a-echo \
 	seed snapshot-publish \
 	quickstart deploy-init deploy-up deploy-down deploy-logs deploy-health \
+	deploy-infra deploy-controlplane deploy-dataplane deploy-worker deploy-web \
 	build-release build-images brand-assets \
 	openapi-lint openapi-drift openapi-gen openapi-check \
 	proto-gen proto-check
@@ -13,6 +14,10 @@ GO ?= go
 BIN_DIR ?= bin
 DEPLOY_COMPOSE ?= deploy/docker-compose.yml
 DEPLOY_ENV ?= deploy/.env
+# Compose profile(s): full | infra | controlplane | dataplane | worker | web
+# Space- or comma-separated for combinations, e.g. PROFILE="controlplane dataplane"
+PROFILE ?= full
+comma := ,
 NPX ?= npx
 PYTHON ?= python3
 
@@ -62,12 +67,18 @@ build:
 	$(GO) build -o $(BIN_DIR)/afi ./cmd/cli
 	$(GO) build -o $(BIN_DIR)/grpcecho ./extensions/grpcecho
 
+# Release binaries. Examples:
+#   make build-release
+#   GOOS=linux GOARCH=arm64 make build-release
+#   PACKAGE=1 make build-release
+#   TARGETS=linux/amd64,darwin/arm64 PACKAGE=1 make build-release
 build-release:
 	bash scripts/build-release.sh
 
 build-images:
 	@test -f $(DEPLOY_ENV) || (echo "missing $(DEPLOY_ENV) — run make deploy-init" >&2; exit 1)
-	docker compose -f $(DEPLOY_COMPOSE) --env-file $(DEPLOY_ENV) build
+	docker compose -f $(DEPLOY_COMPOSE) --env-file $(DEPLOY_ENV) \
+		$(foreach p,$(subst $(comma), ,$(PROFILE)),--profile $(p)) build
 
 test:
 	$(GO) test ./...
@@ -185,15 +196,33 @@ deploy-init:
 	@echo "Wrote deploy/.env and/or deploy/afi.yaml if missing."
 	@echo "Replace every CHANGE_ME value, then run: make deploy-up"
 
+# Full stack by default. Subsets: make deploy-up PROFILE=dataplane
+# or convenience targets below (see docs/deployment/docker.md).
 deploy-up:
-	bash scripts/deploy-up.sh
+	PROFILE="$(PROFILE)" bash scripts/deploy-up.sh
+
+deploy-infra:
+	$(MAKE) deploy-up PROFILE=infra
+
+deploy-controlplane:
+	$(MAKE) deploy-up PROFILE=controlplane
+
+deploy-dataplane:
+	$(MAKE) deploy-up PROFILE=dataplane
+
+deploy-worker:
+	$(MAKE) deploy-up PROFILE=worker
+
+deploy-web:
+	$(MAKE) deploy-up PROFILE=web
 
 deploy-down:
-	bash scripts/deploy-down.sh
+	PROFILE="$(PROFILE)" bash scripts/deploy-down.sh
 
 deploy-logs:
 	@test -f $(DEPLOY_ENV) || (echo "missing $(DEPLOY_ENV) — run make deploy-init" >&2; exit 1)
-	docker compose -f $(DEPLOY_COMPOSE) --env-file $(DEPLOY_ENV) logs -f
+	docker compose -f $(DEPLOY_COMPOSE) --env-file $(DEPLOY_ENV) \
+		$(foreach p,$(subst $(comma), ,$(PROFILE)),--profile $(p)) logs -f
 
 deploy-health:
 	bash scripts/deploy-health.sh

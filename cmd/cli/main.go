@@ -13,7 +13,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const version = "0.2.0-dev"
+// version is overridden at link time by scripts/build-release.sh (-X main.version=...).
+var version = "0.2.0-dev"
 
 func main() {
 	if len(os.Args) < 2 {

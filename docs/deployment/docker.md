@@ -1,6 +1,6 @@
 # Docker Compose deployment
 
-Run the full AFI stack (Postgres, Redis, control plane, gateway, worker, web) on a single host.
+Run AFI on a single host with Docker Compose. Start the **full** stack, or only the pieces you need (control plane, data plane / gateway, worker, web, or infra).
 
 ## Prerequisites
 
@@ -27,7 +27,7 @@ make deploy-init
 #    deploy/.env          — Compose + runtime env
 #    deploy/afi.yaml      — AFI YAML (seed + defaults)
 
-# 3. Build images and start
+# 3. Build images and start (full stack)
 make deploy-up
 
 # 4. Health check
@@ -36,16 +36,63 @@ make deploy-health
 
 `scripts/deploy-up.sh` refuses to start while `CHANGE_ME` placeholders remain.
 
-## What gets started
+## Deployment profiles
 
-| Service | Image / build | Default host port |
-|---------|---------------|-------------------|
-| `postgres` | `postgres:16-alpine` | `5432` |
-| `redis` | `redis:7-alpine` | `6379` |
-| `controlplane` | `Dockerfile` (`AFI_SERVICE=controlplane`) | `8081` |
-| `gateway` | `Dockerfile` (`AFI_SERVICE=gateway`) | `8080` |
-| `worker` | `Dockerfile` (`AFI_SERVICE=worker`) | — |
-| `web` | `Dockerfile.web` (nginx + Vite build) | `3000` |
+Every service is gated by a Compose **profile**. The default is `full`.
+
+| Profile | Starts | When to use |
+|---------|--------|-------------|
+| `full` | Postgres, Redis, control plane, gateway, worker, web | Single-host / quick self-host (default) |
+| `infra` | Postgres, Redis | Shared database for other hosts or local binaries |
+| `controlplane` | Postgres, Redis, control plane | Platform API + seed/migrate only |
+| `dataplane` | Postgres, Redis, gateway | Inference only (needs an existing snapshot in Postgres) |
+| `worker` | Postgres, worker | Usage / events outbox drain only |
+| `web` | Web UI | UI only — set `VITE_*` to reachable control plane / gateway URLs |
+
+`gateway` is accepted as an alias for `dataplane`.
+
+### Convenience targets
+
+```bash
+make deploy-up                 # full stack
+make deploy-infra
+make deploy-controlplane
+make deploy-dataplane          # gateway + Postgres + Redis
+make deploy-worker
+make deploy-web
+```
+
+### Combine profiles
+
+```bash
+# Control plane + data plane + worker (no web UI)
+make deploy-up PROFILE="controlplane dataplane worker"
+
+# Or pass profiles to the script
+bash scripts/deploy-up.sh controlplane dataplane
+```
+
+### Split across hosts
+
+Typical pattern:
+
+1. Host A: `make deploy-controlplane` (migrate, seed, publish snapshots).
+2. Point Host B’s `AFI_DATABASE_URL` / `AFI_REDIS_URL` at that Postgres/Redis (or run `make deploy-infra` once and share it).
+3. Host B: `make deploy-dataplane` and/or `make deploy-worker` with the same config secrets.
+4. Optionally `make deploy-web` anywhere browsers can reach the APIs — rebuild after setting `VITE_PLATFORM_API_URL` / `VITE_GATEWAY_API_URL`.
+
+App services no longer wait on each other at start: the gateway only needs a healthy Postgres (with a published snapshot) and Redis; the worker only needs Postgres.
+
+## What gets started (`full`)
+
+| Service | Image / build | Default host port | Profiles |
+|---------|---------------|-------------------|----------|
+| `postgres` | `postgres:16-alpine` | `5432` | `full`, `infra`, `controlplane`, `dataplane`, `worker` |
+| `redis` | `redis:7-alpine` | `6379` | `full`, `infra`, `controlplane`, `dataplane` |
+| `controlplane` | `Dockerfile` (`AFI_SERVICE=controlplane`) | `8081` | `full`, `controlplane` |
+| `gateway` | `Dockerfile` (`AFI_SERVICE=gateway`) | `8080` | `full`, `dataplane` |
+| `worker` | `Dockerfile` (`AFI_SERVICE=worker`) | — | `full`, `worker` |
+| `web` | `Dockerfile.web` (nginx + Vite build) | `3000` | `full`, `web` |
 
 Compose file: [`deploy/docker-compose.yml`](../../deploy/docker-compose.yml).
 
@@ -76,15 +123,16 @@ Vite vars are baked at image build time:
 
 ```bash
 # edit VITE_* in deploy/.env
-make build-images
-docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d web
+make build-images PROFILE=web
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env --profile web up -d web
 ```
 
 ## Day-2 operations
 
 ```bash
-make deploy-logs          # follow all service logs
-make deploy-down          # stop (keep volumes)
+make deploy-logs                    # follow logs (respects PROFILE)
+make deploy-logs PROFILE=dataplane
+make deploy-down                    # stop (keep volumes)
 bash scripts/deploy-down.sh --volumes   # stop + wipe Postgres/Redis data
 ```
 
@@ -97,7 +145,7 @@ curl -X POST http://localhost:8081/internal/v1/snapshots/publish \
 
 ## Optional: platform events with NATS
 
-1. Uncomment the `nats` service in `deploy/docker-compose.yml`.
+1. Uncomment the `nats` service in `deploy/docker-compose.yml` (add a `profiles` entry such as `["full"]`).
 2. Set in `deploy/.env` / YAML:
 
 ```bash
@@ -115,7 +163,7 @@ See [Platform domain events](../development/platform-events.md).
 | | Dev (`make dev-up`) | Deploy (`make deploy-up`) |
 |--|---------------------|---------------------------|
 | File | `docker-compose.yml` | `deploy/docker-compose.yml` |
-| Services | Postgres, Redis, Adminer | Full AFI stack |
+| Services | Postgres, Redis, Adminer | Profile-selected AFI services |
 | Postgres port | `5433` | `5432` (configurable) |
 | App processes | Run via `make run-*` on the host | Containers |
 
@@ -126,8 +174,9 @@ Do not run both stacks against the same host ports at once.
 | Symptom | Check |
 |---------|-------|
 | `deploy-up` exits on `CHANGE_ME` | Finish editing `deploy/.env` and `deploy/afi.yaml` |
+| No containers start | Pass a profile (`full`, `controlplane`, …); bare Compose with no profile starts nothing |
 | Control plane crash-loops | `AFI_DATABASE_URL`, Postgres healthy, logs |
-| Gateway 401 | Virtual API key / snapshot published |
+| Gateway 401 / empty snapshot | Run control plane once to seed + publish; confirm shared Postgres |
 | Timed quotas fail | Redis up; `AFI_REDIS_URL` |
 | Usage UI empty | Worker running; wait for outbox drain |
 | Web calls wrong API host | Rebuild web with correct `VITE_*` |

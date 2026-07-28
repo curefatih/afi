@@ -40,8 +40,8 @@ flowchart TB
 | Path | When to use | Guide |
 |------|-------------|-------|
 | **Quick start** | Try AFI locally with one command | [Quick start](getting-started/quick-start.md) |
-| **Docker Compose** | Single host / VM, self-host with your secrets | [Docker Compose](deployment/docker.md) |
-| **Binaries** | Custom OS images, systemd, bare metal | [Binary deployment](deployment/binary.md) |
+| **Docker Compose** | Single host / VM, or profile subsets (control plane, data plane, worker, web) | [Docker Compose](deployment/docker.md) |
+| **Binaries** | Custom OS images, systemd, bare metal | [Binary deployment](deployment/binary.md) — download `v*` release archives or build with `make build-release` |
 | **Local dev** | Day-to-day development | [Local development](getting-started/local-dev.md) |
 
 ## Customization

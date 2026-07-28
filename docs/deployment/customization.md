@@ -172,8 +172,12 @@ Release builds:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `GOOS` / `GOARCH` | `linux` / `amd64` | `scripts/build-release.sh` target |
-| `VERSION` | git describe | Label printed by the script |
+| `GOOS` / `GOARCH` | `linux` / `amd64` | Single-target `scripts/build-release.sh` (ignored when `TARGETS` is set) |
+| `TARGETS` | _(empty)_ | Comma-separated `goos/goarch` list (e.g. `linux/amd64,darwin/arm64`) |
+| `VERSION` | git describe | Embedded in CLI (`afi version`) and archive names |
+| `PACKAGE` | `0` | Set to `1` to write `dist/afi-*.tar.gz` (+ `.sha256`) including `afi.example.yaml` |
+| `OUT_DIR` | `bin/release` | Per-target binary root (`<OUT_DIR>/<os>-<arch>/`) |
+| `DIST_DIR` | `dist` | Archive output directory when `PACKAGE=1` |
 
 ---
 

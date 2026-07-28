@@ -2,7 +2,7 @@
 
 Run the full AFI stack (Postgres, Redis, control plane, gateway, worker, and web UI) with Docker Compose. No Go or Node toolchain required.
 
-For day-to-day development on the host, see [Local development](local-dev.md). For production hardening, see [Docker Compose deployment](../deployment/docker.md).
+For day-to-day development on the host, see [Local development](local-dev.md). For production hardening or running only the control plane / data plane / worker / web, see [Docker Compose deployment](../deployment/docker.md).
 
 ## Prerequisites
 

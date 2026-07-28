@@ -2,7 +2,32 @@
 
 Deploy AFI as standalone binaries without containerizing the app processes. You still need Postgres (and Redis if you use timed quotas).
 
-## Build
+A release archive is enough to run: the four binaries plus a config file (copy `afi.example.yaml` → `afi.yaml` and edit).
+
+## Download (recommended)
+
+GitHub Actions builds portable archives for `linux`/`darwin` × `amd64`/`arm64` on every `v*` tag (and on demand via **Actions → Release → Run workflow**).
+
+Each `afi-<version>-<os>-<arch>.tar.gz` contains:
+
+| File | Purpose |
+|------|---------|
+| `controlplane`, `gateway`, `worker`, `afi` | Binaries (`CGO_ENABLED=0`) |
+| `afi.example.yaml` | Starting config — copy and replace every `CHANGE_ME` |
+| `README.txt` | Short run instructions |
+
+```bash
+tar -xzf afi-*-linux-amd64.tar.gz
+cd afi-*-linux-amd64
+cp afi.example.yaml afi.yaml
+# edit afi.yaml
+export AFI_CONFIG=$PWD/afi.yaml
+./controlplane
+```
+
+Verify downloads with the matching `.sha256` file next to each archive.
+
+## Build locally
 
 ### Local architecture
 
@@ -15,12 +40,19 @@ make build
 
 ```bash
 make build-release
-# → bin/release/controlplane, gateway, worker, afi
+# → bin/release/linux-amd64/{controlplane,gateway,worker,afi}
 
 GOOS=linux GOARCH=arm64 make build-release
+
+# Archive with example config (writes dist/*.tar.gz + .sha256):
+PACKAGE=1 make build-release
+
+# All CI targets:
+TARGETS=linux/amd64,linux/arm64,darwin/amd64,darwin/arm64 PACKAGE=1 \
+  bash scripts/build-release.sh
 ```
 
-Script: [`scripts/build-release.sh`](../../scripts/build-release.sh).
+Script: [`scripts/build-release.sh`](../../scripts/build-release.sh). CI workflow: [`.github/workflows/release.yml`](../../.github/workflows/release.yml).
 
 ### Web UI (optional)
 
