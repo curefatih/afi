@@ -25,6 +25,7 @@ tags:
 - name: Projects
 - name: Environments
 - name: Keys
+- name: SigningKeys
 - name: Providers
 - name: Routes
 - name: Quotas
@@ -2524,6 +2525,140 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CreateProjectKey'
+  /api/v1/platform/organizations/{orgID}/signing-keys:
+    get:
+      operationId: listOrgSigningKeys
+      summary: List org signing keys
+      tags:
+      - SigningKeys
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SigningKey'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org member.
+      parameters: *id004
+    post:
+      operationId: createOrgSigningKey
+      summary: Create org signing key
+      tags:
+      - SigningKeys
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SigningKey'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin. Registers a public verification key for signed service requests.
+      parameters: *id004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSigningKey'
+  /api/v1/platform/signing-keys/{signingKeyID}:
+    patch:
+      operationId: updateSigningKey
+      summary: Update signing key
+      tags:
+      - SigningKeys
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SigningKey'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin for the key's organization.
+      parameters: &id028
+      - name: signingKeyID
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSigningKey'
+    delete:
+      operationId: deleteSigningKey
+      summary: Delete signing key
+      tags:
+      - SigningKeys
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin for the key's organization.
+      parameters: *id028
+  /api/v1/platform/signing-keys/{signingKeyID}/rotate:
+    post:
+      operationId: rotateSigningKey
+      summary: Rotate signing key public material
+      tags:
+      - SigningKeys
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SigningKey'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires org admin for the key's organization.
+      parameters: *id028
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RotateSigningKey'
 components:
   securitySchemes:
     bearerAuth:
@@ -3096,6 +3231,91 @@ components:
         environment_id:
           type: string
           description: Optional; must belong to the project
+    SigningKey:
+      type: object
+      required:
+      - id
+      - key_id
+      - organization_id
+      - name
+      - algorithm
+      - public_key_pem
+      - status
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+        key_id:
+          type: string
+          description: Client-facing key identifier used in request signatures
+        project_id:
+          type: string
+        organization_id:
+          type: string
+        environment_id:
+          type: string
+        name:
+          type: string
+        algorithm:
+          type: string
+          enum:
+          - ed25519
+        public_key_pem:
+          type: string
+          description: PEM-encoded public verification key
+        status:
+          type: string
+          enum:
+          - active
+          - disabled
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CreateSigningKey:
+      type: object
+      required:
+      - key_id
+      - name
+      - public_key_pem
+      properties:
+        key_id:
+          type: string
+        name:
+          type: string
+        algorithm:
+          type: string
+          enum:
+          - ed25519
+          description: Defaults to ed25519 when omitted
+        public_key_pem:
+          type: string
+        project_id:
+          type: string
+        environment_id:
+          type: string
+          description: Optional; requires project_id and must belong to that project
+    UpdateSigningKey:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum:
+          - active
+          - disabled
+    RotateSigningKey:
+      type: object
+      required:
+      - public_key_pem
+      properties:
+        public_key_pem:
+          type: string
+          description: Replacement PEM-encoded public key matching the existing algorithm
     ProviderCapabilities:
       type: object
       properties:
