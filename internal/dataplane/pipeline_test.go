@@ -3,18 +3,55 @@ package dataplane
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/curefatih/afi/internal/adapters/llm"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
 )
+
+func testEd25519PublicKeyPEM(t *testing.T) (ed25519.PrivateKey, string) {
+	t.Helper()
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	der, err := x509.MarshalPKIXPublicKey(pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return priv, string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der}))
+}
+
+func signGatewayRequest(t *testing.T, req *http.Request, body []byte, priv ed25519.PrivateKey, keyID, nonce string, ts time.Time) {
+	t.Helper()
+	sum := sha256SumHex(body)
+	req.Header.Set(headerSigningKeyID, keyID)
+	req.Header.Set(headerSigningTS, ts.UTC().Format(time.RFC3339))
+	req.Header.Set(headerSigningNonce, nonce)
+	req.Header.Set(headerSigningBodySHA, sum)
+	msg := canonicalSignedRequest(req, sum, req.Header.Get(headerSigningTS), nonce)
+	req.Header.Set(headerSigningSig, base64.StdEncoding.EncodeToString(ed25519.Sign(priv, []byte(msg))))
+}
+
+func sha256SumHex(body []byte) string {
+	sum := sha256.Sum256(body)
+	return fmt.Sprintf("%x", sum[:])
+}
 
 func TestAuthenticateKey(t *testing.T) {
 	raw := "sk-good"
@@ -56,6 +93,82 @@ func TestChatCompletionsUnauthorized(t *testing.T) {
 	p.Handler().ServeHTTP(rr, req)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestChatCompletionsSignedRequest(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "chatcmpl-test",
+			"choices": []map[string]any{
+				{"message": map[string]string{"role": "assistant", "content": "pong"}},
+			},
+			"usage": map[string]int{"prompt_tokens": 2, "completion_tokens": 1},
+		})
+	}))
+	defer upstream.Close()
+
+	t.Setenv("OPENAI_API_KEY", "test-key")
+	priv, pubPEM := testEd25519PublicKeyPEM(t)
+	holder := NewHolder()
+	holder.Set(snapshot.Compile(snapshot.Source{
+		SigningKeys: []snapshot.SigningKey{{
+			ID: "sig1", KeyID: "kid-1", ProjectID: "p1", OrganizationID: "o1", Name: "svc",
+			Algorithm: "ed25519", PublicKeyPEM: pubPEM, Status: "active",
+		}},
+		Providers: []snapshot.Provider{{
+			ID: "prov", Type: "openai", BaseURL: upstream.URL, APIKeyEnv: "OPENAI_API_KEY",
+		}},
+		Routes: []snapshot.Route{{
+			OrganizationID: "o1", Model: "gpt-4o-mini", ProviderID: "prov", TargetModel: "gpt-4o-mini",
+		}},
+	}))
+	client := llm.NewOpenAIClient(nil)
+	client.HTTP = upstream.Client()
+	p := NewPipeline(holder, RegistryWithOpenAI(client), slog.Default())
+	var got UsageEvent
+	p.Usage = func(e UsageEvent) { got = e }
+
+	body := `{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hi"}]}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	signGatewayRequest(t, req, []byte(body), priv, "kid-1", "nonce-1", time.Now())
+	rr := httptest.NewRecorder()
+	p.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if got.AuthMethod != snapshot.AuthMethodSignedRequest || got.SigningKeyID != "sig1" || got.SignerKeyID != "kid-1" {
+		t.Fatalf("usage event: %+v", got)
+	}
+}
+
+func TestSignedRequestReplayRejected(t *testing.T) {
+	priv, pubPEM := testEd25519PublicKeyPEM(t)
+	holder := NewHolder()
+	holder.Set(snapshot.Compile(snapshot.Source{
+		SigningKeys: []snapshot.SigningKey{{
+			ID: "sig1", KeyID: "kid-1", OrganizationID: "o1", Name: "svc",
+			Algorithm: "ed25519", PublicKeyPEM: pubPEM, Status: "active",
+		}},
+	}))
+	p := NewPipeline(holder, NewRegistry(), slog.Default())
+	nonce := "replay-nonce"
+	makeReq := func() *http.Request {
+		body := []byte("{}")
+		req := httptest.NewRequest(http.MethodGet, "/v1/models", bytes.NewReader(body))
+		signGatewayRequest(t, req, nil, priv, "kid-1", nonce, time.Now())
+		return req
+	}
+	rr1 := httptest.NewRecorder()
+	p.Handler().ServeHTTP(rr1, makeReq())
+	if rr1.Code != http.StatusOK {
+		t.Fatalf("first status=%d body=%s", rr1.Code, rr1.Body.String())
+	}
+	rr2 := httptest.NewRecorder()
+	p.Handler().ServeHTTP(rr2, makeReq())
+	if rr2.Code != http.StatusUnauthorized {
+		t.Fatalf("second status=%d body=%s", rr2.Code, rr2.Body.String())
 	}
 }
 

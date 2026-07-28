@@ -99,13 +99,6 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 	log := p.Log.With("request_id", reqID)
 	start := time.Now()
 
-	rawKey, err := bearerToken(r.Header.Get("Authorization"))
-	if err != nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "missing or invalid authorization", "type": "invalid_request_error"},
-		})
-		return
-	}
 	snap := p.Holder.Get()
 	if snap == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
@@ -113,14 +106,6 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	key, ok := snap.LookupKey(rawKey)
-	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "invalid api key", "type": "invalid_request_error"},
-		})
-		return
-	}
-
 	body, err := io.ReadAll(io.LimitReader(r.Body, 8<<20))
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
@@ -128,6 +113,18 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	principal, err := authenticateGatewayRequest(ctx, snap, p.Replay, r, body)
+	if err != nil {
+		status := http.StatusUnauthorized
+		if err == kernel.ErrNotFound {
+			status = http.StatusServiceUnavailable
+		}
+		writeJSON(w, status, map[string]any{
+			"error": map[string]string{"message": authErrMessage(err), "type": "invalid_request_error"},
+		})
+		return
+	}
+	key := principal.PolicyKey()
 	var reqBody struct {
 		Model string `json:"model"`
 		Input string `json:"input"`
@@ -143,7 +140,7 @@ func (p *Pipeline) handleAudioSpeech(w http.ResponseWriter, r *http.Request) {
 		ttsMetrics["characters"] = n
 	}
 
-	call := newCallContext(key, reqBody.Model, "/v1/audio/speech", ModalityTTS, false, body, TagsFromRequest(r))
+	call := newCallContext(principal, reqBody.Model, "/v1/audio/speech", ModalityTTS, false, body, TagsFromRequest(r))
 	call.Headers = HeadersForPolicy(r.Header)
 	if !p.gateCall(ctx, w, snap, call) {
 		return
@@ -283,7 +280,8 @@ targetLoop:
 		})
 		status = "error"
 		p.recordUsage(UsageEvent{
-			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID, CredentialID: usedCredentialID,
+			OrganizationID: principal.OrganizationID, ProjectID: principal.ProjectID, TeamID: principal.TeamID, EnvironmentID: principal.EnvironmentID,
+			APIKeyID: principal.APIKeyID, SigningKeyID: principal.SigningKeyID, SignerKeyID: principal.KeyID, AuthMethod: principal.AuthMethod, CredentialID: usedCredentialID,
 			Model: reqBody.Model, ProviderType: usedProvider.Type, TargetModel: usedTarget,
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			Modality: ModalityTTS, Metrics: ttsMetrics, Tags: cloneTags(call.Tags),
@@ -310,7 +308,8 @@ targetLoop:
 		status = "error"
 	}
 	p.recordUsage(UsageEvent{
-		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID, CredentialID: usedCredentialID,
+		OrganizationID: principal.OrganizationID, ProjectID: principal.ProjectID, TeamID: principal.TeamID, EnvironmentID: principal.EnvironmentID,
+		APIKeyID: principal.APIKeyID, SigningKeyID: principal.SigningKeyID, SignerKeyID: principal.KeyID, AuthMethod: principal.AuthMethod, CredentialID: usedCredentialID,
 		Model: reqBody.Model, ProviderType: usedProvider.Type, TargetModel: usedTarget,
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		Modality: ModalityTTS, Metrics: ttsMetrics, Tags: cloneTags(call.Tags),
@@ -327,13 +326,6 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 	log := p.Log.With("request_id", reqID)
 	start := time.Now()
 
-	rawKey, err := bearerToken(r.Header.Get("Authorization"))
-	if err != nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "missing or invalid authorization", "type": "invalid_request_error"},
-		})
-		return
-	}
 	snap := p.Holder.Get()
 	if snap == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
@@ -341,14 +333,6 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 		})
 		return
 	}
-	key, ok := snap.LookupKey(rawKey)
-	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "invalid api key", "type": "invalid_request_error"},
-		})
-		return
-	}
-
 	body, err := io.ReadAll(io.LimitReader(r.Body, 32<<20))
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
@@ -356,6 +340,18 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 		})
 		return
 	}
+	principal, err := authenticateGatewayRequest(ctx, snap, p.Replay, r, body)
+	if err != nil {
+		status := http.StatusUnauthorized
+		if err == kernel.ErrNotFound {
+			status = http.StatusServiceUnavailable
+		}
+		writeJSON(w, status, map[string]any{
+			"error": map[string]string{"message": authErrMessage(err), "type": "invalid_request_error"},
+		})
+		return
+	}
+	key := principal.PolicyKey()
 	ct := r.Header.Get("Content-Type")
 	model, err := multipartFormValue(ct, bytes.NewReader(body), "model")
 	if err != nil || model == "" {
@@ -365,7 +361,7 @@ func (p *Pipeline) handleAudioTranscriptions(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	call := newCallContext(key, model, "/v1/audio/transcriptions", ModalitySTT, false, body, TagsFromRequest(r))
+	call := newCallContext(principal, model, "/v1/audio/transcriptions", ModalitySTT, false, body, TagsFromRequest(r))
 	call.Headers = HeadersForPolicy(r.Header)
 	if !p.gateCall(ctx, w, snap, call) {
 		return
@@ -505,7 +501,8 @@ targetLoop:
 		})
 		status = "error"
 		p.recordUsage(UsageEvent{
-			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID, CredentialID: usedCredentialID,
+			OrganizationID: principal.OrganizationID, ProjectID: principal.ProjectID, TeamID: principal.TeamID, EnvironmentID: principal.EnvironmentID,
+			APIKeyID: principal.APIKeyID, SigningKeyID: principal.SigningKeyID, SignerKeyID: principal.KeyID, AuthMethod: principal.AuthMethod, CredentialID: usedCredentialID,
 			Model: model, ProviderType: usedProvider.Type, TargetModel: usedTarget,
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			Modality: ModalitySTT, Tags: cloneTags(call.Tags),
@@ -532,7 +529,8 @@ targetLoop:
 		status = "error"
 	}
 	p.recordUsage(UsageEvent{
-		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID, CredentialID: usedCredentialID,
+		OrganizationID: principal.OrganizationID, ProjectID: principal.ProjectID, TeamID: principal.TeamID, EnvironmentID: principal.EnvironmentID,
+		APIKeyID: principal.APIKeyID, SigningKeyID: principal.SigningKeyID, SignerKeyID: principal.KeyID, AuthMethod: principal.AuthMethod, CredentialID: usedCredentialID,
 		Model: model, ProviderType: usedProvider.Type, TargetModel: usedTarget,
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		Modality: ModalitySTT, Tags: cloneTags(call.Tags),

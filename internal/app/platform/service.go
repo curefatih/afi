@@ -54,6 +54,12 @@ type ConfigAPI interface {
 	CreateAPIKey(ctx context.Context, orgID, kind, ownerUserID, projectID, environmentID, name, rawKey string) (*access.APIKey, error)
 	GetAPIKeyOrgID(ctx context.Context, keyID string) (string, error)
 	DeleteAPIKey(ctx context.Context, keyID string) error
+	ListSigningKeys(ctx context.Context, orgID string) ([]access.SigningKey, error)
+	CreateSigningKey(ctx context.Context, orgID, keyID, projectID, environmentID, name, algorithm, publicKeyPEM string) (*access.SigningKey, error)
+	UpdateSigningKey(ctx context.Context, id, name, status string) (*access.SigningKey, error)
+	RotateSigningKey(ctx context.Context, id, publicKeyPEM string) (*access.SigningKey, error)
+	GetSigningKeyOrgID(ctx context.Context, id string) (string, error)
+	DeleteSigningKey(ctx context.Context, id string) error
 
 	ListProviders(ctx context.Context, orgID string) ([]gatewayconfig.Provider, error)
 	ListProviderHealth(ctx context.Context, orgID string, from, to time.Time) ([]usage.ProviderHealth, error)

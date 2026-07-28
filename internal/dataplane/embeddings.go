@@ -41,13 +41,6 @@ func (p *Pipeline) handleEmbeddings(w http.ResponseWriter, r *http.Request) {
 	log := p.Log.With("request_id", reqID)
 	start := time.Now()
 
-	rawKey, err := bearerToken(r.Header.Get("Authorization"))
-	if err != nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "missing or invalid authorization", "type": "invalid_request_error"},
-		})
-		return
-	}
 	snap := p.Holder.Get()
 	if snap == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
@@ -55,14 +48,6 @@ func (p *Pipeline) handleEmbeddings(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	key, ok := snap.LookupKey(rawKey)
-	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "invalid api key", "type": "invalid_request_error"},
-		})
-		return
-	}
-
 	body, err := io.ReadAll(io.LimitReader(r.Body, 8<<20))
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
@@ -70,6 +55,18 @@ func (p *Pipeline) handleEmbeddings(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	principal, err := authenticateGatewayRequest(ctx, snap, p.Replay, r, body)
+	if err != nil {
+		status := http.StatusUnauthorized
+		if err == kernel.ErrNotFound {
+			status = http.StatusServiceUnavailable
+		}
+		writeJSON(w, status, map[string]any{
+			"error": map[string]string{"message": authErrMessage(err), "type": "invalid_request_error"},
+		})
+		return
+	}
+	key := principal.PolicyKey()
 	var reqBody struct {
 		Model string `json:"model"`
 		Input any    `json:"input"`
@@ -87,7 +84,7 @@ func (p *Pipeline) handleEmbeddings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	call := newCallContext(key, reqBody.Model, "/v1/embeddings", ModalityEmbedding, false, body, TagsFromRequest(r))
+	call := newCallContext(principal, reqBody.Model, "/v1/embeddings", ModalityEmbedding, false, body, TagsFromRequest(r))
 	call.Headers = HeadersForPolicy(r.Header)
 	if !p.gateCall(ctx, w, snap, call) {
 		return
@@ -151,7 +148,8 @@ func (p *Pipeline) handleEmbeddings(w http.ResponseWriter, r *http.Request) {
 		})
 		status = "error"
 		p.recordUsage(UsageEvent{
-			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID, CredentialID: credID,
+			OrganizationID: principal.OrganizationID, ProjectID: principal.ProjectID, TeamID: principal.TeamID, EnvironmentID: principal.EnvironmentID,
+			APIKeyID: principal.APIKeyID, SigningKeyID: principal.SigningKeyID, SignerKeyID: principal.KeyID, AuthMethod: principal.AuthMethod, CredentialID: credID,
 			Model: reqBody.Model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			Modality: ModalityEmbedding, Tags: cloneTags(call.Tags),
@@ -175,7 +173,8 @@ func (p *Pipeline) handleEmbeddings(w http.ResponseWriter, r *http.Request) {
 			})
 			status = "error"
 			p.recordUsage(UsageEvent{
-				OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID, CredentialID: credID,
+				OrganizationID: principal.OrganizationID, ProjectID: principal.ProjectID, TeamID: principal.TeamID, EnvironmentID: principal.EnvironmentID,
+				APIKeyID: principal.APIKeyID, SigningKeyID: principal.SigningKeyID, SignerKeyID: principal.KeyID, AuthMethod: principal.AuthMethod, CredentialID: credID,
 				Model: reqBody.Model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 				Status: status, LatencyMs: time.Since(start).Milliseconds(),
 				Modality: ModalityEmbedding, Tags: cloneTags(call.Tags),
@@ -208,7 +207,8 @@ func (p *Pipeline) handleEmbeddings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.recordUsage(UsageEvent{
-		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID, CredentialID: credID,
+		OrganizationID: principal.OrganizationID, ProjectID: principal.ProjectID, TeamID: principal.TeamID, EnvironmentID: principal.EnvironmentID,
+		APIKeyID: principal.APIKeyID, SigningKeyID: principal.SigningKeyID, SignerKeyID: principal.KeyID, AuthMethod: principal.AuthMethod, CredentialID: credID,
 		Model: reqBody.Model, ProviderType: bound.Type, TargetModel: route.TargetModel,
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		PromptTokens: promptTokens, CompletionTokens: completionTokens,

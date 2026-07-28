@@ -30,6 +30,8 @@ const (
 	CredentialStorageVault       = "vault"
 	CredentialStatusActive       = "active"
 	CredentialStatusDisabled     = "disabled"
+	AuthMethodAPIKey             = "api_key"
+	AuthMethodSignedRequest      = "signed_request"
 )
 
 // RequestWindows are checked on every request (rate limits + lifetime).
@@ -38,11 +40,12 @@ var RequestWindows = []string{WindowMinute, WindowHour, WindowDay, WindowTotal}
 type Snapshot struct {
 	Version        int64                         `json:"version"`
 	CreatedAt      time.Time                     `json:"created_at"`
-	APIKeys        map[string]APIKey             `json:"api_keys"`    // keyed by key hash
-	Providers      map[string]Provider           `json:"providers"`   // keyed by provider id
-	Routes         map[string]Route              `json:"routes"`      // keyed by orgID + "::" + model
-	Credentials    map[string]Credential         `json:"credentials"` // keyed by credential id
-	Assignments    map[string]string             `json:"assignments"` // providerType::scopeType::scopeID → credential id
+	APIKeys        map[string]APIKey             `json:"api_keys"`     // keyed by key hash
+	SigningKeys    map[string]SigningKey         `json:"signing_keys"` // keyed by key id
+	Providers      map[string]Provider           `json:"providers"`    // keyed by provider id
+	Routes         map[string]Route              `json:"routes"`       // keyed by orgID + "::" + model
+	Credentials    map[string]Credential         `json:"credentials"`  // keyed by credential id
+	Assignments    map[string]string             `json:"assignments"`  // providerType::scopeType::scopeID → credential id
 	Quotas         []Quota                       `json:"quotas"`
 	Policies       []Policy                      `json:"policies"`
 	WasmHooks      []WasmHook                    `json:"wasm_hooks"`
@@ -153,6 +156,34 @@ type APIKey struct {
 	OwnerUserID    string `json:"owner_user_id,omitempty"`
 }
 
+type SigningKey struct {
+	ID             string `json:"id"`
+	KeyID          string `json:"key_id"`
+	ProjectID      string `json:"project_id,omitempty"`
+	TeamID         string `json:"team_id,omitempty"`
+	EnvironmentID  string `json:"environment_id,omitempty"`
+	OrganizationID string `json:"organization_id"`
+	Name           string `json:"name"`
+	Algorithm      string `json:"algorithm"`
+	PublicKeyPEM   string `json:"public_key_pem"`
+	Status         string `json:"status"`
+}
+
+// Principal is the normalized gateway identity after authentication.
+type Principal struct {
+	OrganizationID string `json:"organization_id"`
+	ProjectID      string `json:"project_id,omitempty"`
+	TeamID         string `json:"team_id,omitempty"`
+	EnvironmentID  string `json:"environment_id,omitempty"`
+	APIKeyID       string `json:"api_key_id,omitempty"`
+	SigningKeyID   string `json:"signing_key_id,omitempty"`
+	KeyID          string `json:"key_id,omitempty"`
+	AuthMethod     string `json:"auth_method"`
+	Kind           string `json:"kind,omitempty"`
+	OwnerUserID    string `json:"owner_user_id,omitempty"`
+	Name           string `json:"name,omitempty"`
+}
+
 type Provider struct {
 	ID           string               `json:"id"`
 	Type         string               `json:"type"` // openai | anthropic | gemini | openai_compatible | …
@@ -203,6 +234,62 @@ func (s *Snapshot) LookupKey(raw string) (APIKey, bool) {
 	}
 	k, ok := s.APIKeys[HashKey(raw)]
 	return k, ok
+}
+
+func (s *Snapshot) LookupSigningKey(keyID string) (SigningKey, bool) {
+	if s == nil || s.SigningKeys == nil {
+		return SigningKey{}, false
+	}
+	k, ok := s.SigningKeys[strings.TrimSpace(keyID)]
+	if !ok || k.Status != "active" {
+		return SigningKey{}, false
+	}
+	return k, true
+}
+
+func PrincipalFromAPIKey(key APIKey) Principal {
+	return Principal{
+		OrganizationID: key.OrganizationID,
+		ProjectID:      key.ProjectID,
+		TeamID:         key.TeamID,
+		EnvironmentID:  key.EnvironmentID,
+		APIKeyID:       key.ID,
+		AuthMethod:     AuthMethodAPIKey,
+		Kind:           key.Kind,
+		OwnerUserID:    key.OwnerUserID,
+		Name:           key.Name,
+	}
+}
+
+func PrincipalFromSigningKey(key SigningKey) Principal {
+	return Principal{
+		OrganizationID: key.OrganizationID,
+		ProjectID:      key.ProjectID,
+		TeamID:         key.TeamID,
+		EnvironmentID:  key.EnvironmentID,
+		SigningKeyID:   key.ID,
+		KeyID:          key.KeyID,
+		AuthMethod:     AuthMethodSignedRequest,
+		Kind:           "service_account",
+		Name:           key.Name,
+	}
+}
+
+func (p Principal) PolicyKey() APIKey {
+	id := p.APIKeyID
+	if id == "" {
+		id = p.SigningKeyID
+	}
+	return APIKey{
+		ID:             id,
+		ProjectID:      p.ProjectID,
+		TeamID:         p.TeamID,
+		EnvironmentID:  p.EnvironmentID,
+		OrganizationID: p.OrganizationID,
+		Name:           p.Name,
+		Kind:           p.Kind,
+		OwnerUserID:    p.OwnerUserID,
+	}
 }
 
 func (s *Snapshot) LookupRoute(orgID, model string) (Route, Provider, bool) {

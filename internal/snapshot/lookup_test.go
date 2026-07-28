@@ -51,3 +51,19 @@ func TestLookupKeyByHash(t *testing.T) {
 		}
 	}
 }
+
+func TestLookupSigningKeyActiveOnly(t *testing.T) {
+	t.Parallel()
+	snap := Compile(Source{
+		SigningKeys: []SigningKey{
+			{ID: "sig_1", KeyID: "kid-active", OrganizationID: "o1", Name: "svc", Algorithm: "ed25519", PublicKeyPEM: "pem", Status: "active"},
+			{ID: "sig_2", KeyID: "kid-off", OrganizationID: "o1", Name: "svc2", Algorithm: "ed25519", PublicKeyPEM: "pem", Status: "disabled"},
+		},
+	})
+	if _, ok := snap.LookupSigningKey("kid-active"); !ok {
+		t.Fatal("expected active signing key")
+	}
+	if _, ok := snap.LookupSigningKey("kid-off"); ok {
+		t.Fatal("disabled signing key should not resolve")
+	}
+}

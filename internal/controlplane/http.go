@@ -176,6 +176,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/keys", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListOrgKeys)))
 	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/keys", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleCreateOrgKey)))
 	mux.HandleFunc("DELETE /api/v1/platform/keys/{keyID}", s.requireAuth(s.handleDeleteKey))
+	mux.HandleFunc("GET /api/v1/platform/organizations/{orgID}/signing-keys", s.requireAuth(s.requireOrgMemberFromPath("orgID", s.handleListSigningKeys)))
+	mux.HandleFunc("POST /api/v1/platform/organizations/{orgID}/signing-keys", s.requireAuth(s.requireOrgAdminFromPath("orgID", s.handleCreateSigningKey)))
+	mux.HandleFunc("PATCH /api/v1/platform/signing-keys/{signingKeyID}", s.requireAuth(s.requireOrgAdminViaSigningKey(s.handleUpdateSigningKey)))
+	mux.HandleFunc("POST /api/v1/platform/signing-keys/{signingKeyID}/rotate", s.requireAuth(s.requireOrgAdminViaSigningKey(s.handleRotateSigningKey)))
+	mux.HandleFunc("DELETE /api/v1/platform/signing-keys/{signingKeyID}", s.requireAuth(s.requireOrgAdminViaSigningKey(s.handleDeleteSigningKey)))
 
 	mux.HandleFunc("GET /api/v1/platform/projects/{projectID}/keys", s.requireAuth(s.requireOrgMemberViaProject(s.handleListKeys)))
 	mux.HandleFunc("POST /api/v1/platform/projects/{projectID}/keys", s.requireAuth(s.requireOrgAdminViaProject(s.handleCreateKey)))

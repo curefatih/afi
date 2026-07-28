@@ -11,18 +11,23 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-func newCallContext(key snapshot.APIKey, model, path, modality string, stream bool, body []byte, tags map[string]string) *CallContext {
+func newCallContext(principal snapshot.Principal, model, path, modality string, stream bool, body []byte, tags map[string]string) *CallContext {
 	if tags == nil {
 		tags = map[string]string{}
 	}
 	return &CallContext{
 		Principal: Principal{
-			OrganizationID: key.OrganizationID,
-			ProjectID:      key.ProjectID,
-			APIKeyID:       key.ID,
-			Kind:           key.Kind,
-			OwnerUserID:    key.OwnerUserID,
-			Name:           key.Name,
+			OrganizationID: principal.OrganizationID,
+			ProjectID:      principal.ProjectID,
+			TeamID:         principal.TeamID,
+			EnvironmentID:  principal.EnvironmentID,
+			APIKeyID:       principal.APIKeyID,
+			SigningKeyID:   principal.SigningKeyID,
+			KeyID:          principal.KeyID,
+			AuthMethod:     principal.AuthMethod,
+			Kind:           principal.Kind,
+			OwnerUserID:    principal.OwnerUserID,
+			Name:           principal.Name,
 		},
 		Route: RouteContext{
 			Model:    model,
@@ -147,14 +152,19 @@ func (h *policyCallHook) BeforeCall(_ context.Context, call *CallContext) (CallD
 	if snap == nil || len(snap.Policies) == 0 {
 		return sdkhook.Allow(), nil
 	}
-	key := snapshot.APIKey{
-		ID:             call.Principal.APIKeyID,
+	key := snapshot.Principal{
 		OrganizationID: call.Principal.OrganizationID,
 		ProjectID:      call.Principal.ProjectID,
+		TeamID:         call.Principal.TeamID,
+		EnvironmentID:  call.Principal.EnvironmentID,
+		APIKeyID:       call.Principal.APIKeyID,
+		SigningKeyID:   call.Principal.SigningKeyID,
+		KeyID:          call.Principal.KeyID,
+		AuthMethod:     call.Principal.AuthMethod,
 		Kind:           call.Principal.Kind,
 		OwnerUserID:    call.Principal.OwnerUserID,
 		Name:           call.Principal.Name,
-	}
+	}.PolicyKey()
 	cred := policy.Credential{}
 	req := policy.Request{
 		Model:   call.Route.Model,
@@ -222,14 +232,19 @@ func (h *quotaCallHook) BeforeCall(ctx context.Context, call *CallContext) (Call
 	if snap == nil {
 		return sdkhook.Allow(), nil
 	}
-	key := snapshot.APIKey{
-		ID:             call.Principal.APIKeyID,
+	key := snapshot.Principal{
 		OrganizationID: call.Principal.OrganizationID,
 		ProjectID:      call.Principal.ProjectID,
+		TeamID:         call.Principal.TeamID,
+		EnvironmentID:  call.Principal.EnvironmentID,
+		APIKeyID:       call.Principal.APIKeyID,
+		SigningKeyID:   call.Principal.SigningKeyID,
+		KeyID:          call.Principal.KeyID,
+		AuthMethod:     call.Principal.AuthMethod,
 		Kind:           call.Principal.Kind,
 		OwnerUserID:    call.Principal.OwnerUserID,
 		Name:           call.Principal.Name,
-	}
+	}.PolicyKey()
 	denied, err := p.checkAndIncrRequests(ctx, snap, key)
 	if err != nil {
 		return CallDecision{}, err

@@ -206,6 +206,57 @@ func (s *Service) DeleteAPIKey(ctx context.Context, keyID string) error {
 	return nil
 }
 
+func (s *Service) CreateSigningKey(ctx context.Context, orgID, keyID, projectID, environmentID, name, algorithm, publicKeyPEM string) (*access.SigningKey, error) {
+	k, err := s.API.CreateSigningKey(ctx, orgID, keyID, projectID, environmentID, name, algorithm, publicKeyPEM)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "created"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventSigningKeyCreated, k.ID, orgID)
+	return k, nil
+}
+
+func (s *Service) UpdateSigningKey(ctx context.Context, id, name, status string) (*access.SigningKey, error) {
+	k, err := s.API.UpdateSigningKey(ctx, id, name, status)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "updated"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventSigningKeyUpdated, id, k.OrganizationID)
+	return k, nil
+}
+
+func (s *Service) RotateSigningKey(ctx context.Context, id, publicKeyPEM string) (*access.SigningKey, error) {
+	k, err := s.API.RotateSigningKey(ctx, id, publicKeyPEM)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publish(ctx, "updated"); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventSigningKeyRotated, id, k.OrganizationID)
+	return k, nil
+}
+
+func (s *Service) DeleteSigningKey(ctx context.Context, id string) error {
+	orgID, err := s.API.GetSigningKeyOrgID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if err := s.API.DeleteSigningKey(ctx, id); err != nil {
+		return err
+	}
+	if err := s.publish(ctx, "deleted"); err != nil {
+		return err
+	}
+	s.emit(ctx, EventSigningKeyDeleted, id, orgID)
+	return nil
+}
+
 func (s *Service) CreateProvider(ctx context.Context, orgID, name, typ, baseURL, apiKeyEnv string, caps snapshot.ProviderCapabilities, config json.RawMessage) (*gatewayconfig.Provider, error) {
 	p, err := s.API.CreateProvider(ctx, orgID, name, typ, baseURL, apiKeyEnv, caps, config)
 	if err != nil {

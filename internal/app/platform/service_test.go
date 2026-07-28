@@ -29,10 +29,12 @@ func (m *memEvents) Record(_ context.Context, e platform.Event) {
 }
 
 type memAPI struct {
-	created int
-	keys    []access.APIKey
-	invite  *tenancy.InviteOutcome
-	team    *tenancy.Team
+	created        int
+	createdSigning int
+	keys           []access.APIKey
+	signingKeys    []access.SigningKey
+	invite         *tenancy.InviteOutcome
+	team           *tenancy.Team
 }
 
 func (m *memAPI) ListOrganizationsForUser(context.Context, string) ([]tenancy.Organization, error) {
@@ -117,6 +119,21 @@ func (m *memAPI) CreateAPIKey(context.Context, string, string, string, string, s
 }
 func (m *memAPI) GetAPIKeyOrgID(context.Context, string) (string, error) { return "org_1", nil }
 func (m *memAPI) DeleteAPIKey(context.Context, string) error             { panic("unused") }
+func (m *memAPI) ListSigningKeys(context.Context, string) ([]access.SigningKey, error) {
+	return m.signingKeys, nil
+}
+func (m *memAPI) CreateSigningKey(context.Context, string, string, string, string, string, string, string) (*access.SigningKey, error) {
+	m.createdSigning++
+	return &access.SigningKey{ID: "sig_1", OrganizationID: "org", KeyID: "kid-1", Name: "svc", Algorithm: "ed25519", Status: "active"}, nil
+}
+func (m *memAPI) UpdateSigningKey(context.Context, string, string, string) (*access.SigningKey, error) {
+	panic("unused")
+}
+func (m *memAPI) RotateSigningKey(context.Context, string, string) (*access.SigningKey, error) {
+	panic("unused")
+}
+func (m *memAPI) GetSigningKeyOrgID(context.Context, string) (string, error) { return "org_1", nil }
+func (m *memAPI) DeleteSigningKey(context.Context, string) error             { panic("unused") }
 func (m *memAPI) ListProviders(context.Context, string) ([]gatewayconfig.Provider, error) {
 	return nil, nil
 }
@@ -312,6 +329,25 @@ func TestListVisibleOrgAPIKeysFilters(t *testing.T) {
 	all, err := svc.ListVisibleOrgAPIKeys(context.Background(), "org", "u1", true)
 	if err != nil || len(all) != 3 {
 		t.Fatalf("admin got=%d err=%v", len(all), err)
+	}
+}
+
+func TestServiceCreateSigningKeyPublishesAndEmits(t *testing.T) {
+	t.Parallel()
+	api := &memAPI{}
+	snap := &memSnap{}
+	ev := &memEvents{}
+	svc := platform.New(api, snap)
+	svc.Events = ev
+	k, err := svc.CreateSigningKey(context.Background(), "org", "kid-1", "", "", "svc", "ed25519", "pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if k == nil || k.ID != "sig_1" || api.createdSigning != 1 || snap.n != 1 {
+		t.Fatalf("k=%+v created=%d snap=%d", k, api.createdSigning, snap.n)
+	}
+	if len(ev.names) != 2 || ev.names[0] != platform.EventSnapshotPublish || ev.names[1] != platform.EventSigningKeyCreated {
+		t.Fatalf("events=%v", ev.names)
 	}
 }
 

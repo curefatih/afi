@@ -30,13 +30,6 @@ func (p *Pipeline) handleA2AJSONRPC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rawKey, err := bearerToken(r.Header.Get("Authorization"))
-	if err != nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "missing or invalid authorization", "type": "invalid_request_error"},
-		})
-		return
-	}
 	snap := p.Holder.Get()
 	if snap == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
@@ -44,14 +37,6 @@ func (p *Pipeline) handleA2AJSONRPC(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	key, ok := snap.LookupKey(rawKey)
-	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "invalid api key", "type": "invalid_request_error"},
-		})
-		return
-	}
-
 	body, err := io.ReadAll(io.LimitReader(r.Body, a2aBodyLimit))
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
@@ -59,17 +44,28 @@ func (p *Pipeline) handleA2AJSONRPC(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	principal, err := authenticateGatewayRequest(ctx, snap, p.Replay, r, body)
+	if err != nil {
+		status := http.StatusUnauthorized
+		if err == kernel.ErrNotFound {
+			status = http.StatusServiceUnavailable
+		}
+		writeJSON(w, status, map[string]any{
+			"error": map[string]string{"message": authErrMessage(err), "type": "invalid_request_error"},
+		})
+		return
+	}
 
 	path := "/a2a/" + alias
 	stream := strings.Contains(strings.ToLower(r.Header.Get("Accept")), "text/event-stream")
-	call := newCallContext(key, alias, path, ModalityA2A, stream, body, TagsFromRequest(r))
+	call := newCallContext(principal, alias, path, ModalityA2A, stream, body, TagsFromRequest(r))
 	call.Headers = HeadersForPolicy(r.Header)
 	if !p.gateCall(ctx, w, snap, call) {
 		return
 	}
 	body = call.Body
 
-	agent, ok := snap.LookupA2AAgent(key.OrganizationID, alias)
+	agent, ok := snap.LookupA2AAgent(principal.OrganizationID, alias)
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]any{
 			"error": map[string]string{"message": "unknown a2a alias", "type": "invalid_request_error"},
@@ -104,7 +100,7 @@ func (p *Pipeline) handleA2AJSONRPC(w http.ResponseWriter, r *http.Request) {
 		upReq.Header.Set("Content-Type", "application/json")
 	}
 
-	p.proxyA2AResponse(ctx, w, snap, call, key, agent, alias, method, skill, taskID, upReq, start, log)
+	p.proxyA2AResponse(ctx, w, snap, call, principal, agent, alias, method, skill, taskID, upReq, start, log)
 }
 
 func (p *Pipeline) handleA2AAgentCard(w http.ResponseWriter, r *http.Request) {
@@ -121,13 +117,6 @@ func (p *Pipeline) handleA2AAgentCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rawKey, err := bearerToken(r.Header.Get("Authorization"))
-	if err != nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "missing or invalid authorization", "type": "invalid_request_error"},
-		})
-		return
-	}
 	snap := p.Holder.Get()
 	if snap == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
@@ -135,22 +124,26 @@ func (p *Pipeline) handleA2AAgentCard(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	key, ok := snap.LookupKey(rawKey)
-	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{
-			"error": map[string]string{"message": "invalid api key", "type": "invalid_request_error"},
+	principal, err := authenticateGatewayRequest(ctx, snap, p.Replay, r, nil)
+	if err != nil {
+		status := http.StatusUnauthorized
+		if err == kernel.ErrNotFound {
+			status = http.StatusServiceUnavailable
+		}
+		writeJSON(w, status, map[string]any{
+			"error": map[string]string{"message": authErrMessage(err), "type": "invalid_request_error"},
 		})
 		return
 	}
 
 	path := "/a2a/" + alias + "/.well-known/agent-card.json"
-	call := newCallContext(key, alias, path, ModalityA2A, false, nil, TagsFromRequest(r))
+	call := newCallContext(principal, alias, path, ModalityA2A, false, nil, TagsFromRequest(r))
 	call.Headers = HeadersForPolicy(r.Header)
 	if !p.gateCall(ctx, w, snap, call) {
 		return
 	}
 
-	agent, ok := snap.LookupA2AAgent(key.OrganizationID, alias)
+	agent, ok := snap.LookupA2AAgent(principal.OrganizationID, alias)
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]any{
 			"error": map[string]string{"message": "unknown a2a alias", "type": "invalid_request_error"},
@@ -175,7 +168,8 @@ func (p *Pipeline) handleA2AAgentCard(w http.ResponseWriter, r *http.Request) {
 		})
 		status = "error"
 		p.recordUsage(UsageEvent{
-			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
+			OrganizationID: principal.OrganizationID, ProjectID: principal.ProjectID, TeamID: principal.TeamID, EnvironmentID: principal.EnvironmentID,
+			APIKeyID: principal.APIKeyID, SigningKeyID: principal.SigningKeyID, SignerKeyID: principal.KeyID, AuthMethod: principal.AuthMethod,
 			Model: alias, ProviderType: "a2a", TargetModel: agent.ID,
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			Modality: ModalityA2A, Metrics: map[string]any{"method": "agent-card"}, Tags: cloneTags(call.Tags),
@@ -202,7 +196,8 @@ func (p *Pipeline) handleA2AAgentCard(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(rewritten)
 
 	p.recordUsage(UsageEvent{
-		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
+		OrganizationID: principal.OrganizationID, ProjectID: principal.ProjectID, TeamID: principal.TeamID, EnvironmentID: principal.EnvironmentID,
+		APIKeyID: principal.APIKeyID, SigningKeyID: principal.SigningKeyID, SignerKeyID: principal.KeyID, AuthMethod: principal.AuthMethod,
 		Model: alias, ProviderType: "a2a", TargetModel: agent.ID,
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		Modality: ModalityA2A, Metrics: map[string]any{"method": "agent-card"}, Tags: cloneTags(call.Tags),
@@ -265,7 +260,7 @@ func (p *Pipeline) proxyA2AResponse(
 	w http.ResponseWriter,
 	snap *snapshot.Snapshot,
 	call *CallContext,
-	key snapshot.APIKey,
+	principal snapshot.Principal,
 	agent snapshot.A2AAgent,
 	alias, method, skill, taskID string,
 	upReq *http.Request,
@@ -296,7 +291,8 @@ func (p *Pipeline) proxyA2AResponse(
 		status = "error"
 		metrics["latency_ms"] = time.Since(start).Milliseconds()
 		p.recordUsage(UsageEvent{
-			OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
+			OrganizationID: principal.OrganizationID, ProjectID: principal.ProjectID, TeamID: principal.TeamID, EnvironmentID: principal.EnvironmentID,
+			APIKeyID: principal.APIKeyID, SigningKeyID: principal.SigningKeyID, SignerKeyID: principal.KeyID, AuthMethod: principal.AuthMethod,
 			Model: alias, ProviderType: "a2a", TargetModel: agent.ID,
 			Status: status, LatencyMs: time.Since(start).Milliseconds(),
 			Modality: ModalityA2A, Metrics: metrics, Tags: cloneTags(call.Tags),
@@ -318,7 +314,8 @@ func (p *Pipeline) proxyA2AResponse(
 	}
 	metrics["latency_ms"] = time.Since(start).Milliseconds()
 	p.recordUsage(UsageEvent{
-		OrganizationID: key.OrganizationID, ProjectID: key.ProjectID, TeamID: key.TeamID, EnvironmentID: key.EnvironmentID, APIKeyID: key.ID,
+		OrganizationID: principal.OrganizationID, ProjectID: principal.ProjectID, TeamID: principal.TeamID, EnvironmentID: principal.EnvironmentID,
+		APIKeyID: principal.APIKeyID, SigningKeyID: principal.SigningKeyID, SignerKeyID: principal.KeyID, AuthMethod: principal.AuthMethod,
 		Model: alias, ProviderType: "a2a", TargetModel: agent.ID,
 		Status: status, LatencyMs: time.Since(start).Milliseconds(),
 		Modality: ModalityA2A, Metrics: metrics, Tags: cloneTags(call.Tags),

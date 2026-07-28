@@ -348,6 +348,10 @@ func (s *Store) apiKeys() *APIKeys {
 	return NewAPIKeys(s.pool)
 }
 
+func (s *Store) signingKeys() *SigningKeys {
+	return NewSigningKeys(s.pool)
+}
+
 func (s *Store) ListAPIKeys(ctx context.Context, projectID string) ([]APIKey, error) {
 	return s.apiKeys().ListByProject(ctx, projectID)
 }
@@ -377,6 +381,30 @@ func (s *Store) GetProjectOrgID(ctx context.Context, projectID string) (string, 
 // Service account: ownerUserID empty, projectID optional (empty = org-wide).
 func (s *Store) CreateAPIKey(ctx context.Context, orgID, kind, ownerUserID, projectID, environmentID, name, rawKey string) (*APIKey, error) {
 	return access.CreateAPIKey(ctx, s.apiKeys(), s, s, newPlatformID("key"), orgID, kind, ownerUserID, projectID, environmentID, name, rawKey)
+}
+
+func (s *Store) ListSigningKeys(ctx context.Context, orgID string) ([]access.SigningKey, error) {
+	return s.signingKeys().ListByOrg(ctx, orgID)
+}
+
+func (s *Store) CreateSigningKey(ctx context.Context, orgID, keyID, projectID, environmentID, name, algorithm, publicKeyPEM string) (*access.SigningKey, error) {
+	return access.CreateSigningKey(ctx, s.signingKeys(), s, s, newPlatformID("sig"), keyID, orgID, projectID, environmentID, name, algorithm, publicKeyPEM)
+}
+
+func (s *Store) UpdateSigningKey(ctx context.Context, id, name, status string) (*access.SigningKey, error) {
+	return access.UpdateSigningKey(ctx, s.signingKeys(), id, name, status)
+}
+
+func (s *Store) RotateSigningKey(ctx context.Context, id, publicKeyPEM string) (*access.SigningKey, error) {
+	return access.RotateSigningKey(ctx, s.signingKeys(), id, publicKeyPEM)
+}
+
+func (s *Store) GetSigningKeyOrgID(ctx context.Context, id string) (string, error) {
+	return s.signingKeys().OrgID(ctx, id)
+}
+
+func (s *Store) DeleteSigningKey(ctx context.Context, id string) error {
+	return s.signingKeys().Delete(ctx, id)
 }
 
 func (s *Store) providers() *Providers {

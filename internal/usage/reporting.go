@@ -9,6 +9,9 @@ type Record struct {
 	ProjectID        string            `json:"project_id"`
 	ProjectName      string            `json:"project_name,omitempty"`
 	APIKeyID         string            `json:"api_key_id"`
+	SigningKeyID     string            `json:"signing_key_id,omitempty"`
+	SignerKeyID      string            `json:"signer_key_id,omitempty"`
+	AuthMethod       string            `json:"auth_method,omitempty"`
 	CredentialID     string            `json:"credential_id,omitempty"`
 	CredentialName   string            `json:"credential_name,omitempty"`
 	UsedBYOK         bool              `json:"used_byok"`

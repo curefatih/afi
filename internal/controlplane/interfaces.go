@@ -42,6 +42,7 @@ type membershipChecker interface {
 	GetMCPBackendOrgID(ctx context.Context, backendID string) (string, error)
 	GetA2AAgentOrgID(ctx context.Context, agentID string) (string, error)
 	GetAPIKeyOrgID(ctx context.Context, keyID string) (string, error)
+	GetSigningKeyOrgID(ctx context.Context, signingKeyID string) (string, error)
 	GetCredentialOrgID(ctx context.Context, credentialID string) (string, error)
 	GetCredentialAssignmentOrgID(ctx context.Context, assignmentID string) (string, error)
 }

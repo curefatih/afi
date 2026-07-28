@@ -33,6 +33,7 @@ type InviteOutcome = tenancy.InviteOutcome
 type InvitePreview = tenancy.InvitePreview
 
 type APIKey = access.APIKey
+type SigningKey = access.SigningKey
 
 type Provider = gatewayconfig.Provider
 type RouteFallback = gatewayconfig.RouteFallback
