@@ -3,9 +3,16 @@
 # - push to main under clients/** → detect which client(s) changed and publish
 # - workflow_dispatch → optional CLIENTS override (typescript|python|all)
 #
-# Required repo secrets:
-#   NPM_TOKEN       — npm automation token with publish rights for @afi-ai
-#   PYPI_API_TOKEN  — PyPI API token for afi-platform
+# Auth:
+#   TypeScript (npm): OIDC trusted publishing (preferred). Optional NPM_TOKEN
+#     fallback must be a granular access token with "Bypass 2FA" / publish rights.
+#   Python (PyPI): PYPI_API_TOKEN secret
+#
+# npm setup (one-time):
+#   1. First publish: create the package (manual 2FA, or granular token once).
+#   2. On npmjs.com → @afi-ai/platform-client → Settings → Trusted Publisher:
+#        GitHub Actions, repo curefatih/afi, workflow release-clients.yml
+#   3. After OIDC works, remove NPM_TOKEN from repo secrets.
 #
 # Versioning: if the local version is already on the registry, the release
 # script bumps the patch, publishes, commits the bump, and tags
@@ -42,6 +49,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write # npm / PyPI OIDC trusted publishing
 
 concurrency:
   group: release-clients-${{ github.ref }}
@@ -62,9 +70,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+      # Node 24 ships npm >= 11.5.1 required for trusted publishing OIDC.
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org
           cache: npm
           cache-dependency-path: clients/typescript/package-lock.json
@@ -118,6 +127,9 @@ jobs:
       - name: Release
         if: steps.resolve.outputs.clients != ''
         env:
+          # Prefer OIDC; only set token fallback when the secret exists.
+          # Classic npm tokens fail with E403 under 2FA — use a granular
+          # access token with "Bypass two-factor authentication", or OIDC.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
           TWINE_USERNAME: __token__
@@ -125,6 +137,7 @@ jobs:
           COMMIT_BUMP: ${{ steps.resolve.outputs.commit_bump }}
           CLIENTS: ${{ steps.resolve.outputs.clients }}
           BASE_REF: ${{ steps.resolve.outputs.base_ref }}
+          NPM_TRUSTED_PUBLISHING: "1"
         run: bash scripts/release-clients.sh
 
       - name: Push version bumps
