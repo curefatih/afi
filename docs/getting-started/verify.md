@@ -87,50 +87,46 @@ print(urllib.request.urlopen(req).read().decode())
 PY <<<"$TOKEN"
 ```
 
-Then call the gateway with a signed request:
+Then call the gateway with a signed request (Python helper from `afi-platform`):
 
 ```bash
+pip install -e clients/python
+
 python3 - <<'PY'
-import base64, hashlib, json, pathlib, subprocess, time, urllib.request
+import json, pathlib, urllib.request
+from afi_platform import sign_headers
 
 body = json.dumps({
     "model": "gpt-4o-mini",
     "messages": [{"role": "user", "content": "ping"}],
 }, separators=(",", ":")).encode()
-created = int(time.time())
-nonce = "verify-nonce-1"
-key_id = "local-signer"
-digest = "sha-256=:" + base64.b64encode(hashlib.sha256(body).digest()).decode() + ":"
-# Empty query becomes "?" per RFC 9421 @query.
-sig_params = (
-    '("@method" "@path" "@query" "content-digest")'
-    f';created={created};nonce="{nonce}";alg="ed25519";keyid="{key_id}"'
-)
-sig_base = "\n".join([
-    '"@method": POST',
-    '"@path": /v1/chat/completions',
-    '"@query": ?',
-    f'"content-digest": {digest}',
-    f'"@signature-params": {sig_params}',
-])
-sig = subprocess.check_output(
-    ["openssl", "pkeyutl", "-sign", "-rawin", "-inkey", "/tmp/afi-signer.key"],
-    input=sig_base.encode(),
-)
-req = urllib.request.Request(
-    "http://localhost:8080/v1/chat/completions",
-    data=body,
-    headers={
-        "Content-Type": "application/json",
-        "Content-Digest": digest,
-        "Signature-Input": f"sig1={sig_params}",
-        "Signature": f"sig1=:{base64.b64encode(sig).decode()}:",
-    },
-    method="POST",
-)
+url = "http://localhost:8080/v1/chat/completions"
+headers = {
+    "Content-Type": "application/json",
+    **sign_headers(
+        method="POST",
+        url=url,
+        body=body,
+        private_key_pem=pathlib.Path("/tmp/afi-signer.key").read_bytes(),
+        key_id="local-signer",
+    ),
+}
+req = urllib.request.Request(url, data=body, headers=headers, method="POST")
 print(urllib.request.urlopen(req).read().decode())
 PY
 ```
+
+Go equivalent (`sdk/httpsign`):
+
+```go
+priv, _ := httpsign.ParsePrivateKeyPEM(pemBytes)
+req, _ := http.NewRequest(http.MethodPost, "http://localhost:8080/v1/chat/completions", bytes.NewReader(body))
+req.Header.Set("Content-Type", "application/json")
+_ = httpsign.SignRequest(req, priv, "local-signer", "")
+resp, _ := http.DefaultClient.Do(req)
+```
+
+Or use a signing client: `httpsign.Client(priv, "local-signer").Post(...)`.
 
 ## Anthropic route (optional)
 

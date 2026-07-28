@@ -218,7 +218,13 @@ Signature parameters must include:
 - `nonce` — unique per request (replay protection)
 - `alg` — `ed25519`
 
-Prefer signature label `sig1`. If signing headers are absent, the gateway falls back to the existing API key flow. Replay protection is enforced per gateway instance with a bounded in-memory nonce cache.
+Prefer signature label `sig1`. Client helpers that build these headers:
+
+- Go: [`sdk/httpsign`](../../sdk/httpsign) (`SignRequest`, `Client`)
+- Python: `afi_platform.sign_headers` in [`clients/python`](../../clients/python)
+- TypeScript: `signHeaders` in [`clients/typescript`](../../clients/typescript)
+
+If signing headers are absent, the gateway falls back to the existing API key flow. Replay protection is enforced per gateway instance with a bounded in-memory nonce cache.
 
 ### Quotas
 
