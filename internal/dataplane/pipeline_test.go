@@ -21,6 +21,7 @@ import (
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/snapshot"
+	afisign "github.com/curefatih/afi/sdk/httpsign"
 )
 
 func testEd25519PublicKeyPEM(t *testing.T) (ed25519.PrivateKey, string) {
@@ -49,13 +50,13 @@ func signGatewayRequest(t *testing.T, req *http.Request, body []byte, priv ed255
 	req.Header.Set("Content-Digest", digest)
 	req.Body = io.NopCloser(bytes.NewReader(body))
 
-	fields := requiredSignedFields()
+	fields := afisign.RequiredFields()
 	cfg := httpsign.NewSignConfig().SetKeyID(keyID).SetNonce(nonce).SignCreated(true)
 	signer, err := httpsign.NewEd25519Signer(priv, cfg, fields)
 	if err != nil {
 		t.Fatalf("signer: %v", err)
 	}
-	sigInput, sig, err := httpsign.SignRequest(defaultSignatureName, *signer, req)
+	sigInput, sig, err := httpsign.SignRequest(afisign.SignatureName, *signer, req)
 	if err != nil {
 		t.Fatalf("sign: %v", err)
 	}

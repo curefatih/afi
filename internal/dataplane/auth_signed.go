@@ -17,6 +17,7 @@ import (
 	"github.com/curefatih/afi/internal/access"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/snapshot"
+	afisign "github.com/curefatih/afi/sdk/httpsign"
 )
 
 const (
@@ -24,15 +25,9 @@ const (
 	headerSignatureInput = "Signature-Input"
 	headerContentDigest  = "Content-Digest"
 
-	defaultSignatureName        = "sig1"
 	defaultSignedRequestMaxSkew = 5 * time.Minute
 	defaultReplayTTL            = 10 * time.Minute
 )
-
-// requiredSignedFields are components clients must cover (RFC 9421).
-func requiredSignedFields() httpsign.Fields {
-	return httpsign.Headers("@method", "@path", "@query", "content-digest")
-}
 
 type ReplayStore interface {
 	Use(ctx context.Context, key string, ttl time.Duration) (bool, error)
@@ -152,7 +147,7 @@ func authenticateSignedRequest(ctx context.Context, snap *snapshot.Snapshot, rep
 			return nil
 		})
 
-	verifier, err := httpsign.NewEd25519Verifier(pub, verifyCfg, requiredSignedFields())
+	verifier, err := httpsign.NewEd25519Verifier(pub, verifyCfg, afisign.RequiredFields())
 	if err != nil {
 		return snapshot.Principal{}, kernel.ErrUnauthorized
 	}
@@ -172,8 +167,8 @@ func resolveSignatureName(r *http.Request) (string, error) {
 		return "", fmt.Errorf("empty Signature-Input")
 	}
 	for _, name := range names {
-		if name == defaultSignatureName {
-			return defaultSignatureName, nil
+		if name == afisign.SignatureName {
+			return afisign.SignatureName, nil
 		}
 	}
 	return names[0], nil
