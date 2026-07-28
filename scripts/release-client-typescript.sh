@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# Build, test, and publish @afi-ai/platform-client to npm.
+#
+# Usage:
+#   bash scripts/release-client-typescript.sh
+#   DRY_RUN=1 bash scripts/release-client-typescript.sh
+#   VERSION=1.2.3 bash scripts/release-client-typescript.sh   # force version
+#
+# Env:
+#   DRY_RUN=1       — bump/build/test but do not publish or commit
+#   SKIP_TESTS=1    — skip npm test
+#   SKIP_PUBLISH=1  — build only (implies no npm publish)
+#   COMMIT_BUMP=1   — commit package.json version changes (CI)
+#   VERSION         — explicit version to publish (skips auto-bump)
+#   NODE_AUTH_TOKEN — npm auth token (required to publish)
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=semver.sh
+source "${ROOT}/scripts/semver.sh"
+
+PKG_DIR="${ROOT}/clients/typescript"
+PKG_JSON="${PKG_DIR}/package.json"
+PKG_NAME="$(node -p "require('${PKG_JSON}').name")"
+DRY_RUN="${DRY_RUN:-0}"
+SKIP_TESTS="${SKIP_TESTS:-0}"
+SKIP_PUBLISH="${SKIP_PUBLISH:-0}"
+COMMIT_BUMP="${COMMIT_BUMP:-0}"
+
+read_local_version() {
+  node -p "require('${PKG_JSON}').version"
+}
+
+read_published_version() {
+  npm view "${PKG_NAME}" version 2>/dev/null || true
+}
+
+set_version() {
+  local v="$1"
+  node -e "
+    const fs = require('fs');
+    const p = process.argv[1];
+    const v = process.argv[2];
+    const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
+    pkg.version = v;
+    fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
+  " "${PKG_JSON}" "${v}"
+}
+
+cd "${PKG_DIR}"
+
+echo "==> TypeScript client (${PKG_NAME})"
+local_v="$(read_local_version)"
+published_v="$(read_published_version)"
+if [[ -n "${VERSION:-}" ]]; then
+  next_v="${VERSION}"
+else
+  next_v="$(semver_next_publish "${local_v}" "${published_v}")"
+fi
+semver_is_valid "${next_v}" || { echo "invalid VERSION=${next_v}" >&2; exit 1; }
+
+echo "    local=${local_v} published=${published_v:-<none>} → release=${next_v}"
+
+if [[ -n "${published_v}" && "$(semver_cmp "${next_v}" "${published_v}")" != "1" ]]; then
+  echo "ERROR: release version ${next_v} is not greater than published ${published_v}" >&2
+  exit 1
+fi
+
+if [[ "${next_v}" != "${local_v}" ]]; then
+  echo "==> Bumping version ${local_v} → ${next_v}"
+  set_version "${next_v}"
+fi
+
+echo "==> Install"
+npm install --no-fund --no-audit
+
+if [[ "${SKIP_TESTS}" != "1" ]]; then
+  echo "==> Test"
+  npm test
+fi
+
+echo "==> Build"
+npm run build
+
+if [[ "${DRY_RUN}" == "1" || "${SKIP_PUBLISH}" == "1" ]]; then
+  echo "==> Dry run / skip publish — packing only"
+  npm pack --dry-run
+  echo "Done (not published)."
+  exit 0
+fi
+
+if [[ -z "${NODE_AUTH_TOKEN:-}" && -z "${NPM_TOKEN:-}" ]]; then
+  echo "ERROR: set NODE_AUTH_TOKEN (or NPM_TOKEN) to publish" >&2
+  exit 1
+fi
+export NODE_AUTH_TOKEN="${NODE_AUTH_TOKEN:-${NPM_TOKEN}}"
+
+echo "==> Publish ${PKG_NAME}@${next_v}"
+npm publish --access public
+
+if [[ "${COMMIT_BUMP}" == "1" ]]; then
+  echo "==> Commit version bump / tag"
+  git -C "${ROOT}" add "${PKG_JSON}"
+  if ! git -C "${ROOT}" diff --cached --quiet; then
+    git -C "${ROOT}" commit -m "chore(clients): bump typescript to ${next_v}"
+  fi
+  tag="clients-typescript-v${next_v}"
+  if git -C "${ROOT}" rev-parse "${tag}" >/dev/null 2>&1; then
+    echo "    tag ${tag} already exists"
+  else
+    git -C "${ROOT}" tag -a "${tag}" -m "Release ${PKG_NAME}@${next_v}"
+    echo "    tagged ${tag}"
+  fi
+fi
+
+echo "Done. Published ${PKG_NAME}@${next_v}"

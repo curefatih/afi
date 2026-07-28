@@ -7,6 +7,7 @@
 	quickstart deploy-init deploy-up deploy-down deploy-logs deploy-health \
 	deploy-infra deploy-controlplane deploy-dataplane deploy-worker deploy-web \
 	build-release build-images brand-assets \
+	release-clients release-client-typescript release-client-python \
 	openapi-lint openapi-drift openapi-gen openapi-check \
 	proto-gen proto-check
 
@@ -74,6 +75,19 @@ build:
 #   TARGETS=linux/amd64,darwin/arm64 PACKAGE=1 make build-release
 build-release:
 	bash scripts/build-release.sh
+
+# Publish platform clients (npm / PyPI). Examples:
+#   DRY_RUN=1 make release-clients
+#   CLIENTS=typescript make release-client-typescript
+#   FORCE=1 CLIENTS=all make release-clients
+release-clients:
+	bash scripts/release-clients.sh
+
+release-client-typescript:
+	bash scripts/release-client-typescript.sh
+
+release-client-python:
+	bash scripts/release-client-python.sh
 
 build-images:
 	@test -f $(DEPLOY_ENV) || (echo "missing $(DEPLOY_ENV) — run make deploy-init" >&2; exit 1)
