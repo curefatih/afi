@@ -41,7 +41,16 @@ Configure once (package already exists at `1.0.0`):
 3. Delete GitHub Actions secret `NPM_TOKEN` if present
 4. Re-run **Release clients** on `main`
 
-If CI still prints the “tokens that bypass 2FA” notice, a token is still being used — Trusted Publisher is missing/mismatched, or `NPM_TOKEN` is still injected.
+After a successful publish, CI pushes the release tag, opens
+`chore/clients-version-bump`, and **merges it** (`gh pr merge --squash`).
+Title includes `[skip release]` so merge does not republish.
+
+If auto-merge fails under branch rules, enable **Settings → General → Allow
+auto-merge**, and/or allow `github-actions[bot]` to bypass required
+reviews/checks for that PR. The workflow falls back to `--auto` (merge when
+checks go green).
+
+If CI prints `ENEEDAUTH` or the “bypass 2FA” notice with no token configured, npm never completed the OIDC exchange — usually an empty `_authToken` in `$NPM_CONFIG_USERCONFIG`, a Trusted Publisher mismatch, or npm &lt; 11.5.1.
 
 ### PyPI auth (Python)
 

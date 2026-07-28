@@ -99,22 +99,31 @@ if [[ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" && -n "${ACTIONS_ID_TOKEN_REQUEST_T
   oidc_ready=1
 fi
 
-# Prefer OIDC whenever GitHub can mint an ID token. Never leave an
-# _authToken in .npmrc — setup-node(registry-url) and leftover secrets force
-# GAT token auth and yield E404 under bypass-2FA restrictions.
+# Prefer OIDC whenever GitHub can mint an ID token.
+# Critical: actions/setup-node writes _authToken into $NPM_CONFIG_USERCONFIG
+# (often $RUNNER_TEMP/.npmrc), NOT only ~/.npmrc. An empty _authToken line
+# makes npm skip OIDC and fail with ENEEDAUTH / E404.
 if [[ "${oidc_ready}" == "1" && "${NPM_FORCE_TOKEN:-0}" != "1" ]]; then
   unset NODE_AUTH_TOKEN NPM_TOKEN || true
-  for rc in "${ROOT}/.npmrc" "${PKG_DIR}/.npmrc" "${HOME}/.npmrc"; do
-    if [[ -f "${rc}" ]] && grep -q '_authToken' "${rc}"; then
+  scrub_auth_token() {
+    local rc="$1"
+    [[ -n "${rc}" && -f "${rc}" ]] || return 0
+    if grep -q '_authToken' "${rc}"; then
       tmp="$(mktemp)"
       grep -v '_authToken' "${rc}" >"${tmp}" && mv "${tmp}" "${rc}"
       echo "    scrubbed _authToken from ${rc}"
     fi
-  done
+  }
+  scrub_auth_token "${NPM_CONFIG_USERCONFIG:-}"
+  scrub_auth_token "${RUNNER_TEMP:+${RUNNER_TEMP}/.npmrc}"
+  scrub_auth_token "${HOME}/.npmrc"
+  scrub_auth_token "${ROOT}/.npmrc"
+  scrub_auth_token "${PKG_DIR}/.npmrc"
+
   echo "==> Publish ${PKG_NAME}@${next_v} (OIDC trusted publishing)"
   echo "    npm $(npm --version)  node $(node --version)"
-  echo "    Trusted Publisher must allow npm publish for workflow release-clients.yml:"
-  echo "    https://www.npmjs.com/package/${PKG_NAME}/access"
+  echo "    NPM_CONFIG_USERCONFIG=${NPM_CONFIG_USERCONFIG:-<unset>}"
+  echo "    Trusted Publisher: https://www.npmjs.com/package/${PKG_NAME}/access"
 elif [[ -n "${NODE_AUTH_TOKEN:-}" || -n "${NPM_TOKEN:-}" ]]; then
   export NODE_AUTH_TOKEN="${NODE_AUTH_TOKEN:-${NPM_TOKEN}}"
   echo "==> Publish ${PKG_NAME}@${next_v} (token)"
@@ -124,30 +133,30 @@ else
   exit 1
 fi
 
-npm_major="$(npm --version | cut -d. -f1)"
-npm_minor="$(npm --version | cut -d. -f2)"
+npm_ver="$(npm --version)"
+npm_major="${npm_ver%%.*}"
+npm_rest="${npm_ver#*.}"
+npm_minor="${npm_rest%%.*}"
 if [[ "${oidc_ready}" == "1" && ( "${npm_major}" -lt 11 || ( "${npm_major}" -eq 11 && "${npm_minor}" -lt 5 ) ) ]]; then
-  echo "ERROR: npm $(npm --version) is too old for trusted publishing (need >= 11.5.1)" >&2
+  echo "ERROR: npm ${npm_ver} is too old for trusted publishing (need >= 11.5.1)" >&2
   exit 1
 fi
 
 publish_args=(--access public)
-# Explicit provenance is required for reliable OIDC publishes (npm docs say
-# automatic; in practice --provenance is often needed).
+# Explicit provenance is often required for reliable OIDC publishes.
 if [[ "${oidc_ready}" == "1" && "${NPM_FORCE_TOKEN:-0}" != "1" ]]; then
   publish_args+=(--provenance)
 fi
 
 if ! npm publish "${publish_args[@]}"; then
   echo >&2
-  echo "ERROR: npm publish failed." >&2
-  echo "Checklist for E404 with OIDC:" >&2
-  echo "  1. Open https://www.npmjs.com/package/${PKG_NAME}/access" >&2
-  echo "  2. Trusted Publisher → GitHub Actions:" >&2
-  echo "       Owner: curefatih  Repo: afi  Workflow: release-clients.yml" >&2
-  echo "  3. Allowed actions must include 'npm publish' (required after May 2026)" >&2
-  echo "  4. Environment must be blank unless this job sets that environment" >&2
-  echo "  5. Delete GitHub secret NPM_TOKEN if it still exists" >&2
+  echo "ERROR: npm publish failed (ENEEDAUTH/E404 usually = OIDC not accepted)." >&2
+  echo "Checklist:" >&2
+  echo "  1. https://www.npmjs.com/package/${PKG_NAME}/access → Trusted Publisher" >&2
+  echo "  2. GitHub Actions owner=curefatih repo=afi workflow=release-clients.yml" >&2
+  echo "  3. Allowed actions includes 'npm publish'; Environment blank" >&2
+  echo "  4. No empty _authToken in NPM_CONFIG_USERCONFIG / .npmrc" >&2
+  echo "  5. npm >= 11.5.1 on the runner (we pin npm@11.6.2)" >&2
   exit 1
 fi
 
@@ -155,7 +164,7 @@ if [[ "${COMMIT_BUMP}" == "1" ]]; then
   echo "==> Commit version bump / tag"
   git -C "${ROOT}" add "${PKG_JSON}"
   if ! git -C "${ROOT}" diff --cached --quiet; then
-    git -C "${ROOT}" commit -m "chore(clients): bump typescript to ${next_v}"
+    git -C "${ROOT}" commit -m "chore(clients): bump typescript to ${next_v} [skip release]"
   fi
   tag="clients-typescript-v${next_v}"
   if git -C "${ROOT}" rev-parse "${tag}" >/dev/null 2>&1; then

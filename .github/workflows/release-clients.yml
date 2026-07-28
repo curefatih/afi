@@ -19,9 +19,12 @@ on:
     branches: [main]
     paths:
       - 'clients/typescript/**'
+      - '!clients/typescript/package.json'
       - 'clients/python/**'
+      - '!clients/python/pyproject.toml'
       - 'scripts/release-client-*.sh'
       - 'scripts/release-clients.sh'
+      - 'scripts/open-client-version-pr.sh'
       - 'scripts/semver.sh'
       - '.github/workflows/release-clients.yml'
   workflow_dispatch:
@@ -44,6 +47,7 @@ on:
 permissions:
   contents: write
   id-token: write
+  pull-requests: write
 
 concurrency:
   group: release-clients-${{ github.ref }}
@@ -52,10 +56,13 @@ concurrency:
 jobs:
   release:
     name: Release
+    # Version-sync PRs must not republish.
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip release]') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -74,16 +81,26 @@ jobs:
           cache: npm
           cache-dependency-path: clients/typescript/package-lock.json
 
-      # Trusted publishing needs npm >= 11.5.1; pin latest on the runner.
+      # Trusted publishing needs npm >= 11.5.1; 11.6.2 is a known-good OIDC build.
+      # Do not use setup-node registry-url — it writes empty _authToken and
+      # short-circuits OIDC (ENEEDAUTH). See actions/setup-node#1551.
       - name: Ensure npm for OIDC
         run: |
-          npm install -g npm@latest
+          npm install -g npm@11.6.2
           node -v
           npm -v
+          echo "NPM_CONFIG_USERCONFIG=${NPM_CONFIG_USERCONFIG:-<unset>}"
           test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || {
             echo "ERROR: ACTIONS_ID_TOKEN_REQUEST_URL missing — id-token: write not effective" >&2
             exit 1
           }
+          # Defensive: remove any authToken written earlier in the job.
+          for rc in "${NPM_CONFIG_USERCONFIG:-}" "${RUNNER_TEMP}/.npmrc" "${HOME}/.npmrc"; do
+            if [[ -n "${rc}" && -f "${rc}" ]] && grep -q '_authToken' "${rc}"; then
+              grep -v '_authToken' "${rc}" >"${rc}.tmp" && mv "${rc}.tmp" "${rc}"
+              echo "scrubbed _authToken from ${rc}"
+            fi
+          done
 
       - uses: actions/setup-python@v5
         with:
@@ -142,10 +159,12 @@ jobs:
           BASE_REF: ${{ steps.resolve.outputs.base_ref }}
         run: bash scripts/release-clients.sh
 
-      - name: Push version bumps
+      - name: Push tags and open version bump PR
         if: steps.resolve.outputs.clients != '' && steps.resolve.outputs.commit_bump == '1'
-        run: |
-          git push origin "HEAD:${GITHUB_REF_NAME}" --follow-tags
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: bash scripts/open-client-version-pr.sh
 
       - name: Nothing to release
         if: steps.resolve.outputs.clients == ''

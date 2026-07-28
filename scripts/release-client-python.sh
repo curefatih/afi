@@ -135,7 +135,7 @@ if [[ "${COMMIT_BUMP}" == "1" ]]; then
   echo "==> Commit version bump / tag"
   git -C "${ROOT}" add "${PYPROJECT}"
   if ! git -C "${ROOT}" diff --cached --quiet; then
-    git -C "${ROOT}" commit -m "chore(clients): bump python to ${next_v}"
+    git -C "${ROOT}" commit -m "chore(clients): bump python to ${next_v} [skip release]"
   fi
   tag="clients-python-v${next_v}"
   if git -C "${ROOT}" rev-parse "${tag}" >/dev/null 2>&1; then
