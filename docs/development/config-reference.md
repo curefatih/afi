@@ -154,6 +154,9 @@ Canonical contract: OpenAPI [`api/openapi/platform.openapi.yaml`](../../api/open
 | GET/POST | `/api/v1/platform/organizations/{orgID}/keys` (personal = member; service_account = org admin) |
 | DELETE | `/api/v1/platform/keys/{keyID}` (admin or personal key owner) |
 | GET/POST | `/api/v1/platform/projects/{projectID}/keys` (POST = org admin) |
+| GET/POST | `/api/v1/platform/organizations/{orgID}/signing-keys` (POST = org admin) |
+| PATCH/DELETE | `/api/v1/platform/signing-keys/{signingKeyID}` (org admin) |
+| POST | `/api/v1/platform/signing-keys/{signingKeyID}/rotate` (org admin) |
 | GET/POST | `/api/v1/platform/organizations/{orgID}/providers` (POST = org admin) |
 | GET | `/api/v1/platform/organizations/{orgID}/providers/health` |
 | PATCH/DELETE | `/api/v1/platform/providers/{providerID}` (org admin) |
@@ -191,6 +194,31 @@ Each event has `modality` (`chat`, `messages`, `tts`, `stt`, …), extensible `m
 | `service_account` | org-wide or project (`project_id` optional) | org owner/admin |
 
 Seed key `sk-project-local-dev-token-12345` is a project **service_account** key.
+
+### Signed request auth
+
+Gateway clients may authenticate either with a virtual API key or with a registered signing key using [HTTP Message Signatures (RFC 9421)](https://www.rfc-editor.org/rfc/rfc9421) and [Digest Fields (RFC 9530)](https://www.rfc-editor.org/rfc/rfc9530):
+
+| Header | Purpose |
+|--------|---------|
+| `Signature-Input` | Covered components + params (`created`, `keyid`, `nonce`, `alg`) |
+| `Signature` | Ed25519 signature over the RFC 9421 signature base |
+| `Content-Digest` | `sha-256` digest of the raw request body (RFC 9530) |
+
+Required covered components:
+
+```text
+@method @path @query content-digest
+```
+
+Signature parameters must include:
+
+- `keyid` — registered signing key id
+- `created` — Unix timestamp (skew window ±5 minutes)
+- `nonce` — unique per request (replay protection)
+- `alg` — `ed25519`
+
+Prefer signature label `sig1`. If signing headers are absent, the gateway falls back to the existing API key flow. Replay protection is enforced per gateway instance with a bounded in-memory nonce cache.
 
 ### Quotas
 
