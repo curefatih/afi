@@ -1,17 +1,18 @@
 package dataplane
 
 import (
+	"bytes"
 	"context"
-	"crypto/ed25519"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/dunglas/httpsfv"
+	"github.com/yaronf/httpsign"
 
 	"github.com/curefatih/afi/internal/access"
 	"github.com/curefatih/afi/internal/kernel"
@@ -19,15 +20,19 @@ import (
 )
 
 const (
-	headerSigningKeyID   = "X-AFI-Key-Id"
-	headerSigningTS      = "X-AFI-Timestamp"
-	headerSigningNonce   = "X-AFI-Nonce"
-	headerSigningBodySHA = "X-AFI-Content-SHA256"
-	headerSigningSig     = "X-AFI-Signature"
+	headerSignature      = "Signature"
+	headerSignatureInput = "Signature-Input"
+	headerContentDigest  = "Content-Digest"
 
+	defaultSignatureName        = "sig1"
 	defaultSignedRequestMaxSkew = 5 * time.Minute
 	defaultReplayTTL            = 10 * time.Minute
 )
+
+// requiredSignedFields are components clients must cover (RFC 9421).
+func requiredSignedFields() httpsign.Fields {
+	return httpsign.Headers("@method", "@path", "@query", "content-digest")
+}
 
 type ReplayStore interface {
 	Use(ctx context.Context, key string, ttl time.Duration) (bool, error)
@@ -59,18 +64,8 @@ func (s *memoryReplayStore) Use(_ context.Context, key string, ttl time.Duration
 }
 
 func hasSignedRequestHeaders(r *http.Request) bool {
-	for _, v := range []string{
-		r.Header.Get(headerSigningKeyID),
-		r.Header.Get(headerSigningTS),
-		r.Header.Get(headerSigningNonce),
-		r.Header.Get(headerSigningBodySHA),
-		r.Header.Get(headerSigningSig),
-	} {
-		if strings.TrimSpace(v) != "" {
-			return true
-		}
-	}
-	return false
+	return strings.TrimSpace(r.Header.Get(headerSignature)) != "" &&
+		strings.TrimSpace(r.Header.Get(headerSignatureInput)) != ""
 }
 
 func authenticateGatewayRequest(ctx context.Context, snap *snapshot.Snapshot, replay ReplayStore, r *http.Request, body []byte) (snapshot.Principal, error) {
@@ -93,68 +88,95 @@ func mustVirtualAPIKey(r *http.Request) string {
 }
 
 func authenticateSignedRequest(ctx context.Context, snap *snapshot.Snapshot, replay ReplayStore, r *http.Request, body []byte) (snapshot.Principal, error) {
-	keyID := strings.TrimSpace(r.Header.Get(headerSigningKeyID))
-	tsRaw := strings.TrimSpace(r.Header.Get(headerSigningTS))
-	nonce := strings.TrimSpace(r.Header.Get(headerSigningNonce))
-	bodyHash := strings.TrimSpace(r.Header.Get(headerSigningBodySHA))
-	sigRaw := strings.TrimSpace(r.Header.Get(headerSigningSig))
-	if keyID == "" || tsRaw == "" || nonce == "" || bodyHash == "" || sigRaw == "" {
+	if body == nil {
+		body = []byte{}
+	}
+	sigName, err := resolveSignatureName(r)
+	if err != nil {
 		return snapshot.Principal{}, kernel.ErrUnauthorized
 	}
+	details, err := httpsign.RequestDetails(sigName, r)
+	if err != nil || details == nil {
+		return snapshot.Principal{}, kernel.ErrUnauthorized
+	}
+	if details.KeyID == nil || strings.TrimSpace(*details.KeyID) == "" {
+		return snapshot.Principal{}, kernel.ErrUnauthorized
+	}
+	if details.Nonce == nil || strings.TrimSpace(*details.Nonce) == "" {
+		return snapshot.Principal{}, kernel.ErrUnauthorized
+	}
+	keyID := strings.TrimSpace(*details.KeyID)
+
 	signer, ok := snap.LookupSigningKey(keyID)
 	if !ok {
-		return snapshot.Principal{}, kernel.ErrUnauthorized
-	}
-	ts, err := time.Parse(time.RFC3339, tsRaw)
-	if err != nil {
-		return snapshot.Principal{}, kernel.ErrUnauthorized
-	}
-	now := time.Now().UTC()
-	if ts.Before(now.Add(-defaultSignedRequestMaxSkew)) || ts.After(now.Add(defaultSignedRequestMaxSkew)) {
-		return snapshot.Principal{}, kernel.ErrUnauthorized
-	}
-	sum := sha256.Sum256(body)
-	if hex.EncodeToString(sum[:]) != strings.ToLower(bodyHash) {
-		return snapshot.Principal{}, kernel.ErrUnauthorized
-	}
-	if replay != nil {
-		ok, err := replay.Use(ctx, keyID+":"+nonce, defaultReplayTTL)
-		if err != nil || !ok {
-			if err != nil {
-				return snapshot.Principal{}, err
-			}
-			return snapshot.Principal{}, kernel.ErrUnauthorized
-		}
-	}
-	msg := canonicalSignedRequest(r, bodyHash, tsRaw, nonce)
-	sig, err := base64.StdEncoding.DecodeString(sigRaw)
-	if err != nil {
 		return snapshot.Principal{}, kernel.ErrUnauthorized
 	}
 	pub, err := access.ParseEd25519PublicKeyPEM(signer.PublicKeyPEM)
 	if err != nil {
 		return snapshot.Principal{}, kernel.ErrUnauthorized
 	}
-	if !ed25519.Verify(pub, []byte(msg), sig) {
+
+	// Ensure Content-Digest matches the raw body (RFC 9530), independent of req.Body state.
+	bodyRC := io.NopCloser(bytes.NewReader(body))
+	if err := httpsign.ValidateContentDigestHeader(
+		r.Header.Values(headerContentDigest),
+		&bodyRC,
+		[]string{httpsign.DigestSha256},
+	); err != nil {
+		return snapshot.Principal{}, kernel.ErrUnauthorized
+	}
+	// Restore body for signature verification (covers content-digest header value).
+	r.Body = io.NopCloser(bytes.NewReader(body))
+
+	verifyCfg := httpsign.NewVerifyConfig().
+		SetKeyID(keyID).
+		SetAllowedAlgs([]string{"ed25519"}).
+		SetVerifyCreated(true).
+		SetNotOlderThan(defaultSignedRequestMaxSkew).
+		SetNotNewerThan(defaultSignedRequestMaxSkew).
+		SetNonceValidator(func(n string) error {
+			n = strings.TrimSpace(n)
+			if n == "" {
+				return fmt.Errorf("empty nonce")
+			}
+			if replay == nil {
+				return nil
+			}
+			ok, err := replay.Use(ctx, keyID+":"+n, defaultReplayTTL)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return fmt.Errorf("nonce replayed")
+			}
+			return nil
+		})
+
+	verifier, err := httpsign.NewEd25519Verifier(pub, verifyCfg, requiredSignedFields())
+	if err != nil {
+		return snapshot.Principal{}, kernel.ErrUnauthorized
+	}
+	if err := httpsign.VerifyRequest(sigName, *verifier, r); err != nil {
 		return snapshot.Principal{}, kernel.ErrUnauthorized
 	}
 	return snapshot.PrincipalFromSigningKey(signer), nil
 }
 
-func canonicalSignedRequest(r *http.Request, bodyHash, tsRaw, nonce string) string {
-	path := r.URL.EscapedPath()
-	if q := r.URL.RawQuery; q != "" {
-		path += "?" + q
+func resolveSignatureName(r *http.Request) (string, error) {
+	dict, err := httpsfv.UnmarshalDictionary(r.Header.Values(headerSignatureInput))
+	if err != nil || dict == nil {
+		return "", fmt.Errorf("invalid Signature-Input")
 	}
-	contentType := strings.TrimSpace(r.Header.Get("Content-Type"))
-	return strings.Join([]string{
-		strings.ToUpper(r.Method),
-		path,
-		contentType,
-		strings.ToLower(bodyHash),
-		tsRaw,
-		nonce,
-	}, "\n")
+	names := dict.Names()
+	if len(names) == 0 {
+		return "", fmt.Errorf("empty Signature-Input")
+	}
+	for _, name := range names {
+		if name == defaultSignatureName {
+			return defaultSignatureName, nil
+		}
+	}
+	return names[0], nil
 }
 
 // AuthenticateKey is exported for unit tests.

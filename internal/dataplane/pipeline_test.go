@@ -5,18 +5,17 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/yaronf/httpsign"
 
 	"github.com/curefatih/afi/internal/adapters/llm"
 	"github.com/curefatih/afi/internal/kernel"
@@ -37,20 +36,32 @@ func testEd25519PublicKeyPEM(t *testing.T) (ed25519.PrivateKey, string) {
 	return priv, string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der}))
 }
 
-func signGatewayRequest(t *testing.T, req *http.Request, body []byte, priv ed25519.PrivateKey, keyID, nonce string, ts time.Time) {
+func signGatewayRequest(t *testing.T, req *http.Request, body []byte, priv ed25519.PrivateKey, keyID, nonce string, _ time.Time) {
 	t.Helper()
-	sum := sha256SumHex(body)
-	req.Header.Set(headerSigningKeyID, keyID)
-	req.Header.Set(headerSigningTS, ts.UTC().Format(time.RFC3339))
-	req.Header.Set(headerSigningNonce, nonce)
-	req.Header.Set(headerSigningBodySHA, sum)
-	msg := canonicalSignedRequest(req, sum, req.Header.Get(headerSigningTS), nonce)
-	req.Header.Set(headerSigningSig, base64.StdEncoding.EncodeToString(ed25519.Sign(priv, []byte(msg))))
-}
+	if body == nil {
+		body = []byte{}
+	}
+	bodyRC := io.NopCloser(bytes.NewReader(body))
+	digest, err := httpsign.GenerateContentDigestHeader(&bodyRC, []string{httpsign.DigestSha256})
+	if err != nil {
+		t.Fatalf("content-digest: %v", err)
+	}
+	req.Header.Set("Content-Digest", digest)
+	req.Body = io.NopCloser(bytes.NewReader(body))
 
-func sha256SumHex(body []byte) string {
-	sum := sha256.Sum256(body)
-	return fmt.Sprintf("%x", sum[:])
+	fields := requiredSignedFields()
+	cfg := httpsign.NewSignConfig().SetKeyID(keyID).SetNonce(nonce).SignCreated(true)
+	signer, err := httpsign.NewEd25519Signer(priv, cfg, fields)
+	if err != nil {
+		t.Fatalf("signer: %v", err)
+	}
+	sigInput, sig, err := httpsign.SignRequest(defaultSignatureName, *signer, req)
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+	req.Header.Set("Signature-Input", sigInput)
+	req.Header.Set("Signature", sig)
+	req.Body = io.NopCloser(bytes.NewReader(body))
 }
 
 func TestAuthenticateKey(t *testing.T) {
