@@ -1,6 +1,6 @@
 {
   "name": "@afi-ai/platform-client",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "description": "Thin TypeScript client for the AFI Platform API",
   "type": "module",
   "main": "./dist/index.js",
