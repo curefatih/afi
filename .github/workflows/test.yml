@@ -125,6 +125,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+          cache-dependency-path: clients/java/pom.xml
+
       - name: Install PyYAML
         run: pip install pyyaml
 
@@ -142,3 +149,7 @@ jobs:
         run: |
           pip install -e ".[dev]"
           pytest -q
+
+      - name: Java client tests
+        working-directory: clients/java
+        run: mvn -B -q test

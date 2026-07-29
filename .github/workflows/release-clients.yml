@@ -1,7 +1,7 @@
-# Publish TypeScript / Python platform clients when their paths change on main.
+# Publish TypeScript / Python / Java platform clients when their paths change on main.
 #
 # - push to main under clients/** → detect which client(s) changed and publish
-# - workflow_dispatch → optional CLIENTS override (typescript|python|all)
+# - workflow_dispatch → optional CLIENTS override (typescript|python|java|all)
 #
 # npm (OIDC trusted publishing — no NPM_TOKEN):
 #   https://www.npmjs.com/package/@afi-ai/platform-client/access
@@ -11,6 +11,11 @@
 #     Environment: leave blank (must match this workflow)
 #
 # Python: PYPI_API_TOKEN secret (or PyPI trusted publisher)
+# Java: MAVEN_USERNAME + MAVEN_PASSWORD (Sonatype Central Portal token)
+#
+# Version bump PR (main is PR-only):
+#   Enable Actions → "Allow GitHub Actions to create and approve pull requests"
+#   OR set secret CLIENT_RELEASE_GH_TOKEN (PAT with contents + pull requests)
 
 name: Release clients
 
@@ -22,6 +27,8 @@ on:
       - '!clients/typescript/package.json'
       - 'clients/python/**'
       - '!clients/python/pyproject.toml'
+      - 'clients/java/**'
+      - '!clients/java/pom.xml'
       - 'scripts/release-client-*.sh'
       - 'scripts/release-clients.sh'
       - 'scripts/open-client-version-pr.sh'
@@ -30,7 +37,7 @@ on:
   workflow_dispatch:
     inputs:
       clients:
-        description: "Clients to release (typescript, python, or all)"
+        description: "Clients to release (typescript, python, java, or all)"
         required: true
         default: all
         type: choice
@@ -38,6 +45,7 @@ on:
           - all
           - typescript
           - python
+          - java
       dry_run:
         description: "Build and test without publishing"
         required: false
@@ -106,6 +114,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+          cache-dependency-path: clients/java/pom.xml
+
       - name: Semver unit tests
         run: bash scripts/semver_test.sh
 
@@ -142,6 +157,10 @@ jobs:
               clients/python scripts/release-client-python.sh | grep -q .; then
             clients+=(python)
           fi
+          if git diff --name-only "${before}" HEAD -- \
+              clients/java scripts/release-client-java.sh | grep -q .; then
+            clients+=(java)
+          fi
           if [[ ${#clients[@]} -eq 0 ]]; then
             echo "clients=" >> "$GITHUB_OUTPUT"
           else
@@ -153,6 +172,8 @@ jobs:
         env:
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
           TWINE_USERNAME: __token__
+          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
           DRY_RUN: ${{ steps.resolve.outputs.dry_run }}
           COMMIT_BUMP: ${{ steps.resolve.outputs.commit_bump }}
           CLIENTS: ${{ steps.resolve.outputs.clients }}
@@ -162,7 +183,10 @@ jobs:
       - name: Push tags and open version bump PR
         if: steps.resolve.outputs.clients != '' && steps.resolve.outputs.commit_bump == '1'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITHUB_TOKEN cannot create PRs unless the repo enables
+          # "Allow GitHub Actions to create and approve pull requests".
+          # Optional CLIENT_RELEASE_GH_TOKEN (PAT) bypasses that restriction.
+          GH_TOKEN: ${{ secrets.CLIENT_RELEASE_GH_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
         run: bash scripts/open-client-version-pr.sh
 
