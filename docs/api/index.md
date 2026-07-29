@@ -19,6 +19,7 @@ Thin platform clients (not for chat completions — use OpenAI/Anthropic/Gemini 
 
 - TypeScript: `clients/typescript` (`@afi-ai/platform-client`)
 - Python: `clients/python` (`afi-platform`)
+- Java: `clients/java` (`ai.afi:platform-client`)
 
 See [Platform API](platform.md) and [Gateway overlay](gateway.md).
 

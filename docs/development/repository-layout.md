@@ -88,7 +88,8 @@ Platform events (bus + durable outbox): [Platform domain events](platform-events
 | `sdk/hook` | Lifecycle hook contracts (Go + WASM ABI docs) |
 | `sdk/httpsign` | RFC 9421 / Content-Digest signing for gateway clients |
 | `api/openapi` | Public OpenAPI contracts (platform + gateway overlay) |
-| `clients/*` | Thin TypeScript / Python platform HTTP clients |
+| `clients/*` | Thin TypeScript / Python / Java platform HTTP clients |
+
 | `extensions/*` | Example SDK providers + hooks registered from `cmd/gateway` |
 | `examples/a2a-echo` | Standalone A2A echo agent for local gateway / playground tests |
 | `internal/modelcatalog` | Curated model metadata (mode, context, pricing) |
