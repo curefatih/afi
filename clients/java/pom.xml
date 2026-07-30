@@ -38,7 +38,28 @@
     <maven.compiler.release>17</maven.compiler.release>
     <junit.version>5.11.4</junit.version>
     <jackson.version>2.18.2</jackson.version>
+    <github.owner>curefatih</github.owner>
+    <github.repo>afi</github.repo>
   </properties>
+
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/${github.owner}/${github.repo}</url>
+    </repository>
+  </distributionManagement>
+
+  <repositories>
+    <!-- Consumers also need this repo (and a token with read:packages). -->
+    <repository>
+      <id>github</id>
+      <url>https://maven.pkg.github.com/${github.owner}/${github.repo}</url>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
 
   <dependencies>
     <dependency>
@@ -90,37 +111,4 @@
       </plugin>
     </plugins>
   </build>
-
-  <profiles>
-    <!-- Publish to Maven Central Portal when credentials are configured. -->
-    <profile>
-      <id>release</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <version>3.2.7</version>
-            <executions>
-              <execution>
-                <id>sign-artifacts</id>
-                <phase>verify</phase>
-                <goals><goal>sign</goal></goals>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.sonatype.central</groupId>
-            <artifactId>central-publishing-maven-plugin</artifactId>
-            <version>0.7.0</version>
-            <extensions>true</extensions>
-            <configuration>
-              <publishingServerId>central</publishingServerId>
-              <autoPublish>true</autoPublish>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-  </profiles>
 </project>

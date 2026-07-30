@@ -6,7 +6,7 @@ Thin clients generated / maintained against [`../api/openapi/platform.openapi.ya
 | ------- | -------- | ------- |
 | [`typescript/`](typescript/) | TypeScript | `npm i @afi-ai/platform-client` |
 | [`python/`](python/) | Python | `pip install afi-platform` |
-| [`java/`](java/) | Java | `ai.afi:platform-client` (Maven) |
+| [`java/`](java/) | Java | `ai.afi:platform-client` ([GitHub Packages](https://github.com/curefatih/afi/packages)) |
 
 Local development: path install for TS/Python, or `mvn -f clients/java test`.
 
@@ -25,7 +25,7 @@ For **signed-request auth** (RFC 9421) instead of a virtual API key, use the sha
 
 ## Releasing
 
-Pushes to `main` that touch `clients/typescript`, `clients/python`, or `clients/java` run [`.github/workflows/release-clients.yml`](../.github/workflows/release-clients.yml). Each changed client is tested, versioned (patch auto-bump when the local version is already published), and published to npm / PyPI / Maven Central.
+Pushes to `main` that touch `clients/typescript`, `clients/python`, or `clients/java` run [`.github/workflows/release-clients.yml`](../.github/workflows/release-clients.yml). Each changed client is tested, versioned (patch auto-bump when the local version is already published), and published to npm / PyPI / GitHub Packages.
 
 ### npm auth (TypeScript)
 
@@ -65,13 +65,16 @@ If CI prints `ENEEDAUTH` or the “bypass 2FA” notice with no token configured
 
 Repo secret `PYPI_API_TOKEN` (or configure a PyPI trusted publisher for this workflow).
 
-### Maven Central (Java)
+### GitHub Packages (Java)
 
-1. Claim namespace `ai.afi` on [Sonatype Central Portal](https://central.sonatype.com/)
-2. Configure GPG signing and a `~/.m2/settings.xml` server id `central` (or CI secrets `MAVEN_USERNAME` + `MAVEN_PASSWORD` / `MAVEN_CENTRAL_TOKEN`)
-3. First publish: `DRY_RUN=1 CLIENTS=java FORCE=1 make release-clients`, then publish with `-Prelease`
+CI publishes with `GITHUB_TOKEN` (`packages: write`). No extra Maven secrets.
 
-Until Central credentials exist, use `DRY_RUN=1` / `SKIP_PUBLISH=1`.
+Consumers add the repo + a PAT with `read:packages` — see [`java/README.md`](java/README.md).
+
+```bash
+DRY_RUN=1 CLIENTS=java FORCE=1 make release-clients
+GITHUB_TOKEN=… CLIENTS=java FORCE=1 make release-client-java
+```
 
 ### Manual / dry-run
 

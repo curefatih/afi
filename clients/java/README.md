@@ -2,16 +2,42 @@
 
 Thin Java client for the AFI control plane (`/api/v1/platform`).
 
+Distributed via **GitHub Packages**:
+https://github.com/curefatih/afi/packages
+
 ```bash
 cd clients/java && mvn test
 ```
 
+### Install (Maven)
+
+Add the GitHub Packages repository and dependency (needs a PAT with `read:packages`):
+
 ```xml
+<repositories>
+  <repository>
+    <id>github</id>
+    <url>https://maven.pkg.github.com/curefatih/afi</url>
+  </repository>
+</repositories>
+
 <dependency>
   <groupId>ai.afi</groupId>
   <artifactId>platform-client</artifactId>
   <version>1.0.0</version>
 </dependency>
+```
+
+`~/.m2/settings.xml`:
+
+```xml
+<servers>
+  <server>
+    <id>github</id>
+    <username>YOUR_GITHUB_USERNAME</username>
+    <password>YOUR_PAT_WITH_READ_PACKAGES</password>
+  </server>
+</servers>
 ```
 
 ```java
