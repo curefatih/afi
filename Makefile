@@ -7,7 +7,7 @@
 	quickstart deploy-init deploy-up deploy-down deploy-logs deploy-health \
 	deploy-infra deploy-controlplane deploy-dataplane deploy-worker deploy-web \
 	build-release build-images brand-assets \
-	release-clients release-client-typescript release-client-python \
+	release-clients release-client-typescript release-client-python release-client-java \
 	openapi-lint openapi-drift openapi-gen openapi-check \
 	proto-gen proto-check
 
@@ -79,6 +79,7 @@ build-release:
 # Publish platform clients (npm / PyPI). Examples:
 #   DRY_RUN=1 make release-clients
 #   CLIENTS=typescript make release-client-typescript
+#   CLIENTS=java make release-client-java
 #   FORCE=1 CLIENTS=all make release-clients
 release-clients:
 	bash scripts/release-clients.sh
@@ -88,6 +89,9 @@ release-client-typescript:
 
 release-client-python:
 	bash scripts/release-client-python.sh
+
+release-client-java:
+	bash scripts/release-client-java.sh
 
 build-images:
 	@test -f $(DEPLOY_ENV) || (echo "missing $(DEPLOY_ENV) — run make deploy-init" >&2; exit 1)
@@ -140,7 +144,7 @@ openapi-drift:
 openapi-gen:
 	$(NPX) --yes openapi-typescript@7 api/openapi/platform.openapi.yaml -o clients/typescript/src/schema.gen.ts
 	@echo "Generated clients/typescript/src/schema.gen.ts"
-	@echo "Python client is hand-maintained against platform.openapi.yaml (see clients/python)."
+	@echo "Python and Java clients are hand-maintained against platform.openapi.yaml."
 
 openapi-check: openapi-lint openapi-drift
 	$(MAKE) openapi-gen

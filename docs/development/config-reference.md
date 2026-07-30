@@ -223,6 +223,7 @@ Prefer signature label `sig1`. Client helpers that build these headers:
 - Go: [`sdk/httpsign`](../../sdk/httpsign) (`SignRequest`, `Client`)
 - Python: `afi_platform.sign_headers` in [`clients/python`](../../clients/python)
 - TypeScript: `signHeaders` in [`clients/typescript`](../../clients/typescript)
+- Java: `HttpSign.signHeaders` in [`clients/java`](../../clients/java)
 
 If signing headers are absent, the gateway falls back to the existing API key flow. Replay protection is enforced per gateway instance with a bounded in-memory nonce cache.
 
