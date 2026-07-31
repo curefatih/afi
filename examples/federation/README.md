@@ -5,13 +5,26 @@ Simulate a **home control plane** and a **regional control plane** that pull-syn
 ```text
 ┌──────────────── hub ────────────────┐     pull sync      ┌────────── regional ──────────┐
 │ hub-controlplane (:8081) API        │◄───────────────────│ regional-controlplane (:8181)│
-│ hub-postgres / hub-redis            │                    │ regional-postgres / redis    │
-│ hub-gateway (:8080)  us-east        │                    │ regional-gateway (:8180)     │
-│ web (:3000) → hub API               │                    │ regional-web (:3100) → CP    │
-└─────────────────────────────────────┘                    └──────────────────────────────┘
+│ hub-postgres / hub-redis            │   usage reports    │ regional-postgres / redis    │
+│ hub-gateway (:8080)  us-east        │◄──(on demand)──────│ regional-worker (usage)      │
+│ web (:3000) → hub API               │                    │ regional-gateway (:8180)     │
+└─────────────────────────────────────┘                    │ regional-web (:3100) → CP    │
+                                                           └──────────────────────────────┘
 ```
 
 `:8081` / `:8181` are **JSON APIs** (`/healthz`, `/api/v1/…`) — browsing `/` returns 404. Use the web UIs on `:3000` (hub) and `:3100` (regional).
+
+## Data locality
+
+| Plane | Hub | Regional |
+|-------|-----|----------|
+| Management (orgs, regions, overlays, peers) | **Authoritative** — write here | **Read-only** API (mutations return 403) |
+| Config sync | Serves federation export | Pulls into local Postgres + snapshot store |
+| Inference | Hub gateway (`:8080`) for `us-east` | Regional gateway (`:8180`) for `eu-west` — request path stays local |
+| Timed quotas | Hub Redis | Regional Redis |
+| Usage | Persists hub-gateway traffic; **Usage page pulls** regional reports on demand (merged into list/charts; not stored in hub `usage_events`) | Gateway outbox + **regional-worker** → regional Postgres; serves usage-reports for hub pull |
+
+View hub-local and regional usage on the **hub** Usage page (`:3000` → Usage). Regional rows are tagged with a region badge. Durable regional analytics also remain on the regional UI (`:3100`).
 
 Local-only secrets are intentional (same idea as `make quickstart`). Do not expose this stack publicly.
 
@@ -148,9 +161,23 @@ Set `OPENAI_API_KEY` (or another provider key) in `.env` and recreate gateways f
 | Profile | Services |
 |---------|----------|
 | `hub` | `hub-postgres`, `hub-redis`, `hub-controlplane`, `hub-gateway`, `web` |
-| `regional` | `regional-postgres`, `regional-redis`, `regional-controlplane`, `regional-gateway`, `regional-web` |
+| `regional` | `regional-postgres`, `regional-redis`, `regional-controlplane`, `regional-worker`, `regional-gateway`, `regional-web` |
 
 Always start **hub** before **regional**. Regional mode refuses to start without `AFI_FEDERATION_JOIN_TOKEN`.
+
+### Pull regional usage reports (hub)
+
+The hub **Usage** page merges regional reports automatically (platform JWT; join token is sealed on the hub at peer register/rotate).
+
+Manual pull (admin):
+
+```bash
+PEER_ID=... # from hub Federation UI or GET /api/v1/platform/federation/peers
+curl -sS "$HUB/api/v1/platform/federation/peers/${PEER_ID}/usage-reports?limit=50&org_id=<orgID>" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Hub returns the regional rows and records OTel/log observations; it does **not** insert into hub `usage_events`. If pull fails with “join token not retained”, rotate the peer join token once (and update `regional.secrets.env`).
 
 ## Relation to production docs
 

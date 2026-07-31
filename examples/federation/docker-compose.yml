@@ -97,7 +97,9 @@ services:
       AFI_REGION_ID: ${HUB_REGION_SLUG:-us-east}
       AFI_DEPLOYMENT_ID: ${HUB_DEPLOYMENT_ID:-}
       AFI_DEPLOYMENT_JOIN_TOKEN: ${HUB_DEPLOYMENT_JOIN_TOKEN:-}
+      # Hub-local traffic only — persists to hub Postgres (sync; no hub-worker in this lab).
       AFI_USAGE_BACKEND: postgres
+      AFI_USAGE_SYNC: "true"
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -197,6 +199,26 @@ services:
     ports:
       - "${REGIONAL_CONTROLPLANE_HOST_PORT:-8181}:8081"
 
+  # Drains regional usage_outbox → usage_events (regional gateway persists locally).
+  regional-worker:
+    profiles: ["regional"]
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      args:
+        AFI_SERVICE: worker
+    image: afi-worker:local
+    restart: unless-stopped
+    depends_on:
+      regional-postgres:
+        condition: service_healthy
+    environment:
+      AFI_CONFIG: /config/afi.yaml
+      AFI_DATABASE_URL: postgres://afi:${REGIONAL_POSTGRES_PASSWORD:-afi-federation-regional}@regional-postgres:5432/afi?sslmode=disable
+      AFI_EVENTS_OUTBOX_ENABLED: "false"
+    volumes:
+      - ./regional.afi.yaml:/config/afi.yaml:ro
+
   regional-gateway:
     profiles: ["regional"]
     build:
@@ -213,6 +235,8 @@ services:
         condition: service_healthy
       regional-controlplane:
         condition: service_started
+      regional-worker:
+        condition: service_started
     environment:
       AFI_CONFIG: /config/afi.yaml
       AFI_DATABASE_URL: postgres://afi:${REGIONAL_POSTGRES_PASSWORD:-afi-federation-regional}@regional-postgres:5432/afi?sslmode=disable
@@ -222,11 +246,13 @@ services:
       AFI_SNAPSHOT_POLL_INTERVAL: 2s
       # Gateways do not run the federation puller — only the regional control plane does.
       AFI_FEDERATION_MODE: "off"
+      # Heartbeats to hub; usage stays in regional Postgres (outbox + regional-worker).
+      # Hub pulls reports on demand via federation usage-reports (observe only).
       AFI_CONTROL_PLANE_URL: http://hub-controlplane:8081
       AFI_REGION_ID: ${REGIONAL_REGION_SLUG:-eu-west}
       AFI_DEPLOYMENT_ID: ${REGIONAL_DEPLOYMENT_ID:-}
       AFI_DEPLOYMENT_JOIN_TOKEN: ${REGIONAL_DEPLOYMENT_JOIN_TOKEN:-}
-      AFI_USAGE_BACKEND: http
+      AFI_USAGE_BACKEND: postgres
       AFI_HEARTBEAT_INTERVAL: 15s
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
