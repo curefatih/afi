@@ -290,16 +290,42 @@ func main() {
 			log.Error("AFI_USAGE_BACKEND=postgres requires database")
 			os.Exit(1)
 		}
-		outbox := &postgres.UsageOutbox{Pool: pool}
-		pipeline.Usage = func(e dataplane.UsageEvent) {
-			payload, err := workers.EncodeUsage(e)
-			if err != nil {
-				log.Error("encode usage", "err", err)
-				return
+		if cfg.Gateway.UsageSync {
+			sink := &postgres.UsageSink{Pool: pool}
+			prices := &postgres.PriceLookup{Pool: pool}
+			pipeline.Usage = func(e dataplane.UsageEvent) {
+				payload, err := workers.EncodeUsage(e)
+				if err != nil {
+					log.Error("encode usage", "err", err)
+					return
+				}
+				if err := workers.IngestPayload(context.Background(), sink, prices, payload); err != nil {
+					log.Error("persist usage", "err", err)
+				}
 			}
-			if err := outbox.Enqueue(context.Background(), payload); err != nil {
-				log.Error("enqueue usage", "err", err)
+			log.Info("usage backend postgres", "mode", "sync")
+		} else {
+			outbox := &postgres.UsageOutbox{Pool: pool}
+			pipeline.Usage = func(e dataplane.UsageEvent) {
+				if cfg.Gateway.RegionID != "" {
+					if e.Tags == nil {
+						e.Tags = map[string]string{}
+					}
+					e.Tags["region"] = cfg.Gateway.RegionID
+					if cfg.Gateway.DeploymentID != "" {
+						e.Tags["deployment_id"] = cfg.Gateway.DeploymentID
+					}
+				}
+				payload, err := workers.EncodeUsage(e)
+				if err != nil {
+					log.Error("encode usage", "err", err)
+					return
+				}
+				if err := outbox.Enqueue(context.Background(), payload); err != nil {
+					log.Error("enqueue usage", "err", err)
+				}
 			}
+			log.Info("usage backend postgres", "mode", "outbox")
 		}
 	}
 

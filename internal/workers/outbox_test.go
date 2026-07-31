@@ -101,3 +101,18 @@ func TestProcessOutboxCatalogFallback(t *testing.T) {
 		t.Fatalf("cost=%v", usage.costs[0])
 	}
 }
+
+func TestIngestPayload(t *testing.T) {
+	payload, _ := json.Marshal(UsagePayload{
+		OrganizationID: "org_1", Model: "gpt-4o-mini", ProviderType: "openai",
+		PromptTokens: 1000, CompletionTokens: 500, Status: "ok",
+	})
+	usage := &memUsage{}
+	prices := &memPrices{in: 0.15, out: 0.6, ok: true}
+	if err := IngestPayload(context.Background(), usage, prices, payload); err != nil {
+		t.Fatal(err)
+	}
+	if len(usage.events) != 1 {
+		t.Fatalf("events=%+v", usage.events)
+	}
+}

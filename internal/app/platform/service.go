@@ -156,6 +156,7 @@ type ConfigAPI interface {
 	JoinFederationPeer(ctx context.Context, rawToken string) (*federation.ControlPlanePeer, error)
 	ExportFederationRegion(ctx context.Context, slug string, since int64, objectPrefix string) (*federation.RegionExport, error)
 	RecordFederationPeerSync(ctx context.Context, peerID string, cursor int64, syncErr string) error
+	ListFederationUsageReports(ctx context.Context, since *time.Time, limit int) ([]usage.Record, error)
 }
 
 // Service orchestrates platform queries and commands (mutate + publish + events).

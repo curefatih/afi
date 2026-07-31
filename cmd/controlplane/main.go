@@ -139,7 +139,9 @@ func main() {
 	}
 	auditStore := &postgres.AuditEvents{Pool: pool}
 	srv := controlplane.NewServer(cfg, store, seeder, seeder, snapStore, log, eventOutbox, auditStore, auth)
-	srv.SetUsageEnqueuer(&postgres.UsageOutbox{Pool: pool})
+	// Spoke/regional usage reports are observed (metrics/logs) only — not persisted on the hub.
+	usageReports := controlplane.NewUsageReportObserver(log)
+	srv.SetUsageEnqueuer(usageReports)
 	if cfg.Telemetry.Enabled {
 		cm, err := telemetry.NewControlPlaneMetrics()
 		if err != nil {
@@ -147,6 +149,7 @@ func main() {
 			os.Exit(1)
 		}
 		srv.Metrics = cm
+		usageReports.Metrics = cm
 	}
 
 	root := http.NewServeMux()

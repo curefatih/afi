@@ -91,6 +91,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /internal/v1/deployments/{deploymentID}/usage", s.handleDeploymentUsageIngest)
 	mux.HandleFunc("POST /internal/v1/federation/peers/join", s.handleFederationPeerJoin)
 	mux.HandleFunc("GET /internal/v1/federation/regions/{slug}/export", s.handleFederationRegionExport)
+	mux.HandleFunc("GET /internal/v1/federation/usage-reports", s.handleFederationUsageReports)
 
 	mux.HandleFunc("GET /api/v1/platform/regions", s.requireAuth(s.requirePlatformAdmin(s.handleListRegions)))
 	mux.HandleFunc("POST /api/v1/platform/regions", s.requireAuth(s.requirePlatformAdmin(s.handleCreateRegion)))
@@ -113,6 +114,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/platform/federation/peers/{peerID}", s.requireAuth(s.requirePlatformAdmin(s.handleGetFederationPeer)))
 	mux.HandleFunc("PATCH /api/v1/platform/federation/peers/{peerID}", s.requireAuth(s.requirePlatformAdmin(s.handleUpdateFederationPeer)))
 	mux.HandleFunc("POST /api/v1/platform/federation/peers/{peerID}/rotate-join-token", s.requireAuth(s.requirePlatformAdmin(s.handleRotateFederationPeerToken)))
+	mux.HandleFunc("GET /api/v1/platform/federation/peers/{peerID}/usage-reports", s.requireAuth(s.requirePlatformAdmin(s.handlePullPeerUsageReports)))
 
 	mux.HandleFunc("POST /api/v1/platform/auth/login", s.handleLogin)
 	mux.HandleFunc("GET /api/v1/platform/auth/me", s.requireAuth(s.handleMe))
@@ -223,7 +225,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/platform/projects/{projectID}/keys", s.requireAuth(s.requireOrgMemberViaProject(s.handleListKeys)))
 	mux.HandleFunc("POST /api/v1/platform/projects/{projectID}/keys", s.requireAuth(s.requireOrgAdminViaProject(s.handleCreateKey)))
 
-	return s.withCPMetrics(withCORS(mux))
+	return s.withCPMetrics(withCORS(s.federationRegionalReadOnly(mux)))
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {

@@ -546,6 +546,11 @@ func (s *Store) ListUsage(ctx context.Context, orgID string, f UsageFilter) ([]U
 	return s.usageQueries().List(ctx, orgID, f)
 }
 
+// ListFederationUsageReports returns local usage_events for hub on-demand pull.
+func (s *Store) ListFederationUsageReports(ctx context.Context, since *time.Time, limit int) ([]usage.Record, error) {
+	return s.usageQueries().ListReportsSince(ctx, since, limit)
+}
+
 func (s *Store) SummarizeUsage(ctx context.Context, orgID string, f UsageFilter) ([]UsageSummaryBucket, error) {
 	return s.usageQueries().Summarize(ctx, orgID, f)
 }

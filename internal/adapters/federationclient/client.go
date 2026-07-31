@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/federation"
+	"github.com/curefatih/afi/internal/usage"
 )
 
 const TokenHeader = "X-AFI-Federation-Token"
@@ -89,4 +90,49 @@ func (c *Client) Export(ctx context.Context, regionSlug string, since int64) (*f
 		return nil, err
 	}
 	return &exp, nil
+}
+
+// UsageReportsResponse is returned by regional usage report pull.
+type UsageReportsResponse struct {
+	Reports []usage.Record `json:"reports"`
+}
+
+// UsageReports pulls usage events from a regional control plane (hub on-demand).
+func (c *Client) UsageReports(ctx context.Context, since *time.Time, limit int) (*UsageReportsResponse, error) {
+	if c == nil || c.BaseURL == "" || c.JoinToken == "" {
+		return nil, fmt.Errorf("federationclient: usage reports not configured")
+	}
+	u := c.BaseURL + "/internal/v1/federation/usage-reports"
+	q := url.Values{}
+	if since != nil && !since.IsZero() {
+		q.Set("since", since.UTC().Format(time.RFC3339))
+	}
+	if limit > 0 {
+		q.Set("limit", strconv.Itoa(limit))
+	}
+	if enc := q.Encode(); enc != "" {
+		u += "?" + enc
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set(TokenHeader, c.JoinToken)
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("federationclient usage-reports: status %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
+	}
+	var out UsageReportsResponse
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil, err
+	}
+	if out.Reports == nil {
+		out.Reports = []usage.Record{}
+	}
+	return &out, nil
 }

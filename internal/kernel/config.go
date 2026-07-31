@@ -60,8 +60,10 @@ type Config struct {
 		DeploymentJoinToken     string        `yaml:"deployment_join_token" env:"AFI_DEPLOYMENT_JOIN_TOKEN"`
 		HeartbeatIntervalRaw    string        `yaml:"heartbeat_interval" env:"AFI_HEARTBEAT_INTERVAL" env-default:"30s"`
 		HeartbeatInterval       time.Duration `yaml:"-"`
-		// UsageBackend is postgres (local outbox) or http (ship to hub).
+		// UsageBackend is postgres (local outbox or sync) or http (ship to hub).
 		UsageBackend string `yaml:"usage_backend" env:"AFI_USAGE_BACKEND" env-default:"postgres"`
+		// UsageSync writes usage_events immediately when UsageBackend=postgres (skips outbox/worker).
+		UsageSync bool `yaml:"usage_sync" env:"AFI_USAGE_SYNC"`
 		// WasmBeforeCall is an optional path to a TinyGo .wasm exporting before_call.
 		WasmBeforeCall string `yaml:"wasm_before_call" env:"AFI_WASM_BEFORE_CALL"`
 		// WasmBeforeChat is an optional path to a TinyGo .wasm exporting before_chat.

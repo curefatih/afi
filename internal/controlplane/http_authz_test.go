@@ -210,7 +210,8 @@ func (p *fakePublisher) PublishRegionSnapshots(context.Context, ...string) error
 
 type fakePlatform struct {
 	fakeMembers
-	created *Project
+	created      *Project
+	usageReports []UsageEvent
 }
 
 func (f *fakePlatform) GetUserByEmail(context.Context, string) (*User, error) {
@@ -516,6 +517,12 @@ func (f *fakePlatform) ExportFederationRegion(context.Context, string, int64, st
 }
 func (f *fakePlatform) RecordFederationPeerSync(context.Context, string, int64, string) error {
 	return nil
+}
+func (f *fakePlatform) ListFederationUsageReports(context.Context, *time.Time, int) ([]UsageEvent, error) {
+	if f == nil || f.usageReports == nil {
+		return nil, nil
+	}
+	return f.usageReports, nil
 }
 
 func testCfg() *kernel.Config {

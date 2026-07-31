@@ -97,3 +97,17 @@ func ProcessOnce(ctx context.Context, src OutboxSource, sink UsageSink, prices P
 	span.SetAttributes(attribute.Int("afi.worker.batch_size", n))
 	return n, nil
 }
+
+// IngestPayload decodes one usage outbox payload and writes usage_events immediately
+// (no worker drain). Used for spoke HTTP ingest and optional sync postgres backends.
+func IngestPayload(ctx context.Context, sink UsageSink, prices PriceLookup, payload []byte) error {
+	var e UsagePayload
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return err
+	}
+	cost, err := estimateUsageCost(ctx, e, prices)
+	if err != nil {
+		return err
+	}
+	return sink.InsertUsage(ctx, e, cost)
+}

@@ -217,6 +217,7 @@ func (s *Server) handleDeploymentUsageIngest(w http.ResponseWriter, r *http.Requ
 		writeErr(w, http.StatusServiceUnavailable, "usage ingest unavailable")
 		return
 	}
+	// Spoke reports are observed by the hub; they are not written to usage_events here.
 	if err := s.usageEnqueuer.Enqueue(r.Context(), payload); err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return

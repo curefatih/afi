@@ -3,6 +3,7 @@ package platform
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/curefatih/afi/internal/access"
 	"github.com/curefatih/afi/internal/credentials"
@@ -12,6 +13,7 @@ import (
 	"github.com/curefatih/afi/internal/regions"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
+	"github.com/curefatih/afi/internal/usage"
 )
 
 // PublishSnapshot republishes the gateway snapshot and emits snapshot.published.
@@ -819,5 +821,9 @@ func (s *Service) ExportFederationRegion(ctx context.Context, slug string, since
 
 func (s *Service) RecordFederationPeerSync(ctx context.Context, peerID string, cursor int64, syncErr string) error {
 	return s.API.RecordFederationPeerSync(ctx, peerID, cursor, syncErr)
+}
+
+func (s *Service) ListFederationUsageReports(ctx context.Context, since *time.Time, limit int) ([]usage.Record, error) {
+	return s.API.ListFederationUsageReports(ctx, since, limit)
 }
 
