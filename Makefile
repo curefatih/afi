@@ -4,7 +4,7 @@
 	build test test-web test-all format format-web format-go tidy tidy-go verify \
 	run-controlplane run-gateway run-worker run-all run-a2a-echo \
 	seed snapshot-publish \
-	quickstart deploy-init deploy-up deploy-down deploy-logs deploy-health \
+	quickstart federation-lab federation-lab-down deploy-init deploy-up deploy-down deploy-logs deploy-health \
 	deploy-infra deploy-controlplane deploy-dataplane deploy-worker deploy-web \
 	build-release build-images brand-assets \
 	release-clients release-client-typescript release-client-python release-client-java \
@@ -207,6 +207,13 @@ snapshot-publish:
 # Local-only full stack (no Go/Node required). Writes deploy/.env + deploy/afi.yaml defaults.
 quickstart:
 	bash scripts/quickstart.sh
+
+# Local hub + regional control planes (see examples/federation/README.md).
+federation-lab:
+	cd examples/federation && chmod +x up.sh down.sh bootstrap.sh && ./up.sh
+
+federation-lab-down:
+	cd examples/federation && ./down.sh
 
 deploy-init:
 	@test -f deploy/.env || cp deploy/env.example deploy/.env

@@ -79,12 +79,15 @@ Regional CP settings:
 
 Register peers as platform admin under **Federation** (or `POST /api/v1/platform/federation/peers`). Mesh peers, quota CRDTs, and geo-routing remain out of scope.
 
+**Local lab:** [examples/federation](../../examples/federation/README.md) runs a hub CP + regional CP + two gateways with `./up.sh` (creates regions, bind-all, peer, and deployments for you).
+
 ## Choose a path
 
 | Path | When to use | Guide |
 |------|-------------|-------|
 | **Quick start** | Try AFI locally with one command | [Quick start](../guides/quick-start.md) |
 | **Docker Compose** | Single host / VM, or profile subsets (control plane, data plane, worker, web) | [Docker Compose](docker.md) |
+| **Federation lab** | Hub + regional CPs and two gateways on one machine | [examples/federation](../../examples/federation/README.md) |
 | **Binaries** | Custom OS images, systemd, bare metal | [Binary deployment](binary.md) — download `v*` release archives or build with `make build-release` |
 | **Local dev** | Day-to-day development | [Local development](../development/local-dev.md) |
 

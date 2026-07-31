@@ -1,0 +1,31 @@
+# Shared YAML for regional CP + gateway. Federation mode for the CP is set via
+# AFI_FEDERATION_MODE=regional in Compose; gateways force AFI_FEDERATION_MODE=off.
+
+database_url: "postgres://afi:afi-federation-regional@regional-postgres:5432/afi?sslmode=disable"
+redis_url: "redis://regional-redis:6379/0"
+
+controlplane:
+  addr: ":8081"
+
+gateway:
+  addr: ":8080"
+  snapshot_poll_interval: "2s"
+  snapshot_backend: postgres
+
+auth:
+  jwt_secret: "afi-federation-jwt-secret"
+  token_ttl: "24h"
+  internal_token: "afi-federation-regional-internal"
+
+seed:
+  virtual_api_key: "sk-federation-lab-regional-local-only"
+  admin_email: "regional@afi.local"
+  admin_password: "admin"
+  admin_name: "Regional Admin"
+  openai_base_url: "https://api.openai.com/v1"
+  openai_api_key_env: "OPENAI_API_KEY"
+  default_model: "gpt-4o-mini"
+
+events:
+  outbox_enabled: false
+  publisher: log
