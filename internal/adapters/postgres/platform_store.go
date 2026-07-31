@@ -18,6 +18,7 @@ import (
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/mail"
 	"github.com/curefatih/afi/internal/policy"
+	"github.com/curefatih/afi/internal/regions"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
 	"github.com/curefatih/afi/internal/usage"
@@ -109,6 +110,10 @@ func (s *Store) projectsRepo() *Projects {
 
 func (s *Store) CountOrgs(ctx context.Context) (int64, error) {
 	return s.organizations().Count(ctx)
+}
+
+func (s *Store) ListOrganizationIDs(ctx context.Context) ([]string, error) {
+	return s.organizations().ListIDs(ctx)
 }
 
 func (s *Store) IsOrgMember(ctx context.Context, userID, orgID string) (bool, error) {
@@ -757,6 +762,88 @@ func (s *Store) DeleteA2AAgent(ctx context.Context, id string) error {
 
 func (s *Store) GetA2AAgentOrgID(ctx context.Context, id string) (string, error) {
 	return s.a2aAgents().OrgID(ctx, id)
+}
+
+func (s *Store) regionsRepo() regions.Repository {
+	return NewRegionsStore(s.pool)
+}
+
+func (s *Store) ListRegions(ctx context.Context) ([]regions.Region, error) {
+	return s.regionsRepo().ListRegions(ctx)
+}
+
+func (s *Store) GetRegion(ctx context.Context, regionID string) (*regions.Region, error) {
+	return s.regionsRepo().GetRegion(ctx, regionID)
+}
+
+func (s *Store) GetRegionBySlug(ctx context.Context, slug string) (*regions.Region, error) {
+	return s.regionsRepo().GetRegionBySlug(ctx, slug)
+}
+
+// BindAllOrgsToRegion binds every organization to the region (active membership).
+func (s *Store) BindAllOrgsToRegion(ctx context.Context, regionID string) (int, error) {
+	ids, err := s.ListOrganizationIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return regions.BindAllOrganizations(ctx, s.regionsRepo(), regionID, ids)
+}
+
+func (s *Store) CreateRegion(ctx context.Context, slug, name string) (*regions.Region, error) {
+	return regions.CreateRegion(ctx, s.regionsRepo(), newPlatformID("reg"), slug, name)
+}
+
+func (s *Store) UpdateRegion(ctx context.Context, regionID, name, status string) (*regions.Region, error) {
+	return regions.UpdateRegion(ctx, s.regionsRepo(), regionID, name, status)
+}
+
+func (s *Store) ListDeployments(ctx context.Context, regionID string) ([]regions.GatewayDeployment, error) {
+	return regions.ListDeployments(ctx, s.regionsRepo(), regionID, regions.DefaultHeartbeatTTL)
+}
+
+func (s *Store) GetDeployment(ctx context.Context, deploymentID string) (*regions.GatewayDeployment, error) {
+	return regions.GetDeployment(ctx, s.regionsRepo(), deploymentID, regions.DefaultHeartbeatTTL)
+}
+
+func (s *Store) RegisterDeployment(ctx context.Context, regionID, name, publicBaseURL string) (*regions.DeploymentWithToken, error) {
+	return regions.RegisterDeployment(ctx, s.regionsRepo(), newPlatformID("dep"), regionID, name, publicBaseURL)
+}
+
+func (s *Store) RotateDeploymentJoinToken(ctx context.Context, deploymentID string) (*regions.DeploymentWithToken, error) {
+	return regions.RotateJoinToken(ctx, s.regionsRepo(), deploymentID)
+}
+
+func (s *Store) RecordDeploymentHeartbeat(ctx context.Context, deploymentID, joinToken string, snapVersion int64, build string) (*regions.GatewayDeployment, error) {
+	hash := identity.HashOpaqueToken(joinToken)
+	return regions.RecordHeartbeat(ctx, s.regionsRepo(), deploymentID, hash, snapVersion, build)
+}
+
+func (s *Store) AuthenticateDeploymentJoinToken(ctx context.Context, rawToken string) (*regions.GatewayDeployment, error) {
+	return regions.AuthenticateJoinToken(ctx, s.regionsRepo(), rawToken)
+}
+
+func (s *Store) ListRegionMemberships(ctx context.Context, regionID string) ([]regions.OrgRegionMembership, error) {
+	return s.regionsRepo().ListMembershipsByRegion(ctx, regionID)
+}
+
+func (s *Store) BindOrgToRegion(ctx context.Context, regionID, orgID, status string) (*regions.OrgRegionMembership, error) {
+	return regions.BindOrgToRegion(ctx, s.regionsRepo(), regionID, orgID, status)
+}
+
+func (s *Store) UnbindOrgFromRegion(ctx context.Context, regionID, orgID string) error {
+	return regions.UnbindOrgFromRegion(ctx, s.regionsRepo(), regionID, orgID)
+}
+
+func (s *Store) GetRegionOverlay(ctx context.Context, regionID, orgID string) (*regions.RegionConfigOverlay, error) {
+	return s.regionsRepo().GetOverlay(ctx, regionID, orgID)
+}
+
+func (s *Store) PutRegionOverlay(ctx context.Context, regionID, orgID string, payload regions.OverlayPayload) (*regions.RegionConfigOverlay, error) {
+	return regions.PutOverlay(ctx, s.regionsRepo(), regionID, orgID, payload)
+}
+
+func (s *Store) DeleteRegionOverlay(ctx context.Context, regionID, orgID string) error {
+	return regions.DeleteOverlay(ctx, s.regionsRepo(), regionID, orgID)
 }
 
 func newPlatformID(prefix string) string {

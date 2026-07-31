@@ -5,12 +5,15 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/curefatih/afi/extensions/demohook"
 	"github.com/curefatih/afi/extensions/echo"
 	"github.com/curefatih/afi/internal/adapters/grpcprovider"
+	"github.com/curefatih/afi/internal/adapters/hubclient"
+	"github.com/curefatih/afi/internal/adapters/objectstore"
 	"github.com/curefatih/afi/internal/adapters/postgres"
 	afiRedis "github.com/curefatih/afi/internal/adapters/redis"
 	"github.com/curefatih/afi/internal/adapters/secrets"
@@ -52,14 +55,52 @@ func main() {
 		}
 	}()
 
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
-	if err != nil {
-		log.Error("db connect", "err", err)
-		os.Exit(1)
+	needDB := cfg.Gateway.SnapshotBackend == "postgres" || cfg.Gateway.UsageBackend == "postgres"
+	var pool *pgxpool.Pool
+	if needDB {
+		p, err := pgxpool.New(ctx, cfg.DatabaseURL)
+		if err != nil {
+			log.Error("db connect", "err", err)
+			os.Exit(1)
+		}
+		pool = p
+		defer pool.Close()
+	} else {
+		log.Info("gateway running without postgres (objectstore snapshots + http usage)")
 	}
-	defer pool.Close()
 
-	snapStore := postgres.NewSnapshotStore(pool)
+	var snapStore snapshot.Store
+	switch cfg.Gateway.SnapshotBackend {
+	case "objectstore":
+		blob, err := objectstore.New(objectstore.Config{
+			Endpoint:  cfg.Gateway.SnapshotS3.Endpoint,
+			AccessKey: cfg.Gateway.SnapshotS3.AccessKey,
+			SecretKey: cfg.Gateway.SnapshotS3.SecretKey,
+			Region:    cfg.Gateway.SnapshotS3.Region,
+			Bucket:    cfg.Gateway.SnapshotS3.Bucket,
+			UseSSL:    cfg.Gateway.SnapshotS3.UseSSL,
+			PathStyle: cfg.Gateway.SnapshotS3.PathStyle,
+		})
+		if err != nil {
+			log.Error("snapshot objectstore", "err", err)
+			os.Exit(1)
+		}
+		if blob == nil {
+			log.Error("AFI_SNAPSHOT_BACKEND=objectstore requires AFI_SNAPSHOT_S3_*")
+			os.Exit(1)
+		}
+		osSnap := objectstore.NewSnapshotStore(blob, cfg.Gateway.SnapshotS3.Prefix)
+		if slug := strings.TrimSpace(cfg.Gateway.RegionID); slug != "" {
+			osSnap = osSnap.ForRegion(slug)
+			log.Info("snapshot backend objectstore", "bucket", cfg.Gateway.SnapshotS3.Bucket, "region", slug)
+		} else {
+			log.Info("snapshot backend objectstore", "bucket", cfg.Gateway.SnapshotS3.Bucket)
+		}
+		snapStore = osSnap
+	default:
+		snapStore = postgres.NewSnapshotStore(pool)
+		log.Info("snapshot backend postgres")
+	}
 	holder := dataplane.NewHolder()
 	reg := dataplane.DefaultRegistry().RegisterSDK(echo.New())
 	hooks := dataplane.NewHookChain().RegisterHook(demohook.NewWithLog(log))
@@ -199,8 +240,14 @@ func main() {
 		}
 		timed = &afiRedis.Counters{Client: rdb}
 	}
+	var totalCounters dataplane.CounterStore
+	if pool != nil {
+		totalCounters = &postgres.Counters{Pool: pool}
+	} else {
+		log.Warn("total (lifetime) quotas fail-closed without postgres; use hub DB or regional Redis rate limits")
+	}
 	pipeline.Counters = dataplane.CompositeCounters{
-		Total: &postgres.Counters{Pool: pool},
+		Total: totalCounters,
 		Timed: timed,
 	}
 
@@ -212,15 +259,47 @@ func main() {
 	pipeline.Policies = polEval
 	log.Info("extensions registered", "provider_types", reg.Types(), "hooks", hooks.Infos())
 
-	outbox := &postgres.UsageOutbox{Pool: pool}
-	pipeline.Usage = func(e dataplane.UsageEvent) {
-		payload, err := workers.EncodeUsage(e)
-		if err != nil {
-			log.Error("encode usage", "err", err)
-			return
+	hub := hubclient.New(cfg.Gateway.ControlPlaneURL, cfg.Gateway.DeploymentJoinToken)
+	switch cfg.Gateway.UsageBackend {
+	case "http":
+		if cfg.Gateway.ControlPlaneURL == "" || cfg.Gateway.DeploymentID == "" || cfg.Gateway.DeploymentJoinToken == "" {
+			log.Error("AFI_USAGE_BACKEND=http requires AFI_CONTROL_PLANE_URL, AFI_DEPLOYMENT_ID, AFI_DEPLOYMENT_JOIN_TOKEN")
+			os.Exit(1)
 		}
-		if err := outbox.Enqueue(context.Background(), payload); err != nil {
-			log.Error("enqueue usage", "err", err)
+		depID := cfg.Gateway.DeploymentID
+		pipeline.Usage = func(e dataplane.UsageEvent) {
+			if cfg.Gateway.RegionID != "" {
+				if e.Tags == nil {
+					e.Tags = map[string]string{}
+				}
+				e.Tags["region"] = cfg.Gateway.RegionID
+				e.Tags["deployment_id"] = depID
+			}
+			payload, err := workers.EncodeUsage(e)
+			if err != nil {
+				log.Error("encode usage", "err", err)
+				return
+			}
+			if err := hub.ShipUsage(context.Background(), depID, payload); err != nil {
+				log.Error("ship usage", "err", err)
+			}
+		}
+		log.Info("usage backend http", "control_plane", cfg.Gateway.ControlPlaneURL)
+	default:
+		if pool == nil {
+			log.Error("AFI_USAGE_BACKEND=postgres requires database")
+			os.Exit(1)
+		}
+		outbox := &postgres.UsageOutbox{Pool: pool}
+		pipeline.Usage = func(e dataplane.UsageEvent) {
+			payload, err := workers.EncodeUsage(e)
+			if err != nil {
+				log.Error("encode usage", "err", err)
+				return
+			}
+			if err := outbox.Enqueue(context.Background(), payload); err != nil {
+				log.Error("enqueue usage", "err", err)
+			}
 		}
 	}
 
@@ -238,6 +317,18 @@ func main() {
 		}
 	}()
 
+	if cfg.Gateway.ControlPlaneURL != "" && cfg.Gateway.DeploymentID != "" && cfg.Gateway.DeploymentJoinToken != "" {
+		depID := cfg.Gateway.DeploymentID
+		go hubclient.RunHeartbeatLoop(ctx, hub, depID, cfg.Gateway.HeartbeatInterval, func() int64 {
+			if s := holder.Get(); s != nil {
+				return s.Version
+			}
+			return 0
+		}, "", func(err error) {
+			log.Warn("deployment heartbeat", "err", err)
+		})
+		log.Info("deployment heartbeat enabled", "deployment_id", depID, "interval", cfg.Gateway.HeartbeatInterval)
+	}
 	root := http.NewServeMux()
 	root.Handle("/", telemetry.HTTPHandler(pipeline.Handler(), "afi-gateway"))
 	telemetry.MountMetrics(root, tel.MetricsHandler)

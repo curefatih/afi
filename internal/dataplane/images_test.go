@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -110,6 +111,14 @@ func (m *memStore) Put(_ context.Context, key string, body io.Reader, _ int64, _
 	}
 	m.objects[key] = b
 	return nil
+}
+
+func (m *memStore) Get(_ context.Context, key string) ([]byte, error) {
+	b, ok := m.objects[key]
+	if !ok {
+		return nil, errors.New("not found")
+	}
+	return b, nil
 }
 
 func (m *memStore) PresignGet(_ context.Context, key string, _ time.Duration) (string, error) {

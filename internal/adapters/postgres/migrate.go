@@ -10,10 +10,14 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 22
+const schemaVersion = 24
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS platform_event_outbox CASCADE;
+DROP TABLE IF EXISTS gateway_deployments CASCADE;
+DROP TABLE IF EXISTS region_config_overlays CASCADE;
+DROP TABLE IF EXISTS org_region_memberships CASCADE;
+DROP TABLE IF EXISTS regions CASCADE;
 DROP TABLE IF EXISTS usage_outbox CASCADE;
 DROP TABLE IF EXISTS quota_counters CASCADE;
 DROP TABLE IF EXISTS quotas CASCADE;
@@ -348,6 +352,53 @@ CREATE TABLE IF NOT EXISTS a2a_agents (
     UNIQUE (organization_id, alias)
 );
 CREATE INDEX IF NOT EXISTS a2a_agents_org_idx ON a2a_agents (organization_id);
+
+CREATE TABLE IF NOT EXISTS regions (
+    id TEXT PRIMARY KEY,
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT regions_status_check CHECK (status IN ('active', 'draining', 'disabled'))
+);
+
+CREATE TABLE IF NOT EXISTS gateway_deployments (
+    id TEXT PRIMARY KEY,
+    region_id TEXT NOT NULL REFERENCES regions(id) ON DELETE RESTRICT,
+    name TEXT NOT NULL,
+    public_base_url TEXT NOT NULL DEFAULT '',
+    join_token_hash TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    last_seen_at TIMESTAMPTZ,
+    reported_snapshot_version BIGINT NOT NULL DEFAULT 0,
+    reported_build TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT gateway_deployments_status_check CHECK (status IN ('pending', 'healthy', 'stale', 'disabled'))
+);
+CREATE INDEX IF NOT EXISTS gateway_deployments_region_idx ON gateway_deployments (region_id);
+CREATE UNIQUE INDEX IF NOT EXISTS gateway_deployments_join_token_hash_uidx ON gateway_deployments (join_token_hash);
+
+CREATE TABLE IF NOT EXISTS org_region_memberships (
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    region_id TEXT NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (organization_id, region_id),
+    CONSTRAINT org_region_memberships_status_check CHECK (status IN ('active', 'disabled'))
+);
+CREATE INDEX IF NOT EXISTS org_region_memberships_region_idx ON org_region_memberships (region_id);
+
+CREATE TABLE IF NOT EXISTS region_config_overlays (
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    region_id TEXT NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+    payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (organization_id, region_id)
+);
 `
 
 // Migrate applies the schema. Legacy UUID installs are wiped once.
@@ -928,6 +979,59 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS signer_key_id TEXT NOT NULL DEFAULT '';
 	`); err != nil {
 		return fmt.Errorf("cycle37 signing keys: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS regions (
+			id TEXT PRIMARY KEY,
+			slug TEXT NOT NULL UNIQUE,
+			name TEXT NOT NULL,
+			status TEXT NOT NULL DEFAULT 'active',
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			CONSTRAINT regions_status_check CHECK (status IN ('active', 'draining', 'disabled'))
+		);
+		CREATE TABLE IF NOT EXISTS gateway_deployments (
+			id TEXT PRIMARY KEY,
+			region_id TEXT NOT NULL REFERENCES regions(id) ON DELETE RESTRICT,
+			name TEXT NOT NULL,
+			public_base_url TEXT NOT NULL DEFAULT '',
+			join_token_hash TEXT NOT NULL,
+			status TEXT NOT NULL DEFAULT 'pending',
+			last_seen_at TIMESTAMPTZ,
+			reported_snapshot_version BIGINT NOT NULL DEFAULT 0,
+			reported_build TEXT NOT NULL DEFAULT '',
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			CONSTRAINT gateway_deployments_status_check CHECK (status IN ('pending', 'healthy', 'stale', 'disabled'))
+		);
+		CREATE INDEX IF NOT EXISTS gateway_deployments_region_idx ON gateway_deployments (region_id);
+		CREATE UNIQUE INDEX IF NOT EXISTS gateway_deployments_join_token_hash_uidx ON gateway_deployments (join_token_hash);
+	`); err != nil {
+		return fmt.Errorf("cycle38 regions: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS org_region_memberships (
+			organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+			region_id TEXT NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+			status TEXT NOT NULL DEFAULT 'active',
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			PRIMARY KEY (organization_id, region_id),
+			CONSTRAINT org_region_memberships_status_check CHECK (status IN ('active', 'disabled'))
+		);
+		CREATE INDEX IF NOT EXISTS org_region_memberships_region_idx ON org_region_memberships (region_id);
+		CREATE TABLE IF NOT EXISTS region_config_overlays (
+			organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+			region_id TEXT NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+			payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			PRIMARY KEY (organization_id, region_id)
+		);
+	`); err != nil {
+		return fmt.Errorf("cycle39 org region overlays: %w", err)
 	}
 	return nil
 }

@@ -35,6 +35,30 @@ flowchart TB
 | **Web UI** | Platform console + playground | Optional |
 | **NATS / Kafka** | Platform domain event brokers | Optional |
 
+## Hub-and-spoke (multi-region gateways)
+
+Single control plane (hub) can manage gateway deployments in multiple regions with **org–region bindings** and optional **full config overlays**:
+
+1. Platform admin (`users.role=admin`) creates a **region** and registers a **gateway deployment** in the UI (**Regions**) or Platform API. Save the join token.
+2. Bind organizations to each region (`POST …/regions/{id}/organizations`). Unbound orgs are omitted from that region’s snapshot. Optionally attach a **full overlay** (`PUT …/overlay`) to replace that org’s gateway config slice in the region (inherit base when no overlay).
+3. **Hub:** enable snapshot fan-out with `AFI_SNAPSHOT_DIST_ENABLED=true` and `AFI_SNAPSHOT_S3_*` (S3-compatible bucket). Publishes a global blob plus per-region blobs under `{prefix}/{regionSlug}/`.
+4. **Spoke gateway:** set `AFI_SNAPSHOT_BACKEND=objectstore`, the same `AFI_SNAPSHOT_S3_*`, plus:
+   - `AFI_REGION_ID` — **region slug** (selects `snapshots/{slug}/…` and stamps usage tags)
+   - `AFI_CONTROL_PLANE_URL` — hub control plane base URL
+   - `AFI_DEPLOYMENT_ID` / `AFI_DEPLOYMENT_JOIN_TOKEN`
+   - `AFI_USAGE_BACKEND=http` when the spoke does not share hub Postgres
+   - `AFI_REDIS_URL` — **regional** Redis for timed quotas
+5. Lifetime (`total`) quotas still need hub Postgres on the spoke (or fail closed when omitted). Timed windows are independent per regional Redis. Overlay limit changes apply to the regional snapshot; total budgets remain global unless counter namespaces are regionalized later.
+
+Shared-DB single-region deploy remains the default (`AFI_SNAPSHOT_BACKEND=postgres`) and does not require org bindings for local use.
+
+For single-region installs that later enable object-store spokes, bind every org once:
+
+```bash
+afi regions bind-all <region-slug-or-id>
+```
+
+Multi-control-plane peer federation (separate regional Postgres + sync protocol) is not implemented yet.
 ## Choose a path
 
 | Path | When to use | Guide |

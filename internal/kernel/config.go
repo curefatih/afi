@@ -50,6 +50,18 @@ type Config struct {
 		Addr                    string        `yaml:"addr" env:"AFI_GATEWAY_ADDR" env-default:":8080"`
 		SnapshotPollIntervalRaw string        `yaml:"snapshot_poll_interval" env:"AFI_SNAPSHOT_POLL_INTERVAL" env-default:"2s"`
 		SnapshotPollInterval    time.Duration `yaml:"-"`
+		// SnapshotBackend is postgres (default, shared DB) or objectstore (hub-and-spoke fan-out).
+		SnapshotBackend string `yaml:"snapshot_backend" env:"AFI_SNAPSHOT_BACKEND" env-default:"postgres"`
+		// ControlPlaneURL is the hub control plane base URL for heartbeat and usage shipping.
+		ControlPlaneURL string `yaml:"control_plane_url" env:"AFI_CONTROL_PLANE_URL"`
+		RegionID        string `yaml:"region_id" env:"AFI_REGION_ID"`
+		DeploymentID    string `yaml:"deployment_id" env:"AFI_DEPLOYMENT_ID"`
+		// DeploymentJoinToken authenticates heartbeat / usage ingest to the hub.
+		DeploymentJoinToken     string        `yaml:"deployment_join_token" env:"AFI_DEPLOYMENT_JOIN_TOKEN"`
+		HeartbeatIntervalRaw    string        `yaml:"heartbeat_interval" env:"AFI_HEARTBEAT_INTERVAL" env-default:"30s"`
+		HeartbeatInterval       time.Duration `yaml:"-"`
+		// UsageBackend is postgres (local outbox) or http (ship to hub).
+		UsageBackend string `yaml:"usage_backend" env:"AFI_USAGE_BACKEND" env-default:"postgres"`
 		// WasmBeforeCall is an optional path to a TinyGo .wasm exporting before_call.
 		WasmBeforeCall string `yaml:"wasm_before_call" env:"AFI_WASM_BEFORE_CALL"`
 		// WasmBeforeChat is an optional path to a TinyGo .wasm exporting before_chat.
@@ -63,9 +75,25 @@ type Config struct {
 			UseSSL    bool   `yaml:"use_ssl" env:"AFI_WASM_S3_USE_SSL"`
 			PathStyle bool   `yaml:"path_style" env:"AFI_WASM_S3_PATH_STYLE"`
 		} `yaml:"wasm_s3"`
+		// SnapshotS3 is the object store for snapshot fan-out (spokes + optional hub mirror).
+		SnapshotS3 struct {
+			Endpoint  string `yaml:"endpoint" env:"AFI_SNAPSHOT_S3_ENDPOINT"`
+			AccessKey string `yaml:"access_key" env:"AFI_SNAPSHOT_S3_ACCESS_KEY"`
+			SecretKey string `yaml:"secret_key" env:"AFI_SNAPSHOT_S3_SECRET_KEY"`
+			Region    string `yaml:"region" env:"AFI_SNAPSHOT_S3_REGION"`
+			Bucket    string `yaml:"bucket" env:"AFI_SNAPSHOT_S3_BUCKET"`
+			UseSSL    bool   `yaml:"use_ssl" env:"AFI_SNAPSHOT_S3_USE_SSL"`
+			PathStyle bool   `yaml:"path_style" env:"AFI_SNAPSHOT_S3_PATH_STYLE"`
+			Prefix    string `yaml:"prefix" env:"AFI_SNAPSHOT_S3_PREFIX" env-default:"snapshots"`
+		} `yaml:"snapshot_s3"`
 		// GrpcExtensions lists process-isolated gRPC plugins (YAML via AFI_CONFIG).
 		GrpcExtensions []GrpcExtension `yaml:"grpc_extensions"`
 	} `yaml:"gateway"`
+
+	// SnapshotDistribution mirrors published snapshots to object storage (hub side).
+	SnapshotDistribution struct {
+		Enabled bool `yaml:"enabled" env:"AFI_SNAPSHOT_DIST_ENABLED"`
+	} `yaml:"snapshot_distribution"`
 
 	Auth struct {
 		JWTSecret     string        `yaml:"jwt_secret" env:"AFI_JWT_SECRET"`
@@ -205,6 +233,36 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("snapshot_poll_interval: %w", err)
 	}
 	cfg.Gateway.SnapshotPollInterval = d
+
+	if cfg.Gateway.SnapshotBackend == "" {
+		cfg.Gateway.SnapshotBackend = "postgres"
+	}
+	cfg.Gateway.SnapshotBackend = strings.ToLower(strings.TrimSpace(cfg.Gateway.SnapshotBackend))
+	switch cfg.Gateway.SnapshotBackend {
+	case "postgres", "objectstore":
+	default:
+		return nil, fmt.Errorf("gateway.snapshot_backend: must be postgres or objectstore, got %q", cfg.Gateway.SnapshotBackend)
+	}
+	if cfg.Gateway.UsageBackend == "" {
+		cfg.Gateway.UsageBackend = "postgres"
+	}
+	cfg.Gateway.UsageBackend = strings.ToLower(strings.TrimSpace(cfg.Gateway.UsageBackend))
+	switch cfg.Gateway.UsageBackend {
+	case "postgres", "http":
+	default:
+		return nil, fmt.Errorf("gateway.usage_backend: must be postgres or http, got %q", cfg.Gateway.UsageBackend)
+	}
+	if cfg.Gateway.HeartbeatIntervalRaw == "" {
+		cfg.Gateway.HeartbeatIntervalRaw = "30s"
+	}
+	hb, err := time.ParseDuration(cfg.Gateway.HeartbeatIntervalRaw)
+	if err != nil {
+		return nil, fmt.Errorf("heartbeat_interval: %w", err)
+	}
+	cfg.Gateway.HeartbeatInterval = hb
+	if cfg.Gateway.SnapshotS3.Prefix == "" {
+		cfg.Gateway.SnapshotS3.Prefix = "snapshots"
+	}
 
 	if cfg.Auth.JWTSecret == "" {
 		cfg.Auth.JWTSecret = "afi-local-dev-jwt-secret-change-me"

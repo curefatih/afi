@@ -93,10 +93,7 @@ func (p *Pipeline) executeChat(
 	}
 	principal, err := authenticateGatewayRequest(ctx, snap, p.Replay, r, body)
 	if err != nil {
-		status := http.StatusUnauthorized
-		if errors.Is(err, kernel.ErrNotFound) {
-			status = http.StatusServiceUnavailable
-		}
+		status := authHTTPStatus(err)
 		dialect.WriteError(w, d, status, authErrMessage(err), "invalid_request_error")
 		return
 	}

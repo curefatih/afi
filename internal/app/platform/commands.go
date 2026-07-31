@@ -8,6 +8,7 @@ import (
 	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/identity"
+	"github.com/curefatih/afi/internal/regions"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
 )
@@ -656,3 +657,118 @@ func (s *Service) DeleteCredentialAssignment(ctx context.Context, assignmentID s
 	s.emit(ctx, EventCredentialUnassigned, assignmentID, orgID)
 	return nil
 }
+
+func (s *Service) ListRegions(ctx context.Context) ([]regions.Region, error) {
+	return s.API.ListRegions(ctx)
+}
+
+func (s *Service) GetRegion(ctx context.Context, regionID string) (*regions.Region, error) {
+	return s.API.GetRegion(ctx, regionID)
+}
+
+func (s *Service) CreateRegion(ctx context.Context, slug, name string) (*regions.Region, error) {
+	r, err := s.API.CreateRegion(ctx, slug, name)
+	if err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventRegionCreated, r.ID, "")
+	return r, nil
+}
+
+func (s *Service) UpdateRegion(ctx context.Context, regionID, name, status string) (*regions.Region, error) {
+	r, err := s.API.UpdateRegion(ctx, regionID, name, status)
+	if err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventRegionUpdated, r.ID, "")
+	return r, nil
+}
+
+func (s *Service) ListDeployments(ctx context.Context, regionID string) ([]regions.GatewayDeployment, error) {
+	return s.API.ListDeployments(ctx, regionID)
+}
+
+func (s *Service) GetDeployment(ctx context.Context, deploymentID string) (*regions.GatewayDeployment, error) {
+	return s.API.GetDeployment(ctx, deploymentID)
+}
+
+func (s *Service) ListRegionMemberships(ctx context.Context, regionID string) ([]regions.OrgRegionMembership, error) {
+	return s.API.ListRegionMemberships(ctx, regionID)
+}
+
+func (s *Service) BindOrgToRegion(ctx context.Context, regionID, orgID, status string) (*regions.OrgRegionMembership, error) {
+	m, err := s.API.BindOrgToRegion(ctx, regionID, orgID, status)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publishRegions(ctx, "region.membership", regionID); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventOrgRegionBound, orgID, orgID)
+	return m, nil
+}
+
+func (s *Service) UnbindOrgFromRegion(ctx context.Context, regionID, orgID string) error {
+	if err := s.API.UnbindOrgFromRegion(ctx, regionID, orgID); err != nil {
+		return err
+	}
+	if err := s.publishRegions(ctx, "region.membership", regionID); err != nil {
+		return err
+	}
+	s.emit(ctx, EventOrgRegionUnbound, orgID, orgID)
+	return nil
+}
+
+func (s *Service) GetRegionOverlay(ctx context.Context, regionID, orgID string) (*regions.RegionConfigOverlay, error) {
+	return s.API.GetRegionOverlay(ctx, regionID, orgID)
+}
+
+func (s *Service) PutRegionOverlay(ctx context.Context, regionID, orgID string, payload regions.OverlayPayload) (*regions.RegionConfigOverlay, error) {
+	o, err := s.API.PutRegionOverlay(ctx, regionID, orgID, payload)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publishRegions(ctx, "region.overlay", regionID); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventRegionOverlayUpserted, orgID, orgID)
+	return o, nil
+}
+
+func (s *Service) DeleteRegionOverlay(ctx context.Context, regionID, orgID string) error {
+	if err := s.API.DeleteRegionOverlay(ctx, regionID, orgID); err != nil {
+		return err
+	}
+	if err := s.publishRegions(ctx, "region.overlay", regionID); err != nil {
+		return err
+	}
+	s.emit(ctx, EventRegionOverlayDeleted, orgID, orgID)
+	return nil
+}
+
+func (s *Service) RegisterDeployment(ctx context.Context, regionID, name, publicBaseURL string) (*regions.DeploymentWithToken, error) {
+	out, err := s.API.RegisterDeployment(ctx, regionID, name, publicBaseURL)
+	if err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventDeploymentRegistered, out.Deployment.ID, "")
+	return out, nil
+}
+
+func (s *Service) RotateDeploymentJoinToken(ctx context.Context, deploymentID string) (*regions.DeploymentWithToken, error) {
+	out, err := s.API.RotateDeploymentJoinToken(ctx, deploymentID)
+	if err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventDeploymentJoinTokenRotated, out.Deployment.ID, "")
+	return out, nil
+}
+
+func (s *Service) RecordDeploymentHeartbeat(ctx context.Context, deploymentID, joinToken string, snapVersion int64, build string) (*regions.GatewayDeployment, error) {
+	return s.API.RecordDeploymentHeartbeat(ctx, deploymentID, joinToken, snapVersion, build)
+}
+
+func (s *Service) AuthenticateDeploymentJoinToken(ctx context.Context, rawToken string) (*regions.GatewayDeployment, error) {
+	return s.API.AuthenticateDeploymentJoinToken(ctx, rawToken)
+}
+

@@ -129,6 +129,111 @@ export class PlatformClient {
 		);
 	}
 
+	listRegions() {
+		return this.request<
+			Array<{
+				id: string;
+				slug: string;
+				name: string;
+				status: string;
+				created_at?: string;
+				updated_at?: string;
+			}>
+		>("/api/v1/platform/regions");
+	}
+
+	createRegion(body: { slug: string; name: string }) {
+		return this.request<{
+			id: string;
+			slug: string;
+			name: string;
+			status: string;
+		}>("/api/v1/platform/regions", { method: "POST", body });
+	}
+
+	listDeployments(regionID: string) {
+		return this.request<unknown[]>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/deployments`,
+		);
+	}
+
+	registerDeployment(
+		regionID: string,
+		body: { name: string; public_base_url?: string },
+	) {
+		return this.request<{ deployment: unknown; join_token: string }>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/deployments`,
+			{ method: "POST", body },
+		);
+	}
+
+	listRegionMemberships(regionID: string) {
+		return this.request<
+			Array<{
+				organization_id: string;
+				region_id: string;
+				status: string;
+				created_at?: string;
+				updated_at?: string;
+			}>
+		>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations`,
+		);
+	}
+
+	bindOrgToRegion(
+		regionID: string,
+		body: { organization_id: string; status?: string },
+	) {
+		return this.request<{
+			organization_id: string;
+			region_id: string;
+			status: string;
+		}>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations`,
+			{ method: "POST", body },
+		);
+	}
+
+	unbindOrgFromRegion(regionID: string, orgID: string) {
+		return this.request<void>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations/${encodeURIComponent(orgID)}`,
+			{ method: "DELETE" },
+		);
+	}
+
+	getRegionOverlay(regionID: string, orgID: string) {
+		return this.request<{
+			organization_id: string;
+			region_id: string;
+			payload: Record<string, unknown>;
+		}>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations/${encodeURIComponent(orgID)}/overlay`,
+		);
+	}
+
+	putRegionOverlay(
+		regionID: string,
+		orgID: string,
+		payload: Record<string, unknown>,
+	) {
+		return this.request<{
+			organization_id: string;
+			region_id: string;
+			payload: Record<string, unknown>;
+		}>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations/${encodeURIComponent(orgID)}/overlay`,
+			{ method: "PUT", body: payload },
+		);
+	}
+
+	deleteRegionOverlay(regionID: string, orgID: string) {
+		return this.request<void>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations/${encodeURIComponent(orgID)}/overlay`,
+			{ method: "DELETE" },
+		);
+	}
+
 	createOrganization(body: { name: string }) {
 		return this.request<{ id: string; name: string; created_at?: string }>(
 			"/api/v1/platform/organizations",

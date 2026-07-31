@@ -13,6 +13,7 @@ internal/
 ├── kernel/           # Shared primitives (logging, errors, IDs)
 ├── identity/         # User domain/ports
 ├── tenancy/          # Org/Team/Project + membership
+├── regions/          # Region + GatewayDeployment + org bindings/overlays
 ├── access/           # APIKey domain/ports
 ├── gatewayconfig/    # Quota, Policy, Provider, Route domain/ports
 ├── usage/            # usage.Event (emit/outbox) + reporting read models
@@ -66,6 +67,7 @@ Platform events (bus + durable outbox): [Platform domain events](platform-events
 | `cmd/cli` | `seed`, `snapshot publish`, `db reset`, `version` |
 | `internal/identity` | User domain + repository port |
 | `internal/tenancy` | Organization, Team, Project, membership role rules |
+| `internal/regions` | Region, GatewayDeployment, org–region membership, config overlays |
 | `internal/access` | APIKey domain, ports, create use case |
 | `internal/gatewayconfig` | Quota, RequestPolicy, Provider, Route domain/ports |
 | `internal/usage` | Canonical usage.Event (emit/outbox) + Record/Filter/Summary reporting types |
@@ -74,6 +76,8 @@ Platform events (bus + durable outbox): [Platform domain events](platform-events
 | `internal/adapters/redis` | Timed quota windows |
 | `internal/adapters/llm` | Vendor HTTP clients (+ secrets) |
 | `internal/adapters/secrets` | SecretResolver |
+| `internal/adapters/objectstore` | S3 assets + snapshot fan-out / watch |
+| `internal/adapters/hubclient` | Spoke → hub heartbeat and usage ship |
 | `internal/adapters/natsjs` | NATS JetStream event publisher |
 | `internal/adapters/kafka` | Kafka event publisher |
 | `internal/adapters/logpub` | Log stand-in event publisher |

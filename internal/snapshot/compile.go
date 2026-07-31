@@ -1,6 +1,7 @@
 package snapshot
 
 import (
+	"strings"
 	"time"
 )
 
@@ -130,4 +131,35 @@ func Compile(src Source) *Snapshot {
 		s.SigningKeys = nil
 	}
 	return s
+}
+
+// CompileRegion builds a snapshot and sets the org allowlist (always non-nil, may be empty).
+func CompileRegion(src Source, allowedOrgIDs []string) *Snapshot {
+	s := Compile(src)
+	if allowedOrgIDs == nil {
+		allowedOrgIDs = []string{}
+	}
+	s.AllowedOrganizationIDs = append([]string(nil), allowedOrgIDs...)
+	return s
+}
+
+// AllowsOrganization reports whether orgID may use this snapshot.
+// Nil allowlist (global snapshot) allows all; non-nil enforces membership.
+func (s *Snapshot) AllowsOrganization(orgID string) bool {
+	if s == nil {
+		return false
+	}
+	if s.AllowedOrganizationIDs == nil {
+		return true
+	}
+	orgID = strings.TrimSpace(orgID)
+	if orgID == "" {
+		return false
+	}
+	for _, id := range s.AllowedOrganizationIDs {
+		if id == orgID {
+			return true
+		}
+	}
+	return false
 }

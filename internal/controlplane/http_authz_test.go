@@ -15,6 +15,7 @@ import (
 	"github.com/curefatih/afi/internal/audit"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/regions"
 	"github.com/curefatih/afi/internal/snapshot"
 )
 
@@ -198,6 +199,10 @@ type fakePublisher struct {
 }
 
 func (p *fakePublisher) PublishSnapshot(context.Context) error {
+	p.calls++
+	return p.err
+}
+func (p *fakePublisher) PublishRegionSnapshots(context.Context, ...string) error {
 	p.calls++
 	return p.err
 }
@@ -422,6 +427,65 @@ func (f *fakePlatform) AssignCredential(context.Context, string, string, string,
 	return nil, errors.New("unused")
 }
 func (f *fakePlatform) DeleteCredentialAssignment(context.Context, string) error { return nil }
+
+func (f *fakePlatform) ListRegions(context.Context) ([]regions.Region, error) {
+	return []regions.Region{{ID: "reg_1", Slug: "eu-west", Name: "EU", Status: regions.RegionStatusActive}}, nil
+}
+func (f *fakePlatform) GetRegion(context.Context, string) (*regions.Region, error) {
+	return &regions.Region{ID: "reg_1", Slug: "eu-west", Name: "EU", Status: regions.RegionStatusActive}, nil
+}
+func (f *fakePlatform) CreateRegion(_ context.Context, slug, name string) (*regions.Region, error) {
+	return &regions.Region{ID: "reg_new", Slug: slug, Name: name, Status: regions.RegionStatusActive}, nil
+}
+func (f *fakePlatform) UpdateRegion(context.Context, string, string, string) (*regions.Region, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) ListDeployments(context.Context, string) ([]regions.GatewayDeployment, error) {
+	return nil, nil
+}
+func (f *fakePlatform) GetDeployment(context.Context, string) (*regions.GatewayDeployment, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *fakePlatform) RegisterDeployment(context.Context, string, string, string) (*regions.DeploymentWithToken, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) RotateDeploymentJoinToken(context.Context, string) (*regions.DeploymentWithToken, error) {
+	return nil, errors.New("unused")
+}
+func (f *fakePlatform) RecordDeploymentHeartbeat(_ context.Context, deploymentID, joinToken string, snapVersion int64, build string) (*regions.GatewayDeployment, error) {
+	if joinToken != "good-token" {
+		return nil, kernel.ErrUnauthorized
+	}
+	now := time.Now().UTC()
+	return &regions.GatewayDeployment{
+		ID: deploymentID, Status: regions.DeploymentStatusHealthy,
+		ReportedSnapshotVersion: snapVersion, ReportedBuild: build, LastSeenAt: &now,
+	}, nil
+}
+func (f *fakePlatform) AuthenticateDeploymentJoinToken(_ context.Context, rawToken string) (*regions.GatewayDeployment, error) {
+	if rawToken != "good-token" {
+		return nil, kernel.ErrUnauthorized
+	}
+	return &regions.GatewayDeployment{ID: "dep_1", RegionID: "reg_1", Status: regions.DeploymentStatusHealthy}, nil
+}
+func (f *fakePlatform) ListRegionMemberships(context.Context, string) ([]regions.OrgRegionMembership, error) {
+	return nil, nil
+}
+func (f *fakePlatform) BindOrgToRegion(context.Context, string, string, string) (*regions.OrgRegionMembership, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *fakePlatform) UnbindOrgFromRegion(context.Context, string, string) error {
+	return kernel.ErrNotFound
+}
+func (f *fakePlatform) GetRegionOverlay(context.Context, string, string) (*regions.RegionConfigOverlay, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *fakePlatform) PutRegionOverlay(context.Context, string, string, regions.OverlayPayload) (*regions.RegionConfigOverlay, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *fakePlatform) DeleteRegionOverlay(context.Context, string, string) error {
+	return kernel.ErrNotFound
+}
 
 func testCfg() *kernel.Config {
 	cfg := &kernel.Config{}
@@ -684,5 +748,63 @@ func TestUpdateOrgMemberRoleRequiresOwner(t *testing.T) {
 	s.Handler().ServeHTTP(rr, req)
 	if rr.Code != http.StatusForbidden {
 		t.Fatalf("status=%d want 403 body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestRegionsRequirePlatformAdmin(t *testing.T) {
+	t.Parallel()
+	api := &fakePlatform{}
+	s := &Server{
+		cfg: testCfg(), api: api, config: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
+	}
+	memberTok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_1", "m@afi.local", "member")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/platform/regions", nil)
+	req.Header.Set("Authorization", "Bearer "+memberTok)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("member status=%d want 403 body=%s", rr.Code, rr.Body.String())
+	}
+
+	adminTok, err := IssueToken(s.cfg.Auth.JWTSecret, time.Hour, "user_admin", "a@afi.local", "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/platform/regions", nil)
+	req.Header.Set("Authorization", "Bearer "+adminTok)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("admin status=%d want 200 body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestDeploymentHeartbeatAuth(t *testing.T) {
+	t.Parallel()
+	api := &fakePlatform{}
+	s := &Server{
+		cfg: testCfg(), api: api, config: api, members: api, publisher: &fakePublisher{}, log: slog.Default(),
+	}
+	req := httptest.NewRequest(http.MethodPost, "/internal/v1/deployments/dep_1/heartbeat",
+		bytes.NewBufferString(`{"snapshot_version":7}`))
+	req.SetPathValue("deploymentID", "dep_1")
+	req.Header.Set("X-AFI-Deployment-Token", "bad")
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d want 401", rr.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/internal/v1/deployments/dep_1/heartbeat",
+		bytes.NewBufferString(`{"snapshot_version":7}`))
+	req.SetPathValue("deploymentID", "dep_1")
+	req.Header.Set("X-AFI-Deployment-Token", "good-token")
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200 body=%s", rr.Code, rr.Body.String())
 	}
 }

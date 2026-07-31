@@ -27,7 +27,23 @@ export AFI_JWT_SECRET="..."   # overrides auth.jwt_secret in the file
 | `AFI_REDIS_URL` | `redis_url` | `redis://localhost:6379/0` | Gateway, control plane | Gateway timed quotas; SSO CSRF state when `auth.sso.state_store=redis` |
 | `AFI_CONTROLPLANE_ADDR` | `controlplane.addr` | `:8081` | Control plane | Listen address |
 | `AFI_GATEWAY_ADDR` | `gateway.addr` | `:8080` | Gateway | Listen address |
-| `AFI_SNAPSHOT_POLL_INTERVAL` | `gateway.snapshot_poll_interval` | `2s` | Gateway | Poll period (also uses Postgres `LISTEN`) |
+| `AFI_SNAPSHOT_POLL_INTERVAL` | `gateway.snapshot_poll_interval` | `2s` | Gateway | Poll period (Postgres also uses `LISTEN`) |
+| `AFI_SNAPSHOT_BACKEND` | `gateway.snapshot_backend` | `postgres` | Gateway | `postgres` or `objectstore` |
+| `AFI_SNAPSHOT_DIST_ENABLED` | `snapshot_distribution.enabled` | `false` | Control plane | Mirror publishes to object store |
+| `AFI_SNAPSHOT_S3_ENDPOINT` | `gateway.snapshot_s3.endpoint` | | Hub + spoke | Snapshot object store |
+| `AFI_SNAPSHOT_S3_BUCKET` | `gateway.snapshot_s3.bucket` | | Hub + spoke | Snapshot bucket |
+| `AFI_SNAPSHOT_S3_ACCESS_KEY` | `gateway.snapshot_s3.access_key` | | Hub + spoke | |
+| `AFI_SNAPSHOT_S3_SECRET_KEY` | `gateway.snapshot_s3.secret_key` | | Hub + spoke | |
+| `AFI_SNAPSHOT_S3_REGION` | `gateway.snapshot_s3.region` | | Hub + spoke | |
+| `AFI_SNAPSHOT_S3_PREFIX` | `gateway.snapshot_s3.prefix` | `snapshots` | Hub + spoke | Key prefix |
+| `AFI_SNAPSHOT_S3_USE_SSL` | `gateway.snapshot_s3.use_ssl` | `false` | Hub + spoke | |
+| `AFI_SNAPSHOT_S3_PATH_STYLE` | `gateway.snapshot_s3.path_style` | `false` | Hub + spoke | |
+| `AFI_CONTROL_PLANE_URL` | `gateway.control_plane_url` | | Gateway | Hub URL for heartbeat/usage |
+| `AFI_REGION_ID` | `gateway.region_id` | | Gateway | Region **slug** for object-store prefix `snapshots/{slug}/` and usage tags |
+| `AFI_DEPLOYMENT_ID` | `gateway.deployment_id` | | Gateway | Registered deployment id |
+| `AFI_DEPLOYMENT_JOIN_TOKEN` | `gateway.deployment_join_token` | | Gateway | Join token from register/rotate |
+| `AFI_HEARTBEAT_INTERVAL` | `gateway.heartbeat_interval` | `30s` | Gateway | Heartbeat period |
+| `AFI_USAGE_BACKEND` | `gateway.usage_backend` | `postgres` | Gateway | `postgres` or `http` |
 | `AFI_WASM_BEFORE_CALL` | `gateway.wasm_before_call` | _(empty)_ | Gateway | Optional TinyGo `.wasm` exporting `before_call` |
 | `AFI_WASM_BEFORE_CHAT` | `gateway.wasm_before_chat` | _(empty)_ | Gateway | Optional TinyGo `.wasm` exporting `before_chat` |
 | `AFI_WASM_S3_ENDPOINT` | `gateway.wasm_s3.endpoint` | _(empty)_ | Gateway | S3-compatible host:port for `s3://` module URIs |

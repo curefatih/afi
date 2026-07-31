@@ -2,20 +2,25 @@ package postgres
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/curefatih/afi/internal/access"
 	adapterauth "github.com/curefatih/afi/internal/adapters/auth"
+	"github.com/curefatih/afi/internal/adapters/objectstore"
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/regions"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Seeder struct {
-	store     *Store
-	snapStore snapshot.Store
-	cfg       *kernel.Config
-	seed      *SeedWriter
+	store        *Store
+	snapStore    snapshot.Store
+	regionMirror *objectstore.SnapshotStore
+	cfg          *kernel.Config
+	seed         *SeedWriter
 }
 
 func NewSeeder(pool *pgxpool.Pool, store *Store, snapStore snapshot.Store, cfg *kernel.Config) *Seeder {
@@ -25,6 +30,11 @@ func NewSeeder(pool *pgxpool.Pool, store *Store, snapStore snapshot.Store, cfg *
 		cfg:       cfg,
 		seed:      NewSeedWriter(pool),
 	}
+}
+
+// SetRegionMirror enables per-region object-store publish under snapshots/{slug}/.
+func (s *Seeder) SetRegionMirror(mirror *objectstore.SnapshotStore) {
+	s.regionMirror = mirror
 }
 
 // SeedIfEmpty inserts local-dev data when the database has no organizations.
@@ -135,11 +145,67 @@ func (s *Seeder) Seed(ctx context.Context) error {
 }
 
 func (s *Seeder) PublishSnapshot(ctx context.Context) error {
+	return s.publishWithRegions(ctx, nil)
+}
+
+// PublishRegionSnapshots puts the global snapshot and only the listed regions' blobs.
+// When regionIDs is empty, all active/draining regions are published (same as PublishSnapshot).
+func (s *Seeder) PublishRegionSnapshots(ctx context.Context, regionIDs ...string) error {
+	return s.publishWithRegions(ctx, regionIDs)
+}
+
+func (s *Seeder) publishWithRegions(ctx context.Context, onlyRegionIDs []string) error {
 	src, err := s.store.LoadSnapshotSource(ctx)
 	if err != nil {
 		return err
 	}
 	snap := snapshot.Compile(src)
-	_, err = s.snapStore.Put(ctx, snap)
-	return err
+	version, err := s.snapStore.Put(ctx, snap)
+	if err != nil {
+		return err
+	}
+	return s.publishRegionalSnapshots(ctx, src, version, onlyRegionIDs)
+}
+
+func (s *Seeder) publishRegionalSnapshots(ctx context.Context, base snapshot.Source, version int64, onlyRegionIDs []string) error {
+	if s.regionMirror == nil {
+		return nil
+	}
+	filter := map[string]struct{}{}
+	for _, id := range onlyRegionIDs {
+		id = strings.TrimSpace(id)
+		if id != "" {
+			filter[id] = struct{}{}
+		}
+	}
+	regs, err := s.store.ListRegions(ctx)
+	if err != nil {
+		return fmt.Errorf("list regions for snapshot: %w", err)
+	}
+	repo := s.store.regionsRepo()
+	for _, reg := range regs {
+		if reg.Status != regions.RegionStatusActive && reg.Status != regions.RegionStatusDraining {
+			continue
+		}
+		if len(filter) > 0 {
+			if _, ok := filter[reg.ID]; !ok {
+				continue
+			}
+		}
+		mems, err := repo.ListMembershipsByRegion(ctx, reg.ID)
+		if err != nil {
+			return fmt.Errorf("memberships %s: %w", reg.Slug, err)
+		}
+		overlays, err := repo.ListOverlaysByRegion(ctx, reg.ID)
+		if err != nil {
+			return fmt.Errorf("overlays %s: %w", reg.Slug, err)
+		}
+		regional, allowed := regions.BuildRegionSource(base, mems, overlays)
+		rsnap := snapshot.CompileRegion(regional, allowed)
+		rsnap.Version = version
+		if _, err := s.regionMirror.ForRegion(reg.Slug).Put(ctx, rsnap); err != nil {
+			return fmt.Errorf("region snapshot %s: %w", reg.Slug, err)
+		}
+	}
+	return nil
 }

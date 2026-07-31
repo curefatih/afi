@@ -7,6 +7,7 @@ import {
 	CableIcon,
 	ClipboardListIcon,
 	FolderKanbanIcon,
+	GlobeIcon,
 	KeyRoundIcon,
 	LayoutDashboardIcon,
 	PlugIcon,
@@ -44,6 +45,11 @@ const platformNav = [
 		title: "Organizations",
 		url: "/app/organizations",
 		icon: <Building2Icon />,
+	},
+	{
+		title: "Regions",
+		url: "/app/regions",
+		icon: <GlobeIcon />,
 	},
 	{
 		title: "Settings",

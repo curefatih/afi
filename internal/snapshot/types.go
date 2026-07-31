@@ -55,6 +55,8 @@ type Snapshot struct {
 	A2ARoutes      map[string]string             `json:"a2a_routes,omitempty"`      // orgID::alias → agent id
 	DefaultRetries map[string]*RetryConfig       `json:"default_retries,omitempty"` // orgID → default retry
 	ObjectStores   map[string]*ObjectStoreConfig `json:"object_stores,omitempty"`   // orgID → optional asset store
+	// AllowedOrganizationIDs is set on region-scoped snapshots. Nil means unrestricted (global snapshot).
+	AllowedOrganizationIDs []string `json:"allowed_organization_ids,omitempty"`
 }
 
 // ObjectStoreConfig is compiled per-org optional S3 asset persistence.
