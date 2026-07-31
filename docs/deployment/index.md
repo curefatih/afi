@@ -77,6 +77,18 @@ Regional CP settings:
 - `AFI_FEDERATION_PULL_INTERVAL` — default `30s`
 - Regional gateway: `AFI_SNAPSHOT_BACKEND=postgres` against the regional Postgres (or object store as today)
 
+### Data locality (federation)
+
+| Concern | Where it runs |
+|---------|----------------|
+| Inference request/response | **Regional** gateway only |
+| Snapshot + timed quotas | **Regional** Postgres / Redis |
+| Config management (orgs, bindings, overlays, peers) | **Hub** only — regional CP is read-only for mutations when `AFI_FEDERATION_MODE=regional` |
+| Config distribution | Regional CP **pulls** memberships/overlays/snapshot from hub |
+| Usage / analytics / deployment heartbeats | **Hub** receives regional **reports** (logs/OTel) — does **not** persist them in hub `usage_events`. Hub gateway may persist its own local traffic. |
+
+Request bodies and model traffic never transit the hub. Cross-region hub traffic is limited to federation pull (management), heartbeats, and ephemeral usage reports (observations). Regional gateways do **not** persist usage locally; the hub does **not** store regional usage rows.
+
 Register peers as platform admin under **Federation** (or `POST /api/v1/platform/federation/peers`). Mesh peers, quota CRDTs, and geo-routing remain out of scope.
 
 **Local lab:** [examples/federation](../../examples/federation/README.md) runs a hub CP + regional CP + two gateways with `./up.sh` (creates regions, bind-all, peer, and deployments for you).
