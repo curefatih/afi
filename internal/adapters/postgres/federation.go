@@ -23,10 +23,10 @@ func NewFederationStore(pool *pgxpool.Pool) *FederationStore {
 func (s *FederationStore) CreatePeer(ctx context.Context, p federation.ControlPlanePeer) error {
 	_, err := s.Pool.Exec(ctx, `
 		INSERT INTO federation_peers (
-			id, name, region_id, base_url, status, join_token_hash,
+			id, name, region_id, base_url, status, join_token_hash, join_token_enc,
 			last_sync_cursor, last_sync_error, created_at, updated_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-	`, p.ID, p.Name, p.RegionID, p.BaseURL, p.Status, p.JoinTokenHash,
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+	`, p.ID, p.Name, p.RegionID, p.BaseURL, p.Status, p.JoinTokenHash, p.JoinTokenEnc,
 		p.LastSyncCursor, p.LastSyncError, p.CreatedAt, p.UpdatedAt)
 	return err
 }
@@ -35,7 +35,7 @@ func (s *FederationStore) scanPeer(row pgx.Row) (*federation.ControlPlanePeer, e
 	var p federation.ControlPlanePeer
 	var lastSeen *time.Time
 	err := row.Scan(
-		&p.ID, &p.Name, &p.RegionID, &p.BaseURL, &p.Status, &p.JoinTokenHash,
+		&p.ID, &p.Name, &p.RegionID, &p.BaseURL, &p.Status, &p.JoinTokenHash, &p.JoinTokenEnc,
 		&lastSeen, &p.LastSyncCursor, &p.LastSyncError, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -48,26 +48,27 @@ func (s *FederationStore) scanPeer(row pgx.Row) (*federation.ControlPlanePeer, e
 	return &p, nil
 }
 
+const peerSelectCols = `
+	id, name, region_id, base_url, status, join_token_hash, join_token_enc,
+	last_sync_at, last_sync_cursor, last_sync_error, created_at, updated_at`
+
 func (s *FederationStore) GetPeer(ctx context.Context, peerID string) (*federation.ControlPlanePeer, error) {
 	return s.scanPeer(s.Pool.QueryRow(ctx, `
-		SELECT id, name, region_id, base_url, status, join_token_hash,
-			last_sync_at, last_sync_cursor, last_sync_error, created_at, updated_at
+		SELECT `+peerSelectCols+`
 		FROM federation_peers WHERE id = $1
 	`, peerID))
 }
 
 func (s *FederationStore) GetPeerByJoinTokenHash(ctx context.Context, hash string) (*federation.ControlPlanePeer, error) {
 	return s.scanPeer(s.Pool.QueryRow(ctx, `
-		SELECT id, name, region_id, base_url, status, join_token_hash,
-			last_sync_at, last_sync_cursor, last_sync_error, created_at, updated_at
+		SELECT `+peerSelectCols+`
 		FROM federation_peers WHERE join_token_hash = $1
 	`, hash))
 }
 
 func (s *FederationStore) ListPeers(ctx context.Context) ([]federation.ControlPlanePeer, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT id, name, region_id, base_url, status, join_token_hash,
-			last_sync_at, last_sync_cursor, last_sync_error, created_at, updated_at
+		SELECT `+peerSelectCols+`
 		FROM federation_peers ORDER BY created_at
 	`)
 	if err != nil {
@@ -79,7 +80,7 @@ func (s *FederationStore) ListPeers(ctx context.Context) ([]federation.ControlPl
 		var p federation.ControlPlanePeer
 		var lastSeen *time.Time
 		if err := rows.Scan(
-			&p.ID, &p.Name, &p.RegionID, &p.BaseURL, &p.Status, &p.JoinTokenHash,
+			&p.ID, &p.Name, &p.RegionID, &p.BaseURL, &p.Status, &p.JoinTokenHash, &p.JoinTokenEnc,
 			&lastSeen, &p.LastSyncCursor, &p.LastSyncError, &p.CreatedAt, &p.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -106,6 +107,20 @@ func (s *FederationStore) UpdatePeerJoinTokenHash(ctx context.Context, peerID, h
 		UPDATE federation_peers SET join_token_hash=$2, status='pending', updated_at=NOW()
 		WHERE id=$1
 	`, peerID, hash)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return kernel.ErrNotFound
+	}
+	return nil
+}
+
+func (s *FederationStore) UpdatePeerJoinTokenEnc(ctx context.Context, peerID string, enc []byte) error {
+	tag, err := s.Pool.Exec(ctx, `
+		UPDATE federation_peers SET join_token_enc=$2, updated_at=NOW()
+		WHERE id=$1
+	`, peerID, enc)
 	if err != nil {
 		return err
 	}

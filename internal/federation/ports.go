@@ -13,6 +13,8 @@ type Repository interface {
 	ListPeers(ctx context.Context) ([]ControlPlanePeer, error)
 	UpdatePeer(ctx context.Context, peerID, name, baseURL, status string) (*ControlPlanePeer, error)
 	UpdatePeerJoinTokenHash(ctx context.Context, peerID, hash string) error
+	// UpdatePeerJoinTokenEnc stores the hub-sealed join token used for usage report pulls.
+	UpdatePeerJoinTokenEnc(ctx context.Context, peerID string, enc []byte) error
 	RecordPeerSync(ctx context.Context, peerID string, cursor int64, at time.Time, syncErr string) error
 
 	GetRevision(ctx context.Context) (int64, error)

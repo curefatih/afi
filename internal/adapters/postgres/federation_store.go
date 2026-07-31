@@ -34,7 +34,14 @@ func (s *Store) GetFederationPeer(ctx context.Context, peerID string) (*federati
 }
 
 func (s *Store) RegisterFederationPeer(ctx context.Context, name, regionID, baseURL string) (*federation.PeerWithToken, error) {
-	return federation.RegisterPeer(ctx, s.federationRepo(), s, newPlatformID("peer"), name, regionID, baseURL)
+	out, err := federation.RegisterPeer(ctx, s.federationRepo(), s, newPlatformID("peer"), name, regionID, baseURL)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.persistPeerJoinTokenEnc(ctx, out.Peer.ID, out.JoinToken); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (s *Store) UpdateFederationPeer(ctx context.Context, peerID, name, baseURL, status string) (*federation.ControlPlanePeer, error) {
@@ -42,7 +49,40 @@ func (s *Store) UpdateFederationPeer(ctx context.Context, peerID, name, baseURL,
 }
 
 func (s *Store) RotateFederationPeerJoinToken(ctx context.Context, peerID string) (*federation.PeerWithToken, error) {
-	return federation.RotatePeerJoinToken(ctx, s.federationRepo(), peerID)
+	out, err := federation.RotatePeerJoinToken(ctx, s.federationRepo(), peerID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.persistPeerJoinTokenEnc(ctx, out.Peer.ID, out.JoinToken); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (s *Store) persistPeerJoinTokenEnc(ctx context.Context, peerID, rawToken string) error {
+	if s.fedBox == nil {
+		return fmt.Errorf("federation token key not configured")
+	}
+	enc, err := s.fedBox.Seal(rawToken)
+	if err != nil {
+		return err
+	}
+	return s.federationRepo().UpdatePeerJoinTokenEnc(ctx, peerID, enc)
+}
+
+// OpenFederationPeerJoinToken decrypts the hub-retained join token for regional pulls.
+func (s *Store) OpenFederationPeerJoinToken(ctx context.Context, peerID string) (string, error) {
+	p, err := s.federationRepo().GetPeer(ctx, peerID)
+	if err != nil {
+		return "", err
+	}
+	if len(p.JoinTokenEnc) == 0 {
+		return "", fmt.Errorf("%w: peer join token not retained; rotate the join token", kernel.ErrInvalidRequest)
+	}
+	if s.fedBox == nil {
+		return "", fmt.Errorf("federation token key not configured")
+	}
+	return s.fedBox.Open(p.JoinTokenEnc)
 }
 
 func (s *Store) AuthenticateFederationPeerToken(ctx context.Context, rawToken string) (*federation.ControlPlanePeer, error) {

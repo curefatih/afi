@@ -8,6 +8,7 @@ import {
 	DollarSignIcon,
 	FolderIcon,
 	GaugeIcon,
+	GlobeIcon,
 	KeyRoundIcon,
 	LayersIcon,
 	type LucideIcon,
@@ -776,6 +777,7 @@ function RouteComponent() {
 								<TableHeader>
 									<TableRow>
 										<IconHead icon={ClockIcon} label="When" />
+										<IconHead icon={GlobeIcon} label="Region" />
 										<IconHead icon={LayersIcon} label="Modality" />
 										<IconHead icon={UserIcon} label="Owner / scope" />
 										<IconHead icon={KeyRoundIcon} label="Key" />
@@ -792,10 +794,19 @@ function RouteComponent() {
 									{(usage.data ?? []).map((e) => {
 										const ownerDetail = formatUsageOwnerDetail(e);
 										const keyKind = formatUsageKeyKind(e);
+										const region = e.tags?.region || "hub";
+										const rowKey = `${e.tags?.federation_peer_id ?? "hub"}-${e.id}-${e.created_at}`;
 										return (
-											<TableRow key={e.id}>
+											<TableRow key={rowKey}>
 												<TableCell className="whitespace-nowrap">
 													{new Date(e.created_at).toLocaleString()}
+												</TableCell>
+												<TableCell>
+													<Badge
+														variant={region === "hub" ? "outline" : "secondary"}
+													>
+														{region}
+													</Badge>
 												</TableCell>
 												<TableCell>
 													<Badge variant="secondary">

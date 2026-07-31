@@ -349,8 +349,11 @@ func (m *memAPI) ExportFederationRegion(context.Context, string, int64, string) 
 	return nil, kernel.ErrNotFound
 }
 func (m *memAPI) RecordFederationPeerSync(context.Context, string, int64, string) error { return nil }
-func (m *memAPI) ListFederationUsageReports(context.Context, *time.Time, int) ([]usage.Record, error) {
+func (m *memAPI) ListFederationUsageReports(context.Context, string, *time.Time, *time.Time, int) ([]usage.Record, error) {
 	return nil, nil
+}
+func (m *memAPI) OpenFederationPeerJoinToken(context.Context, string) (string, error) {
+	return "", kernel.ErrNotFound
 }
 
 func TestBindOrgPublishesAffectedRegionOnly(t *testing.T) {

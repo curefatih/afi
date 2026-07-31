@@ -24,6 +24,8 @@ type ControlPlanePeer struct {
 	BaseURL        string     `json:"base_url,omitempty"`
 	Status         string     `json:"status"`
 	JoinTokenHash  string     `json:"-"`
+	// JoinTokenEnc is the hub-sealed join token for on-demand regional pulls (never exported).
+	JoinTokenEnc   []byte     `json:"-"`
 	LastSyncAt     *time.Time `json:"last_sync_at,omitempty"`
 	LastSyncCursor int64      `json:"last_sync_cursor"`
 	LastSyncError  string     `json:"last_sync_error,omitempty"`

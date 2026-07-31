@@ -64,6 +64,14 @@ func main() {
 		log.Error("credentials master key", "err", err)
 		os.Exit(1)
 	}
+	fedKey := strings.TrimSpace(cfg.Credentials.MasterKey)
+	if fedKey == "" {
+		fedKey = cfg.Auth.JWTSecret
+	}
+	if err := store.SetFederationTokenKey(fedKey); err != nil {
+		log.Error("federation token key", "err", err)
+		os.Exit(1)
+	}
 	var snapStore snapshot.Store = postgres.NewSnapshotStore(pool)
 	var regionMirror *objectstore.SnapshotStore
 	if cfg.SnapshotDistribution.Enabled {

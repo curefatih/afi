@@ -159,16 +159,29 @@ func (q *UsageQueries) List(ctx context.Context, orgID string, f usage.Filter) (
 	return out, rows.Err()
 }
 
-// ListReportsSince returns usage events for federation report pull (all orgs, newest first).
-func (q *UsageQueries) ListReportsSince(ctx context.Context, since *time.Time, limit int) ([]usage.Record, error) {
+// ListReportsSince returns usage events for federation report pull (newest first).
+// orgID empty = all orgs. since/until filter created_at when set.
+func (q *UsageQueries) ListReportsSince(ctx context.Context, orgID string, since, until *time.Time, limit int) ([]usage.Record, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
 	args := []any{}
-	where := "TRUE"
+	var parts []string
+	if orgID = strings.TrimSpace(orgID); orgID != "" {
+		args = append(args, orgID)
+		parts = append(parts, fmt.Sprintf("e.organization_id = $%d", len(args)))
+	}
 	if since != nil && !since.IsZero() {
-		where = "e.created_at >= $1"
 		args = append(args, *since)
+		parts = append(parts, fmt.Sprintf("e.created_at >= $%d", len(args)))
+	}
+	if until != nil && !until.IsZero() {
+		args = append(args, *until)
+		parts = append(parts, fmt.Sprintf("e.created_at < $%d", len(args)))
+	}
+	where := "TRUE"
+	if len(parts) > 0 {
+		where = strings.Join(parts, " AND ")
 	}
 	args = append(args, limit)
 	limitArg := len(args)

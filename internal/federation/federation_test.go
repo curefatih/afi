@@ -75,6 +75,15 @@ func (m *memRepo) UpdatePeerJoinTokenHash(_ context.Context, peerID, hash string
 	m.peers[peerID] = p
 	return nil
 }
+func (m *memRepo) UpdatePeerJoinTokenEnc(_ context.Context, peerID string, enc []byte) error {
+	p, err := m.GetPeer(context.Background(), peerID)
+	if err != nil {
+		return err
+	}
+	p.JoinTokenEnc = append([]byte(nil), enc...)
+	m.peers[peerID] = p
+	return nil
+}
 func (m *memRepo) RecordPeerSync(_ context.Context, peerID string, cursor int64, at time.Time, syncErr string) error {
 	p, err := m.GetPeer(context.Background(), peerID)
 	if err != nil {

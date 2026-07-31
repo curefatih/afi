@@ -72,6 +72,7 @@ type ProviderHealth = usage.ProviderHealth
 type Store struct {
 	pool             *pgxpool.Pool
 	credBox          *credentials.Box
+	fedBox           *credentials.Box
 	federationMirror *objectstore.SnapshotStore
 }
 
@@ -96,6 +97,21 @@ func (s *Store) SetCredentialsMasterKey(raw string) error {
 		return err
 	}
 	s.credBox = box
+	return nil
+}
+
+// SetFederationTokenKey configures sealing for peer join tokens (hub pull of usage reports).
+// Prefer credentials master key; callers may fall back to the JWT secret.
+func (s *Store) SetFederationTokenKey(raw string) error {
+	if strings.TrimSpace(raw) == "" {
+		s.fedBox = nil
+		return nil
+	}
+	box, err := credentials.ParseMasterKey(raw)
+	if err != nil {
+		return err
+	}
+	s.fedBox = box
 	return nil
 }
 
@@ -547,8 +563,8 @@ func (s *Store) ListUsage(ctx context.Context, orgID string, f UsageFilter) ([]U
 }
 
 // ListFederationUsageReports returns local usage_events for hub on-demand pull.
-func (s *Store) ListFederationUsageReports(ctx context.Context, since *time.Time, limit int) ([]usage.Record, error) {
-	return s.usageQueries().ListReportsSince(ctx, since, limit)
+func (s *Store) ListFederationUsageReports(ctx context.Context, orgID string, since, until *time.Time, limit int) ([]usage.Record, error) {
+	return s.usageQueries().ListReportsSince(ctx, orgID, since, until, limit)
 }
 
 func (s *Store) SummarizeUsage(ctx context.Context, orgID string, f UsageFilter) ([]UsageSummaryBucket, error) {

@@ -212,13 +212,24 @@ func (s *Server) handleFederationUsageReports(w http.ResponseWriter, r *http.Req
 		t = t.UTC()
 		since = &t
 	}
+	var until *time.Time
+	if q := strings.TrimSpace(r.URL.Query().Get("until")); q != "" {
+		t, err := time.Parse(time.RFC3339, q)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, "until must be RFC3339")
+			return
+		}
+		t = t.UTC()
+		until = &t
+	}
+	orgID := strings.TrimSpace(r.URL.Query().Get("org_id"))
 	limit := 100
 	if q := r.URL.Query().Get("limit"); q != "" {
 		if n, err := strconv.Atoi(q); err == nil {
 			limit = n
 		}
 	}
-	items, err := s.app.ListFederationUsageReports(r.Context(), since, limit)
+	items, err := s.app.ListFederationUsageReports(r.Context(), orgID, since, until, limit)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -230,7 +241,8 @@ func (s *Server) handleFederationUsageReports(w http.ResponseWriter, r *http.Req
 }
 
 // handlePullPeerUsageReports fetches usage reports from a regional peer on demand (hub).
-// Does not persist reports on the hub. Requires X-AFI-Federation-Token (peer join token).
+// Does not persist reports on the hub. Platform admin JWT is enough; join token is
+// opened from hub-sealed storage (optional X-AFI-Federation-Token override).
 func (s *Server) handlePullPeerUsageReports(w http.ResponseWriter, r *http.Request) {
 	peerID := r.PathValue("peerID")
 	peer, err := s.app.GetFederationPeer(r.Context(), peerID)
@@ -243,18 +255,26 @@ func (s *Server) handlePullPeerUsageReports(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	token := federationTokenFrom(r)
-	authed, err := s.app.AuthenticateFederationPeerToken(r.Context(), token)
-	if errors.Is(err, kernel.ErrUnauthorized) {
-		writeErr(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if authed.ID != peer.ID {
-		writeErr(w, http.StatusForbidden, "token not scoped to this peer")
-		return
+	if token != "" {
+		authed, err := s.app.AuthenticateFederationPeerToken(r.Context(), token)
+		if errors.Is(err, kernel.ErrUnauthorized) {
+			writeErr(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if authed.ID != peer.ID {
+			writeErr(w, http.StatusForbidden, "token not scoped to this peer")
+			return
+		}
+	} else {
+		token, err = s.app.OpenFederationPeerJoinToken(r.Context(), peer.ID)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
 	}
 	if strings.TrimSpace(peer.BaseURL) == "" {
 		writeErr(w, http.StatusBadRequest, "peer base_url required to pull usage reports")
@@ -270,6 +290,17 @@ func (s *Server) handlePullPeerUsageReports(w http.ResponseWriter, r *http.Reque
 		t = t.UTC()
 		since = &t
 	}
+	var until *time.Time
+	if q := strings.TrimSpace(r.URL.Query().Get("until")); q != "" {
+		t, err := time.Parse(time.RFC3339, q)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, "until must be RFC3339")
+			return
+		}
+		t = t.UTC()
+		until = &t
+	}
+	orgID := strings.TrimSpace(r.URL.Query().Get("org_id"))
 	limit := 100
 	if q := r.URL.Query().Get("limit"); q != "" {
 		if n, err := strconv.Atoi(q); err == nil {
@@ -277,30 +308,11 @@ func (s *Server) handlePullPeerUsageReports(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	client := federationclient.New(peer.BaseURL, token)
-	out, err := client.UsageReports(r.Context(), since, limit)
+	out, err := client.UsageReports(r.Context(), orgID, since, until, limit)
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, err.Error())
 		return
 	}
-	for _, rep := range out.Reports {
-		region := ""
-		if rep.Tags != nil {
-			region = rep.Tags["region"]
-		}
-		if s.Metrics != nil {
-			s.Metrics.RecordSpokeUsage(r.Context(), region, rep.Status, usage.NormalizeModality(rep.Modality), rep.PromptTokens, rep.CompletionTokens)
-		}
-		if s.log != nil {
-			s.log.Info("pulled spoke usage report",
-				"peer_id", peer.ID,
-				"region", region,
-				"org", rep.OrganizationID,
-				"model", rep.Model,
-				"status", rep.Status,
-				"prompt_tokens", rep.PromptTokens,
-				"completion_tokens", rep.CompletionTokens,
-			)
-		}
-	}
+	s.observePulledUsage(r.Context(), peer.ID, out.Reports)
 	writeJSON(w, http.StatusOK, out)
 }

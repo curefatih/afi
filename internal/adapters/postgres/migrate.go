@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 25
+const schemaVersion = 26
 
 const dropAllSQL = `
 DROP TABLE IF EXISTS federation_sync_state CASCADE;
@@ -416,6 +416,7 @@ CREATE TABLE IF NOT EXISTS federation_peers (
     base_url TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'pending',
     join_token_hash TEXT NOT NULL,
+    join_token_enc BYTEA,
     last_sync_at TIMESTAMPTZ,
     last_sync_cursor BIGINT NOT NULL DEFAULT 0,
     last_sync_error TEXT NOT NULL DEFAULT '',
@@ -1099,6 +1100,12 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		);
 	`); err != nil {
 		return fmt.Errorf("cycle40 federation: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE federation_peers ADD COLUMN IF NOT EXISTS join_token_enc BYTEA;
+	`); err != nil {
+		return fmt.Errorf("cycle41 federation peer join token enc: %w", err)
 	}
 	return nil
 }

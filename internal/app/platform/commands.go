@@ -823,7 +823,11 @@ func (s *Service) RecordFederationPeerSync(ctx context.Context, peerID string, c
 	return s.API.RecordFederationPeerSync(ctx, peerID, cursor, syncErr)
 }
 
-func (s *Service) ListFederationUsageReports(ctx context.Context, since *time.Time, limit int) ([]usage.Record, error) {
-	return s.API.ListFederationUsageReports(ctx, since, limit)
+func (s *Service) ListFederationUsageReports(ctx context.Context, orgID string, since, until *time.Time, limit int) ([]usage.Record, error) {
+	return s.API.ListFederationUsageReports(ctx, orgID, since, until, limit)
+}
+
+func (s *Service) OpenFederationPeerJoinToken(ctx context.Context, peerID string) (string, error) {
+	return s.API.OpenFederationPeerJoinToken(ctx, peerID)
 }
 

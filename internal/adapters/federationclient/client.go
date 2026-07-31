@@ -98,14 +98,20 @@ type UsageReportsResponse struct {
 }
 
 // UsageReports pulls usage events from a regional control plane (hub on-demand).
-func (c *Client) UsageReports(ctx context.Context, since *time.Time, limit int) (*UsageReportsResponse, error) {
+func (c *Client) UsageReports(ctx context.Context, orgID string, since, until *time.Time, limit int) (*UsageReportsResponse, error) {
 	if c == nil || c.BaseURL == "" || c.JoinToken == "" {
 		return nil, fmt.Errorf("federationclient: usage reports not configured")
 	}
 	u := c.BaseURL + "/internal/v1/federation/usage-reports"
 	q := url.Values{}
+	if orgID = strings.TrimSpace(orgID); orgID != "" {
+		q.Set("org_id", orgID)
+	}
 	if since != nil && !since.IsZero() {
 		q.Set("since", since.UTC().Format(time.RFC3339))
+	}
+	if until != nil && !until.IsZero() {
+		q.Set("until", until.UTC().Format(time.RFC3339))
 	}
 	if limit > 0 {
 		q.Set("limit", strconv.Itoa(limit))
