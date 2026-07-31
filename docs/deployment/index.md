@@ -76,6 +76,8 @@ Regional CP settings:
 - `AFI_FEDERATION_REGION_SLUG` — region slug the peer is scoped to
 - `AFI_FEDERATION_PULL_INTERVAL` — default `30s`
 - Regional gateway: `AFI_SNAPSHOT_BACKEND=postgres` against the regional Postgres (or object store as today)
+- Regional gateway usage: `AFI_USAGE_BACKEND=postgres` + a **regional worker** draining `usage_outbox`
+- Hub pulls usage when needed: `GET /api/v1/platform/federation/peers/{id}/usage-reports` with `X-AFI-Federation-Token` (peer join token) — observe only
 
 ### Data locality (federation)
 
@@ -85,9 +87,10 @@ Regional CP settings:
 | Snapshot + timed quotas | **Regional** Postgres / Redis |
 | Config management (orgs, bindings, overlays, peers) | **Hub** only — regional CP is read-only for mutations when `AFI_FEDERATION_MODE=regional` |
 | Config distribution | Regional CP **pulls** memberships/overlays/snapshot from hub |
-| Usage / analytics / deployment heartbeats | **Hub** receives regional **reports** (logs/OTel) — does **not** persist them in hub `usage_events`. Hub gateway may persist its own local traffic. |
+| Usage / analytics | **Regional** gateway writes to regional Postgres (outbox + worker). **Hub Usage page** pulls reports on demand and merges them into org list/summary (observe only — does **not** persist into hub `usage_events`). Hub gateway may persist its own local traffic. |
+| Deployment heartbeats | Regional gateway → hub (deployment join token) |
 
-Request bodies and model traffic never transit the hub. Cross-region hub traffic is limited to federation pull (management), heartbeats, and ephemeral usage reports (observations). Regional gateways do **not** persist usage locally; the hub does **not** store regional usage rows.
+Request bodies and model traffic never transit the hub. Cross-region hub traffic is limited to federation config pull, heartbeats, and on-demand usage report pulls (observations). Regional usage stays in regional Postgres; the hub does **not** store regional usage rows.
 
 Register peers as platform admin under **Federation** (or `POST /api/v1/platform/federation/peers`). Mesh peers, quota CRDTs, and geo-routing remain out of scope.
 
