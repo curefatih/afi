@@ -31,7 +31,7 @@ curl -s http://localhost:8080/v1/chat/completions \
   -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"ping"}]}'
 ```
 
-Guide: [docs/getting-started/quick-start.md](docs/getting-started/quick-start.md). Host-based Go workflow: [docs/getting-started/local-dev.md](docs/getting-started/local-dev.md).
+Guide: [docs/guides/quick-start.md](docs/guides/quick-start.md). Host-based Go workflow: [docs/development/local-dev.md](docs/development/local-dev.md).
 
 ## Components
 

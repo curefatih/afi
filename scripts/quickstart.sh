@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Bootstrap local-only deploy/.env + deploy/afi.yaml and start the full Docker Compose stack.
-# See docs/getting-started/quick-start.md
+# See docs/guides/quick-start.md
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

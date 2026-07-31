@@ -133,7 +133,7 @@ The host instantiates with `_initialize` (not `_start`). WASI preview1 is provid
 - `response_headers` (when present) replaces headers merged onto the client response (allow and deny).
 - Deny-only `headers` still works; `response_headers` are also merged onto deny responses when not already set.
 
-Native Go hooks can use `CallContext.SetRequestHeader` / `SetResponseHeader` helpers in [`sdk/hook`](../../sdk/hook).
+Native Go hooks can use `CallContext.SetRequestHeader` / `SetResponseHeader` helpers in [`sdk/hook`](../../../sdk/hook).
 
 ### S3-compatible artifacts
 
@@ -202,7 +202,7 @@ Typed chat IR mutation. **Input and output:**
 Return the same envelope with the mutated `request`. The host preserves the
 client-selected route model and stream mode after all hooks. Message parts,
 images, tools, tool calls, and generation options use the snake_case fields in
-[`sdk/chatir`](../../sdk/chatir).
+[`sdk/chatir`](../../../sdk/chatir).
 
 ??? example "TinyGo guest `before_chat` (excerpt)"
 
@@ -224,11 +224,11 @@ images, tools, tool calls, and generation options use the snake_case fields in
 
 ## Field names
 
-Go types in [`sdk/hook`](../../sdk/hook) are the source of truth for semantics; wire names are snake_case as above.
+Go types in [`sdk/hook`](../../../sdk/hook) are the source of truth for semantics; wire names are snake_case as above.
 
 ## Performance: WASM vs native Go
 
-Comparable hooks (same allow/deny + metadata stamp / chat prefix logic) are benchmarked in [`internal/adapters/wasm/bench_test.go`](../../internal/adapters/wasm/bench_test.go):
+Comparable hooks (same allow/deny + metadata stamp / chat prefix logic) are benchmarked in [`internal/adapters/wasm/bench_test.go`](../../../internal/adapters/wasm/bench_test.go):
 
 * **Native** — in-process Go `sdk/hook` implementation (no sandbox).
 * **WASM (pooled)** — default host: reused guest instances (`PoolSize=8`).

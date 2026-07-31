@@ -2,7 +2,7 @@
 
 This is the golden path for running AFI on a developer machine with Go processes on the host.
 
-To try the full stack in Docker only (no Go install), use [Quick start](quick-start.md).
+To try the full stack in Docker only (no Go install), use [Quick start](../guides/quick-start.md).
 
 ## Prerequisites
 
@@ -88,11 +88,11 @@ Alternatively: `make run-all` (control plane + worker in background, gateway in 
 
 ## 6. Verify inference
 
-See [Verify](verify.md) (`make verify` includes quota → 429).
+See [Verify](../guides/verify.md) (`make verify` includes quota → 429).
 
 ## 7. Optional: platform UI
 
-Overview of screens and capabilities: [Web UI](web-ui.md).
+Overview of screens and capabilities: [Web UI](../guides/web-ui.md).
 
 ```bash
 pnpm --dir web install
@@ -103,7 +103,7 @@ Open http://localhost:3000 and sign in with `admin@afi.local` / `admin`.
 
 Use **Users** to invite members by email. Existing users are added immediately; new emails receive an invite link (`/auth/invite/…`). Local default mail provider is `log` (messages in the controlplane log). To deliver real mail locally, enable SMTP in `configs/local.yaml` and point it at Mailpit/Mailhog (`localhost:1025`).
 
-**API Keys:** create a **personal** key for yourself, or (as org owner/admin) a **service account** key scoped to the org or a project. The seeded `sk-project-local-dev-token-12345` is a project service-account key. Admins set per-user or per-key quotas under **Quotas** (`total` or Redis `minute`/`hour`/`day`) and CEL allow-rules under **Policies** (see [Policies](web-ui/policies.md)).
+**API Keys:** create a **personal** key for yourself, or (as org owner/admin) a **service account** key scoped to the org or a project. The seeded `sk-project-local-dev-token-12345` is a project service-account key. Admins set per-user or per-key quotas under **Quotas** (`total` or Redis `minute`/`hour`/`day`) and CEL allow-rules under **Policies** (see [Policies](../guides/web-ui/policies.md)).
 
 The web app calls the control plane at `http://localhost:8081` (override with `VITE_PLATFORM_API_URL`).
 
@@ -127,6 +127,6 @@ Internal HTTP admin (`/internal/v1/*`) requires `X-AFI-Internal-Token` (see conf
 
 ## Config
 
-Defaults live in [`configs/local.yaml`](../../configs/local.yaml). Override with env vars (see [Config reference](../development/config-reference.md)).
+Defaults live in [`configs/local.yaml`](../../configs/local.yaml). Override with env vars (see [Config reference](config-reference.md)).
 
-For self-hosted / production-style deployments (Docker Compose or binaries), see [Deployment](../deployment.md) and the full [Customization reference](../deployment/customization.md).
+For self-hosted / production-style deployments (Docker Compose or binaries), see [Deployment](../deployment/) and the full [Customization reference](../deployment/customization.md).

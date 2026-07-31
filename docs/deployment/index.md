@@ -39,18 +39,18 @@ flowchart TB
 
 | Path | When to use | Guide |
 |------|-------------|-------|
-| **Quick start** | Try AFI locally with one command | [Quick start](getting-started/quick-start.md) |
-| **Docker Compose** | Single host / VM, or profile subsets (control plane, data plane, worker, web) | [Docker Compose](deployment/docker.md) |
-| **Binaries** | Custom OS images, systemd, bare metal | [Binary deployment](deployment/binary.md) — download `v*` release archives or build with `make build-release` |
-| **Local dev** | Day-to-day development | [Local development](getting-started/local-dev.md) |
+| **Quick start** | Try AFI locally with one command | [Quick start](../guides/quick-start.md) |
+| **Docker Compose** | Single host / VM, or profile subsets (control plane, data plane, worker, web) | [Docker Compose](docker.md) |
+| **Binaries** | Custom OS images, systemd, bare metal | [Binary deployment](binary.md) — download `v*` release archives or build with `make build-release` |
+| **Local dev** | Day-to-day development | [Local development](../development/local-dev.md) |
 
 ## Customization
 
 Every config knob operators can change — YAML, environment variables, seed values, provider secrets, web build args, and runtime limits — is documented in:
 
-**[Customization reference](deployment/customization.md)**
+**[Customization reference](customization.md)**
 
-Also see the shorter [Config reference](development/config-reference.md) for day-to-day development.
+Also see the shorter [Config reference](../development/config-reference.md) for day-to-day development.
 
 ## Security checklist
 
@@ -58,7 +58,7 @@ Before exposing AFI beyond localhost:
 
 1. Replace all `CHANGE_ME` values in `deploy/.env` and `deploy/afi.yaml` (or your own config).
 2. Set strong `AFI_JWT_SECRET` and `AFI_INTERNAL_TOKEN` (never use the local-dev defaults).
-3. If enabling platform SSO, set `auth.public_base_url` / `mail.public_app_url` to public HTTPS URLs, use `auth.sso.state_store: redis`, and keep IdP client secrets out of git ([SSO guide](getting-started/sso.md)).
+3. If enabling platform SSO, set `auth.public_base_url` / `mail.public_app_url` to public HTTPS URLs, use `auth.sso.state_store: redis`, and keep IdP client secrets out of git ([SSO guide](../guides/sso.md)).
 4. Use a strong Postgres password and restrict network access to the database.
 5. Inject upstream provider API keys only into the **gateway** process environment.
 6. Change seed admin password and virtual API key (or delete the seed key after creating your own).
@@ -83,7 +83,7 @@ AFI_CONTROLPLANE_URL=https://cp.example AFI_GATEWAY_URL=https://gw.example \
 
 ## Related
 
-* [Single sign-on (SSO)](getting-started/sso.md)
-* [Platform domain events](development/platform-events.md)
-* [Providers](development/providers.md)
-* [Architecture](development/architecture.md)
+* [Single sign-on (SSO)](../guides/sso.md)
+* [Platform domain events](../development/platform-events.md)
+* [Providers](../development/providers.md)
+* [Architecture](../development/architecture.md)

@@ -51,8 +51,8 @@ Also exposes:
 * `POST /openai/v1/embeddings` (alias `/v1/embeddings`) — OpenAI-compatible embeddings via `EmbeddingsBackend`
 * `POST /openai/v1/images/generations` (alias `/v1/images/generations`) — OpenAI-compatible image generation via `ImagesBackend` (optional org object-store persist)
 * `POST /openai/v1/audio/speech` / `POST /openai/v1/audio/transcriptions` (aliases `/v1/audio/...`) — TTS/STT via `AudioBackend`
-* `POST|GET|DELETE /mcp/{alias}` — MCP Streamable HTTP proxy to org-scoped upstream backends (snapshot `MCPBackends`). Platform UI: [MCP and A2A](../getting-started/web-ui/mcp-a2a.md).
-* `POST /a2a/{alias}` — A2A JSON-RPC proxy; `GET /a2a/{alias}/.well-known/agent-card.json` — Agent Card with gateway URL rewrite (snapshot `A2AAgents`). Platform UI: [MCP and A2A](../getting-started/web-ui/mcp-a2a.md).
+* `POST|GET|DELETE /mcp/{alias}` — MCP Streamable HTTP proxy to org-scoped upstream backends (snapshot `MCPBackends`). Platform UI: [MCP and A2A](../guides/web-ui/mcp-a2a.md).
+* `POST /a2a/{alias}` — A2A JSON-RPC proxy; `GET /a2a/{alias}/.well-known/agent-card.json` — Agent Card with gateway URL rewrite (snapshot `A2AAgents`). Platform UI: [MCP and A2A](../guides/web-ui/mcp-a2a.md).
 
 The playground honors streaming/TTS/STT capabilities per model. Chat, Anthropic messages, and audio (TTS/STT) select targets with route `routing_strategy` (`ordered`, `weighted`, `latency`, or `cost`), then retry/failover before the response body is committed to the client.
 
@@ -87,12 +87,12 @@ In-process registration is live:
 
 * **Providers** — `sdk/provider.ChatProvider` via `Registry.RegisterSDK` (example: `extensions/echo`)
 * **Hooks** — `BeforeCall` / `AfterCall` (all modalities) plus `BeforeChat` / `AfterChat`; tags via `X-AFI-Tags` (`extensions/demohook`; example-only tag limits in `extensions/tagquota`)
-* **WASM hooks** — sandboxed TinyGo guests via `internal/adapters/wasm` + org `wasm_hooks` in the snapshot (`AFI_WASM_*` env still works for demos). See [WASM hooks](../hooks/wasm.md).
+* **WASM hooks** — sandboxed TinyGo guests via `internal/adapters/wasm` + org `wasm_hooks` in the snapshot (`AFI_WASM_*` env still works for demos). See [WASM hooks](hooks/wasm.md).
 * **Provider health** — control-plane rollup from `usage_events` for Providers UI
 
 Control-plane WASM hook bindings and gateway gRPC extension runtime (ChatProvider + lifecycle hooks via `gateway.grpc_extensions`) are available; auth/secrets/notifications gRPC adapters, billing invoices, and multi-region snapshot distribution remain future work.
 
-**Protocol gateways:** MCP Streamable HTTP (`/mcp/{alias}`) and A2A JSON-RPC + Agent Card (`/a2a/{alias}`) proxies are shipped. Platform UI: [MCP and A2A](../getting-started/web-ui/mcp-a2a.md).
+**Protocol gateways:** MCP Streamable HTTP (`/mcp/{alias}`) and A2A JSON-RPC + Agent Card (`/a2a/{alias}`) proxies are shipped. Platform UI: [MCP and A2A](../guides/web-ui/mcp-a2a.md).
 
 **Shipped governance:**
 

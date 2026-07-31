@@ -8,7 +8,7 @@ import (
 	sdkhook "github.com/curefatih/afi/sdk/hook"
 )
 
-// Wire types for the host↔guest JSON ABI (see docs/hooks/wasm.md).
+// Wire types for the host↔guest JSON ABI (see docs/development/hooks/wasm.md).
 
 type principalWire struct {
 	OrganizationID string `json:"organization_id"`

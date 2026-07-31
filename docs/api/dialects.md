@@ -185,4 +185,4 @@ Chat dialects cover text, tools/function calling, and image input (vision) — s
 
 * [Gateway overlay](gateway.md) — full path and auth reference
 * [Providers](../development/providers.md) — adapter capabilities
-* [Verify](../getting-started/verify.md) — local smoke checks
+* [Verify](../guides/verify.md) — local smoke checks

@@ -50,28 +50,28 @@ Parsed into `CallContext.Tags` and persisted on usage events (`tags` JSONB).
 
 ### Example: per-tag request limits
 
-[`extensions/tagquota`](../../extensions/tagquota) is a **reference implementation** of `BeforeCall` with independent counters per tag value (e.g. each `end-user-id`). It is **not** registered by the default gateway — copy or register it yourself if you need that behavior. See the package [README](../../extensions/tagquota/README.md).
+[`extensions/tagquota`](../../../extensions/tagquota) is a **reference implementation** of `BeforeCall` with independent counters per tag value (e.g. each `end-user-id`). It is **not** registered by the default gateway — copy or register it yourself if you need that behavior. See the package [README](../../../extensions/tagquota/README.md).
 
-Seeded demo: [`extensions/demohook`](../../extensions/demohook) prefixes the last user message with `[hook:demo]` and logs AfterChat.
+Seeded demo: [`extensions/demohook`](../../../extensions/demohook) prefixes the last user message with `[hook:demo]` and logs AfterChat.
 
-Provider adapters use [`sdk/provider`](../../sdk/provider) + `Registry.RegisterSDK` (see [`extensions/echo`](../../extensions/echo)). Lifecycle types live in [`sdk/hook`](../../sdk/hook).
+Provider adapters use [`sdk/provider`](../../../sdk/provider) + `Registry.RegisterSDK` (see [`extensions/echo`](../../../extensions/echo)). Lifecycle types live in [`sdk/hook`](../../../sdk/hook).
 
 ## WASM (data plane)
 
-Sandboxed TinyGo modules via [`internal/adapters/wasm`](../../internal/adapters/wasm):
+Sandboxed TinyGo modules via [`internal/adapters/wasm`](../../../internal/adapters/wasm):
 
 * **Env:** `AFI_WASM_BEFORE_CALL` / `AFI_WASM_BEFORE_CHAT` (process-global)
 * **Control plane:** org `wasm-hooks` API → snapshot → gateway module cache (URI + optional SHA-256 digest)
 
-Guest ABI, limits, pooling benchmarks: [wasm.md](wasm.md). Example: [`extensions/wasmhook`](../../extensions/wasmhook).
+Guest ABI, limits, pooling benchmarks: [wasm.md](wasm.md). Example: [`extensions/wasmhook`](../../../extensions/wasmhook).
 
 ## Future
 
-* gRPC auth / secrets / notifications host adapters (capabilities reserved; Chat + hooks shipped — see [`extensions/grpcecho`](../../extensions/grpcecho))
+* gRPC auth / secrets / notifications host adapters (capabilities reserved; Chat + hooks shipped — see [`extensions/grpcecho`](../../../extensions/grpcecho))
 * Remote / HTTP-backed WASM artifact stores (beyond local `file://` paths)
 
 Redis rate limits and CEL request policies remain available via the built-in BeforeCall gates (see Quotas / Policies in the platform UI).
 
 ## gRPC (process-isolated)
 
-Configure `gateway.grpc_extensions` in YAML. Plugins implement Handshake + optional Provider/Hook services. See [providers.md](../development/providers.md#grpc-extensions-process-isolated).
+Configure `gateway.grpc_extensions` in YAML. Plugins implement Handshake + optional Provider/Hook services. See [providers.md](../providers.md#grpc-extensions-process-isolated).
