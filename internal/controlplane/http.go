@@ -89,6 +89,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /internal/v1/deployments/join", s.handleDeploymentJoin)
 	mux.HandleFunc("POST /internal/v1/deployments/{deploymentID}/heartbeat", s.handleDeploymentHeartbeat)
 	mux.HandleFunc("POST /internal/v1/deployments/{deploymentID}/usage", s.handleDeploymentUsageIngest)
+	mux.HandleFunc("POST /internal/v1/federation/peers/join", s.handleFederationPeerJoin)
+	mux.HandleFunc("GET /internal/v1/federation/regions/{slug}/export", s.handleFederationRegionExport)
 
 	mux.HandleFunc("GET /api/v1/platform/regions", s.requireAuth(s.requirePlatformAdmin(s.handleListRegions)))
 	mux.HandleFunc("POST /api/v1/platform/regions", s.requireAuth(s.requirePlatformAdmin(s.handleCreateRegion)))
@@ -100,10 +102,17 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/platform/regions/{regionID}/deployments/{deploymentID}/rotate-join-token", s.requireAuth(s.requirePlatformAdmin(s.handleRotateDeploymentJoinToken)))
 	mux.HandleFunc("GET /api/v1/platform/regions/{regionID}/organizations", s.requireAuth(s.requirePlatformAdmin(s.handleListRegionMemberships)))
 	mux.HandleFunc("POST /api/v1/platform/regions/{regionID}/organizations", s.requireAuth(s.requirePlatformAdmin(s.handleBindOrgToRegion)))
+	mux.HandleFunc("POST /api/v1/platform/regions/{regionID}/organizations/bind-all", s.requireAuth(s.requirePlatformAdmin(s.handleBindAllOrgsToRegion)))
 	mux.HandleFunc("DELETE /api/v1/platform/regions/{regionID}/organizations/{orgID}", s.requireAuth(s.requirePlatformAdmin(s.handleUnbindOrgFromRegion)))
 	mux.HandleFunc("GET /api/v1/platform/regions/{regionID}/organizations/{orgID}/overlay", s.requireAuth(s.requirePlatformAdmin(s.handleGetRegionOverlay)))
 	mux.HandleFunc("PUT /api/v1/platform/regions/{regionID}/organizations/{orgID}/overlay", s.requireAuth(s.requirePlatformAdmin(s.handlePutRegionOverlay)))
 	mux.HandleFunc("DELETE /api/v1/platform/regions/{regionID}/organizations/{orgID}/overlay", s.requireAuth(s.requirePlatformAdmin(s.handleDeleteRegionOverlay)))
+
+	mux.HandleFunc("GET /api/v1/platform/federation/peers", s.requireAuth(s.requirePlatformAdmin(s.handleListFederationPeers)))
+	mux.HandleFunc("POST /api/v1/platform/federation/peers", s.requireAuth(s.requirePlatformAdmin(s.handleRegisterFederationPeer)))
+	mux.HandleFunc("GET /api/v1/platform/federation/peers/{peerID}", s.requireAuth(s.requirePlatformAdmin(s.handleGetFederationPeer)))
+	mux.HandleFunc("PATCH /api/v1/platform/federation/peers/{peerID}", s.requireAuth(s.requirePlatformAdmin(s.handleUpdateFederationPeer)))
+	mux.HandleFunc("POST /api/v1/platform/federation/peers/{peerID}/rotate-join-token", s.requireAuth(s.requirePlatformAdmin(s.handleRotateFederationPeerToken)))
 
 	mux.HandleFunc("POST /api/v1/platform/auth/login", s.handleLogin)
 	mux.HandleFunc("GET /api/v1/platform/auth/me", s.requireAuth(s.handleMe))
@@ -264,7 +273,7 @@ func writeErr(w http.ResponseWriter, status int, msg string) {
 func withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-AFI-Internal-Token, X-AFI-Deployment-Token")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-AFI-Internal-Token, X-AFI-Deployment-Token, X-AFI-Federation-Token")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)

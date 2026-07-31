@@ -95,6 +95,18 @@ type Config struct {
 		Enabled bool `yaml:"enabled" env:"AFI_SNAPSHOT_DIST_ENABLED"`
 	} `yaml:"snapshot_distribution"`
 
+	// Federation configures hub/regional control-plane pull sync (default off = single CP).
+	Federation struct {
+		// Mode is off (default), home (hub export APIs), or regional (pull loop).
+		Mode           string        `yaml:"mode" env:"AFI_FEDERATION_MODE" env-default:"off"`
+		HubURL         string        `yaml:"hub_url" env:"AFI_FEDERATION_HUB_URL"`
+		PeerID         string        `yaml:"peer_id" env:"AFI_FEDERATION_PEER_ID"`
+		JoinToken      string        `yaml:"join_token" env:"AFI_FEDERATION_JOIN_TOKEN"`
+		RegionSlug     string        `yaml:"region_slug" env:"AFI_FEDERATION_REGION_SLUG"`
+		PullIntervalRaw string       `yaml:"pull_interval" env:"AFI_FEDERATION_PULL_INTERVAL" env-default:"30s"`
+		PullInterval   time.Duration `yaml:"-"`
+	} `yaml:"federation"`
+
 	Auth struct {
 		JWTSecret     string        `yaml:"jwt_secret" env:"AFI_JWT_SECRET"`
 		TokenTTLRaw   string        `yaml:"token_ttl" env:"AFI_TOKEN_TTL" env-default:"24h"`
@@ -262,6 +274,35 @@ func LoadConfig() (*Config, error) {
 	cfg.Gateway.HeartbeatInterval = hb
 	if cfg.Gateway.SnapshotS3.Prefix == "" {
 		cfg.Gateway.SnapshotS3.Prefix = "snapshots"
+	}
+
+	if cfg.Federation.Mode == "" {
+		cfg.Federation.Mode = "off"
+	}
+	cfg.Federation.Mode = strings.ToLower(strings.TrimSpace(cfg.Federation.Mode))
+	switch cfg.Federation.Mode {
+	case "off", "home", "regional":
+	default:
+		return nil, fmt.Errorf("federation.mode: must be off, home, or regional, got %q", cfg.Federation.Mode)
+	}
+	if cfg.Federation.PullIntervalRaw == "" {
+		cfg.Federation.PullIntervalRaw = "30s"
+	}
+	fi, err := time.ParseDuration(cfg.Federation.PullIntervalRaw)
+	if err != nil {
+		return nil, fmt.Errorf("federation.pull_interval: %w", err)
+	}
+	cfg.Federation.PullInterval = fi
+	if cfg.Federation.Mode == "regional" {
+		if strings.TrimSpace(cfg.Federation.HubURL) == "" {
+			return nil, fmt.Errorf("federation.hub_url required when mode=regional")
+		}
+		if strings.TrimSpace(cfg.Federation.JoinToken) == "" {
+			return nil, fmt.Errorf("federation.join_token required when mode=regional")
+		}
+		if strings.TrimSpace(cfg.Federation.RegionSlug) == "" {
+			return nil, fmt.Errorf("federation.region_slug required when mode=regional")
+		}
 	}
 
 	if cfg.Auth.JWTSecret == "" {

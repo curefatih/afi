@@ -207,5 +207,8 @@ func (s *Seeder) publishRegionalSnapshots(ctx context.Context, base snapshot.Sou
 			return fmt.Errorf("region snapshot %s: %w", reg.Slug, err)
 		}
 	}
+	if _, err := s.store.BumpFederationRevision(ctx); err != nil {
+		return fmt.Errorf("bump federation revision: %w", err)
+	}
 	return nil
 }

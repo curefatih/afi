@@ -195,6 +195,13 @@ export class PlatformClient {
 		);
 	}
 
+	bindAllOrgsToRegion(regionID: string) {
+		return this.request<{ bound: number }>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations/bind-all`,
+			{ method: "POST" },
+		);
+	}
+
 	unbindOrgFromRegion(regionID: string, orgID: string) {
 		return this.request<void>(
 			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations/${encodeURIComponent(orgID)}`,
@@ -231,6 +238,57 @@ export class PlatformClient {
 		return this.request<void>(
 			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations/${encodeURIComponent(orgID)}/overlay`,
 			{ method: "DELETE" },
+		);
+	}
+
+	listFederationPeers() {
+		return this.request<
+			Array<{
+				id: string;
+				name: string;
+				region_id: string;
+				base_url?: string;
+				status: string;
+				last_sync_at?: string | null;
+				last_sync_cursor: number;
+				last_sync_error?: string;
+				created_at?: string;
+				updated_at?: string;
+			}>
+		>("/api/v1/platform/federation/peers");
+	}
+
+	registerFederationPeer(body: {
+		name: string;
+		region_id: string;
+		base_url?: string;
+	}) {
+		return this.request<{ peer: unknown; join_token: string }>(
+			"/api/v1/platform/federation/peers",
+			{ method: "POST", body },
+		);
+	}
+
+	getFederationPeer(peerID: string) {
+		return this.request<unknown>(
+			`/api/v1/platform/federation/peers/${encodeURIComponent(peerID)}`,
+		);
+	}
+
+	updateFederationPeer(
+		peerID: string,
+		body: { name?: string; base_url?: string; status?: string },
+	) {
+		return this.request<unknown>(
+			`/api/v1/platform/federation/peers/${encodeURIComponent(peerID)}`,
+			{ method: "PATCH", body },
+		);
+	}
+
+	rotateFederationPeerJoinToken(peerID: string) {
+		return this.request<{ peer: unknown; join_token: string }>(
+			`/api/v1/platform/federation/peers/${encodeURIComponent(peerID)}/rotate-join-token`,
+			{ method: "POST" },
 		);
 	}
 

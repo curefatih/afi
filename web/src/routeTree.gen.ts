@@ -41,6 +41,7 @@ import { Route as AuthenticatedAppSplatRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAppTeamsIndexRouteImport } from './routes/_authenticated/app/teams/index'
 import { Route as AuthenticatedAppRegionsIndexRouteImport } from './routes/_authenticated/app/regions/index'
 import { Route as AuthenticatedAppProjectsIndexRouteImport } from './routes/_authenticated/app/projects/index'
+import { Route as AuthenticatedAppFederationIndexRouteImport } from './routes/_authenticated/app/federation/index'
 import { Route as AuthenticatedAppTeamsTeamIdRouteImport } from './routes/_authenticated/app/teams/$teamId'
 import { Route as AuthenticatedAppSettingsTeamsRouteImport } from './routes/_authenticated/app/settings/teams'
 import { Route as AuthenticatedAppSettingsLimitsRouteImport } from './routes/_authenticated/app/settings/limits'
@@ -221,6 +222,12 @@ const AuthenticatedAppProjectsIndexRoute =
     path: '/projects/',
     getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
+const AuthenticatedAppFederationIndexRoute =
+  AuthenticatedAppFederationIndexRouteImport.update({
+    id: '/federation/',
+    path: '/federation/',
+    getParentRoute: () => AuthenticatedAppRouteRoute,
+  } as any)
 const AuthenticatedAppTeamsTeamIdRoute =
   AuthenticatedAppTeamsTeamIdRouteImport.update({
     id: '/teams/$teamId',
@@ -329,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/app/settings/limits': typeof AuthenticatedAppSettingsLimitsRoute
   '/app/settings/teams': typeof AuthenticatedAppSettingsTeamsRoute
   '/app/teams/$teamId': typeof AuthenticatedAppTeamsTeamIdRoute
+  '/app/federation/': typeof AuthenticatedAppFederationIndexRoute
   '/app/projects/': typeof AuthenticatedAppProjectsIndexRoute
   '/app/regions/': typeof AuthenticatedAppRegionsIndexRoute
   '/app/teams/': typeof AuthenticatedAppTeamsIndexRoute
@@ -373,6 +381,7 @@ export interface FileRoutesByTo {
   '/app/settings/limits': typeof AuthenticatedAppSettingsLimitsRoute
   '/app/settings/teams': typeof AuthenticatedAppSettingsTeamsRoute
   '/app/teams/$teamId': typeof AuthenticatedAppTeamsTeamIdRoute
+  '/app/federation': typeof AuthenticatedAppFederationIndexRoute
   '/app/projects': typeof AuthenticatedAppProjectsIndexRoute
   '/app/regions': typeof AuthenticatedAppRegionsIndexRoute
   '/app/teams': typeof AuthenticatedAppTeamsIndexRoute
@@ -419,6 +428,7 @@ export interface FileRoutesById {
   '/_authenticated/app/settings/limits': typeof AuthenticatedAppSettingsLimitsRoute
   '/_authenticated/app/settings/teams': typeof AuthenticatedAppSettingsTeamsRoute
   '/_authenticated/app/teams/$teamId': typeof AuthenticatedAppTeamsTeamIdRoute
+  '/_authenticated/app/federation/': typeof AuthenticatedAppFederationIndexRoute
   '/_authenticated/app/projects/': typeof AuthenticatedAppProjectsIndexRoute
   '/_authenticated/app/regions/': typeof AuthenticatedAppRegionsIndexRoute
   '/_authenticated/app/teams/': typeof AuthenticatedAppTeamsIndexRoute
@@ -466,6 +476,7 @@ export interface FileRouteTypes {
     | '/app/settings/limits'
     | '/app/settings/teams'
     | '/app/teams/$teamId'
+    | '/app/federation/'
     | '/app/projects/'
     | '/app/regions/'
     | '/app/teams/'
@@ -510,6 +521,7 @@ export interface FileRouteTypes {
     | '/app/settings/limits'
     | '/app/settings/teams'
     | '/app/teams/$teamId'
+    | '/app/federation'
     | '/app/projects'
     | '/app/regions'
     | '/app/teams'
@@ -555,6 +567,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/settings/limits'
     | '/_authenticated/app/settings/teams'
     | '/_authenticated/app/teams/$teamId'
+    | '/_authenticated/app/federation/'
     | '/_authenticated/app/projects/'
     | '/_authenticated/app/regions/'
     | '/_authenticated/app/teams/'
@@ -793,6 +806,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppProjectsIndexRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
+    '/_authenticated/app/federation/': {
+      id: '/_authenticated/app/federation/'
+      path: '/federation'
+      fullPath: '/app/federation/'
+      preLoaderRoute: typeof AuthenticatedAppFederationIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
     '/_authenticated/app/teams/$teamId': {
       id: '/_authenticated/app/teams/$teamId'
       path: '/teams/$teamId'
@@ -926,6 +946,7 @@ interface AuthenticatedAppRouteRouteChildren {
   AuthenticatedAppSettingsLimitsRoute: typeof AuthenticatedAppSettingsLimitsRoute
   AuthenticatedAppSettingsTeamsRoute: typeof AuthenticatedAppSettingsTeamsRoute
   AuthenticatedAppTeamsTeamIdRoute: typeof AuthenticatedAppTeamsTeamIdRoute
+  AuthenticatedAppFederationIndexRoute: typeof AuthenticatedAppFederationIndexRoute
   AuthenticatedAppProjectsIndexRoute: typeof AuthenticatedAppProjectsIndexRoute
   AuthenticatedAppRegionsIndexRoute: typeof AuthenticatedAppRegionsIndexRoute
   AuthenticatedAppTeamsIndexRoute: typeof AuthenticatedAppTeamsIndexRoute
@@ -963,6 +984,7 @@ const AuthenticatedAppRouteRouteChildren: AuthenticatedAppRouteRouteChildren = {
   AuthenticatedAppSettingsLimitsRoute: AuthenticatedAppSettingsLimitsRoute,
   AuthenticatedAppSettingsTeamsRoute: AuthenticatedAppSettingsTeamsRoute,
   AuthenticatedAppTeamsTeamIdRoute: AuthenticatedAppTeamsTeamIdRoute,
+  AuthenticatedAppFederationIndexRoute: AuthenticatedAppFederationIndexRoute,
   AuthenticatedAppProjectsIndexRoute: AuthenticatedAppProjectsIndexRoute,
   AuthenticatedAppRegionsIndexRoute: AuthenticatedAppRegionsIndexRoute,
   AuthenticatedAppTeamsIndexRoute: AuthenticatedAppTeamsIndexRoute,

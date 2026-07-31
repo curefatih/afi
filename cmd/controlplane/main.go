@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/curefatih/afi/internal/adapters/federationclient"
 	"github.com/curefatih/afi/internal/adapters/objectstore"
 	"github.com/curefatih/afi/internal/adapters/postgres"
 	"github.com/curefatih/afi/internal/app/platform"
@@ -85,6 +86,7 @@ func main() {
 		}
 		mirror := objectstore.NewSnapshotStore(blob, cfg.Gateway.SnapshotS3.Prefix)
 		regionMirror = mirror
+		store.SetFederationRegionMirror(mirror)
 		snapStore = &objectstore.FanoutStore{Primary: snapStore, Mirror: mirror}
 		log.Info("snapshot distribution enabled", "bucket", cfg.Gateway.SnapshotS3.Bucket, "prefix", cfg.Gateway.SnapshotS3.Prefix)
 	}
@@ -164,6 +166,17 @@ func main() {
 			cancel()
 		}
 	}()
+
+	if cfg.Federation.Mode == "regional" {
+		client := federationclient.New(cfg.Federation.HubURL, cfg.Federation.JoinToken)
+		target := &postgres.RegionalApplyTarget{Store: store, SnapStore: snapStore}
+		go federationclient.RunPullLoop(ctx, client, store.FederationRepo(), target, cfg.Federation.RegionSlug, cfg.Federation.PullInterval, func(err error) {
+			log.Error("federation pull", "err", err)
+		})
+		log.Info("federation regional puller started", "hub", cfg.Federation.HubURL, "region", cfg.Federation.RegionSlug, "interval", cfg.Federation.PullInterval.String())
+	} else if cfg.Federation.Mode == "home" {
+		log.Info("federation home mode enabled")
+	}
 
 	<-ctx.Done()
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)

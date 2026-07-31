@@ -6,6 +6,7 @@ import (
 
 	"github.com/curefatih/afi/internal/access"
 	"github.com/curefatih/afi/internal/credentials"
+	"github.com/curefatih/afi/internal/federation"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/regions"
@@ -708,6 +709,18 @@ func (s *Service) BindOrgToRegion(ctx context.Context, regionID, orgID, status s
 	return m, nil
 }
 
+func (s *Service) BindAllOrgsToRegion(ctx context.Context, regionID string) (int, error) {
+	n, err := s.API.BindAllOrgsToRegion(ctx, regionID)
+	if err != nil {
+		return n, err
+	}
+	if err := s.publishRegions(ctx, "region.membership", regionID); err != nil {
+		return n, err
+	}
+	s.emit(ctx, EventOrgRegionBound, regionID, "")
+	return n, nil
+}
+
 func (s *Service) UnbindOrgFromRegion(ctx context.Context, regionID, orgID string) error {
 	if err := s.API.UnbindOrgFromRegion(ctx, regionID, orgID); err != nil {
 		return err
@@ -770,5 +783,41 @@ func (s *Service) RecordDeploymentHeartbeat(ctx context.Context, deploymentID, j
 
 func (s *Service) AuthenticateDeploymentJoinToken(ctx context.Context, rawToken string) (*regions.GatewayDeployment, error) {
 	return s.API.AuthenticateDeploymentJoinToken(ctx, rawToken)
+}
+
+func (s *Service) ListFederationPeers(ctx context.Context) ([]federation.ControlPlanePeer, error) {
+	return s.API.ListFederationPeers(ctx)
+}
+
+func (s *Service) GetFederationPeer(ctx context.Context, peerID string) (*federation.ControlPlanePeer, error) {
+	return s.API.GetFederationPeer(ctx, peerID)
+}
+
+func (s *Service) RegisterFederationPeer(ctx context.Context, name, regionID, baseURL string) (*federation.PeerWithToken, error) {
+	return s.API.RegisterFederationPeer(ctx, name, regionID, baseURL)
+}
+
+func (s *Service) UpdateFederationPeer(ctx context.Context, peerID, name, baseURL, status string) (*federation.ControlPlanePeer, error) {
+	return s.API.UpdateFederationPeer(ctx, peerID, name, baseURL, status)
+}
+
+func (s *Service) RotateFederationPeerJoinToken(ctx context.Context, peerID string) (*federation.PeerWithToken, error) {
+	return s.API.RotateFederationPeerJoinToken(ctx, peerID)
+}
+
+func (s *Service) AuthenticateFederationPeerToken(ctx context.Context, rawToken string) (*federation.ControlPlanePeer, error) {
+	return s.API.AuthenticateFederationPeerToken(ctx, rawToken)
+}
+
+func (s *Service) JoinFederationPeer(ctx context.Context, rawToken string) (*federation.ControlPlanePeer, error) {
+	return s.API.JoinFederationPeer(ctx, rawToken)
+}
+
+func (s *Service) ExportFederationRegion(ctx context.Context, slug string, since int64, objectPrefix string) (*federation.RegionExport, error) {
+	return s.API.ExportFederationRegion(ctx, slug, since, objectPrefix)
+}
+
+func (s *Service) RecordFederationPeerSync(ctx context.Context, peerID string, cursor int64, syncErr string) error {
+	return s.API.RecordFederationPeerSync(ctx, peerID, cursor, syncErr)
 }
 

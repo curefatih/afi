@@ -37,6 +37,7 @@ tags:
 - name: Usage
 - name: Audit
 - name: Regions
+- name: Federation
 paths:
   /healthz:
     get:
@@ -345,6 +346,40 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/BindOrgToRegion'
+  /api/v1/platform/regions/{regionID}/organizations/bind-all:
+    parameters:
+      - name: regionID
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: bindAllOrgsToRegion
+      summary: Bind all organizations to a region
+      tags:
+      - Regions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - bound
+                properties:
+                  bound:
+                    type: integer
+                    description: Number of organizations bound
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin. Idempotent upsert of active membership for every organization.
   /api/v1/platform/regions/{regionID}/organizations/{orgID}:
     parameters:
       - name: regionID
@@ -445,6 +480,132 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
       description: Requires platform-admin (users.role=admin).
+  /api/v1/platform/federation/peers:
+    get:
+      operationId: listFederationPeers
+      summary: List federation peers
+      tags:
+      - Federation
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ControlPlanePeer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      description: Requires platform-admin (users.role=admin). Lists regional control planes trusted by this hub.
+    post:
+      operationId: registerFederationPeer
+      summary: Register a federation peer
+      tags:
+      - Federation
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FederationPeerWithToken'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin. Returns the join token once; configure it on the regional control plane.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterFederationPeer'
+  /api/v1/platform/federation/peers/{peerID}:
+    parameters:
+      - name: peerID
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getFederationPeer
+      summary: Get federation peer
+      tags:
+      - Federation
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlPlanePeer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin (users.role=admin).
+    patch:
+      operationId: updateFederationPeer
+      summary: Update federation peer
+      tags:
+      - Federation
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlPlanePeer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin. Use status=disabled to revoke pull access.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFederationPeer'
+  /api/v1/platform/federation/peers/{peerID}/rotate-join-token:
+    parameters:
+      - name: peerID
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: rotateFederationPeerJoinToken
+      summary: Rotate federation peer join token
+      tags:
+      - Federation
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FederationPeerWithToken'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin. Invalidates the previous join token.
   /api/v1/platform/auth/login:
     post:
       operationId: login
@@ -3650,6 +3811,75 @@ components:
           $ref: '#/components/schemas/GatewayDeployment'
         join_token:
           type: string
+    ControlPlanePeer:
+      type: object
+      required:
+      - id
+      - name
+      - region_id
+      - status
+      - last_sync_cursor
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        region_id:
+          type: string
+        base_url:
+          type: string
+        status:
+          type: string
+          description: pending, active, or disabled
+        last_sync_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_sync_cursor:
+          type: integer
+          format: int64
+        last_sync_error:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    FederationPeerWithToken:
+      type: object
+      required:
+      - peer
+      - join_token
+      properties:
+        peer:
+          $ref: '#/components/schemas/ControlPlanePeer'
+        join_token:
+          type: string
+    RegisterFederationPeer:
+      type: object
+      required:
+      - name
+      - region_id
+      properties:
+        name:
+          type: string
+        region_id:
+          type: string
+        base_url:
+          type: string
+    UpdateFederationPeer:
+      type: object
+      properties:
+        name:
+          type: string
+        base_url:
+          type: string
+        status:
+          type: string
+          description: pending, active, or disabled
     RegisterDeployment:
       type: object
       required:

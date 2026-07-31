@@ -40,6 +40,14 @@ export AFI_JWT_SECRET="..."   # overrides auth.jwt_secret in the file
 | `AFI_SNAPSHOT_S3_PATH_STYLE` | `gateway.snapshot_s3.path_style` | `false` | Hub + spoke | |
 | `AFI_CONTROL_PLANE_URL` | `gateway.control_plane_url` | | Gateway | Hub URL for heartbeat/usage |
 | `AFI_REGION_ID` | `gateway.region_id` | | Gateway | Region **slug** for object-store prefix `snapshots/{slug}/` and usage tags |
+
+### Regions CLI helpers
+
+| Command | Purpose |
+|---------|---------|
+| `afi regions bind-all <region-slug-or-id>` | Bind every organization to one region (single-region installs before enabling spoke isolation), then republish that region’s snapshot |
+
+Org–region overlays are full replace documents (providers/routes/quotas/…); absence means inherit base org config. Lifetime (`total`) quotas remain hub-global counters unless you later regionalize namespaces. Timed windows use regional Redis.
 | `AFI_DEPLOYMENT_ID` | `gateway.deployment_id` | | Gateway | Registered deployment id |
 | `AFI_DEPLOYMENT_JOIN_TOKEN` | `gateway.deployment_join_token` | | Gateway | Join token from register/rotate |
 | `AFI_HEARTBEAT_INTERVAL` | `gateway.heartbeat_interval` | `30s` | Gateway | Heartbeat period |

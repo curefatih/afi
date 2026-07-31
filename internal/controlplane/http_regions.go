@@ -290,6 +290,23 @@ func (s *Server) handleBindOrgToRegion(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, m)
 }
 
+func (s *Server) handleBindAllOrgsToRegion(w http.ResponseWriter, r *http.Request) {
+	n, err := s.app.BindAllOrgsToRegion(r.Context(), r.PathValue("regionID"))
+	if errors.Is(err, kernel.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	if errors.Is(err, kernel.ErrInvalidRequest) {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"bound": n})
+}
+
 func (s *Server) handleUnbindOrgFromRegion(w http.ResponseWriter, r *http.Request) {
 	err := s.app.UnbindOrgFromRegion(r.Context(), r.PathValue("regionID"), r.PathValue("orgID"))
 	if errors.Is(err, kernel.ErrNotFound) {

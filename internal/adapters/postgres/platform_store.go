@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/curefatih/afi/internal/access"
+	"github.com/curefatih/afi/internal/adapters/objectstore"
 	"github.com/curefatih/afi/internal/audit"
 	"github.com/curefatih/afi/internal/credentials"
 	"github.com/curefatih/afi/internal/gatewayconfig"
@@ -69,12 +70,18 @@ type ModelPrice = usage.ModelPrice
 type ProviderHealth = usage.ProviderHealth
 
 type Store struct {
-	pool    *pgxpool.Pool
-	credBox *credentials.Box
+	pool             *pgxpool.Pool
+	credBox          *credentials.Box
+	federationMirror *objectstore.SnapshotStore
 }
 
 func NewStore(pool *pgxpool.Pool) *Store {
 	return &Store{pool: pool}
+}
+
+// SetFederationRegionMirror attaches the hub object-store mirror used for federation export.
+func (s *Store) SetFederationRegionMirror(m *objectstore.SnapshotStore) {
+	s.federationMirror = m
 }
 
 // SetCredentialsMasterKey configures encryption for encrypted_db credentials.
@@ -780,15 +787,6 @@ func (s *Store) GetRegionBySlug(ctx context.Context, slug string) (*regions.Regi
 	return s.regionsRepo().GetRegionBySlug(ctx, slug)
 }
 
-// BindAllOrgsToRegion binds every organization to the region (active membership).
-func (s *Store) BindAllOrgsToRegion(ctx context.Context, regionID string) (int, error) {
-	ids, err := s.ListOrganizationIDs(ctx)
-	if err != nil {
-		return 0, err
-	}
-	return regions.BindAllOrganizations(ctx, s.regionsRepo(), regionID, ids)
-}
-
 func (s *Store) CreateRegion(ctx context.Context, slug, name string) (*regions.Region, error) {
 	return regions.CreateRegion(ctx, s.regionsRepo(), newPlatformID("reg"), slug, name)
 }
@@ -827,11 +825,23 @@ func (s *Store) ListRegionMemberships(ctx context.Context, regionID string) ([]r
 }
 
 func (s *Store) BindOrgToRegion(ctx context.Context, regionID, orgID, status string) (*regions.OrgRegionMembership, error) {
-	return regions.BindOrgToRegion(ctx, s.regionsRepo(), regionID, orgID, status)
+	if _, err := s.GetOrganization(ctx, orgID); err != nil {
+		return nil, err
+	}
+	m, err := regions.BindOrgToRegion(ctx, s.regionsRepo(), regionID, orgID, status)
+	if err != nil {
+		return nil, err
+	}
+	_, _ = s.BumpFederationRevision(ctx)
+	return m, nil
 }
 
 func (s *Store) UnbindOrgFromRegion(ctx context.Context, regionID, orgID string) error {
-	return regions.UnbindOrgFromRegion(ctx, s.regionsRepo(), regionID, orgID)
+	if err := regions.UnbindOrgFromRegion(ctx, s.regionsRepo(), regionID, orgID); err != nil {
+		return err
+	}
+	_, _ = s.BumpFederationRevision(ctx)
+	return nil
 }
 
 func (s *Store) GetRegionOverlay(ctx context.Context, regionID, orgID string) (*regions.RegionConfigOverlay, error) {
@@ -839,11 +849,33 @@ func (s *Store) GetRegionOverlay(ctx context.Context, regionID, orgID string) (*
 }
 
 func (s *Store) PutRegionOverlay(ctx context.Context, regionID, orgID string, payload regions.OverlayPayload) (*regions.RegionConfigOverlay, error) {
-	return regions.PutOverlay(ctx, s.regionsRepo(), regionID, orgID, payload)
+	o, err := regions.PutOverlay(ctx, s.regionsRepo(), regionID, orgID, payload)
+	if err != nil {
+		return nil, err
+	}
+	_, _ = s.BumpFederationRevision(ctx)
+	return o, nil
 }
 
 func (s *Store) DeleteRegionOverlay(ctx context.Context, regionID, orgID string) error {
-	return regions.DeleteOverlay(ctx, s.regionsRepo(), regionID, orgID)
+	if err := regions.DeleteOverlay(ctx, s.regionsRepo(), regionID, orgID); err != nil {
+		return err
+	}
+	_, _ = s.BumpFederationRevision(ctx)
+	return nil
+}
+
+func (s *Store) BindAllOrgsToRegion(ctx context.Context, regionID string) (int, error) {
+	ids, err := s.ListOrganizationIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+	n, err := regions.BindAllOrganizations(ctx, s.regionsRepo(), regionID, ids)
+	if err != nil {
+		return n, err
+	}
+	_, _ = s.BumpFederationRevision(ctx)
+	return n, nil
 }
 
 func newPlatformID(prefix string) string {

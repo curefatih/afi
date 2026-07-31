@@ -10,6 +10,7 @@ import {
 	GlobeIcon,
 	KeyRoundIcon,
 	LayoutDashboardIcon,
+	NetworkIcon,
 	PlugIcon,
 	PuzzleIcon,
 	ScrollTextIcon,
@@ -50,6 +51,11 @@ const platformNav = [
 		title: "Regions",
 		url: "/app/regions",
 		icon: <GlobeIcon />,
+	},
+	{
+		title: "Federation",
+		url: "/app/federation",
+		icon: <NetworkIcon />,
 	},
 	{
 		title: "Settings",

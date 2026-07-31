@@ -166,6 +166,15 @@ export const bindOrgMutationOptions = () =>
 			),
 	});
 
+export const bindAllOrgsMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({ regionId }: { regionId: string }) =>
+			apiFetch<{ bound: number }>(
+				`/api/v1/platform/regions/${regionId}/organizations/bind-all`,
+				{ method: "POST" },
+			),
+	});
+
 export const unbindOrgMutationOptions = () =>
 	mutationOptions({
 		mutationFn: ({

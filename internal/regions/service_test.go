@@ -7,6 +7,7 @@ import (
 
 	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/snapshot"
 )
 
 type memRepo struct {
@@ -297,6 +298,30 @@ func TestBindAllOrganizations(t *testing.T) {
 	}
 	if len(mems) != 2 {
 		t.Fatalf("want 2 unique memberships, got %d", len(mems))
+	}
+}
+
+func TestPutOverlayRequiresActiveMembership(t *testing.T) {
+	repo := newMemRepo()
+	r, err := CreateRegion(context.Background(), repo, "reg_1", "eu", "EU")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = PutOverlay(context.Background(), repo, r.ID, "org_a", OverlayPayload{})
+	if err == nil {
+		t.Fatal("expected error without membership")
+	}
+	if _, err := BindOrgToRegion(context.Background(), repo, r.ID, "org_a", MembershipStatusActive); err != nil {
+		t.Fatal(err)
+	}
+	o, err := PutOverlay(context.Background(), repo, r.ID, "org_a", OverlayPayload{
+		Routes: []snapshot.Route{{Model: "m", ProviderID: "p", TargetModel: "m"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(o.Payload.Routes) != 1 || o.Payload.Routes[0].OrganizationID != "org_a" {
+		t.Fatalf("%+v", o.Payload)
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/curefatih/afi/internal/app/platform"
 	"github.com/curefatih/afi/internal/audit"
+	"github.com/curefatih/afi/internal/federation"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/regions"
@@ -474,6 +475,9 @@ func (f *fakePlatform) ListRegionMemberships(context.Context, string) ([]regions
 func (f *fakePlatform) BindOrgToRegion(context.Context, string, string, string) (*regions.OrgRegionMembership, error) {
 	return nil, kernel.ErrNotFound
 }
+func (f *fakePlatform) BindAllOrgsToRegion(context.Context, string) (int, error) {
+	return 0, nil
+}
 func (f *fakePlatform) UnbindOrgFromRegion(context.Context, string, string) error {
 	return kernel.ErrNotFound
 }
@@ -485,6 +489,33 @@ func (f *fakePlatform) PutRegionOverlay(context.Context, string, string, regions
 }
 func (f *fakePlatform) DeleteRegionOverlay(context.Context, string, string) error {
 	return kernel.ErrNotFound
+}
+func (f *fakePlatform) ListFederationPeers(context.Context) ([]federation.ControlPlanePeer, error) {
+	return nil, nil
+}
+func (f *fakePlatform) GetFederationPeer(context.Context, string) (*federation.ControlPlanePeer, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *fakePlatform) RegisterFederationPeer(context.Context, string, string, string) (*federation.PeerWithToken, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *fakePlatform) UpdateFederationPeer(context.Context, string, string, string, string) (*federation.ControlPlanePeer, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *fakePlatform) RotateFederationPeerJoinToken(context.Context, string) (*federation.PeerWithToken, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *fakePlatform) AuthenticateFederationPeerToken(context.Context, string) (*federation.ControlPlanePeer, error) {
+	return nil, kernel.ErrUnauthorized
+}
+func (f *fakePlatform) JoinFederationPeer(context.Context, string) (*federation.ControlPlanePeer, error) {
+	return nil, kernel.ErrUnauthorized
+}
+func (f *fakePlatform) ExportFederationRegion(context.Context, string, int64, string) (*federation.RegionExport, error) {
+	return nil, kernel.ErrNotFound
+}
+func (f *fakePlatform) RecordFederationPeerSync(context.Context, string, int64, string) error {
+	return nil
 }
 
 func testCfg() *kernel.Config {

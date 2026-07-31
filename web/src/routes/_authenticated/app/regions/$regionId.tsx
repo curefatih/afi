@@ -1,22 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { organizationsQueryOptions } from "#/api/organization";
 import {
+	bindAllOrgsMutationOptions,
 	bindOrgMutationOptions,
 	deleteOverlayMutationOptions,
 	deploymentsQueryOptions,
 	putOverlayMutationOptions,
 	regionMembershipsQueryOptions,
-	regionOverlayQueryOptions,
 	regionQueryOptions,
 	registerDeploymentMutationOptions,
 	rotateJoinTokenMutationOptions,
 	unbindOrgMutationOptions,
 	updateRegionMutationOptions,
 } from "#/api/regions";
+import { RegionOverlaySheet } from "#/components/regions/overlay-sheet";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
 import { Badge } from "#/components/ui/badge";
@@ -46,7 +47,6 @@ import {
 	TableHeader,
 	TableRow,
 } from "#/components/ui/table";
-import { Textarea } from "#/components/ui/textarea";
 import { pageTitle } from "#/lib/page-meta";
 import { useAuthUser } from "#/state/auth-state";
 
@@ -124,6 +124,17 @@ function RouteComponent() {
 		onError: (e: Error) => toast.error(e.message),
 	});
 
+	const bindAll = useMutation({
+		...bindAllOrgsMutationOptions(),
+		onSuccess: async (out) => {
+			toast.success(`Bound ${out.bound} organization(s)`);
+			await qc.invalidateQueries({
+				queryKey: ["regions", regionId, "organizations"],
+			});
+		},
+		onError: (e: Error) => toast.error(e.message),
+	});
+
 	const unbind = useMutation({
 		...unbindOrgMutationOptions(),
 		onSuccess: async () => {
@@ -150,6 +161,7 @@ function RouteComponent() {
 					],
 				});
 			}
+			setOverlayOrgId(null);
 		},
 		onError: (e: Error) => toast.error(e.message),
 	});
@@ -252,6 +264,14 @@ function RouteComponent() {
 						<Button
 							variant="outline"
 							size="sm"
+							disabled={bindAll.isPending}
+							onClick={() => bindAll.mutate({ regionId })}
+						>
+							Bind all orgs
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
 							onClick={() => setBindOpen(true)}
 						>
 							<PlusIcon />
@@ -270,15 +290,14 @@ function RouteComponent() {
 									<TableRow>
 										<TableHead>Organization</TableHead>
 										<TableHead>Status</TableHead>
-										<TableHead>Config</TableHead>
-										<TableHead />
+										<TableHead className="w-40" />
 									</TableRow>
 								</TableHeader>
 								<TableBody>
 									{(memQ.data ?? []).length === 0 ? (
 										<TableRow>
 											<TableCell
-												colSpan={4}
+												colSpan={3}
 												className="text-muted-foreground"
 											>
 												No organizations bound. Unbound orgs are omitted from
@@ -302,30 +321,30 @@ function RouteComponent() {
 														{m.status}
 													</Badge>
 												</TableCell>
-												<TableCell>
-													<Button
-														variant="ghost"
-														size="sm"
-														onClick={() =>
-															setOverlayOrgId(m.organization_id)
-														}
-													>
-														Overlay…
-													</Button>
-												</TableCell>
 												<TableCell className="text-right">
-													<Button
-														variant="outline"
-														size="sm"
-														onClick={() =>
-															unbind.mutate({
-																regionId,
-																orgId: m.organization_id,
-															})
-														}
-													>
-														Unbind
-													</Button>
+													<div className="flex justify-end gap-2">
+														<Button
+															variant="ghost"
+															size="sm"
+															onClick={() =>
+																setOverlayOrgId(m.organization_id)
+															}
+														>
+															Overlay…
+														</Button>
+														<Button
+															variant="outline"
+															size="sm"
+															onClick={() =>
+																unbind.mutate({
+																	regionId,
+																	orgId: m.organization_id,
+																})
+															}
+														>
+															Unbind
+														</Button>
+													</div>
 												</TableCell>
 											</TableRow>
 										))
@@ -352,7 +371,7 @@ function RouteComponent() {
 										<TableHead>Status</TableHead>
 										<TableHead>Snapshot</TableHead>
 										<TableHead>Last seen</TableHead>
-										<TableHead />
+										<TableHead className="w-40" />
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -388,18 +407,20 @@ function RouteComponent() {
 														: "—"}
 												</TableCell>
 												<TableCell className="text-right">
-													<Button
-														variant="outline"
-														size="sm"
-														onClick={() =>
-															rotate.mutate({
-																regionId,
-																deploymentId: d.id,
-															})
-														}
-													>
-														Rotate token
-													</Button>
+													<div className="flex justify-end gap-2">
+														<Button
+															variant="outline"
+															size="sm"
+															onClick={() =>
+																rotate.mutate({
+																	regionId,
+																	deploymentId: d.id,
+																})
+															}
+														>
+															Rotate token
+														</Button>
+													</div>
 												</TableCell>
 											</TableRow>
 										))
@@ -520,7 +541,7 @@ function RouteComponent() {
 			</Sheet>
 
 			{overlayOrgId ? (
-				<OverlaySheet
+				<RegionOverlaySheet
 					regionId={regionId}
 					orgId={overlayOrgId}
 					orgLabel={orgName.get(overlayOrgId) ?? overlayOrgId}
@@ -536,101 +557,5 @@ function RouteComponent() {
 				/>
 			) : null}
 		</>
-	);
-}
-
-function OverlaySheet({
-	regionId,
-	orgId,
-	orgLabel,
-	onClose,
-	onSave,
-	onInherit,
-	saving,
-	inheriting,
-}: {
-	regionId: string;
-	orgId: string;
-	orgLabel: string;
-	onClose: () => void;
-	onSave: (payload: Record<string, unknown>) => void;
-	onInherit: () => void;
-	saving: boolean;
-	inheriting: boolean;
-}) {
-	const overlayQ = useQuery(regionOverlayQueryOptions(regionId, orgId));
-	const [jsonText, setJsonText] = useState("{}");
-	const hasOverlay = overlayQ.isSuccess && !!overlayQ.data;
-
-	useEffect(() => {
-		if (overlayQ.data?.payload) {
-			setJsonText(JSON.stringify(overlayQ.data.payload, null, 2));
-		} else if (overlayQ.isError || overlayQ.isSuccess) {
-			setJsonText("{\n  \"routes\": []\n}");
-		}
-	}, [overlayQ.data, overlayQ.isError, overlayQ.isSuccess]);
-
-	return (
-		<Sheet open onOpenChange={(o) => !o && onClose()}>
-			<SheetContent className="overflow-y-auto sm:max-w-lg">
-				<SheetHeader>
-					<SheetTitle>Config overlay</SheetTitle>
-					<SheetDescription>
-						{orgLabel}:{" "}
-						{hasOverlay
-							? "replace mode — full gateway slice for this region"
-							: "inherit base org config (no overlay)"}
-					</SheetDescription>
-				</SheetHeader>
-				<div className="flex flex-1 flex-col gap-4 px-4">
-					<div className="grid gap-2">
-						<Label htmlFor="overlay-json">Overlay JSON</Label>
-						<Textarea
-							id="overlay-json"
-							className="min-h-[280px] font-mono text-xs"
-							value={jsonText}
-							onChange={(e) => setJsonText(e.target.value)}
-						/>
-						<p className="text-muted-foreground text-xs">
-							Full replace of providers, routes, quotas, policies, wasm_hooks,
-							mcp_backends, a2a_agents, credentials, assignments, default_retry,
-							object_store. API keys stay global.
-						</p>
-					</div>
-					<SheetFooter className="gap-2 px-0 sm:flex-col sm:space-x-0">
-						{hasOverlay ? (
-							<Button
-								type="button"
-								variant="outline"
-								disabled={inheriting}
-								onClick={onInherit}
-							>
-								{inheriting ? "Reverting…" : "Inherit base"}
-							</Button>
-						) : null}
-						<Button type="button" variant="outline" onClick={onClose}>
-							Cancel
-						</Button>
-						<Button
-							type="button"
-							disabled={saving}
-							onClick={() => {
-								try {
-									const payload = JSON.parse(jsonText) as Record<
-										string,
-										unknown
-									>;
-									onSave(payload);
-								} catch {
-									toast.error("Invalid JSON");
-								}
-							}}
-						>
-							{saving ? "Saving…" : "Save replace overlay"}
-						</Button>
-					</SheetFooter>
-				</div>
-			</SheetContent>
-		</Sheet>
 	);
 }

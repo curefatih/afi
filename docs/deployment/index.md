@@ -56,9 +56,29 @@ For single-region installs that later enable object-store spokes, bind every org
 
 ```bash
 afi regions bind-all <region-slug-or-id>
+# or: POST /api/v1/platform/regions/{id}/organizations/bind-all
 ```
 
-Multi-control-plane peer federation (separate regional Postgres + sync protocol) is not implemented yet.
+## Hub and regional control planes (federation pull sync)
+
+Run a **home** control plane (source of truth for orgs, memberships, and overlays) and optional **regional** control planes that pull configuration for one region:
+
+| Role | Env | Behavior |
+|------|-----|----------|
+| Single CP (default) | `AFI_FEDERATION_MODE=off` | Unchanged Phase 2 single control plane |
+| Home (hub) | `AFI_FEDERATION_MODE=home` | Platform **Federation** UI / API to register peers; export APIs enabled |
+| Regional | `AFI_FEDERATION_MODE=regional` plus hub URL, join token, region slug | Pull loop applies memberships/overlays and stores the compiled regional snapshot locally |
+
+Regional CP settings:
+
+- `AFI_FEDERATION_HUB_URL` — home control plane base URL
+- `AFI_FEDERATION_JOIN_TOKEN` — token from peer registration (shown once)
+- `AFI_FEDERATION_REGION_SLUG` — region slug the peer is scoped to
+- `AFI_FEDERATION_PULL_INTERVAL` — default `30s`
+- Regional gateway: `AFI_SNAPSHOT_BACKEND=postgres` against the regional Postgres (or object store as today)
+
+Register peers as platform admin under **Federation** (or `POST /api/v1/platform/federation/peers`). Mesh peers, quota CRDTs, and geo-routing remain out of scope.
+
 ## Choose a path
 
 | Path | When to use | Guide |

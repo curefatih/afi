@@ -10,6 +10,7 @@ import (
 	"github.com/curefatih/afi/internal/app/platform"
 	"github.com/curefatih/afi/internal/audit"
 	"github.com/curefatih/afi/internal/credentials"
+	"github.com/curefatih/afi/internal/federation"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/kernel"
@@ -311,6 +312,7 @@ func (m *memAPI) BindOrgToRegion(_ context.Context, regionID, orgID, status stri
 		OrganizationID: orgID, RegionID: regionID, Status: status,
 	}, nil
 }
+func (m *memAPI) BindAllOrgsToRegion(context.Context, string) (int, error) { return 2, nil }
 func (m *memAPI) UnbindOrgFromRegion(context.Context, string, string) error { return nil }
 func (m *memAPI) GetRegionOverlay(context.Context, string, string) (*regions.RegionConfigOverlay, error) {
 	return nil, kernel.ErrNotFound
@@ -321,6 +323,32 @@ func (m *memAPI) PutRegionOverlay(_ context.Context, regionID, orgID string, pay
 	}, nil
 }
 func (m *memAPI) DeleteRegionOverlay(context.Context, string, string) error { return nil }
+
+func (m *memAPI) ListFederationPeers(context.Context) ([]federation.ControlPlanePeer, error) {
+	return nil, nil
+}
+func (m *memAPI) GetFederationPeer(context.Context, string) (*federation.ControlPlanePeer, error) {
+	return nil, kernel.ErrNotFound
+}
+func (m *memAPI) RegisterFederationPeer(context.Context, string, string, string) (*federation.PeerWithToken, error) {
+	panic("unused")
+}
+func (m *memAPI) UpdateFederationPeer(context.Context, string, string, string, string) (*federation.ControlPlanePeer, error) {
+	panic("unused")
+}
+func (m *memAPI) RotateFederationPeerJoinToken(context.Context, string) (*federation.PeerWithToken, error) {
+	panic("unused")
+}
+func (m *memAPI) AuthenticateFederationPeerToken(context.Context, string) (*federation.ControlPlanePeer, error) {
+	return nil, kernel.ErrUnauthorized
+}
+func (m *memAPI) JoinFederationPeer(context.Context, string) (*federation.ControlPlanePeer, error) {
+	return nil, kernel.ErrUnauthorized
+}
+func (m *memAPI) ExportFederationRegion(context.Context, string, int64, string) (*federation.RegionExport, error) {
+	return nil, kernel.ErrNotFound
+}
+func (m *memAPI) RecordFederationPeerSync(context.Context, string, int64, string) error { return nil }
 
 func TestBindOrgPublishesAffectedRegionOnly(t *testing.T) {
 	t.Parallel()

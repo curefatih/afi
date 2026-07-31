@@ -12,6 +12,8 @@ Internal ops routes (`POST /internal/v1/seed`, `POST /internal/v1/snapshots/publ
 
 **Regions** (`/api/v1/platform/regions…`) require platform admin (`users.role=admin`) and manage hub-and-spoke gateway deployments, org–region bindings, and full per-org config overlays. See [Deployment — hub-and-spoke](../deployment/index.md#hub-and-spoke-multi-region-gateways).
 
+**Federation** (`/api/v1/platform/federation/peers…`) requires platform admin and registers regional control planes that pull region exports from the home control plane. See [Deployment — hub and regional control planes](../deployment/index.md#hub-and-regional-control-planes-federation-pull-sync).
+
 ## TypeScript
 
 ```bash

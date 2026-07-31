@@ -10,9 +10,12 @@ import (
 )
 
 // schemaVersion is the latest schema. Bumps apply additive migrations only.
-const schemaVersion = 24
+const schemaVersion = 25
 
 const dropAllSQL = `
+DROP TABLE IF EXISTS federation_sync_state CASCADE;
+DROP TABLE IF EXISTS federation_peers CASCADE;
+DROP TABLE IF EXISTS federation_meta CASCADE;
 DROP TABLE IF EXISTS platform_event_outbox CASCADE;
 DROP TABLE IF EXISTS gateway_deployments CASCADE;
 DROP TABLE IF EXISTS region_config_overlays CASCADE;
@@ -398,6 +401,37 @@ CREATE TABLE IF NOT EXISTS region_config_overlays (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (organization_id, region_id)
+);
+
+CREATE TABLE IF NOT EXISTS federation_meta (
+    id INT PRIMARY KEY CHECK (id = 1),
+    revision BIGINT NOT NULL DEFAULT 0
+);
+INSERT INTO federation_meta (id, revision) VALUES (1, 0) ON CONFLICT DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS federation_peers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    region_id TEXT NOT NULL REFERENCES regions(id) ON DELETE RESTRICT,
+    base_url TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'pending',
+    join_token_hash TEXT NOT NULL,
+    last_sync_at TIMESTAMPTZ,
+    last_sync_cursor BIGINT NOT NULL DEFAULT 0,
+    last_sync_error TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT federation_peers_status_check CHECK (status IN ('pending', 'active', 'disabled'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS federation_peers_join_token_hash_uidx ON federation_peers (join_token_hash);
+CREATE INDEX IF NOT EXISTS federation_peers_region_idx ON federation_peers (region_id);
+
+CREATE TABLE IF NOT EXISTS federation_sync_state (
+    region_slug TEXT PRIMARY KEY,
+    cursor BIGINT NOT NULL DEFAULT 0,
+    last_sync_at TIMESTAMPTZ,
+    last_sync_error TEXT NOT NULL DEFAULT '',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 `
 
@@ -1032,6 +1066,39 @@ func applyAdditiveMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		);
 	`); err != nil {
 		return fmt.Errorf("cycle39 org region overlays: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS federation_meta (
+			id INT PRIMARY KEY CHECK (id = 1),
+			revision BIGINT NOT NULL DEFAULT 0
+		);
+		INSERT INTO federation_meta (id, revision) VALUES (1, 0) ON CONFLICT DO NOTHING;
+		CREATE TABLE IF NOT EXISTS federation_peers (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			region_id TEXT NOT NULL REFERENCES regions(id) ON DELETE RESTRICT,
+			base_url TEXT NOT NULL DEFAULT '',
+			status TEXT NOT NULL DEFAULT 'pending',
+			join_token_hash TEXT NOT NULL,
+			last_sync_at TIMESTAMPTZ,
+			last_sync_cursor BIGINT NOT NULL DEFAULT 0,
+			last_sync_error TEXT NOT NULL DEFAULT '',
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			CONSTRAINT federation_peers_status_check CHECK (status IN ('pending', 'active', 'disabled'))
+		);
+		CREATE UNIQUE INDEX IF NOT EXISTS federation_peers_join_token_hash_uidx ON federation_peers (join_token_hash);
+		CREATE INDEX IF NOT EXISTS federation_peers_region_idx ON federation_peers (region_id);
+		CREATE TABLE IF NOT EXISTS federation_sync_state (
+			region_slug TEXT PRIMARY KEY,
+			cursor BIGINT NOT NULL DEFAULT 0,
+			last_sync_at TIMESTAMPTZ,
+			last_sync_error TEXT NOT NULL DEFAULT '',
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);
+	`); err != nil {
+		return fmt.Errorf("cycle40 federation: %w", err)
 	}
 	return nil
 }
