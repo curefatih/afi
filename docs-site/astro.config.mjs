@@ -7,6 +7,18 @@ import starlightSidebarTopics from 'starlight-sidebar-topics';
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://afi.fatihcure.com',
+	redirects: {
+		'/getting-started/quick-start': '/guides/quick-start/',
+		'/getting-started/local-dev': '/development/local-dev/',
+		'/getting-started/web-ui': '/guides/web-ui/',
+		'/getting-started/web-ui/policies': '/guides/web-ui/policies/',
+		'/getting-started/web-ui/mcp-a2a': '/guides/web-ui/mcp-a2a/',
+		'/getting-started/sso': '/guides/sso/',
+		'/getting-started/signup-password-reset': '/guides/signup-password-reset/',
+		'/getting-started/verify': '/guides/verify/',
+		'/hooks/usage': '/development/hooks/usage/',
+		'/hooks/wasm': '/development/hooks/wasm/',
+	},
 	integrations: [
 		// Must run before Starlight so ```mermaid blocks are not treated as code.
 		mermaid({
@@ -53,43 +65,30 @@ export default defineConfig({
 						{
 							id: 'guides',
 							label: 'Guides',
-							link: '/getting-started/quick-start/',
+							link: '/guides/quick-start/',
 							icon: 'rocket',
 							items: [
 								{ label: 'Home', slug: '' },
+								{ label: 'Quick start', slug: 'guides/quick-start' },
 								{
-									label: 'Getting started',
+									label: 'Web UI',
 									items: [
-										{ label: 'Quick start', slug: 'getting-started/quick-start' },
-										{ label: 'Local development', slug: 'getting-started/local-dev' },
-										{
-											label: 'Web UI',
-											items: [
-												{ label: 'Overview', slug: 'getting-started/web-ui' },
-												{ label: 'Policies', slug: 'getting-started/web-ui/policies' },
-												{ label: 'MCP and A2A', slug: 'getting-started/web-ui/mcp-a2a' },
-											],
-										},
-										{ label: 'Single sign-on (SSO)', slug: 'getting-started/sso' },
-										{
-											label: 'Signup and password reset',
-											slug: 'getting-started/signup-password-reset',
-										},
-										{ label: 'Verify', slug: 'getting-started/verify' },
+										{ label: 'Overview', slug: 'guides/web-ui' },
+										{ label: 'Policies', slug: 'guides/web-ui/policies' },
+										{ label: 'MCP and A2A', slug: 'guides/web-ui/mcp-a2a' },
 									],
 								},
+								{ label: 'Single sign-on (SSO)', slug: 'guides/sso' },
 								{
-									label: 'Concepts',
-									items: [
-										{ label: 'Plugins (hooks)', slug: 'hooks/usage' },
-										{ label: 'WASM hooks', slug: 'hooks/wasm' },
-									],
+									label: 'Signup and password reset',
+									slug: 'guides/signup-password-reset',
 								},
+								{ label: 'Verify', slug: 'guides/verify' },
 							],
 						},
 						{
 							id: 'api',
-							label: 'API',
+							label: 'API Reference',
 							link: '/api/',
 							icon: 'document',
 							badge: { text: 'v1', variant: 'tip' },
@@ -103,12 +102,15 @@ export default defineConfig({
 						{
 							id: 'development',
 							label: 'Development',
-							link: '/development/architecture/',
+							link: '/development/local-dev/',
 							icon: 'seti:config',
 							items: [
-								{ label: 'Repository layout', slug: 'development/repository-layout' },
+								{ label: 'Local development', slug: 'development/local-dev' },
 								{ label: 'Architecture', slug: 'development/architecture' },
+								{ label: 'Repository layout', slug: 'development/repository-layout' },
 								{ label: 'Providers', slug: 'development/providers' },
+								{ label: 'Plugins (hooks)', slug: 'development/hooks/usage' },
+								{ label: 'WASM hooks', slug: 'development/hooks/wasm' },
 								{ label: 'Platform events', slug: 'development/platform-events' },
 								{ label: 'Config reference', slug: 'development/config-reference' },
 								{ label: 'Testing', slug: 'development/testing' },
@@ -116,7 +118,7 @@ export default defineConfig({
 						},
 						{
 							id: 'deployment',
-							label: 'Deploy',
+							label: 'Deployment',
 							link: '/deployment/',
 							icon: 'cloud-download',
 							items: [

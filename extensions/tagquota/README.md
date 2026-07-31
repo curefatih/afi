@@ -20,4 +20,4 @@ hooks.RegisterBeforeCall(tagquota.New(pipeline.Counters, tagquota.Config{
 
 Requests without that tag key are not limited by this hook.
 
-See also [`docs/hooks/usage.md`](../../docs/hooks/usage.md) and [`sdk/hook`](../../sdk/hook).
+See also [`docs/development/hooks/usage.md`](../../docs/development/hooks/usage.md) and [`sdk/hook`](../../sdk/hook).

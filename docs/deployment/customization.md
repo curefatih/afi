@@ -48,7 +48,7 @@ export AFI_JWT_SECRET="..."   # overrides auth.jwt_secret in the file
 ### Auth behavior
 
 * Platform login: `POST /api/v1/platform/auth/login` → JWT signed with `jwt_secret`.
-* Platform SSO (OAuth2/OIDC/SAML): see **[Single sign-on (SSO)](../getting-started/sso.md)**. Providers are configured under `auth.sso.providers` (YAML). Prefer `state_store: redis` when running multiple control-plane replicas.
+* Platform SSO (OAuth2/OIDC/SAML): see **[Single sign-on (SSO)](../guides/sso.md)**. Providers are configured under `auth.sso.providers` (YAML). Prefer `state_store: redis` when running multiple control-plane replicas.
 * Empty `internal_token` fails closed for HTTP internal admin routes.
 * CLI `afi seed` / `afi snapshot publish` run in-process and do not need the header.
 
@@ -244,7 +244,7 @@ auth:
   sso:
     enabled: false
     state_store: redis
-    # providers: see getting-started/sso.md
+    # providers: see guides/sso.md
 
 seed:
   virtual_api_key: "sk-live-initial-only"

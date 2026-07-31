@@ -15,7 +15,7 @@ For a local trial with fixed defaults (no secret editing):
 make quickstart
 ```
 
-See [Quick start](../getting-started/quick-start.md). Use the steps below when you want your own secrets on a real host.
+See [Quick start](../guides/quick-start.md). Use the steps below when you want your own secrets on a real host.
 
 ## Setup
 

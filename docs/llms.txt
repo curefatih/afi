@@ -12,17 +12,43 @@ Important notes for assistants:
 - AFI is a **protocol gateway/proxy** for MCP and A2A: clients talk to AFI; AFI governs and forwards to upstream MCP servers and A2A agents. AFI is not an MCP server or an A2A agent.
 - External end-user metadata uses the `X-AFI-Tags` header (parsed into `CallContext`, available to BeforeCall hooks, persisted with usage).
 
-## Docs
+## Guides
 
 - [Documentation home](https://afi.fatihcure.com/): Product overview and what works locally
-- [Local development](https://afi.fatihcure.com/getting-started/local-dev/): Golden path to run the stack
+- [Quick start](https://afi.fatihcure.com/guides/quick-start/): Full stack via Docker Compose
+- [Web UI](https://afi.fatihcure.com/guides/web-ui/): Platform console overview
+- [Policies](https://afi.fatihcure.com/guides/web-ui/policies/): CEL request policies in the UI
+- [MCP and A2A](https://afi.fatihcure.com/guides/web-ui/mcp-a2a/): Protocol upstreams in the platform console
+- [SSO](https://afi.fatihcure.com/guides/sso/): Platform single sign-on
+- [Signup and password reset](https://afi.fatihcure.com/guides/signup-password-reset/): Self-serve account flows
+- [Verify](https://afi.fatihcure.com/guides/verify/): Smoke checks against a running local stack
+
+## API Reference
+
+- [API overview](https://afi.fatihcure.com/api/): Platform and gateway HTTP surfaces
+- [Dialects](https://afi.fatihcure.com/api/dialects/): OpenAI / Anthropic / Gemini client paths
+- [Platform](https://afi.fatihcure.com/api/platform/): Control-plane OpenAPI
+- [Gateway](https://afi.fatihcure.com/api/gateway/): Data-plane overlay
+
+## Development
+
+- [Local development](https://afi.fatihcure.com/development/local-dev/): Golden path to run the stack on the host
 - [Architecture](https://afi.fatihcure.com/development/architecture/): Control/data plane, pipeline, snapshots, extensions
 - [Repository layout](https://afi.fatihcure.com/development/repository-layout/): `cmd/`, `internal/`, `sdk/`, `extensions/`, `web/` ownership
 - [Providers](https://afi.fatihcure.com/development/providers/): ChatProvider and modality adapters
-- [Config reference](https://afi.fatihcure.com/development/config-reference/): Env and config knobs
-- [WASM hooks](https://afi.fatihcure.com/hooks/wasm/): Data-plane wazero host; control plane stores manifests only
-- [MCP and A2A](https://afi.fatihcure.com/getting-started/web-ui/mcp-a2a/): Protocol upstreams in the platform console
+- [Plugins (hooks)](https://afi.fatihcure.com/development/hooks/usage/): Lifecycle hooks
+- [WASM hooks](https://afi.fatihcure.com/development/hooks/wasm/): Data-plane wazero host; control plane stores manifests only
+- [Platform events](https://afi.fatihcure.com/development/platform-events/): Outbox → broker event flow
+- [Config reference](https://afi.fatihcure.com/development/config-reference/): Env and config knobs for contributors
+- [Testing](https://afi.fatihcure.com/development/testing/): Test expectations
+
+## Deployment
+
 - [Deployment](https://afi.fatihcure.com/deployment/): Self-hosting overview
+- [Customization](https://afi.fatihcure.com/deployment/customization/): Operator config knobs
+- [Docker Compose](https://afi.fatihcure.com/deployment/docker/): Compose-based deploy
+- [Binaries](https://afi.fatihcure.com/deployment/binary/): Binary deploy
+- [Observability](https://afi.fatihcure.com/deployment/observability/): OTel / Grafana
 
 ## Guiding principles
 
@@ -44,16 +70,3 @@ Important notes for assistants:
 | `gateway` | `:8080` | OpenAI-compatible inference + MCP/A2A proxy + quotas |
 | `worker` | — | Drains usage / platform-event outboxes |
 | Platform UI (`web/`) | `:3000` | Console for providers, routing, keys, quotas, playground |
-
-## Optional
-
-- [Verify](https://afi.fatihcure.com/getting-started/verify/): Smoke checks against a running local stack
-- [Web UI](https://afi.fatihcure.com/getting-started/web-ui/): Platform console overview
-- [Policies](https://afi.fatihcure.com/getting-started/web-ui/policies/): CEL request policies in the UI
-- [SSO](https://afi.fatihcure.com/getting-started/sso/): Platform single sign-on
-- [Platform events](https://afi.fatihcure.com/development/platform-events/): Outbox → broker event flow
-- [Testing](https://afi.fatihcure.com/development/testing/): Test expectations
-- [Usage hooks](https://afi.fatihcure.com/hooks/usage/): Usage / lifecycle hooks
-- [Docker Compose](https://afi.fatihcure.com/deployment/docker/): Compose-based deploy
-- [Binaries](https://afi.fatihcure.com/deployment/binary/): Binary deploy
-- [Customization](https://afi.fatihcure.com/deployment/customization/): Deploy customization

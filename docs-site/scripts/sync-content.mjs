@@ -58,7 +58,7 @@ function docsPathToUrl(docsRel) {
 
 /**
  * @param {string} href
- * @param {string} fromRel  e.g. getting-started/local-dev.md
+ * @param {string} fromRel  e.g. development/local-dev.md
  * @param {Set<string>} docFiles
  */
 function rewriteHref(href, fromRel, docFiles) {

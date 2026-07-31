@@ -80,7 +80,7 @@ Example: [`extensions/grpcecho`](../../extensions/grpcecho).
 
 ## Hooks (in-process)
 
-`BeforeCall` / `AfterCall` run on all modalities. `ChatHook.BeforeChat` receives typed `sdk/chatir.Request`; `AfterChatHook.AfterChat` handles chat completion side effects. Register via `dataplane.NewHookChain().RegisterHook(...)` / `RegisterBeforeCall(...)` (see `extensions/demohook`). Gateway `/healthz` reports each supported phase. `extensions/tagquota` is an example-only BeforeCall sample for per-tag limits (not registered by default). WASM hooks: set `AFI_WASM_BEFORE_CALL` / `AFI_WASM_BEFORE_CHAT` (see [WASM hooks](../hooks/wasm.md)).
+`BeforeCall` / `AfterCall` run on all modalities. `ChatHook.BeforeChat` receives typed `sdk/chatir.Request`; `AfterChatHook.AfterChat` handles chat completion side effects. Register via `dataplane.NewHookChain().RegisterHook(...)` / `RegisterBeforeCall(...)` (see `extensions/demohook`). Gateway `/healthz` reports each supported phase. `extensions/tagquota` is an example-only BeforeCall sample for per-tag limits (not registered by default). WASM hooks: set `AFI_WASM_BEFORE_CALL` / `AFI_WASM_BEFORE_CHAT` (see [WASM hooks](hooks/wasm.md)).
 
 ## Example: local Ollama
 

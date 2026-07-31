@@ -36,7 +36,7 @@ go test ./internal/adapters/wasm/ \
   -benchmem -count=5 -benchtime=300ms
 ```
 
-Compares in-process Go hooks to TinyGo WASM with **instance pooling** (and `WASM_NoPool` for the old per-call instantiate path). See [WASM hooks — Performance](../hooks/wasm.md#performance-wasm-vs-native-go).
+Compares in-process Go hooks to TinyGo WASM with **instance pooling** (and `WASM_NoPool` for the old per-call instantiate path). See [WASM hooks — Performance](hooks/wasm.md#performance-wasm-vs-native-go).
 
 ## Automated local verify
 
@@ -52,7 +52,7 @@ Checks health, login, bad key → 401, internal publish auth, snapshot hot reloa
 
 ## Manual smoke
 
-See [Verify](../getting-started/verify.md) for curl recipes including UI-edited routes.
+See [Verify](../guides/verify.md) for curl recipes including UI-edited routes.
 
 ## Web
 

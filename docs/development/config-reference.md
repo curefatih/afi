@@ -1,6 +1,6 @@
 # Config reference
 
-Development-oriented summary of ports, seed values, and platform APIs. For a complete operator customization list (every env var, YAML key, and deploy knob), see **[Customization reference](../deployment/customization.md)**. For self-hosting, see **[Deployment](../deployment.md)**.
+Development-oriented summary of ports, seed values, and platform APIs. For a complete operator customization list (every env var, YAML key, and deploy knob), see **[Customization reference](../deployment/customization.md)**. For self-hosting, see **[Deployment](../deployment/)**.
 
 ## File
 

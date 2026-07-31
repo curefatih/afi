@@ -28,4 +28,4 @@ export AFI_WASM_BEFORE_CALL=/path/to/afi/extensions/wasmhook/hook.wasm
 export AFI_WASM_BEFORE_CHAT=/path/to/afi/extensions/wasmhook/hook.wasm
 ```
 
-See [docs/hooks/wasm.md](../../docs/hooks/wasm.md) for the host↔guest ABI and **WASM vs native Go benchmarks**.
+See [docs/development/hooks/wasm.md](../../docs/development/hooks/wasm.md) for the host↔guest ABI and **WASM vs native Go benchmarks**.
