@@ -14,7 +14,7 @@ import (
 )
 
 // version is overridden at link time by scripts/build-release.sh (-X main.version=...).
-var version = "0.2.0-dev"
+var version = "0.3.0-dev"
 
 func main() {
 	if len(os.Args) < 2 {
