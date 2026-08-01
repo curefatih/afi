@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "afi-platform"
-version = "1.0.0"
+version = "1.0.1"
 description = "Thin Python client for the AFI Platform API"
 readme = "README.md"
 requires-python = ">=3.10"
