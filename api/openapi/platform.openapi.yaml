@@ -606,6 +606,75 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
       description: Requires platform-admin. Invalidates the previous join token.
+  /api/v1/platform/federation/peers/{peerID}/usage-reports:
+    parameters:
+      - name: peerID
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: pullFederationPeerUsageReports
+      summary: Pull usage reports from a federation peer
+      tags:
+      - Federation
+      description: |
+        Requires platform-admin. Hub pulls usage events from the regional peer on demand
+        (does not persist them). Uses the stored join token unless X-AFI-Federation-Token is set.
+      parameters:
+      - name: org_id
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Optional organization filter forwarded to the peer
+      - name: since
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: RFC3339 lower bound
+      - name: until
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: RFC3339 upper bound
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 100
+      - name: X-AFI-Federation-Token
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional join-token override (must match this peer)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FederationUsageReports'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          description: Peer pull failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/platform/auth/login:
     post:
       operationId: login
@@ -3880,6 +3949,15 @@ components:
         status:
           type: string
           description: pending, active, or disabled
+    FederationUsageReports:
+      type: object
+      required:
+      - reports
+      properties:
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsageEvent'
     RegisterDeployment:
       type: object
       required:

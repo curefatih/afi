@@ -317,6 +317,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/federation/peers/{peerID}/usage-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                peerID: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Pull usage reports from a federation peer
+         * @description Requires platform-admin. Hub pulls usage events from the regional peer on demand
+         *     (does not persist them). Uses the stored join token unless X-AFI-Federation-Token is set.
+         */
+        get: operations["pullFederationPeerUsageReports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/auth/login": {
         parameters: {
             query?: never;
@@ -1904,6 +1927,9 @@ export interface components {
             /** @description pending, active, or disabled */
             status?: string;
         };
+        FederationUsageReports: {
+            reports: components["schemas"]["UsageEvent"][];
+        };
         RegisterDeployment: {
             name: string;
             public_base_url?: string;
@@ -3045,6 +3071,52 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    pullFederationPeerUsageReports: {
+        parameters: {
+            query?: {
+                /** @description Optional organization filter forwarded to the peer */
+                org_id?: string;
+                /** @description RFC3339 lower bound */
+                since?: string;
+                /** @description RFC3339 upper bound */
+                until?: string;
+                limit?: number;
+            };
+            header?: {
+                /** @description Optional join-token override (must match this peer) */
+                "X-AFI-Federation-Token"?: string;
+            };
+            path: {
+                peerID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FederationUsageReports"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Peer pull failed */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     login: {

@@ -80,8 +80,8 @@ function RouteComponent() {
 				<PageHeader title="Regions" />
 				<PageBody>
 					<p className="text-muted-foreground text-sm">
-						Platform admin access is required to manage regions and
-						gateway deployments.
+						Platform admin access is required to manage regions and gateway
+						deployments.
 					</p>
 				</PageBody>
 			</>
@@ -120,9 +120,7 @@ function RouteComponent() {
 								</EmptyDescription>
 							</EmptyHeader>
 							<EmptyContent>
-								<Button onClick={() => setOpen(true)}>
-									Add region
-								</Button>
+								<Button onClick={() => setOpen(true)}>Add region</Button>
 							</EmptyContent>
 						</Empty>
 					) : (

@@ -17,9 +17,9 @@ import {
 	unbindOrgMutationOptions,
 	updateRegionMutationOptions,
 } from "#/api/regions";
-import { RegionOverlaySheet } from "#/components/regions/overlay-sheet";
 import { PageBody, PageHeader } from "#/components/page-header";
 import { QueryGate } from "#/components/query-state";
+import { RegionOverlaySheet } from "#/components/regions/overlay-sheet";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
@@ -57,7 +57,8 @@ export const Route = createFileRoute("/_authenticated/app/regions/$regionId")({
 
 function statusVariant(status: string) {
 	if (status === "healthy" || status === "active") return "default" as const;
-	if (status === "stale" || status === "disabled") return "destructive" as const;
+	if (status === "stale" || status === "disabled")
+		return "destructive" as const;
 	return "secondary" as const;
 }
 
@@ -209,9 +210,7 @@ function RouteComponent() {
 						{regionQ.data ? (
 							<Select
 								value={regionQ.data.status}
-								onValueChange={(status) =>
-									update.mutate({ regionId, status })
-								}
+								onValueChange={(status) => update.mutate({ regionId, status })}
 							>
 								<SelectTrigger className="w-[140px]">
 									<SelectValue />
@@ -296,10 +295,7 @@ function RouteComponent() {
 								<TableBody>
 									{(memQ.data ?? []).length === 0 ? (
 										<TableRow>
-											<TableCell
-												colSpan={3}
-												className="text-muted-foreground"
-											>
+											<TableCell colSpan={3} className="text-muted-foreground">
 												No organizations bound. Unbound orgs are omitted from
 												regional snapshots.
 											</TableCell>
@@ -326,9 +322,7 @@ function RouteComponent() {
 														<Button
 															variant="ghost"
 															size="sm"
-															onClick={() =>
-																setOverlayOrgId(m.organization_id)
-															}
+															onClick={() => setOverlayOrgId(m.organization_id)}
 														>
 															Overlay…
 														</Button>
@@ -377,10 +371,7 @@ function RouteComponent() {
 								<TableBody>
 									{(depsQ.data ?? []).length === 0 ? (
 										<TableRow>
-											<TableCell
-												colSpan={5}
-												className="text-muted-foreground"
-											>
+											<TableCell colSpan={5} className="text-muted-foreground">
 												No deployments registered.
 											</TableCell>
 										</TableRow>
@@ -529,10 +520,7 @@ function RouteComponent() {
 							>
 								Cancel
 							</Button>
-							<Button
-								type="submit"
-								disabled={!bindOrgId || bind.isPending}
-							>
+							<Button type="submit" disabled={!bindOrgId || bind.isPending}>
 								{bind.isPending ? "Binding…" : "Bind"}
 							</Button>
 						</SheetFooter>
@@ -549,9 +537,7 @@ function RouteComponent() {
 					onSave={(payload) =>
 						putOverlay.mutate({ regionId, orgId: overlayOrgId, payload })
 					}
-					onInherit={() =>
-						delOverlay.mutate({ regionId, orgId: overlayOrgId })
-					}
+					onInherit={() => delOverlay.mutate({ regionId, orgId: overlayOrgId })}
 					saving={putOverlay.isPending}
 					inheriting={delOverlay.isPending}
 				/>

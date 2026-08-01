@@ -1,12 +1,13 @@
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
 import { providersQueryOptions } from "#/api/provider";
 import { quotasQueryOptions } from "#/api/quota";
 import { regionOverlayQueryOptions } from "#/api/regions";
 import { routesQueryOptions } from "#/api/routing";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
+import { JsonCodeEditor } from "#/components/ui/json-code-editor";
 import { Label } from "#/components/ui/label";
 import {
 	Select,
@@ -23,15 +24,16 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "#/components/ui/sheet";
-import {
-	Tabs,
-	TabsContent,
-	TabsList,
-	TabsTrigger,
-} from "#/components/ui/tabs";
-import { JsonCodeEditor } from "#/components/ui/json-code-editor";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
+
+function rowKey(): string {
+	return typeof crypto !== "undefined" && crypto.randomUUID
+		? crypto.randomUUID()
+		: Math.random().toString(36).substring(2, 15);
+}
 
 export type OverlayProviderRow = {
+	key: string;
 	id: string;
 	name: string;
 	type: string;
@@ -39,12 +41,14 @@ export type OverlayProviderRow = {
 };
 
 export type OverlayRouteRow = {
+	key: string;
 	model: string;
 	provider_id: string;
 	target_model: string;
 };
 
 export type OverlayQuotaRow = {
+	key: string;
 	id: string;
 	scope_type: string;
 	scope_id: string;
@@ -81,7 +85,7 @@ const SCOPE_TYPES = [
 const METRICS = ["requests", "tokens", "cost"] as const;
 const WINDOWS = ["total", "minute", "hour", "day"] as const;
 
-function emptyDraft(orgId: string): OverlayDraft {
+function emptyDraft(_orgId: string): OverlayDraft {
 	return {
 		providers: [],
 		routes: [],
@@ -90,9 +94,13 @@ function emptyDraft(orgId: string): OverlayDraft {
 	};
 }
 
-function parsePayload(payload: Record<string, unknown>, orgId: string): OverlayDraft {
+function parsePayload(
+	payload: Record<string, unknown>,
+	orgId: string,
+): OverlayDraft {
 	const providers = Array.isArray(payload.providers)
 		? (payload.providers as OverlayProviderRow[]).map((p) => ({
+				key: rowKey(),
 				id: String(p.id ?? ""),
 				name: String(p.name ?? ""),
 				type: String(p.type ?? "openai"),
@@ -101,6 +109,7 @@ function parsePayload(payload: Record<string, unknown>, orgId: string): OverlayD
 		: [];
 	const routes = Array.isArray(payload.routes)
 		? (payload.routes as OverlayRouteRow[]).map((r) => ({
+				key: rowKey(),
 				model: String(r.model ?? ""),
 				provider_id: String(r.provider_id ?? ""),
 				target_model: String(r.target_model ?? ""),
@@ -108,6 +117,7 @@ function parsePayload(payload: Record<string, unknown>, orgId: string): OverlayD
 		: [];
 	const quotas = Array.isArray(payload.quotas)
 		? (payload.quotas as OverlayQuotaRow[]).map((q, i) => ({
+				key: rowKey(),
 				id: String(q.id ?? `quota_${i + 1}`),
 				scope_type: String(q.scope_type ?? "organization"),
 				scope_id: String(q.scope_id ?? orgId),
@@ -136,9 +146,15 @@ function parsePayload(payload: Record<string, unknown>, orgId: string): OverlayD
 
 function draftToPayload(draft: OverlayDraft): Record<string, unknown> {
 	const payload: Record<string, unknown> = {
-		providers: draft.providers.filter((p) => p.id.trim()),
-		routes: draft.routes.filter((r) => r.model.trim() && r.provider_id.trim()),
-		quotas: draft.quotas.filter((q) => q.scope_id.trim() && q.limit_value > 0),
+		providers: draft.providers
+			.filter((p) => p.id.trim())
+			.map(({ key: _key, ...p }) => p),
+		routes: draft.routes
+			.filter((r) => r.model.trim() && r.provider_id.trim())
+			.map(({ key: _key, ...r }) => r),
+		quotas: draft.quotas
+			.filter((q) => q.scope_id.trim() && q.limit_value > 0)
+			.map(({ key: _key, ...q }) => q),
 		...draft.advanced,
 	};
 	return payload;
@@ -187,17 +203,20 @@ export function RegionOverlaySheet({
 
 	const copyFromBase = () => {
 		const providers = (providersQ.data ?? []).map((p) => ({
+			key: rowKey(),
 			id: p.id,
 			name: p.name,
 			type: p.type,
 			base_url: p.base_url,
 		}));
 		const routes = (routesQ.data ?? []).map((r) => ({
+			key: rowKey(),
 			model: r.model,
 			provider_id: r.provider_id,
 			target_model: r.target_model,
 		}));
 		const quotas = (quotasQ.data ?? []).map((q) => ({
+			key: rowKey(),
 			id: q.id,
 			scope_type: q.scope_type,
 			scope_id: q.scope_id,
@@ -213,7 +232,11 @@ export function RegionOverlaySheet({
 		let advanced: Record<string, unknown> = {};
 		try {
 			advanced = JSON.parse(advancedText) as Record<string, unknown>;
-			if (advanced === null || Array.isArray(advanced) || typeof advanced !== "object") {
+			if (
+				advanced === null ||
+				Array.isArray(advanced) ||
+				typeof advanced !== "object"
+			) {
 				toast.error("Advanced JSON must be an object");
 				return;
 			}
@@ -270,10 +293,7 @@ export function RegionOverlaySheet({
 
 						<TabsContent value="routes" className="space-y-3 pt-3">
 							{draft.routes.map((row, i) => (
-								<div
-									key={`route-${i}`}
-									className="grid gap-2 rounded-md border p-3"
-								>
+								<div key={row.key} className="grid gap-2 rounded-md border p-3">
 									<div className="grid gap-2 sm:grid-cols-3">
 										<div className="grid gap-1">
 											<Label>Model</Label>
@@ -344,7 +364,12 @@ export function RegionOverlaySheet({
 										...draft,
 										routes: [
 											...draft.routes,
-											{ model: "", provider_id: "", target_model: "" },
+											{
+												key: rowKey(),
+												model: "",
+												provider_id: "",
+												target_model: "",
+											},
 										],
 									})
 								}
@@ -355,10 +380,7 @@ export function RegionOverlaySheet({
 
 						<TabsContent value="providers" className="space-y-3 pt-3">
 							{draft.providers.map((row, i) => (
-								<div
-									key={`prov-${i}`}
-									className="grid gap-2 rounded-md border p-3"
-								>
+								<div key={row.key} className="grid gap-2 rounded-md border p-3">
 									<div className="grid gap-2 sm:grid-cols-2">
 										<div className="grid gap-1">
 											<Label>ID</Label>
@@ -432,9 +454,7 @@ export function RegionOverlaySheet({
 											onClick={() =>
 												setDraft({
 													...draft,
-													providers: draft.providers.filter(
-														(_, j) => j !== i,
-													),
+													providers: draft.providers.filter((_, j) => j !== i),
 												})
 											}
 										>
@@ -453,6 +473,7 @@ export function RegionOverlaySheet({
 										providers: [
 											...draft.providers,
 											{
+												key: rowKey(),
 												id: "",
 												name: "",
 												type: "openai",
@@ -468,10 +489,7 @@ export function RegionOverlaySheet({
 
 						<TabsContent value="quotas" className="space-y-3 pt-3">
 							{draft.quotas.map((row, i) => (
-								<div
-									key={`quota-${i}`}
-									className="grid gap-2 rounded-md border p-3"
-								>
+								<div key={row.key} className="grid gap-2 rounded-md border p-3">
 									<div className="grid gap-2 sm:grid-cols-2">
 										<div className="grid gap-1">
 											<Label>ID</Label>
@@ -619,6 +637,7 @@ export function RegionOverlaySheet({
 										quotas: [
 											...draft.quotas,
 											{
+												key: rowKey(),
 												id: `quota_${draft.quotas.length + 1}`,
 												scope_type: "organization",
 												scope_id: orgId,

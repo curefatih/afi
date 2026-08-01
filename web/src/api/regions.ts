@@ -37,8 +37,7 @@ export const regionsQueryOptions = () =>
 export const regionQueryOptions = (regionId: string) =>
 	queryOptions({
 		queryKey: ["regions", regionId],
-		queryFn: () =>
-			apiFetch<Region>(`/api/v1/platform/regions/${regionId}`),
+		queryFn: () => apiFetch<Region>(`/api/v1/platform/regions/${regionId}`),
 		enabled: !!regionId,
 	});
 
@@ -177,13 +176,7 @@ export const bindAllOrgsMutationOptions = () =>
 
 export const unbindOrgMutationOptions = () =>
 	mutationOptions({
-		mutationFn: ({
-			regionId,
-			orgId,
-		}: {
-			regionId: string;
-			orgId: string;
-		}) =>
+		mutationFn: ({ regionId, orgId }: { regionId: string; orgId: string }) =>
 			apiFetch<void>(
 				`/api/v1/platform/regions/${regionId}/organizations/${orgId}`,
 				{ method: "DELETE" },
@@ -209,13 +202,7 @@ export const putOverlayMutationOptions = () =>
 
 export const deleteOverlayMutationOptions = () =>
 	mutationOptions({
-		mutationFn: ({
-			regionId,
-			orgId,
-		}: {
-			regionId: string;
-			orgId: string;
-		}) =>
+		mutationFn: ({ regionId, orgId }: { regionId: string; orgId: string }) =>
 			apiFetch<void>(
 				`/api/v1/platform/regions/${regionId}/organizations/${orgId}/overlay`,
 				{ method: "DELETE" },

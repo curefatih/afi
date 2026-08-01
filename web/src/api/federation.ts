@@ -33,10 +33,10 @@ export const registerFederationPeerMutationOptions = () =>
 			region_id: string;
 			base_url?: string;
 		}) =>
-			apiFetch<FederationPeerWithToken>(
-				"/api/v1/platform/federation/peers",
-				{ method: "POST", body },
-			),
+			apiFetch<FederationPeerWithToken>("/api/v1/platform/federation/peers", {
+				method: "POST",
+				body,
+			}),
 	});
 
 export const updateFederationPeerMutationOptions = () =>
