@@ -39,11 +39,14 @@ import { Route as AuthenticatedAppAccountRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAppA2aRouteImport } from './routes/_authenticated/app/a2a'
 import { Route as AuthenticatedAppSplatRouteImport } from './routes/_authenticated/app/$'
 import { Route as AuthenticatedAppTeamsIndexRouteImport } from './routes/_authenticated/app/teams/index'
+import { Route as AuthenticatedAppRegionsIndexRouteImport } from './routes/_authenticated/app/regions/index'
 import { Route as AuthenticatedAppProjectsIndexRouteImport } from './routes/_authenticated/app/projects/index'
+import { Route as AuthenticatedAppFederationIndexRouteImport } from './routes/_authenticated/app/federation/index'
 import { Route as AuthenticatedAppTeamsTeamIdRouteImport } from './routes/_authenticated/app/teams/$teamId'
 import { Route as AuthenticatedAppSettingsTeamsRouteImport } from './routes/_authenticated/app/settings/teams'
 import { Route as AuthenticatedAppSettingsLimitsRouteImport } from './routes/_authenticated/app/settings/limits'
 import { Route as AuthenticatedAppSettingsGeneralRouteImport } from './routes/_authenticated/app/settings/general'
+import { Route as AuthenticatedAppRegionsRegionIdRouteImport } from './routes/_authenticated/app/regions/$regionId'
 import { Route as AuthenticatedAppProjectsProjectIdRouteImport } from './routes/_authenticated/app/projects/$projectId'
 import { Route as AuthenticatedAppPlaygroundTtsRouteImport } from './routes/_authenticated/app/playground/tts'
 import { Route as AuthenticatedAppPlaygroundSttRouteImport } from './routes/_authenticated/app/playground/stt'
@@ -207,10 +210,22 @@ const AuthenticatedAppTeamsIndexRoute =
     path: '/teams/',
     getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
+const AuthenticatedAppRegionsIndexRoute =
+  AuthenticatedAppRegionsIndexRouteImport.update({
+    id: '/regions/',
+    path: '/regions/',
+    getParentRoute: () => AuthenticatedAppRouteRoute,
+  } as any)
 const AuthenticatedAppProjectsIndexRoute =
   AuthenticatedAppProjectsIndexRouteImport.update({
     id: '/projects/',
     path: '/projects/',
+    getParentRoute: () => AuthenticatedAppRouteRoute,
+  } as any)
+const AuthenticatedAppFederationIndexRoute =
+  AuthenticatedAppFederationIndexRouteImport.update({
+    id: '/federation/',
+    path: '/federation/',
     getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
 const AuthenticatedAppTeamsTeamIdRoute =
@@ -235,6 +250,12 @@ const AuthenticatedAppSettingsGeneralRoute =
   AuthenticatedAppSettingsGeneralRouteImport.update({
     id: '/settings/general',
     path: '/settings/general',
+    getParentRoute: () => AuthenticatedAppRouteRoute,
+  } as any)
+const AuthenticatedAppRegionsRegionIdRoute =
+  AuthenticatedAppRegionsRegionIdRouteImport.update({
+    id: '/regions/$regionId',
+    path: '/regions/$regionId',
     getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
 const AuthenticatedAppProjectsProjectIdRoute =
@@ -310,11 +331,14 @@ export interface FileRoutesByFullPath {
   '/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
   '/app/playground/tts': typeof AuthenticatedAppPlaygroundTtsRoute
   '/app/projects/$projectId': typeof AuthenticatedAppProjectsProjectIdRoute
+  '/app/regions/$regionId': typeof AuthenticatedAppRegionsRegionIdRoute
   '/app/settings/general': typeof AuthenticatedAppSettingsGeneralRoute
   '/app/settings/limits': typeof AuthenticatedAppSettingsLimitsRoute
   '/app/settings/teams': typeof AuthenticatedAppSettingsTeamsRoute
   '/app/teams/$teamId': typeof AuthenticatedAppTeamsTeamIdRoute
+  '/app/federation/': typeof AuthenticatedAppFederationIndexRoute
   '/app/projects/': typeof AuthenticatedAppProjectsIndexRoute
+  '/app/regions/': typeof AuthenticatedAppRegionsIndexRoute
   '/app/teams/': typeof AuthenticatedAppTeamsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -352,11 +376,14 @@ export interface FileRoutesByTo {
   '/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
   '/app/playground/tts': typeof AuthenticatedAppPlaygroundTtsRoute
   '/app/projects/$projectId': typeof AuthenticatedAppProjectsProjectIdRoute
+  '/app/regions/$regionId': typeof AuthenticatedAppRegionsRegionIdRoute
   '/app/settings/general': typeof AuthenticatedAppSettingsGeneralRoute
   '/app/settings/limits': typeof AuthenticatedAppSettingsLimitsRoute
   '/app/settings/teams': typeof AuthenticatedAppSettingsTeamsRoute
   '/app/teams/$teamId': typeof AuthenticatedAppTeamsTeamIdRoute
+  '/app/federation': typeof AuthenticatedAppFederationIndexRoute
   '/app/projects': typeof AuthenticatedAppProjectsIndexRoute
+  '/app/regions': typeof AuthenticatedAppRegionsIndexRoute
   '/app/teams': typeof AuthenticatedAppTeamsIndexRoute
 }
 export interface FileRoutesById {
@@ -396,11 +423,14 @@ export interface FileRoutesById {
   '/_authenticated/app/playground/stt': typeof AuthenticatedAppPlaygroundSttRoute
   '/_authenticated/app/playground/tts': typeof AuthenticatedAppPlaygroundTtsRoute
   '/_authenticated/app/projects/$projectId': typeof AuthenticatedAppProjectsProjectIdRoute
+  '/_authenticated/app/regions/$regionId': typeof AuthenticatedAppRegionsRegionIdRoute
   '/_authenticated/app/settings/general': typeof AuthenticatedAppSettingsGeneralRoute
   '/_authenticated/app/settings/limits': typeof AuthenticatedAppSettingsLimitsRoute
   '/_authenticated/app/settings/teams': typeof AuthenticatedAppSettingsTeamsRoute
   '/_authenticated/app/teams/$teamId': typeof AuthenticatedAppTeamsTeamIdRoute
+  '/_authenticated/app/federation/': typeof AuthenticatedAppFederationIndexRoute
   '/_authenticated/app/projects/': typeof AuthenticatedAppProjectsIndexRoute
+  '/_authenticated/app/regions/': typeof AuthenticatedAppRegionsIndexRoute
   '/_authenticated/app/teams/': typeof AuthenticatedAppTeamsIndexRoute
 }
 export interface FileRouteTypes {
@@ -441,11 +471,14 @@ export interface FileRouteTypes {
     | '/app/playground/stt'
     | '/app/playground/tts'
     | '/app/projects/$projectId'
+    | '/app/regions/$regionId'
     | '/app/settings/general'
     | '/app/settings/limits'
     | '/app/settings/teams'
     | '/app/teams/$teamId'
+    | '/app/federation/'
     | '/app/projects/'
+    | '/app/regions/'
     | '/app/teams/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -483,11 +516,14 @@ export interface FileRouteTypes {
     | '/app/playground/stt'
     | '/app/playground/tts'
     | '/app/projects/$projectId'
+    | '/app/regions/$regionId'
     | '/app/settings/general'
     | '/app/settings/limits'
     | '/app/settings/teams'
     | '/app/teams/$teamId'
+    | '/app/federation'
     | '/app/projects'
+    | '/app/regions'
     | '/app/teams'
   id:
     | '__root__'
@@ -526,11 +562,14 @@ export interface FileRouteTypes {
     | '/_authenticated/app/playground/stt'
     | '/_authenticated/app/playground/tts'
     | '/_authenticated/app/projects/$projectId'
+    | '/_authenticated/app/regions/$regionId'
     | '/_authenticated/app/settings/general'
     | '/_authenticated/app/settings/limits'
     | '/_authenticated/app/settings/teams'
     | '/_authenticated/app/teams/$teamId'
+    | '/_authenticated/app/federation/'
     | '/_authenticated/app/projects/'
+    | '/_authenticated/app/regions/'
     | '/_authenticated/app/teams/'
   fileRoutesById: FileRoutesById
 }
@@ -753,11 +792,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppTeamsIndexRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
+    '/_authenticated/app/regions/': {
+      id: '/_authenticated/app/regions/'
+      path: '/regions'
+      fullPath: '/app/regions/'
+      preLoaderRoute: typeof AuthenticatedAppRegionsIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
     '/_authenticated/app/projects/': {
       id: '/_authenticated/app/projects/'
       path: '/projects'
       fullPath: '/app/projects/'
       preLoaderRoute: typeof AuthenticatedAppProjectsIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/_authenticated/app/federation/': {
+      id: '/_authenticated/app/federation/'
+      path: '/federation'
+      fullPath: '/app/federation/'
+      preLoaderRoute: typeof AuthenticatedAppFederationIndexRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
     '/_authenticated/app/teams/$teamId': {
@@ -786,6 +839,13 @@ declare module '@tanstack/react-router' {
       path: '/settings/general'
       fullPath: '/app/settings/general'
       preLoaderRoute: typeof AuthenticatedAppSettingsGeneralRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
+    '/_authenticated/app/regions/$regionId': {
+      id: '/_authenticated/app/regions/$regionId'
+      path: '/regions/$regionId'
+      fullPath: '/app/regions/$regionId'
+      preLoaderRoute: typeof AuthenticatedAppRegionsRegionIdRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
     '/_authenticated/app/projects/$projectId': {
@@ -881,11 +941,14 @@ interface AuthenticatedAppRouteRouteChildren {
   AuthenticatedAppPlaygroundSttRoute: typeof AuthenticatedAppPlaygroundSttRoute
   AuthenticatedAppPlaygroundTtsRoute: typeof AuthenticatedAppPlaygroundTtsRoute
   AuthenticatedAppProjectsProjectIdRoute: typeof AuthenticatedAppProjectsProjectIdRoute
+  AuthenticatedAppRegionsRegionIdRoute: typeof AuthenticatedAppRegionsRegionIdRoute
   AuthenticatedAppSettingsGeneralRoute: typeof AuthenticatedAppSettingsGeneralRoute
   AuthenticatedAppSettingsLimitsRoute: typeof AuthenticatedAppSettingsLimitsRoute
   AuthenticatedAppSettingsTeamsRoute: typeof AuthenticatedAppSettingsTeamsRoute
   AuthenticatedAppTeamsTeamIdRoute: typeof AuthenticatedAppTeamsTeamIdRoute
+  AuthenticatedAppFederationIndexRoute: typeof AuthenticatedAppFederationIndexRoute
   AuthenticatedAppProjectsIndexRoute: typeof AuthenticatedAppProjectsIndexRoute
+  AuthenticatedAppRegionsIndexRoute: typeof AuthenticatedAppRegionsIndexRoute
   AuthenticatedAppTeamsIndexRoute: typeof AuthenticatedAppTeamsIndexRoute
 }
 
@@ -916,11 +979,14 @@ const AuthenticatedAppRouteRouteChildren: AuthenticatedAppRouteRouteChildren = {
   AuthenticatedAppPlaygroundTtsRoute: AuthenticatedAppPlaygroundTtsRoute,
   AuthenticatedAppProjectsProjectIdRoute:
     AuthenticatedAppProjectsProjectIdRoute,
+  AuthenticatedAppRegionsRegionIdRoute: AuthenticatedAppRegionsRegionIdRoute,
   AuthenticatedAppSettingsGeneralRoute: AuthenticatedAppSettingsGeneralRoute,
   AuthenticatedAppSettingsLimitsRoute: AuthenticatedAppSettingsLimitsRoute,
   AuthenticatedAppSettingsTeamsRoute: AuthenticatedAppSettingsTeamsRoute,
   AuthenticatedAppTeamsTeamIdRoute: AuthenticatedAppTeamsTeamIdRoute,
+  AuthenticatedAppFederationIndexRoute: AuthenticatedAppFederationIndexRoute,
   AuthenticatedAppProjectsIndexRoute: AuthenticatedAppProjectsIndexRoute,
+  AuthenticatedAppRegionsIndexRoute: AuthenticatedAppRegionsIndexRoute,
   AuthenticatedAppTeamsIndexRoute: AuthenticatedAppTeamsIndexRoute,
 }
 

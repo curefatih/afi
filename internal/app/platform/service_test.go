@@ -10,17 +10,27 @@ import (
 	"github.com/curefatih/afi/internal/app/platform"
 	"github.com/curefatih/afi/internal/audit"
 	"github.com/curefatih/afi/internal/credentials"
+	"github.com/curefatih/afi/internal/federation"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/regions"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
 	"github.com/curefatih/afi/internal/usage"
 )
 
-type memSnap struct{ n int }
+type memSnap struct {
+	n      int
+	region []string
+}
 
 func (m *memSnap) PublishSnapshot(context.Context) error { m.n++; return nil }
+func (m *memSnap) PublishRegionSnapshots(_ context.Context, regionIDs ...string) error {
+	m.n++
+	m.region = append([]string(nil), regionIDs...)
+	return nil
+}
 
 type memEvents struct{ names []platform.EventName }
 
@@ -262,6 +272,115 @@ func (m *memAPI) GetCredentialAssignmentOrgID(context.Context, string) (string, 
 	return "org_1", nil
 }
 func (m *memAPI) DeleteCredentialAssignment(context.Context, string) error { panic("unused") }
+
+func (m *memAPI) ListRegions(context.Context) ([]regions.Region, error) { return nil, nil }
+func (m *memAPI) GetRegion(context.Context, string) (*regions.Region, error) {
+	return nil, kernel.ErrNotFound
+}
+func (m *memAPI) CreateRegion(context.Context, string, string) (*regions.Region, error) {
+	panic("unused")
+}
+func (m *memAPI) UpdateRegion(context.Context, string, string, string) (*regions.Region, error) {
+	panic("unused")
+}
+func (m *memAPI) ListDeployments(context.Context, string) ([]regions.GatewayDeployment, error) {
+	return nil, nil
+}
+func (m *memAPI) GetDeployment(context.Context, string) (*regions.GatewayDeployment, error) {
+	return nil, kernel.ErrNotFound
+}
+func (m *memAPI) RegisterDeployment(context.Context, string, string, string) (*regions.DeploymentWithToken, error) {
+	panic("unused")
+}
+func (m *memAPI) RotateDeploymentJoinToken(context.Context, string) (*regions.DeploymentWithToken, error) {
+	panic("unused")
+}
+func (m *memAPI) RecordDeploymentHeartbeat(context.Context, string, string, int64, string) (*regions.GatewayDeployment, error) {
+	panic("unused")
+}
+func (m *memAPI) AuthenticateDeploymentJoinToken(context.Context, string) (*regions.GatewayDeployment, error) {
+	return nil, kernel.ErrUnauthorized
+}
+func (m *memAPI) ListRegionMemberships(context.Context, string) ([]regions.OrgRegionMembership, error) {
+	return nil, nil
+}
+func (m *memAPI) BindOrgToRegion(_ context.Context, regionID, orgID, status string) (*regions.OrgRegionMembership, error) {
+	if status == "" {
+		status = regions.MembershipStatusActive
+	}
+	return &regions.OrgRegionMembership{
+		OrganizationID: orgID, RegionID: regionID, Status: status,
+	}, nil
+}
+func (m *memAPI) BindAllOrgsToRegion(context.Context, string) (int, error) { return 2, nil }
+func (m *memAPI) UnbindOrgFromRegion(context.Context, string, string) error { return nil }
+func (m *memAPI) GetRegionOverlay(context.Context, string, string) (*regions.RegionConfigOverlay, error) {
+	return nil, kernel.ErrNotFound
+}
+func (m *memAPI) PutRegionOverlay(_ context.Context, regionID, orgID string, payload regions.OverlayPayload) (*regions.RegionConfigOverlay, error) {
+	return &regions.RegionConfigOverlay{
+		OrganizationID: orgID, RegionID: regionID, Payload: payload,
+	}, nil
+}
+func (m *memAPI) DeleteRegionOverlay(context.Context, string, string) error { return nil }
+
+func (m *memAPI) ListFederationPeers(context.Context) ([]federation.ControlPlanePeer, error) {
+	return nil, nil
+}
+func (m *memAPI) GetFederationPeer(context.Context, string) (*federation.ControlPlanePeer, error) {
+	return nil, kernel.ErrNotFound
+}
+func (m *memAPI) RegisterFederationPeer(context.Context, string, string, string) (*federation.PeerWithToken, error) {
+	panic("unused")
+}
+func (m *memAPI) UpdateFederationPeer(context.Context, string, string, string, string) (*federation.ControlPlanePeer, error) {
+	panic("unused")
+}
+func (m *memAPI) RotateFederationPeerJoinToken(context.Context, string) (*federation.PeerWithToken, error) {
+	panic("unused")
+}
+func (m *memAPI) AuthenticateFederationPeerToken(context.Context, string) (*federation.ControlPlanePeer, error) {
+	return nil, kernel.ErrUnauthorized
+}
+func (m *memAPI) JoinFederationPeer(context.Context, string) (*federation.ControlPlanePeer, error) {
+	return nil, kernel.ErrUnauthorized
+}
+func (m *memAPI) ExportFederationRegion(context.Context, string, int64, string) (*federation.RegionExport, error) {
+	return nil, kernel.ErrNotFound
+}
+func (m *memAPI) RecordFederationPeerSync(context.Context, string, int64, string) error { return nil }
+func (m *memAPI) ListFederationUsageReports(context.Context, string, *time.Time, *time.Time, int) ([]usage.Record, error) {
+	return nil, nil
+}
+func (m *memAPI) OpenFederationPeerJoinToken(context.Context, string) (string, error) {
+	return "", kernel.ErrNotFound
+}
+
+func TestBindOrgPublishesAffectedRegionOnly(t *testing.T) {
+	t.Parallel()
+	api := &memAPI{}
+	snap := &memSnap{}
+	svc := platform.New(api, snap)
+	if _, err := svc.BindOrgToRegion(context.Background(), "reg_eu", "org_a", "active"); err != nil {
+		t.Fatal(err)
+	}
+	if snap.n != 1 || len(snap.region) != 1 || snap.region[0] != "reg_eu" {
+		t.Fatalf("snap n=%d region=%v", snap.n, snap.region)
+	}
+}
+
+func TestPutOverlayPublishesAffectedRegionOnly(t *testing.T) {
+	t.Parallel()
+	api := &memAPI{}
+	snap := &memSnap{}
+	svc := platform.New(api, snap)
+	if _, err := svc.PutRegionOverlay(context.Background(), "reg_eu", "org_a", regions.OverlayPayload{}); err != nil {
+		t.Fatal(err)
+	}
+	if snap.n != 1 || len(snap.region) != 1 || snap.region[0] != "reg_eu" {
+		t.Fatalf("snap n=%d region=%v", snap.n, snap.region)
+	}
+}
 
 func TestServiceCreateQuotaPublishesAndEmits(t *testing.T) {
 	t.Parallel()

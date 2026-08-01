@@ -159,6 +159,74 @@ func (q *UsageQueries) List(ctx context.Context, orgID string, f usage.Filter) (
 	return out, rows.Err()
 }
 
+// ListReportsSince returns usage events for federation report pull (newest first).
+// orgID empty = all orgs. since/until filter created_at when set.
+func (q *UsageQueries) ListReportsSince(ctx context.Context, orgID string, since, until *time.Time, limit int) ([]usage.Record, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+	args := []any{}
+	var parts []string
+	if orgID = strings.TrimSpace(orgID); orgID != "" {
+		args = append(args, orgID)
+		parts = append(parts, fmt.Sprintf("e.organization_id = $%d", len(args)))
+	}
+	if since != nil && !since.IsZero() {
+		args = append(args, *since)
+		parts = append(parts, fmt.Sprintf("e.created_at >= $%d", len(args)))
+	}
+	if until != nil && !until.IsZero() {
+		args = append(args, *until)
+		parts = append(parts, fmt.Sprintf("e.created_at < $%d", len(args)))
+	}
+	where := "TRUE"
+	if len(parts) > 0 {
+		where = strings.Join(parts, " AND ")
+	}
+	args = append(args, limit)
+	limitArg := len(args)
+	rows, err := q.Pool.Query(ctx, fmt.Sprintf(`
+		SELECT e.id, e.organization_id, e.project_id, e.api_key_id, e.signing_key_id, e.signer_key_id, e.auth_method,
+			COALESCE(e.credential_id, ''), e.used_byok,
+			e.model, COALESCE(e.provider_type, ''), e.status,
+			e.latency_ms, e.prompt_tokens, e.completion_tokens, e.cost_usd, e.created_at,
+			e.modality, e.metrics, e.tags
+		FROM usage_events e
+		WHERE %s
+		ORDER BY e.created_at DESC
+		LIMIT $%d
+	`, where, limitArg), args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []usage.Record
+	for rows.Next() {
+		var e usage.Record
+		var metricsJSON, tagsJSON []byte
+		if err := rows.Scan(
+			&e.ID, &e.OrganizationID, &e.ProjectID, &e.APIKeyID, &e.SigningKeyID, &e.SignerKeyID, &e.AuthMethod,
+			&e.CredentialID, &e.UsedBYOK,
+			&e.Model, &e.ProviderType, &e.Status,
+			&e.LatencyMs, &e.PromptTokens, &e.CompletionTokens, &e.CostUSD, &e.CreatedAt,
+			&e.Modality, &metricsJSON, &tagsJSON,
+		); err != nil {
+			return nil, err
+		}
+		if len(metricsJSON) > 0 {
+			_ = json.Unmarshal(metricsJSON, &e.Metrics)
+		}
+		if e.Metrics == nil {
+			e.Metrics = map[string]any{}
+		}
+		if len(tagsJSON) > 0 {
+			_ = json.Unmarshal(tagsJSON, &e.Tags)
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
 func metricSumExpr(key string) string {
 	return fmt.Sprintf(`COALESCE(SUM(CASE WHEN jsonb_typeof(e.metrics->'%s') = 'number'
 		THEN (e.metrics->>'%s')::double precision ELSE 0 END), 0)`, key, key)

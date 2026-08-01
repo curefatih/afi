@@ -57,13 +57,17 @@ func (s *Server) handleListUsage(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	list, err := s.app.ListUsage(r.Context(), r.PathValue("orgID"), f)
+	orgID := r.PathValue("orgID")
+	list, err := s.app.ListUsage(r.Context(), orgID, f)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if list == nil {
 		list = []UsageEvent{}
+	}
+	if remote := s.fetchFederationUsageForOrg(r.Context(), orgID, f); len(remote) > 0 {
+		list = mergeUsageEvents(list, remote, f.Limit)
 	}
 	writeJSON(w, http.StatusOK, list)
 }
@@ -77,7 +81,8 @@ func (s *Server) handleUsageSummary(w http.ResponseWriter, r *http.Request) {
 	if f.GroupBy == "" {
 		f.GroupBy = "day"
 	}
-	list, err := s.app.SummarizeUsage(r.Context(), r.PathValue("orgID"), f)
+	orgID := r.PathValue("orgID")
+	list, err := s.app.SummarizeUsage(r.Context(), orgID, f)
 	if errors.Is(err, kernel.ErrInvalidRequest) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
@@ -88,6 +93,9 @@ func (s *Server) handleUsageSummary(w http.ResponseWriter, r *http.Request) {
 	}
 	if list == nil {
 		list = []UsageSummaryBucket{}
+	}
+	if remote := s.fetchFederationUsageForOrg(r.Context(), orgID, f); len(remote) > 0 {
+		list = mergeUsageSummary(list, summarizeUsageRecords(remote, f.GroupBy))
 	}
 	writeJSON(w, http.StatusOK, list)
 }

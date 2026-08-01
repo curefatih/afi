@@ -36,6 +36,8 @@ tags:
 - name: Credentials
 - name: Usage
 - name: Audit
+- name: Regions
+- name: Federation
 paths:
   /healthz:
     get:
@@ -60,6 +62,619 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
       security: []
+  /api/v1/platform/regions:
+    get:
+      operationId: listRegions
+      summary: List regions
+      tags:
+      - Regions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Region'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin (users.role=admin).
+    post:
+      operationId: createRegion
+      summary: Create region
+      tags:
+      - Regions
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Region'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin (users.role=admin).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRegion'
+  /api/v1/platform/regions/{regionID}:
+    parameters:
+      - name: regionID
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getRegion
+      summary: Get region
+      tags:
+      - Regions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Region'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin (users.role=admin).
+    patch:
+      operationId: updateRegion
+      summary: Update region
+      tags:
+      - Regions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Region'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin (users.role=admin).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRegion'
+  /api/v1/platform/regions/{regionID}/deployments:
+    parameters:
+      - name: regionID
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: listDeployments
+      summary: List gateway deployments in a region
+      tags:
+      - Regions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GatewayDeployment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin (users.role=admin).
+    post:
+      operationId: registerDeployment
+      summary: Register gateway deployment
+      tags:
+      - Regions
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentWithToken'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin (users.role=admin).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDeployment'
+  /api/v1/platform/regions/{regionID}/deployments/{deploymentID}:
+    parameters:
+      - name: regionID
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: deploymentID
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getDeployment
+      summary: Get gateway deployment
+      tags:
+      - Regions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GatewayDeployment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin (users.role=admin).
+  /api/v1/platform/regions/{regionID}/deployments/{deploymentID}/rotate-join-token:
+    parameters:
+      - name: regionID
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: deploymentID
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: rotateDeploymentJoinToken
+      summary: Rotate deployment join token
+      tags:
+      - Regions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentWithToken'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin (users.role=admin).
+  /api/v1/platform/regions/{regionID}/organizations:
+    parameters:
+      - name: regionID
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: listRegionMemberships
+      summary: List organization memberships for a region
+      tags:
+      - Regions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrgRegionMembership'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin (users.role=admin).
+    post:
+      operationId: bindOrgToRegion
+      summary: Bind an organization to a region
+      tags:
+      - Regions
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgRegionMembership'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin (users.role=admin). Unbound orgs are omitted from regional snapshots.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BindOrgToRegion'
+  /api/v1/platform/regions/{regionID}/organizations/bind-all:
+    parameters:
+      - name: regionID
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: bindAllOrgsToRegion
+      summary: Bind all organizations to a region
+      tags:
+      - Regions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - bound
+                properties:
+                  bound:
+                    type: integer
+                    description: Number of organizations bound
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin. Idempotent upsert of active membership for every organization.
+  /api/v1/platform/regions/{regionID}/organizations/{orgID}:
+    parameters:
+      - name: regionID
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: orgID
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: unbindOrgFromRegion
+      summary: Unbind an organization from a region
+      tags:
+      - Regions
+      responses:
+        '204':
+          description: No Content
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin (users.role=admin).
+  /api/v1/platform/regions/{regionID}/organizations/{orgID}/overlay:
+    parameters:
+      - name: regionID
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: orgID
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getRegionOverlay
+      summary: Get region config overlay for an organization
+      tags:
+      - Regions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegionConfigOverlay'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin. Absence means the org inherits base gateway config in this region.
+    put:
+      operationId: putRegionOverlay
+      summary: Replace region config overlay (full replace)
+      tags:
+      - Regions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegionConfigOverlay'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin. Presence replaces the org gateway config slice for this region (no field-level merge).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegionOverlayPayload'
+    delete:
+      operationId: deleteRegionOverlay
+      summary: Delete overlay and inherit base org config
+      tags:
+      - Regions
+      responses:
+        '204':
+          description: No Content
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin (users.role=admin).
+  /api/v1/platform/federation/peers:
+    get:
+      operationId: listFederationPeers
+      summary: List federation peers
+      tags:
+      - Federation
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ControlPlanePeer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      description: Requires platform-admin (users.role=admin). Lists regional control planes trusted by this hub.
+    post:
+      operationId: registerFederationPeer
+      summary: Register a federation peer
+      tags:
+      - Federation
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FederationPeerWithToken'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin. Returns the join token once; configure it on the regional control plane.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterFederationPeer'
+  /api/v1/platform/federation/peers/{peerID}:
+    parameters:
+      - name: peerID
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getFederationPeer
+      summary: Get federation peer
+      tags:
+      - Federation
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlPlanePeer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin (users.role=admin).
+    patch:
+      operationId: updateFederationPeer
+      summary: Update federation peer
+      tags:
+      - Federation
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlPlanePeer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin. Use status=disabled to revoke pull access.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFederationPeer'
+  /api/v1/platform/federation/peers/{peerID}/rotate-join-token:
+    parameters:
+      - name: peerID
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: rotateFederationPeerJoinToken
+      summary: Rotate federation peer join token
+      tags:
+      - Federation
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FederationPeerWithToken'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: Requires platform-admin. Invalidates the previous join token.
+  /api/v1/platform/federation/peers/{peerID}/usage-reports:
+    parameters:
+      - name: peerID
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: pullFederationPeerUsageReports
+      summary: Pull usage reports from a federation peer
+      tags:
+      - Federation
+      description: |
+        Requires platform-admin. Hub pulls usage events from the regional peer on demand
+        (does not persist them). Uses the stored join token unless X-AFI-Federation-Token is set.
+      parameters:
+      - name: org_id
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Optional organization filter forwarded to the peer
+      - name: since
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: RFC3339 lower bound
+      - name: until
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: RFC3339 upper bound
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 100
+      - name: X-AFI-Federation-Token
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional join-token override (must match this peer)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FederationUsageReports'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          description: Peer pull failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/platform/auth/login:
     post:
       operationId: login
@@ -3066,6 +3681,292 @@ components:
         created_at:
           type: string
           format: date-time
+    Region:
+      type: object
+      required:
+      - id
+      - slug
+      - name
+      - status
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          description: active, draining, or disabled
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CreateRegion:
+      type: object
+      required:
+      - slug
+      - name
+      properties:
+        slug:
+          type: string
+          description: Lowercase alphanumeric with - or _; unique
+        name:
+          type: string
+    UpdateRegion:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          description: active, draining, or disabled
+    OrgRegionMembership:
+      type: object
+      required:
+      - organization_id
+      - region_id
+      - status
+      - created_at
+      - updated_at
+      properties:
+        organization_id:
+          type: string
+        region_id:
+          type: string
+        status:
+          type: string
+          description: active or disabled
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    BindOrgToRegion:
+      type: object
+      required:
+      - organization_id
+      properties:
+        organization_id:
+          type: string
+        status:
+          type: string
+          description: active (default) or disabled
+    RegionOverlayPayload:
+      type: object
+      description: Full replacement gateway config kinds for one org in one region
+      properties:
+        providers:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        routes:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        quotas:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        policies:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        wasm_hooks:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        mcp_backends:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        a2a_agents:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        credentials:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        assignments:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        default_retry:
+          type: object
+          additionalProperties: true
+          nullable: true
+        object_store:
+          type: object
+          additionalProperties: true
+          nullable: true
+    RegionConfigOverlay:
+      type: object
+      required:
+      - organization_id
+      - region_id
+      - payload
+      - created_at
+      - updated_at
+      properties:
+        organization_id:
+          type: string
+        region_id:
+          type: string
+        payload:
+          $ref: '#/components/schemas/RegionOverlayPayload'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    GatewayDeployment:
+      type: object
+      required:
+      - id
+      - region_id
+      - name
+      - status
+      - reported_snapshot_version
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+        region_id:
+          type: string
+        name:
+          type: string
+        public_base_url:
+          type: string
+        status:
+          type: string
+          description: pending, healthy, stale, or disabled
+        last_seen_at:
+          type: string
+          format: date-time
+        reported_snapshot_version:
+          type: integer
+        reported_build:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    DeploymentWithToken:
+      type: object
+      required:
+      - deployment
+      - join_token
+      properties:
+        deployment:
+          $ref: '#/components/schemas/GatewayDeployment'
+        join_token:
+          type: string
+    ControlPlanePeer:
+      type: object
+      required:
+      - id
+      - name
+      - region_id
+      - status
+      - last_sync_cursor
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        region_id:
+          type: string
+        base_url:
+          type: string
+        status:
+          type: string
+          description: pending, active, or disabled
+        last_sync_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_sync_cursor:
+          type: integer
+          format: int64
+        last_sync_error:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    FederationPeerWithToken:
+      type: object
+      required:
+      - peer
+      - join_token
+      properties:
+        peer:
+          $ref: '#/components/schemas/ControlPlanePeer'
+        join_token:
+          type: string
+    RegisterFederationPeer:
+      type: object
+      required:
+      - name
+      - region_id
+      properties:
+        name:
+          type: string
+        region_id:
+          type: string
+        base_url:
+          type: string
+    UpdateFederationPeer:
+      type: object
+      properties:
+        name:
+          type: string
+        base_url:
+          type: string
+        status:
+          type: string
+          description: pending, active, or disabled
+    FederationUsageReports:
+      type: object
+      required:
+      - reports
+      properties:
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsageEvent'
+    RegisterDeployment:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+        public_base_url:
+          type: string
     Environment:
       type: object
       required:

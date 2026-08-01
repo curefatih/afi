@@ -169,6 +169,16 @@ See [Platform domain events](../development/platform-events.md).
 
 Do not run both stacks against the same host ports at once.
 
+## Federation lab (multi-CP)
+
+To try hub + regional control planes and two gateways on one machine:
+
+```bash
+cd examples/federation && ./up.sh
+```
+
+See [examples/federation/README.md](../../examples/federation/README.md). Use different host ports than `make deploy-up` / `make quickstart` (this lab defaults to hub `8081`/`8080` and regional `8181`/`8180`).
+
 ## Troubleshooting
 
 | Symptom | Check |

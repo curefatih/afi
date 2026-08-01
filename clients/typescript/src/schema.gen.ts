@@ -21,6 +21,325 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/regions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List regions
+         * @description Requires platform-admin (users.role=admin).
+         */
+        get: operations["listRegions"];
+        put?: never;
+        /**
+         * Create region
+         * @description Requires platform-admin (users.role=admin).
+         */
+        post: operations["createRegion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/regions/{regionID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Get region
+         * @description Requires platform-admin (users.role=admin).
+         */
+        get: operations["getRegion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update region
+         * @description Requires platform-admin (users.role=admin).
+         */
+        patch: operations["updateRegion"];
+        trace?: never;
+    };
+    "/api/v1/platform/regions/{regionID}/deployments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * List gateway deployments in a region
+         * @description Requires platform-admin (users.role=admin).
+         */
+        get: operations["listDeployments"];
+        put?: never;
+        /**
+         * Register gateway deployment
+         * @description Requires platform-admin (users.role=admin).
+         */
+        post: operations["registerDeployment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/regions/{regionID}/deployments/{deploymentID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+                deploymentID: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Get gateway deployment
+         * @description Requires platform-admin (users.role=admin).
+         */
+        get: operations["getDeployment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/regions/{regionID}/deployments/{deploymentID}/rotate-join-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+                deploymentID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate deployment join token
+         * @description Requires platform-admin (users.role=admin).
+         */
+        post: operations["rotateDeploymentJoinToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/regions/{regionID}/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * List organization memberships for a region
+         * @description Requires platform-admin (users.role=admin).
+         */
+        get: operations["listRegionMemberships"];
+        put?: never;
+        /**
+         * Bind an organization to a region
+         * @description Requires platform-admin (users.role=admin). Unbound orgs are omitted from regional snapshots.
+         */
+        post: operations["bindOrgToRegion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/regions/{regionID}/organizations/bind-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bind all organizations to a region
+         * @description Requires platform-admin. Idempotent upsert of active membership for every organization.
+         */
+        post: operations["bindAllOrgsToRegion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/regions/{regionID}/organizations/{orgID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+                orgID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unbind an organization from a region
+         * @description Requires platform-admin (users.role=admin).
+         */
+        delete: operations["unbindOrgFromRegion"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/regions/{regionID}/organizations/{orgID}/overlay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+                orgID: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Get region config overlay for an organization
+         * @description Requires platform-admin. Absence means the org inherits base gateway config in this region.
+         */
+        get: operations["getRegionOverlay"];
+        /**
+         * Replace region config overlay (full replace)
+         * @description Requires platform-admin. Presence replaces the org gateway config slice for this region (no field-level merge).
+         */
+        put: operations["putRegionOverlay"];
+        post?: never;
+        /**
+         * Delete overlay and inherit base org config
+         * @description Requires platform-admin (users.role=admin).
+         */
+        delete: operations["deleteRegionOverlay"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/federation/peers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List federation peers
+         * @description Requires platform-admin (users.role=admin). Lists regional control planes trusted by this hub.
+         */
+        get: operations["listFederationPeers"];
+        put?: never;
+        /**
+         * Register a federation peer
+         * @description Requires platform-admin. Returns the join token once; configure it on the regional control plane.
+         */
+        post: operations["registerFederationPeer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/federation/peers/{peerID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                peerID: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Get federation peer
+         * @description Requires platform-admin (users.role=admin).
+         */
+        get: operations["getFederationPeer"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update federation peer
+         * @description Requires platform-admin. Use status=disabled to revoke pull access.
+         */
+        patch: operations["updateFederationPeer"];
+        trace?: never;
+    };
+    "/api/v1/platform/federation/peers/{peerID}/rotate-join-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                peerID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate federation peer join token
+         * @description Requires platform-admin. Invalidates the previous join token.
+         */
+        post: operations["rotateFederationPeerJoinToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/federation/peers/{peerID}/usage-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                peerID: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Pull usage reports from a federation peer
+         * @description Requires platform-admin. Hub pulls usage events from the regional peer on demand
+         *     (does not persist them). Uses the stored join token unless X-AFI-Federation-Token is set.
+         */
+        get: operations["pullFederationPeerUsageReports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/auth/login": {
         parameters: {
             query?: never;
@@ -1475,6 +1794,146 @@ export interface components {
             /** Format: date-time */
             created_at?: string;
         };
+        Region: {
+            id: string;
+            slug: string;
+            name: string;
+            /** @description active, draining, or disabled */
+            status: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CreateRegion: {
+            /** @description Lowercase alphanumeric with - or _; unique */
+            slug: string;
+            name: string;
+        };
+        UpdateRegion: {
+            name?: string;
+            /** @description active, draining, or disabled */
+            status?: string;
+        };
+        OrgRegionMembership: {
+            organization_id: string;
+            region_id: string;
+            /** @description active or disabled */
+            status: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        BindOrgToRegion: {
+            organization_id: string;
+            /** @description active (default) or disabled */
+            status?: string;
+        };
+        /** @description Full replacement gateway config kinds for one org in one region */
+        RegionOverlayPayload: {
+            providers?: {
+                [key: string]: unknown;
+            }[];
+            routes?: {
+                [key: string]: unknown;
+            }[];
+            quotas?: {
+                [key: string]: unknown;
+            }[];
+            policies?: {
+                [key: string]: unknown;
+            }[];
+            wasm_hooks?: {
+                [key: string]: unknown;
+            }[];
+            mcp_backends?: {
+                [key: string]: unknown;
+            }[];
+            a2a_agents?: {
+                [key: string]: unknown;
+            }[];
+            credentials?: {
+                [key: string]: unknown;
+            }[];
+            assignments?: {
+                [key: string]: unknown;
+            }[];
+            default_retry?: {
+                [key: string]: unknown;
+            } | null;
+            object_store?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        RegionConfigOverlay: {
+            organization_id: string;
+            region_id: string;
+            payload: components["schemas"]["RegionOverlayPayload"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        GatewayDeployment: {
+            id: string;
+            region_id: string;
+            name: string;
+            public_base_url?: string;
+            /** @description pending, healthy, stale, or disabled */
+            status: string;
+            /** Format: date-time */
+            last_seen_at?: string;
+            reported_snapshot_version: number;
+            reported_build?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        DeploymentWithToken: {
+            deployment: components["schemas"]["GatewayDeployment"];
+            join_token: string;
+        };
+        ControlPlanePeer: {
+            id: string;
+            name: string;
+            region_id: string;
+            base_url?: string;
+            /** @description pending, active, or disabled */
+            status: string;
+            /** Format: date-time */
+            last_sync_at?: string | null;
+            /** Format: int64 */
+            last_sync_cursor: number;
+            last_sync_error?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        FederationPeerWithToken: {
+            peer: components["schemas"]["ControlPlanePeer"];
+            join_token: string;
+        };
+        RegisterFederationPeer: {
+            name: string;
+            region_id: string;
+            base_url?: string;
+        };
+        UpdateFederationPeer: {
+            name?: string;
+            base_url?: string;
+            /** @description pending, active, or disabled */
+            status?: string;
+        };
+        FederationUsageReports: {
+            reports: components["schemas"]["UsageEvent"][];
+        };
+        RegisterDeployment: {
+            name: string;
+            public_base_url?: string;
+        };
         Environment: {
             id: string;
             organization_id: string;
@@ -2075,6 +2534,589 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listRegions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Region"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createRegion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRegion"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Region"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getRegion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Region"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateRegion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRegion"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Region"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listDeployments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GatewayDeployment"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    registerDeployment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterDeployment"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeploymentWithToken"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getDeployment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+                deploymentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GatewayDeployment"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    rotateDeploymentJoinToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+                deploymentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeploymentWithToken"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listRegionMemberships: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgRegionMembership"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    bindOrgToRegion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BindOrgToRegion"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgRegionMembership"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    bindAllOrgsToRegion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Number of organizations bound */
+                        bound: number;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    unbindOrgFromRegion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+                orgID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getRegionOverlay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+                orgID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionConfigOverlay"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    putRegionOverlay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+                orgID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegionOverlayPayload"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionConfigOverlay"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteRegionOverlay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regionID: string;
+                orgID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listFederationPeers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlPlanePeer"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    registerFederationPeer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterFederationPeer"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FederationPeerWithToken"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getFederationPeer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                peerID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlPlanePeer"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateFederationPeer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                peerID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFederationPeer"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlPlanePeer"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    rotateFederationPeerJoinToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                peerID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FederationPeerWithToken"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    pullFederationPeerUsageReports: {
+        parameters: {
+            query?: {
+                /** @description Optional organization filter forwarded to the peer */
+                org_id?: string;
+                /** @description RFC3339 lower bound */
+                since?: string;
+                /** @description RFC3339 upper bound */
+                until?: string;
+                limit?: number;
+            };
+            header?: {
+                /** @description Optional join-token override (must match this peer) */
+                "X-AFI-Federation-Token"?: string;
+            };
+            path: {
+                peerID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FederationUsageReports"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Peer pull failed */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     login: {

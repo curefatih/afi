@@ -29,9 +29,10 @@ type PutOptions struct {
 	Metadata    map[string]string
 }
 
-// Store is the asset persistence port.
+// Store is the asset / blob persistence port.
 type Store interface {
 	Put(ctx context.Context, key string, body io.Reader, size int64, opts PutOptions) error
+	Get(ctx context.Context, key string) ([]byte, error)
 	PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error)
 }
 
@@ -90,6 +91,27 @@ func (s *S3) Put(ctx context.Context, key string, body io.Reader, size int64, op
 		return fmt.Errorf("objectstore put %s: %w", key, err)
 	}
 	return nil
+}
+
+// Get downloads an object into memory.
+func (s *S3) Get(ctx context.Context, key string) ([]byte, error) {
+	if s == nil || s.client == nil {
+		return nil, fmt.Errorf("objectstore: not configured")
+	}
+	key = strings.TrimPrefix(strings.TrimSpace(key), "/")
+	if key == "" {
+		return nil, fmt.Errorf("objectstore: empty key")
+	}
+	obj, err := s.client.GetObject(ctx, s.bucket, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("objectstore get %s: %w", key, err)
+	}
+	defer obj.Close()
+	data, err := io.ReadAll(obj)
+	if err != nil {
+		return nil, fmt.Errorf("objectstore read %s: %w", key, err)
+	}
+	return data, nil
 }
 
 // PresignGet returns a time-limited GET URL.

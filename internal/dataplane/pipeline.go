@@ -14,7 +14,6 @@ import (
 	"github.com/curefatih/afi/internal/adapters/secrets"
 	"github.com/curefatih/afi/internal/dataplane/ir"
 	"github.com/curefatih/afi/internal/dataplane/routing"
-	"github.com/curefatih/afi/internal/kernel"
 	"github.com/curefatih/afi/internal/modelcatalog"
 	"github.com/curefatih/afi/internal/policy"
 	"github.com/curefatih/afi/internal/providercatalog"
@@ -206,11 +205,8 @@ func (p *Pipeline) handleModels(w http.ResponseWriter, r *http.Request) {
 	}
 	principal, err := authenticateGatewayRequest(r.Context(), snap, p.Replay, r, nil)
 	if err != nil {
-		status := http.StatusUnauthorized
+		status := authHTTPStatus(err)
 		msg := authErrMessage(err)
-		if errors.Is(err, kernel.ErrNotFound) {
-			status = http.StatusServiceUnavailable
-		}
 		writeJSON(w, status, map[string]any{
 			"error": map[string]string{"message": msg, "type": "invalid_request_error"},
 		})

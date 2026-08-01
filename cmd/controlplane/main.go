@@ -9,11 +9,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/curefatih/afi/internal/adapters/federationclient"
+	"github.com/curefatih/afi/internal/adapters/objectstore"
 	"github.com/curefatih/afi/internal/adapters/postgres"
 	"github.com/curefatih/afi/internal/app/platform"
 	"github.com/curefatih/afi/internal/controlplane"
 	"github.com/curefatih/afi/internal/identity"
 	"github.com/curefatih/afi/internal/kernel"
+	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/telemetry"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -61,8 +64,44 @@ func main() {
 		log.Error("credentials master key", "err", err)
 		os.Exit(1)
 	}
-	snapStore := postgres.NewSnapshotStore(pool)
+	fedKey := strings.TrimSpace(cfg.Credentials.MasterKey)
+	if fedKey == "" {
+		fedKey = cfg.Auth.JWTSecret
+	}
+	if err := store.SetFederationTokenKey(fedKey); err != nil {
+		log.Error("federation token key", "err", err)
+		os.Exit(1)
+	}
+	var snapStore snapshot.Store = postgres.NewSnapshotStore(pool)
+	var regionMirror *objectstore.SnapshotStore
+	if cfg.SnapshotDistribution.Enabled {
+		blob, err := objectstore.New(objectstore.Config{
+			Endpoint:  cfg.Gateway.SnapshotS3.Endpoint,
+			AccessKey: cfg.Gateway.SnapshotS3.AccessKey,
+			SecretKey: cfg.Gateway.SnapshotS3.SecretKey,
+			Region:    cfg.Gateway.SnapshotS3.Region,
+			Bucket:    cfg.Gateway.SnapshotS3.Bucket,
+			UseSSL:    cfg.Gateway.SnapshotS3.UseSSL,
+			PathStyle: cfg.Gateway.SnapshotS3.PathStyle,
+		})
+		if err != nil {
+			log.Error("snapshot distribution store", "err", err)
+			os.Exit(1)
+		}
+		if blob == nil {
+			log.Error("snapshot distribution enabled but AFI_SNAPSHOT_S3_* not configured")
+			os.Exit(1)
+		}
+		mirror := objectstore.NewSnapshotStore(blob, cfg.Gateway.SnapshotS3.Prefix)
+		regionMirror = mirror
+		store.SetFederationRegionMirror(mirror)
+		snapStore = &objectstore.FanoutStore{Primary: snapStore, Mirror: mirror}
+		log.Info("snapshot distribution enabled", "bucket", cfg.Gateway.SnapshotS3.Bucket, "prefix", cfg.Gateway.SnapshotS3.Prefix)
+	}
 	seeder := postgres.NewSeeder(pool, store, snapStore, cfg)
+	if regionMirror != nil {
+		seeder.SetRegionMirror(regionMirror)
+	}
 
 	if err := seeder.SeedIfEmpty(ctx); err != nil {
 		log.Error("seed", "err", err)
@@ -108,6 +147,9 @@ func main() {
 	}
 	auditStore := &postgres.AuditEvents{Pool: pool}
 	srv := controlplane.NewServer(cfg, store, seeder, seeder, snapStore, log, eventOutbox, auditStore, auth)
+	// Spoke/regional usage reports are observed (metrics/logs) only — not persisted on the hub.
+	usageReports := controlplane.NewUsageReportObserver(log)
+	srv.SetUsageEnqueuer(usageReports)
 	if cfg.Telemetry.Enabled {
 		cm, err := telemetry.NewControlPlaneMetrics()
 		if err != nil {
@@ -115,6 +157,7 @@ func main() {
 			os.Exit(1)
 		}
 		srv.Metrics = cm
+		usageReports.Metrics = cm
 	}
 
 	root := http.NewServeMux()
@@ -134,6 +177,17 @@ func main() {
 			cancel()
 		}
 	}()
+
+	if cfg.Federation.Mode == "regional" {
+		client := federationclient.New(cfg.Federation.HubURL, cfg.Federation.JoinToken)
+		target := &postgres.RegionalApplyTarget{Store: store, SnapStore: snapStore}
+		go federationclient.RunPullLoop(ctx, client, store.FederationRepo(), target, cfg.Federation.RegionSlug, cfg.Federation.PullInterval, func(err error) {
+			log.Error("federation pull", "err", err)
+		})
+		log.Info("federation regional puller started", "hub", cfg.Federation.HubURL, "region", cfg.Federation.RegionSlug, "interval", cfg.Federation.PullInterval.String())
+	} else if cfg.Federation.Mode == "home" {
+		log.Info("federation home mode enabled")
+	}
 
 	<-ctx.Done()
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)

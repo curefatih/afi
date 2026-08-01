@@ -135,8 +135,10 @@ func (g *GatewayMetrics) RecordTokens(ctx context.Context, modality string, prom
 
 // ControlPlaneMetrics holds control-plane HTTP instruments.
 type ControlPlaneMetrics struct {
-	Requests metric.Int64Counter
-	Duration metric.Float64Histogram
+	Requests           metric.Int64Counter
+	Duration           metric.Float64Histogram
+	SpokeUsageReports  metric.Int64Counter
+	SpokeUsageTokens   metric.Int64Counter
 }
 
 // NewControlPlaneMetrics creates CP instruments.
@@ -151,6 +153,14 @@ func NewControlPlaneMetrics() (*ControlPlaneMetrics, error) {
 	if c.Duration, err = m.Float64Histogram("afi.controlplane.http_duration",
 		metric.WithDescription("Control plane HTTP request duration"),
 		metric.WithUnit("s")); err != nil {
+		return nil, err
+	}
+	if c.SpokeUsageReports, err = m.Int64Counter("afi.controlplane.spoke_usage_reports",
+		metric.WithDescription("Usage reports received from regional/spoke gateways (not persisted)")); err != nil {
+		return nil, err
+	}
+	if c.SpokeUsageTokens, err = m.Int64Counter("afi.controlplane.spoke_usage_tokens",
+		metric.WithDescription("Tokens reported by spoke gateways (observation only)")); err != nil {
 		return nil, err
 	}
 	return c, nil
@@ -168,6 +178,31 @@ func (c *ControlPlaneMetrics) Record(ctx context.Context, route, statusClass str
 	c.Requests.Add(ctx, 1, attrs)
 	if seconds >= 0 {
 		c.Duration.Record(ctx, seconds, attrs)
+	}
+}
+
+// RecordSpokeUsage records an observed spoke usage report (no DB write).
+func (c *ControlPlaneMetrics) RecordSpokeUsage(ctx context.Context, region, status, modality string, prompt, completion int64) {
+	if c == nil {
+		return
+	}
+	attrs := metric.WithAttributes(
+		attribute.String("afi.region", region),
+		attribute.String("afi.status", status),
+		attribute.String(AttrModality, modality),
+	)
+	c.SpokeUsageReports.Add(ctx, 1, attrs)
+	if prompt > 0 {
+		c.SpokeUsageTokens.Add(ctx, prompt, metric.WithAttributes(
+			attribute.String("afi.region", region),
+			attribute.String(AttrTokenType, "prompt"),
+		))
+	}
+	if completion > 0 {
+		c.SpokeUsageTokens.Add(ctx, completion, metric.WithAttributes(
+			attribute.String("afi.region", region),
+			attribute.String(AttrTokenType, "completion"),
+		))
 	}
 }
 

@@ -1,0 +1,267 @@
+# Local-only federation lab: home control plane + regional control plane + two gateways.
+#
+# Profiles:
+#   hub       — hub Postgres/Redis/CP/gateway + web
+#   regional  — regional Postgres/Redis/CP/gateway (needs regional.secrets.env from bootstrap)
+#
+# Prefer ./up.sh (starts hub → bootstrap → regional).
+# Both profiles share one Compose project network so regional CP can reach hub-controlplane.
+
+name: afi-federation
+
+services:
+  hub-postgres:
+    image: postgres:16-alpine
+    profiles: ["hub"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: afi
+      POSTGRES_PASSWORD: ${HUB_POSTGRES_PASSWORD:-afi-federation-hub}
+      POSTGRES_DB: afi
+    ports:
+      - "${HUB_POSTGRES_HOST_PORT:-5434}:5432"
+    volumes:
+      - hub_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U afi -d afi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  hub-redis:
+    image: redis:7-alpine
+    profiles: ["hub"]
+    restart: unless-stopped
+    ports:
+      - "${HUB_REDIS_HOST_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  hub-controlplane:
+    profiles: ["hub"]
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      args:
+        AFI_SERVICE: controlplane
+    image: afi-controlplane:local
+    restart: unless-stopped
+    depends_on:
+      hub-postgres:
+        condition: service_healthy
+    environment:
+      AFI_CONFIG: /config/afi.yaml
+      AFI_DATABASE_URL: postgres://afi:${HUB_POSTGRES_PASSWORD:-afi-federation-hub}@hub-postgres:5432/afi?sslmode=disable
+      AFI_REDIS_URL: redis://hub-redis:6379/0
+      AFI_JWT_SECRET: ${AFI_JWT_SECRET:-afi-federation-jwt-secret}
+      AFI_INTERNAL_TOKEN: ${AFI_INTERNAL_TOKEN:-afi-federation-internal-token}
+      AFI_CONTROLPLANE_ADDR: ":8081"
+      AFI_FEDERATION_MODE: home
+      AFI_MAIL_PUBLIC_APP_URL: ${AFI_MAIL_PUBLIC_APP_URL:-http://localhost:3000}
+      AFI_MAIL_FROM: AFI <noreply@afi.local>
+      AFI_MAIL_DEFAULT_PROVIDER: log
+    volumes:
+      - ./hub.afi.yaml:/config/afi.yaml:ro
+    ports:
+      - "${HUB_CONTROLPLANE_HOST_PORT:-8081}:8081"
+
+  hub-gateway:
+    profiles: ["hub"]
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      args:
+        AFI_SERVICE: gateway
+    image: afi-gateway:local
+    restart: unless-stopped
+    depends_on:
+      hub-postgres:
+        condition: service_healthy
+      hub-redis:
+        condition: service_healthy
+      hub-controlplane:
+        condition: service_started
+    environment:
+      AFI_CONFIG: /config/afi.yaml
+      AFI_DATABASE_URL: postgres://afi:${HUB_POSTGRES_PASSWORD:-afi-federation-hub}@hub-postgres:5432/afi?sslmode=disable
+      AFI_REDIS_URL: redis://hub-redis:6379/0
+      AFI_GATEWAY_ADDR: ":8080"
+      AFI_SNAPSHOT_BACKEND: postgres
+      AFI_SNAPSHOT_POLL_INTERVAL: 2s
+      # Gateways do not run the federation puller — only the regional control plane does.
+      AFI_FEDERATION_MODE: "off"
+      AFI_CONTROL_PLANE_URL: http://hub-controlplane:8081
+      AFI_REGION_ID: ${HUB_REGION_SLUG:-us-east}
+      AFI_DEPLOYMENT_ID: ${HUB_DEPLOYMENT_ID:-}
+      AFI_DEPLOYMENT_JOIN_TOKEN: ${HUB_DEPLOYMENT_JOIN_TOKEN:-}
+      # Hub-local traffic only — persists to hub Postgres (sync; no hub-worker in this lab).
+      AFI_USAGE_BACKEND: postgres
+      AFI_USAGE_SYNC: "true"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    volumes:
+      - ./hub.afi.yaml:/config/afi.yaml:ro
+    ports:
+      - "${HUB_GATEWAY_HOST_PORT:-8080}:8080"
+
+  web:
+    profiles: ["hub"]
+    build:
+      context: ../..
+      dockerfile: Dockerfile.web
+      args:
+        VITE_PLATFORM_API_URL: ${VITE_PLATFORM_API_URL:-http://localhost:8081}
+        VITE_GATEWAY_API_URL: ${VITE_GATEWAY_API_URL:-http://localhost:8080}
+        VITE_GATEWAY_API_KEY: ${VITE_GATEWAY_API_KEY:-}
+    image: afi-web:local
+    restart: unless-stopped
+    ports:
+      - "${WEB_HOST_PORT:-3000}:80"
+
+  # Separate UI build pointed at the regional control plane / gateway (API ports have no HTML UI).
+  regional-web:
+    profiles: ["regional"]
+    build:
+      context: ../..
+      dockerfile: Dockerfile.web
+      args:
+        VITE_PLATFORM_API_URL: ${VITE_REGIONAL_PLATFORM_API_URL:-http://localhost:8181}
+        VITE_GATEWAY_API_URL: ${VITE_REGIONAL_GATEWAY_API_URL:-http://localhost:8180}
+        VITE_GATEWAY_API_KEY: ${VITE_GATEWAY_API_KEY:-}
+    image: afi-web-regional:local
+    restart: unless-stopped
+    ports:
+      - "${REGIONAL_WEB_HOST_PORT:-3100}:80"
+
+  regional-postgres:
+    image: postgres:16-alpine
+    profiles: ["regional"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: afi
+      POSTGRES_PASSWORD: ${REGIONAL_POSTGRES_PASSWORD:-afi-federation-regional}
+      POSTGRES_DB: afi
+    ports:
+      - "${REGIONAL_POSTGRES_HOST_PORT:-5435}:5432"
+    volumes:
+      - regional_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U afi -d afi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  regional-redis:
+    image: redis:7-alpine
+    profiles: ["regional"]
+    restart: unless-stopped
+    ports:
+      - "${REGIONAL_REDIS_HOST_PORT:-6381}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  regional-controlplane:
+    profiles: ["regional"]
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      args:
+        AFI_SERVICE: controlplane
+    image: afi-controlplane:local
+    restart: unless-stopped
+    depends_on:
+      regional-postgres:
+        condition: service_healthy
+    environment:
+      AFI_CONFIG: /config/afi.yaml
+      AFI_DATABASE_URL: postgres://afi:${REGIONAL_POSTGRES_PASSWORD:-afi-federation-regional}@regional-postgres:5432/afi?sslmode=disable
+      AFI_REDIS_URL: redis://regional-redis:6379/0
+      AFI_JWT_SECRET: ${AFI_JWT_SECRET:-afi-federation-jwt-secret}
+      AFI_INTERNAL_TOKEN: ${REGIONAL_INTERNAL_TOKEN:-afi-federation-regional-internal}
+      AFI_CONTROLPLANE_ADDR: ":8081"
+      AFI_FEDERATION_MODE: regional
+      AFI_FEDERATION_HUB_URL: http://hub-controlplane:8081
+      AFI_FEDERATION_JOIN_TOKEN: ${AFI_FEDERATION_JOIN_TOKEN:-}
+      AFI_FEDERATION_REGION_SLUG: ${REGIONAL_REGION_SLUG:-eu-west}
+      AFI_FEDERATION_PULL_INTERVAL: ${AFI_FEDERATION_PULL_INTERVAL:-10s}
+      AFI_MAIL_PUBLIC_APP_URL: http://localhost:3000
+      AFI_MAIL_FROM: AFI <noreply@afi.local>
+      AFI_MAIL_DEFAULT_PROVIDER: log
+    volumes:
+      - ./regional.afi.yaml:/config/afi.yaml:ro
+    ports:
+      - "${REGIONAL_CONTROLPLANE_HOST_PORT:-8181}:8081"
+
+  # Drains regional usage_outbox → usage_events (regional gateway persists locally).
+  regional-worker:
+    profiles: ["regional"]
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      args:
+        AFI_SERVICE: worker
+    image: afi-worker:local
+    restart: unless-stopped
+    depends_on:
+      regional-postgres:
+        condition: service_healthy
+    environment:
+      AFI_CONFIG: /config/afi.yaml
+      AFI_DATABASE_URL: postgres://afi:${REGIONAL_POSTGRES_PASSWORD:-afi-federation-regional}@regional-postgres:5432/afi?sslmode=disable
+      AFI_EVENTS_OUTBOX_ENABLED: "false"
+    volumes:
+      - ./regional.afi.yaml:/config/afi.yaml:ro
+
+  regional-gateway:
+    profiles: ["regional"]
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      args:
+        AFI_SERVICE: gateway
+    image: afi-gateway:local
+    restart: unless-stopped
+    depends_on:
+      regional-postgres:
+        condition: service_healthy
+      regional-redis:
+        condition: service_healthy
+      regional-controlplane:
+        condition: service_started
+      regional-worker:
+        condition: service_started
+    environment:
+      AFI_CONFIG: /config/afi.yaml
+      AFI_DATABASE_URL: postgres://afi:${REGIONAL_POSTGRES_PASSWORD:-afi-federation-regional}@regional-postgres:5432/afi?sslmode=disable
+      AFI_REDIS_URL: redis://regional-redis:6379/0
+      AFI_GATEWAY_ADDR: ":8080"
+      AFI_SNAPSHOT_BACKEND: postgres
+      AFI_SNAPSHOT_POLL_INTERVAL: 2s
+      # Gateways do not run the federation puller — only the regional control plane does.
+      AFI_FEDERATION_MODE: "off"
+      # Heartbeats to hub; usage stays in regional Postgres (outbox + regional-worker).
+      # Hub pulls reports on demand via federation usage-reports (observe only).
+      AFI_CONTROL_PLANE_URL: http://hub-controlplane:8081
+      AFI_REGION_ID: ${REGIONAL_REGION_SLUG:-eu-west}
+      AFI_DEPLOYMENT_ID: ${REGIONAL_DEPLOYMENT_ID:-}
+      AFI_DEPLOYMENT_JOIN_TOKEN: ${REGIONAL_DEPLOYMENT_JOIN_TOKEN:-}
+      AFI_USAGE_BACKEND: postgres
+      AFI_HEARTBEAT_INTERVAL: 15s
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    volumes:
+      - ./regional.afi.yaml:/config/afi.yaml:ro
+    ports:
+      - "${REGIONAL_GATEWAY_HOST_PORT:-8180}:8080"
+
+volumes:
+  hub_postgres_data:
+  regional_postgres_data:

@@ -152,6 +152,23 @@ func (o *Organizations) Count(ctx context.Context) (int64, error) {
 	return n, err
 }
 
+func (o *Organizations) ListIDs(ctx context.Context) ([]string, error) {
+	rows, err := o.Pool.Query(ctx, `SELECT id FROM organizations ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
 func (o *Organizations) Get(ctx context.Context, orgID string) (*tenancy.Organization, error) {
 	var item tenancy.Organization
 	err := o.Pool.QueryRow(ctx, `

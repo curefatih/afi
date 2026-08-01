@@ -64,6 +64,14 @@ const (
 	EventCredentialAssigned     EventName = "credential.assigned"
 	EventCredentialUnassigned   EventName = "credential.unassigned"
 	EventSnapshotPublish        EventName = "snapshot.published"
+	EventRegionCreated          EventName = "region.created"
+	EventRegionUpdated          EventName = "region.updated"
+	EventDeploymentRegistered       EventName = "deployment.registered"
+	EventDeploymentJoinTokenRotated EventName = "deployment.join_token_rotated"
+	EventOrgRegionBound              EventName = "org.region.bound"
+	EventOrgRegionUnbound           EventName = "org.region.unbound"
+	EventRegionOverlayUpserted      EventName = "region.overlay.upserted"
+	EventRegionOverlayDeleted       EventName = "region.overlay.deleted"
 )
 
 // EventAll matches every event when used with Bus.Subscribe.
@@ -251,6 +259,17 @@ func (s *Service) publish(ctx context.Context, action string) error {
 		return fmt.Errorf("%s but snapshot publisher unavailable", action)
 	}
 	if err := s.Snap.PublishSnapshot(ctx); err != nil {
+		return fmt.Errorf("%s but snapshot publish failed: %w", action, err)
+	}
+	s.emit(ctx, EventSnapshotPublish, "", "")
+	return nil
+}
+
+func (s *Service) publishRegions(ctx context.Context, action string, regionIDs ...string) error {
+	if s.Snap == nil {
+		return fmt.Errorf("%s but snapshot publisher unavailable", action)
+	}
+	if err := s.Snap.PublishRegionSnapshots(ctx, regionIDs...); err != nil {
 		return fmt.Errorf("%s but snapshot publish failed: %w", action, err)
 	}
 	s.emit(ctx, EventSnapshotPublish, "", "")

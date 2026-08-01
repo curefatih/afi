@@ -8,8 +8,10 @@ import (
 	"github.com/curefatih/afi/internal/access"
 	"github.com/curefatih/afi/internal/audit"
 	"github.com/curefatih/afi/internal/credentials"
+	"github.com/curefatih/afi/internal/federation"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/identity"
+	"github.com/curefatih/afi/internal/regions"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
 	"github.com/curefatih/afi/internal/usage"
@@ -18,6 +20,8 @@ import (
 // SnapshotPublisher publishes compiled gateway snapshots after config changes.
 type SnapshotPublisher interface {
 	PublishSnapshot(ctx context.Context) error
+	// PublishRegionSnapshots puts the global snapshot and only the listed regions' object-store blobs.
+	PublishRegionSnapshots(ctx context.Context, regionIDs ...string) error
 }
 
 // ConfigAPI is the persistence surface for platform reads and mutations.
@@ -123,6 +127,37 @@ type ConfigAPI interface {
 	AssignCredential(ctx context.Context, credentialID, scopeType, scopeID, createdBy string) (*credentials.Assignment, error)
 	GetCredentialAssignmentOrgID(ctx context.Context, assignmentID string) (string, error)
 	DeleteCredentialAssignment(ctx context.Context, assignmentID string) error
+
+	ListRegions(ctx context.Context) ([]regions.Region, error)
+	GetRegion(ctx context.Context, regionID string) (*regions.Region, error)
+	CreateRegion(ctx context.Context, slug, name string) (*regions.Region, error)
+	UpdateRegion(ctx context.Context, regionID, name, status string) (*regions.Region, error)
+	ListDeployments(ctx context.Context, regionID string) ([]regions.GatewayDeployment, error)
+	GetDeployment(ctx context.Context, deploymentID string) (*regions.GatewayDeployment, error)
+	RegisterDeployment(ctx context.Context, regionID, name, publicBaseURL string) (*regions.DeploymentWithToken, error)
+	RotateDeploymentJoinToken(ctx context.Context, deploymentID string) (*regions.DeploymentWithToken, error)
+	RecordDeploymentHeartbeat(ctx context.Context, deploymentID, joinToken string, snapVersion int64, build string) (*regions.GatewayDeployment, error)
+	AuthenticateDeploymentJoinToken(ctx context.Context, rawToken string) (*regions.GatewayDeployment, error)
+
+	ListRegionMemberships(ctx context.Context, regionID string) ([]regions.OrgRegionMembership, error)
+	BindOrgToRegion(ctx context.Context, regionID, orgID, status string) (*regions.OrgRegionMembership, error)
+	BindAllOrgsToRegion(ctx context.Context, regionID string) (int, error)
+	UnbindOrgFromRegion(ctx context.Context, regionID, orgID string) error
+	GetRegionOverlay(ctx context.Context, regionID, orgID string) (*regions.RegionConfigOverlay, error)
+	PutRegionOverlay(ctx context.Context, regionID, orgID string, payload regions.OverlayPayload) (*regions.RegionConfigOverlay, error)
+	DeleteRegionOverlay(ctx context.Context, regionID, orgID string) error
+
+	ListFederationPeers(ctx context.Context) ([]federation.ControlPlanePeer, error)
+	GetFederationPeer(ctx context.Context, peerID string) (*federation.ControlPlanePeer, error)
+	RegisterFederationPeer(ctx context.Context, name, regionID, baseURL string) (*federation.PeerWithToken, error)
+	UpdateFederationPeer(ctx context.Context, peerID, name, baseURL, status string) (*federation.ControlPlanePeer, error)
+	RotateFederationPeerJoinToken(ctx context.Context, peerID string) (*federation.PeerWithToken, error)
+	AuthenticateFederationPeerToken(ctx context.Context, rawToken string) (*federation.ControlPlanePeer, error)
+	JoinFederationPeer(ctx context.Context, rawToken string) (*federation.ControlPlanePeer, error)
+	ExportFederationRegion(ctx context.Context, slug string, since int64, objectPrefix string) (*federation.RegionExport, error)
+	RecordFederationPeerSync(ctx context.Context, peerID string, cursor int64, syncErr string) error
+	ListFederationUsageReports(ctx context.Context, orgID string, since, until *time.Time, limit int) ([]usage.Record, error)
+	OpenFederationPeerJoinToken(ctx context.Context, peerID string) (string, error)
 }
 
 // Service orchestrates platform queries and commands (mutate + publish + events).

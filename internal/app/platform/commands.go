@@ -3,13 +3,17 @@ package platform
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/curefatih/afi/internal/access"
 	"github.com/curefatih/afi/internal/credentials"
+	"github.com/curefatih/afi/internal/federation"
 	"github.com/curefatih/afi/internal/gatewayconfig"
 	"github.com/curefatih/afi/internal/identity"
+	"github.com/curefatih/afi/internal/regions"
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/tenancy"
+	"github.com/curefatih/afi/internal/usage"
 )
 
 // PublishSnapshot republishes the gateway snapshot and emits snapshot.published.
@@ -656,3 +660,174 @@ func (s *Service) DeleteCredentialAssignment(ctx context.Context, assignmentID s
 	s.emit(ctx, EventCredentialUnassigned, assignmentID, orgID)
 	return nil
 }
+
+func (s *Service) ListRegions(ctx context.Context) ([]regions.Region, error) {
+	return s.API.ListRegions(ctx)
+}
+
+func (s *Service) GetRegion(ctx context.Context, regionID string) (*regions.Region, error) {
+	return s.API.GetRegion(ctx, regionID)
+}
+
+func (s *Service) CreateRegion(ctx context.Context, slug, name string) (*regions.Region, error) {
+	r, err := s.API.CreateRegion(ctx, slug, name)
+	if err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventRegionCreated, r.ID, "")
+	return r, nil
+}
+
+func (s *Service) UpdateRegion(ctx context.Context, regionID, name, status string) (*regions.Region, error) {
+	r, err := s.API.UpdateRegion(ctx, regionID, name, status)
+	if err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventRegionUpdated, r.ID, "")
+	return r, nil
+}
+
+func (s *Service) ListDeployments(ctx context.Context, regionID string) ([]regions.GatewayDeployment, error) {
+	return s.API.ListDeployments(ctx, regionID)
+}
+
+func (s *Service) GetDeployment(ctx context.Context, deploymentID string) (*regions.GatewayDeployment, error) {
+	return s.API.GetDeployment(ctx, deploymentID)
+}
+
+func (s *Service) ListRegionMemberships(ctx context.Context, regionID string) ([]regions.OrgRegionMembership, error) {
+	return s.API.ListRegionMemberships(ctx, regionID)
+}
+
+func (s *Service) BindOrgToRegion(ctx context.Context, regionID, orgID, status string) (*regions.OrgRegionMembership, error) {
+	m, err := s.API.BindOrgToRegion(ctx, regionID, orgID, status)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publishRegions(ctx, "region.membership", regionID); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventOrgRegionBound, orgID, orgID)
+	return m, nil
+}
+
+func (s *Service) BindAllOrgsToRegion(ctx context.Context, regionID string) (int, error) {
+	n, err := s.API.BindAllOrgsToRegion(ctx, regionID)
+	if err != nil {
+		return n, err
+	}
+	if err := s.publishRegions(ctx, "region.membership", regionID); err != nil {
+		return n, err
+	}
+	s.emit(ctx, EventOrgRegionBound, regionID, "")
+	return n, nil
+}
+
+func (s *Service) UnbindOrgFromRegion(ctx context.Context, regionID, orgID string) error {
+	if err := s.API.UnbindOrgFromRegion(ctx, regionID, orgID); err != nil {
+		return err
+	}
+	if err := s.publishRegions(ctx, "region.membership", regionID); err != nil {
+		return err
+	}
+	s.emit(ctx, EventOrgRegionUnbound, orgID, orgID)
+	return nil
+}
+
+func (s *Service) GetRegionOverlay(ctx context.Context, regionID, orgID string) (*regions.RegionConfigOverlay, error) {
+	return s.API.GetRegionOverlay(ctx, regionID, orgID)
+}
+
+func (s *Service) PutRegionOverlay(ctx context.Context, regionID, orgID string, payload regions.OverlayPayload) (*regions.RegionConfigOverlay, error) {
+	o, err := s.API.PutRegionOverlay(ctx, regionID, orgID, payload)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publishRegions(ctx, "region.overlay", regionID); err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventRegionOverlayUpserted, orgID, orgID)
+	return o, nil
+}
+
+func (s *Service) DeleteRegionOverlay(ctx context.Context, regionID, orgID string) error {
+	if err := s.API.DeleteRegionOverlay(ctx, regionID, orgID); err != nil {
+		return err
+	}
+	if err := s.publishRegions(ctx, "region.overlay", regionID); err != nil {
+		return err
+	}
+	s.emit(ctx, EventRegionOverlayDeleted, orgID, orgID)
+	return nil
+}
+
+func (s *Service) RegisterDeployment(ctx context.Context, regionID, name, publicBaseURL string) (*regions.DeploymentWithToken, error) {
+	out, err := s.API.RegisterDeployment(ctx, regionID, name, publicBaseURL)
+	if err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventDeploymentRegistered, out.Deployment.ID, "")
+	return out, nil
+}
+
+func (s *Service) RotateDeploymentJoinToken(ctx context.Context, deploymentID string) (*regions.DeploymentWithToken, error) {
+	out, err := s.API.RotateDeploymentJoinToken(ctx, deploymentID)
+	if err != nil {
+		return nil, err
+	}
+	s.emit(ctx, EventDeploymentJoinTokenRotated, out.Deployment.ID, "")
+	return out, nil
+}
+
+func (s *Service) RecordDeploymentHeartbeat(ctx context.Context, deploymentID, joinToken string, snapVersion int64, build string) (*regions.GatewayDeployment, error) {
+	return s.API.RecordDeploymentHeartbeat(ctx, deploymentID, joinToken, snapVersion, build)
+}
+
+func (s *Service) AuthenticateDeploymentJoinToken(ctx context.Context, rawToken string) (*regions.GatewayDeployment, error) {
+	return s.API.AuthenticateDeploymentJoinToken(ctx, rawToken)
+}
+
+func (s *Service) ListFederationPeers(ctx context.Context) ([]federation.ControlPlanePeer, error) {
+	return s.API.ListFederationPeers(ctx)
+}
+
+func (s *Service) GetFederationPeer(ctx context.Context, peerID string) (*federation.ControlPlanePeer, error) {
+	return s.API.GetFederationPeer(ctx, peerID)
+}
+
+func (s *Service) RegisterFederationPeer(ctx context.Context, name, regionID, baseURL string) (*federation.PeerWithToken, error) {
+	return s.API.RegisterFederationPeer(ctx, name, regionID, baseURL)
+}
+
+func (s *Service) UpdateFederationPeer(ctx context.Context, peerID, name, baseURL, status string) (*federation.ControlPlanePeer, error) {
+	return s.API.UpdateFederationPeer(ctx, peerID, name, baseURL, status)
+}
+
+func (s *Service) RotateFederationPeerJoinToken(ctx context.Context, peerID string) (*federation.PeerWithToken, error) {
+	return s.API.RotateFederationPeerJoinToken(ctx, peerID)
+}
+
+func (s *Service) AuthenticateFederationPeerToken(ctx context.Context, rawToken string) (*federation.ControlPlanePeer, error) {
+	return s.API.AuthenticateFederationPeerToken(ctx, rawToken)
+}
+
+func (s *Service) JoinFederationPeer(ctx context.Context, rawToken string) (*federation.ControlPlanePeer, error) {
+	return s.API.JoinFederationPeer(ctx, rawToken)
+}
+
+func (s *Service) ExportFederationRegion(ctx context.Context, slug string, since int64, objectPrefix string) (*federation.RegionExport, error) {
+	return s.API.ExportFederationRegion(ctx, slug, since, objectPrefix)
+}
+
+func (s *Service) RecordFederationPeerSync(ctx context.Context, peerID string, cursor int64, syncErr string) error {
+	return s.API.RecordFederationPeerSync(ctx, peerID, cursor, syncErr)
+}
+
+func (s *Service) ListFederationUsageReports(ctx context.Context, orgID string, since, until *time.Time, limit int) ([]usage.Record, error) {
+	return s.API.ListFederationUsageReports(ctx, orgID, since, until, limit)
+}
+
+func (s *Service) OpenFederationPeerJoinToken(ctx context.Context, peerID string) (string, error) {
+	return s.API.OpenFederationPeerJoinToken(ctx, peerID)
+}
+

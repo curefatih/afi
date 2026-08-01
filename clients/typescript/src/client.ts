@@ -129,6 +129,169 @@ export class PlatformClient {
 		);
 	}
 
+	listRegions() {
+		return this.request<
+			Array<{
+				id: string;
+				slug: string;
+				name: string;
+				status: string;
+				created_at?: string;
+				updated_at?: string;
+			}>
+		>("/api/v1/platform/regions");
+	}
+
+	createRegion(body: { slug: string; name: string }) {
+		return this.request<{
+			id: string;
+			slug: string;
+			name: string;
+			status: string;
+		}>("/api/v1/platform/regions", { method: "POST", body });
+	}
+
+	listDeployments(regionID: string) {
+		return this.request<unknown[]>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/deployments`,
+		);
+	}
+
+	registerDeployment(
+		regionID: string,
+		body: { name: string; public_base_url?: string },
+	) {
+		return this.request<{ deployment: unknown; join_token: string }>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/deployments`,
+			{ method: "POST", body },
+		);
+	}
+
+	listRegionMemberships(regionID: string) {
+		return this.request<
+			Array<{
+				organization_id: string;
+				region_id: string;
+				status: string;
+				created_at?: string;
+				updated_at?: string;
+			}>
+		>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations`,
+		);
+	}
+
+	bindOrgToRegion(
+		regionID: string,
+		body: { organization_id: string; status?: string },
+	) {
+		return this.request<{
+			organization_id: string;
+			region_id: string;
+			status: string;
+		}>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations`,
+			{ method: "POST", body },
+		);
+	}
+
+	bindAllOrgsToRegion(regionID: string) {
+		return this.request<{ bound: number }>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations/bind-all`,
+			{ method: "POST" },
+		);
+	}
+
+	unbindOrgFromRegion(regionID: string, orgID: string) {
+		return this.request<void>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations/${encodeURIComponent(orgID)}`,
+			{ method: "DELETE" },
+		);
+	}
+
+	getRegionOverlay(regionID: string, orgID: string) {
+		return this.request<{
+			organization_id: string;
+			region_id: string;
+			payload: Record<string, unknown>;
+		}>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations/${encodeURIComponent(orgID)}/overlay`,
+		);
+	}
+
+	putRegionOverlay(
+		regionID: string,
+		orgID: string,
+		payload: Record<string, unknown>,
+	) {
+		return this.request<{
+			organization_id: string;
+			region_id: string;
+			payload: Record<string, unknown>;
+		}>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations/${encodeURIComponent(orgID)}/overlay`,
+			{ method: "PUT", body: payload },
+		);
+	}
+
+	deleteRegionOverlay(regionID: string, orgID: string) {
+		return this.request<void>(
+			`/api/v1/platform/regions/${encodeURIComponent(regionID)}/organizations/${encodeURIComponent(orgID)}/overlay`,
+			{ method: "DELETE" },
+		);
+	}
+
+	listFederationPeers() {
+		return this.request<
+			Array<{
+				id: string;
+				name: string;
+				region_id: string;
+				base_url?: string;
+				status: string;
+				last_sync_at?: string | null;
+				last_sync_cursor: number;
+				last_sync_error?: string;
+				created_at?: string;
+				updated_at?: string;
+			}>
+		>("/api/v1/platform/federation/peers");
+	}
+
+	registerFederationPeer(body: {
+		name: string;
+		region_id: string;
+		base_url?: string;
+	}) {
+		return this.request<{ peer: unknown; join_token: string }>(
+			"/api/v1/platform/federation/peers",
+			{ method: "POST", body },
+		);
+	}
+
+	getFederationPeer(peerID: string) {
+		return this.request<unknown>(
+			`/api/v1/platform/federation/peers/${encodeURIComponent(peerID)}`,
+		);
+	}
+
+	updateFederationPeer(
+		peerID: string,
+		body: { name?: string; base_url?: string; status?: string },
+	) {
+		return this.request<unknown>(
+			`/api/v1/platform/federation/peers/${encodeURIComponent(peerID)}`,
+			{ method: "PATCH", body },
+		);
+	}
+
+	rotateFederationPeerJoinToken(peerID: string) {
+		return this.request<{ peer: unknown; join_token: string }>(
+			`/api/v1/platform/federation/peers/${encodeURIComponent(peerID)}/rotate-join-token`,
+			{ method: "POST" },
+		);
+	}
+
 	createOrganization(body: { name: string }) {
 		return this.request<{ id: string; name: string; created_at?: string }>(
 			"/api/v1/platform/organizations",

@@ -51,10 +51,7 @@ func (p *Pipeline) handleMCP(w http.ResponseWriter, r *http.Request) {
 	}
 	principal, err := authenticateGatewayRequest(ctx, snap, p.Replay, r, body)
 	if err != nil {
-		status := http.StatusUnauthorized
-		if err == kernel.ErrNotFound {
-			status = http.StatusServiceUnavailable
-		}
+		status := authHTTPStatus(err)
 		writeJSON(w, status, map[string]any{
 			"error": map[string]string{"message": authErrMessage(err), "type": "invalid_request_error"},
 		})

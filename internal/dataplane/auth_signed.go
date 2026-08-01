@@ -67,14 +67,24 @@ func authenticateGatewayRequest(ctx context.Context, snap *snapshot.Snapshot, re
 	if snap == nil {
 		return snapshot.Principal{}, kernel.ErrNotFound
 	}
+	var principal snapshot.Principal
+	var err error
 	if hasSignedRequestHeaders(r) {
-		return authenticateSignedRequest(ctx, snap, replay, r, body)
+		principal, err = authenticateSignedRequest(ctx, snap, replay, r, body)
+	} else {
+		var key snapshot.APIKey
+		key, err = AuthenticateKey(snap, mustVirtualAPIKey(r))
+		if err == nil {
+			principal = snapshot.PrincipalFromAPIKey(key)
+		}
 	}
-	key, err := AuthenticateKey(snap, mustVirtualAPIKey(r))
 	if err != nil {
 		return snapshot.Principal{}, err
 	}
-	return snapshot.PrincipalFromAPIKey(key), nil
+	if !snap.AllowsOrganization(principal.OrganizationID) {
+		return snapshot.Principal{}, kernel.ErrForbidden
+	}
+	return principal, nil
 }
 
 func mustVirtualAPIKey(r *http.Request) string {
@@ -193,10 +203,23 @@ func authErrMessage(err error) string {
 	if errors.Is(err, kernel.ErrNotFound) {
 		return "no snapshot loaded"
 	}
+	if errors.Is(err, kernel.ErrForbidden) {
+		return "organization not allowed in this region"
+	}
 	if errors.Is(err, kernel.ErrUnauthorized) {
 		return "missing or invalid authorization"
 	}
 	return fmt.Sprintf("authentication failed: %v", err)
+}
+
+func authHTTPStatus(err error) int {
+	if errors.Is(err, kernel.ErrNotFound) {
+		return http.StatusServiceUnavailable
+	}
+	if errors.Is(err, kernel.ErrForbidden) {
+		return http.StatusForbidden
+	}
+	return http.StatusUnauthorized
 }
 
 func usageEventBase(principal snapshot.Principal, credentialID string) UsageEvent {

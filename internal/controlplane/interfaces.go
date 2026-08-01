@@ -9,6 +9,7 @@ import (
 // snapshotPublisher is implemented by *postgres.Seeder.
 type snapshotPublisher interface {
 	PublishSnapshot(ctx context.Context) error
+	PublishRegionSnapshots(ctx context.Context, regionIDs ...string) error
 }
 
 // localSeeder is the internal seed endpoint surface.

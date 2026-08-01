@@ -60,6 +60,12 @@ func (p *Pipeline) gateCall(ctx context.Context, w http.ResponseWriter, snap *sn
 		call.Metadata = map[string]any{}
 	}
 
+	if !snap.AllowsOrganization(call.Principal.OrganizationID) {
+		writeGateError(w, call, http.StatusForbidden, "organization not allowed in this region", "invalid_request_error")
+		span.SetAttributes(attribute.String(telemetry.AttrOutcome, telemetry.OutcomeDeny))
+		return false
+	}
+
 	// Policy → user hooks → quota (quota last: checkAndIncr has side effects).
 	if !p.applyBeforeCall(ctx, w, &policyCallHook{p: p, snap: snap}, call) {
 		span.SetAttributes(attribute.String(telemetry.AttrOutcome, telemetry.OutcomeDeny))

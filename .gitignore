@@ -152,6 +152,8 @@ celerybeat.pid
 # Environments
 .env
 .env.*
+!.env.example
+examples/federation/regional.secrets.env
 .venv
 venv/
 ENV/

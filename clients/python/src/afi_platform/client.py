@@ -173,6 +173,132 @@ class PlatformClient:
     def delete_environment(self, environment_id: str) -> None:
         self.request("DELETE", f"/api/v1/platform/environments/{environment_id}")
 
+    def list_regions(self) -> list[Any]:
+        return self.request("GET", "/api/v1/platform/regions")
+
+    def create_region(self, slug: str, name: str) -> dict[str, Any]:
+        return self.request(
+            "POST", "/api/v1/platform/regions", body={"slug": slug, "name": name}
+        )
+
+    def get_region(self, region_id: str) -> dict[str, Any]:
+        return self.request("GET", f"/api/v1/platform/regions/{region_id}")
+
+    def update_region(
+        self, region_id: str, *, name: Optional[str] = None, status: Optional[str] = None
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {}
+        if name is not None:
+            body["name"] = name
+        if status is not None:
+            body["status"] = status
+        return self.request(
+            "PATCH", f"/api/v1/platform/regions/{region_id}", body=body
+        )
+
+    def list_deployments(self, region_id: str) -> list[Any]:
+        return self.request(
+            "GET", f"/api/v1/platform/regions/{region_id}/deployments"
+        )
+
+    def register_deployment(
+        self, region_id: str, name: str, public_base_url: str = ""
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"name": name}
+        if public_base_url:
+            body["public_base_url"] = public_base_url
+        return self.request(
+            "POST",
+            f"/api/v1/platform/regions/{region_id}/deployments",
+            body=body,
+        )
+
+    def list_region_memberships(self, region_id: str) -> list[Any]:
+        return self.request(
+            "GET", f"/api/v1/platform/regions/{region_id}/organizations"
+        )
+
+    def bind_org_to_region(
+        self, region_id: str, organization_id: str, status: str = "active"
+    ) -> dict[str, Any]:
+        return self.request(
+            "POST",
+            f"/api/v1/platform/regions/{region_id}/organizations",
+            body={"organization_id": organization_id, "status": status},
+        )
+
+    def bind_all_orgs_to_region(self, region_id: str) -> dict[str, Any]:
+        return self.request(
+            "POST",
+            f"/api/v1/platform/regions/{region_id}/organizations/bind-all",
+        )
+
+    def unbind_org_from_region(self, region_id: str, org_id: str) -> None:
+        self.request(
+            "DELETE",
+            f"/api/v1/platform/regions/{region_id}/organizations/{org_id}",
+        )
+
+    def get_region_overlay(self, region_id: str, org_id: str) -> dict[str, Any]:
+        return self.request(
+            "GET",
+            f"/api/v1/platform/regions/{region_id}/organizations/{org_id}/overlay",
+        )
+
+    def put_region_overlay(
+        self, region_id: str, org_id: str, payload: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        return self.request(
+            "PUT",
+            f"/api/v1/platform/regions/{region_id}/organizations/{org_id}/overlay",
+            body=dict(payload),
+        )
+
+    def delete_region_overlay(self, region_id: str, org_id: str) -> None:
+        self.request(
+            "DELETE",
+            f"/api/v1/platform/regions/{region_id}/organizations/{org_id}/overlay",
+        )
+
+    def list_federation_peers(self) -> list[Any]:
+        return self.request("GET", "/api/v1/platform/federation/peers")
+
+    def register_federation_peer(
+        self, name: str, region_id: str, base_url: str = ""
+    ) -> Any:
+        body: dict[str, Any] = {"name": name, "region_id": region_id}
+        if base_url:
+            body["base_url"] = base_url
+        return self.request("POST", "/api/v1/platform/federation/peers", body=body)
+
+    def get_federation_peer(self, peer_id: str) -> Any:
+        return self.request("GET", f"/api/v1/platform/federation/peers/{peer_id}")
+
+    def update_federation_peer(
+        self,
+        peer_id: str,
+        *,
+        name: Optional[str] = None,
+        base_url: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> Any:
+        body: dict[str, Any] = {}
+        if name is not None:
+            body["name"] = name
+        if base_url is not None:
+            body["base_url"] = base_url
+        if status is not None:
+            body["status"] = status
+        return self.request(
+            "PATCH", f"/api/v1/platform/federation/peers/{peer_id}", body=body
+        )
+
+    def rotate_federation_peer_join_token(self, peer_id: str) -> Any:
+        return self.request(
+            "POST",
+            f"/api/v1/platform/federation/peers/{peer_id}/rotate-join-token",
+        )
+
     def list_providers(self, org_id: str) -> list[Any]:
         return self.request(
             "GET", f"/api/v1/platform/organizations/{org_id}/providers"

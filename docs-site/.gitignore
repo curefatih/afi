@@ -9,6 +9,7 @@ src/assets/logo-mark.svg
 public/assets/
 public/llms.txt
 public/favicon.ico
+public/favicon.svg
 
 # dependencies
 node_modules/

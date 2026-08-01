@@ -90,7 +90,11 @@ In-process registration is live:
 * **WASM hooks** — sandboxed TinyGo guests via `internal/adapters/wasm` + org `wasm_hooks` in the snapshot (`AFI_WASM_*` env still works for demos). See [WASM hooks](hooks/wasm.md).
 * **Provider health** — control-plane rollup from `usage_events` for Providers UI
 
-Control-plane WASM hook bindings and gateway gRPC extension runtime (ChatProvider + lifecycle hooks via `gateway.grpc_extensions`) are available; auth/secrets/notifications gRPC adapters, billing invoices, and multi-region snapshot distribution remain future work.
+Control-plane WASM hook bindings and gateway gRPC extension runtime (ChatProvider + lifecycle hooks via `gateway.grpc_extensions`) are available; auth/secrets/notifications gRPC adapters and billing invoices remain future work.
+
+**Hub-and-spoke regions:** Platform admins register **regions** and **gateway deployments**, bind organizations to regions, and optionally attach **full config overlays** (replace that org’s gateway slice in a region; inherit base when absent). The hub control plane remains the config source of truth. Optional snapshot fan-out (`AFI_SNAPSHOT_DIST_ENABLED` + `AFI_SNAPSHOT_S3_*`) mirrors a global blob plus per-region blobs under `{prefix}/{regionSlug}/`; spokes set `AFI_SNAPSHOT_BACKEND=objectstore` and `AFI_REGION_ID=<slug>` to load their region’s snapshot without sharing the hub config DB. Regional snapshots include an org allowlist; the gateway rejects keys for orgs not on that list. Gateways heartbeat with `AFI_CONTROL_PLANE_URL`, `AFI_DEPLOYMENT_ID`, and `AFI_DEPLOYMENT_JOIN_TOKEN`. Timed quotas use **regional Redis**; lifetime (`total`) quotas use hub Postgres when available (otherwise fail-closed). Spokes can ship usage with `AFI_USAGE_BACKEND=http`. See [Deployment](../deployment/index.md) and [Customization](../deployment/customization.md).
+
+**Control-plane federation:** A regional control plane (`AFI_FEDERATION_MODE=regional`) pulls memberships/overlays/snapshots from the hub. Inference, timed quotas, and usage stay in-region (regional gateway + worker). The regional CP rejects management mutations (hub is authoritative). The hub Usage page pulls regional reports on demand and merges them into org analytics (observation only — not stored in hub `usage_events`). Lab: `examples/federation`.
 
 **Protocol gateways:** MCP Streamable HTTP (`/mcp/{alias}`) and A2A JSON-RPC + Agent Card (`/a2a/{alias}`) proxies are shipped. Platform UI: [MCP and A2A](../guides/web-ui/mcp-a2a.md).
 

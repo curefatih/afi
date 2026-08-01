@@ -243,6 +243,13 @@ function main() {
 	const favicon = path.join(srcDocs, 'assets/brand/favicon.ico');
 	if (fs.existsSync(favicon)) {
 		fs.copyFileSync(favicon, path.join(destPublic, 'favicon.ico'));
+		console.log('synced public/favicon.ico');
+	}
+
+	const faviconSvg = path.join(srcDocs, 'assets/brand/favicon.svg');
+	if (fs.existsSync(faviconSvg)) {
+		fs.copyFileSync(faviconSvg, path.join(destPublic, 'favicon.svg'));
+		console.log('synced public/favicon.svg');
 	}
 
 	console.log(`Done. ${files.length} pages synced.`);

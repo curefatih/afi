@@ -41,6 +41,27 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("snapshot published")
+	case "regions":
+		if len(os.Args) < 3 {
+			fmt.Fprintln(os.Stderr, "usage: afi regions bind-all <region-slug-or-id>")
+			os.Exit(2)
+		}
+		switch os.Args[2] {
+		case "bind-all":
+			if len(os.Args) < 4 {
+				fmt.Fprintln(os.Stderr, "usage: afi regions bind-all <region-slug-or-id>")
+				os.Exit(2)
+			}
+			n, err := runBindAll(os.Args[3])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "regions bind-all: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("bound %d organization(s); snapshot published\n", n)
+		default:
+			fmt.Fprintln(os.Stderr, "usage: afi regions bind-all <region-slug-or-id>")
+			os.Exit(2)
+		}
 	case "db":
 		if len(os.Args) < 3 || os.Args[2] != "reset" {
 			fmt.Fprintln(os.Stderr, "usage: afi db reset")
@@ -64,6 +85,7 @@ Usage:
   afi version
   afi seed
   afi snapshot publish
+  afi regions bind-all <region-slug-or-id>
   afi db reset          # destructive; local only
 `, version)
 }
@@ -114,6 +136,37 @@ func runPublish() error {
 	snapStore := postgres.NewSnapshotStore(pool)
 	seeder := postgres.NewSeeder(pool, store, snapStore, cfg)
 	return seeder.PublishSnapshot(ctx)
+}
+
+func runBindAll(slugOrID string) (int, error) {
+	cfg, pool, ctx, cancel, err := open()
+	if err != nil {
+		return 0, err
+	}
+	defer cancel()
+	defer pool.Close()
+
+	if err := postgres.Migrate(ctx, pool); err != nil {
+		return 0, err
+	}
+	store := postgres.NewStore(pool)
+	reg, err := store.GetRegion(ctx, slugOrID)
+	if err != nil {
+		reg, err = store.GetRegionBySlug(ctx, slugOrID)
+		if err != nil {
+			return 0, err
+		}
+	}
+	n, err := store.BindAllOrgsToRegion(ctx, reg.ID)
+	if err != nil {
+		return n, err
+	}
+	snapStore := postgres.NewSnapshotStore(pool)
+	seeder := postgres.NewSeeder(pool, store, snapStore, cfg)
+	if err := seeder.PublishRegionSnapshots(ctx, reg.ID); err != nil {
+		return n, err
+	}
+	return n, nil
 }
 
 func runDBReset() error {

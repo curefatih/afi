@@ -8,7 +8,11 @@ Control plane admin API used by the web UI and automation.
 - **Errors:** `{ "error": "..." }`
 - **OpenAPI:** [`api/openapi/platform.openapi.yaml`](https://github.com/curefatih/afi/blob/main/api/openapi/platform.openapi.yaml)
 
-Internal ops routes (`POST /internal/v1/seed`, `POST /internal/v1/snapshots/publish`) require `X-AFI-Internal-Token` and are **not** part of the public SDK.
+Internal ops routes (`POST /internal/v1/seed`, `POST /internal/v1/snapshots/publish`, deployment join/heartbeat/usage) require machine credentials (`X-AFI-Internal-Token` or `X-AFI-Deployment-Token`) and are **not** part of the public SDK.
+
+**Regions** (`/api/v1/platform/regions…`) require platform admin (`users.role=admin`) and manage hub-and-spoke gateway deployments, org–region bindings, and full per-org config overlays. See [Deployment — hub-and-spoke](../deployment/index.md#hub-and-spoke-multi-region-gateways).
+
+**Federation** (`/api/v1/platform/federation/peers…`) requires platform admin and registers regional control planes that pull region exports from the home control plane. See [Deployment — hub and regional control planes](../deployment/index.md#hub-and-regional-control-planes-federation-pull-sync).
 
 ## TypeScript
 

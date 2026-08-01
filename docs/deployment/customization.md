@@ -1,6 +1,6 @@
 # Customization reference
 
-This page lists **every operator-facing customization** for a self-hosted AFI deployment. For local defaults see [`configs/local.yaml`](../../configs/local.yaml). For deploy templates see [`deploy/afi.example.yaml`](../../deploy/afi.example.yaml) and [`deploy/env.example`](../../deploy/env.example).
+This page lists **every operator-facing customization** for a self-hosted AFI deployment. For local defaults see [ `configs/local.yaml` ](../../configs/local.yaml). For deploy templates see [ `deploy/afi.example.yaml` ](../../deploy/afi.example.yaml) and [ `deploy/env.example` ](../../deploy/env.example).
 
 ## How configuration is loaded
 
@@ -18,32 +18,57 @@ export AFI_JWT_SECRET="..."   # overrides auth.jwt_secret in the file
 
 ---
 
-## Core services (`AFI_*` and YAML)
+## Core services ( `AFI_*` and YAML)
 
-| Env var | YAML key | Default | Used by | Notes |
-|---------|----------|---------|---------|-------|
-| `AFI_CONFIG` | — | `configs/local.yaml` | All | Config file path |
-| `AFI_DATABASE_URL` | `database_url` | `postgres://afi:afi@localhost:5433/afi?sslmode=disable` | CP, GW, worker, CLI | **Required** in production |
-| `AFI_REDIS_URL` | `redis_url` | `redis://localhost:6379/0` | Gateway, control plane | Gateway timed quotas; SSO CSRF state when `auth.sso.state_store=redis` |
-| `AFI_CONTROLPLANE_ADDR` | `controlplane.addr` | `:8081` | Control plane | Listen address |
-| `AFI_GATEWAY_ADDR` | `gateway.addr` | `:8080` | Gateway | Listen address |
-| `AFI_SNAPSHOT_POLL_INTERVAL` | `gateway.snapshot_poll_interval` | `2s` | Gateway | Poll period (also uses Postgres `LISTEN`) |
-| `AFI_WASM_BEFORE_CALL` | `gateway.wasm_before_call` | _(empty)_ | Gateway | Optional TinyGo `.wasm` exporting `before_call` |
-| `AFI_WASM_BEFORE_CHAT` | `gateway.wasm_before_chat` | _(empty)_ | Gateway | Optional TinyGo `.wasm` exporting `before_chat` |
-| `AFI_WASM_S3_ENDPOINT` | `gateway.wasm_s3.endpoint` | _(empty)_ | Gateway | S3-compatible host:port for `s3://` module URIs |
-| `AFI_WASM_S3_ACCESS_KEY` | `gateway.wasm_s3.access_key` | _(empty)_ | Gateway | Object-store access key |
-| `AFI_WASM_S3_SECRET_KEY` | `gateway.wasm_s3.secret_key` | _(empty)_ | Gateway | Object-store secret key |
-| `AFI_WASM_S3_REGION` | `gateway.wasm_s3.region` | _(empty → us-east-1)_ | Gateway | Object-store region |
-| `AFI_WASM_S3_USE_SSL` | `gateway.wasm_s3.use_ssl` | `false` | Gateway | Use HTTPS to the endpoint |
-| `AFI_WASM_S3_PATH_STYLE` | `gateway.wasm_s3.path_style` | `false` | Gateway | Path-style addressing (typical for MinIO) |
-| _(YAML)_ | `gateway.grpc_extensions` | _(empty)_ | Gateway | List of gRPC plugins (`id`, `command` or `address`, optional `provider_type`) |
-| `AFI_PLUGIN_SOCK` | _(runtime)_ | _(set by host)_ | Plugin process | Unix socket path when the gateway spawns `command` |
-| `AFI_JWT_SECRET` | `auth.jwt_secret` | `afi-local-dev-jwt-secret-change-me` | Control plane | **Change in prod** — HS256 signing |
-| `AFI_TOKEN_TTL` | `auth.token_ttl` | `24h` | Control plane | Platform session JWT lifetime |
-| `AFI_INTERNAL_TOKEN` | `auth.internal_token` | `afi-local-internal-token` | Control plane | Header `X-AFI-Internal-Token` for `/internal/v1/*` |
-| `AFI_AUTH_PUBLIC_BASE_URL` | `auth.public_base_url` | `http://localhost:8081` | Control plane | Public control-plane URL (SSO callbacks) |
-| `AFI_SSO_ENABLED` | `auth.sso.enabled` | `false` | Control plane | Enable platform OAuth2/OIDC/SAML SSO |
-| `AFI_SSO_STATE_STORE` | `auth.sso.state_store` | `redis` | Control plane | `redis` (multi-node) or `memory` (single-node) |
+| Env var                      | YAML key                         | Default                                                 | Used by                | Notes                                                                             |
+|------------------------------|----------------------------------|---------------------------------------------------------|------------------------|-----------------------------------------------------------------------------------|
+| `AFI_CONFIG`                 | —                                | `configs/local.yaml`                                    | All                    | Config file path                                                                  |
+| `AFI_DATABASE_URL`           | `database_url`                   | `postgres://afi:afi@localhost:5433/afi?sslmode=disable` | CP, GW, worker, CLI    | **Required** in production                                                        |
+| `AFI_REDIS_URL`              | `redis_url`                      | `redis://localhost:6379/0`                              | Gateway, control plane | Gateway timed quotas; SSO CSRF state when `auth.sso.state_store=redis`            |
+| `AFI_CONTROLPLANE_ADDR`      | `controlplane.addr`              | `:8081`                                                 | Control plane          | Listen address                                                                    |
+| `AFI_GATEWAY_ADDR`           | `gateway.addr`                   | `:8080`                                                 | Gateway                | Listen address                                                                    |
+| `AFI_SNAPSHOT_POLL_INTERVAL` | `gateway.snapshot_poll_interval` | `2s`                                                    | Gateway                | Poll period (Postgres also uses `LISTEN` )                                        |
+| `AFI_SNAPSHOT_BACKEND`       | `gateway.snapshot_backend`       | `postgres`                                              | Gateway                | `postgres` or `objectstore`                                                       |
+| `AFI_SNAPSHOT_DIST_ENABLED`  | `snapshot_distribution.enabled`  | `false`                                                 | Control plane          | Mirror publishes to object store                                                  |
+| `AFI_SNAPSHOT_S3_ENDPOINT`   | `gateway.snapshot_s3.endpoint`   | —                                                       | Hub + spoke            | Snapshot object store                                                             |
+| `AFI_SNAPSHOT_S3_BUCKET`     | `gateway.snapshot_s3.bucket`     | —                                                       | Hub + spoke            | Snapshot bucket                                                                   |
+| `AFI_SNAPSHOT_S3_ACCESS_KEY` | `gateway.snapshot_s3.access_key` | —                                                       | Hub + spoke            | —                                                                                 |
+| `AFI_SNAPSHOT_S3_SECRET_KEY` | `gateway.snapshot_s3.secret_key` | —                                                       | Hub + spoke            | —                                                                                 |
+| `AFI_SNAPSHOT_S3_REGION`     | `gateway.snapshot_s3.region`     | —                                                       | Hub + spoke            | —                                                                                 |
+| `AFI_SNAPSHOT_S3_PREFIX`     | `gateway.snapshot_s3.prefix`     | `snapshots`                                             | Hub + spoke            | Key prefix                                                                        |
+| `AFI_SNAPSHOT_S3_USE_SSL`    | `gateway.snapshot_s3.use_ssl`    | `false`                                                 | Hub + spoke            | —                                                                                 |
+| `AFI_SNAPSHOT_S3_PATH_STYLE` | `gateway.snapshot_s3.path_style` | `false`                                                 | Hub + spoke            | —                                                                                 |
+| `AFI_CONTROL_PLANE_URL`      | `gateway.control_plane_url`      | —                                                       | Gateway                | Hub URL for heartbeat/usage                                                       |
+| `AFI_REGION_ID`              | `gateway.region_id`              | —                                                       | Gateway                | Region **slug** for object-store prefix `snapshots/<slug>/` and usage tags        |
+| `AFI_DEPLOYMENT_ID`          | `gateway.deployment_id`          | —                                                       | Gateway                | Registered deployment id                                                          |
+| `AFI_DEPLOYMENT_JOIN_TOKEN`  | `gateway.deployment_join_token`  | —                                                       | Gateway                | Join token from register/rotate                                                   |
+| `AFI_HEARTBEAT_INTERVAL`     | `gateway.heartbeat_interval`     | `30s`                                                   | Gateway                | Heartbeat period                                                                  |
+| `AFI_USAGE_BACKEND`          | `gateway.usage_backend`          | `postgres`                                              | Gateway                | `postgres` (local DB) or `http` (ship to control plane)                           |
+| `AFI_USAGE_SYNC`             | `gateway.usage_sync`             | `false`                                                 | Gateway                | When `postgres` : write `usage_events` immediately (skip outbox/worker)           |
+| `AFI_WASM_BEFORE_CALL`       | `gateway.wasm_before_call`       | _(empty)_                                               | Gateway                | Optional TinyGo `.wasm` exporting `before_call`                                   |
+| `AFI_WASM_BEFORE_CHAT`       | `gateway.wasm_before_chat`       | _(empty)_                                               | Gateway                | Optional TinyGo `.wasm` exporting `before_chat`                                   |
+| `AFI_WASM_S3_ENDPOINT`       | `gateway.wasm_s3.endpoint`       | _(empty)_                                               | Gateway                | S3-compatible host:port for `s3://` module URIs                                   |
+| `AFI_WASM_S3_ACCESS_KEY`     | `gateway.wasm_s3.access_key`     | _(empty)_                                               | Gateway                | Object-store access key                                                           |
+| `AFI_WASM_S3_SECRET_KEY`     | `gateway.wasm_s3.secret_key`     | _(empty)_                                               | Gateway                | Object-store secret key                                                           |
+| `AFI_WASM_S3_REGION`         | `gateway.wasm_s3.region`         | _(empty → us-east-1)_                                   | Gateway                | Object-store region                                                               |
+| `AFI_WASM_S3_USE_SSL`        | `gateway.wasm_s3.use_ssl`        | `false`                                                 | Gateway                | Use HTTPS to the endpoint                                                         |
+| `AFI_WASM_S3_PATH_STYLE`     | `gateway.wasm_s3.path_style`     | `false`                                                 | Gateway                | Path-style addressing (typical for MinIO)                                         |
+| _(YAML)_                     | `gateway.grpc_extensions`        | _(empty)_                                               | Gateway                | List of gRPC plugins ( `id` , `command` or `address` , optional `provider_type` ) |
+| `AFI_PLUGIN_SOCK`            | _(runtime)_                      | _(set by host)_                                         | Plugin process         | Unix socket path when the gateway spawns `command`                                |
+| `AFI_JWT_SECRET`             | `auth.jwt_secret`                | `afi-local-dev-jwt-secret-change-me`                    | Control plane          | **Change in prod** — HS256 signing                                                |
+| `AFI_TOKEN_TTL`              | `auth.token_ttl`                 | `24h`                                                   | Control plane          | Platform session JWT lifetime                                                     |
+| `AFI_INTERNAL_TOKEN`         | `auth.internal_token`            | `afi-local-internal-token`                              | Control plane          | Header `X-AFI-Internal-Token` for `/internal/v1/*`                                |
+| `AFI_AUTH_PUBLIC_BASE_URL`   | `auth.public_base_url`           | `http://localhost:8081`                                 | Control plane          | Public control-plane URL (SSO callbacks)                                          |
+| `AFI_SSO_ENABLED`            | `auth.sso.enabled`               | `false`                                                 | Control plane          | Enable platform OAuth2/OIDC/SAML SSO                                              |
+| `AFI_SSO_STATE_STORE`        | `auth.sso.state_store`           | `redis`                                                 | Control plane          | `redis` (multi-node) or `memory` (single-node)                                    |
+
+### Regions CLI helpers
+
+| Command                                    | Purpose                                                                                                                               |
+|--------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| `afi regions bind-all <region-slug-or-id>` | Bind every organization to one region (single-region installs before enabling spoke isolation), then republish that region’s snapshot |
+
+Org–region overlays are full replace documents (providers/routes/quotas/…); absence means inherit base org config. Lifetime ( `total` ) quotas remain hub-global counters unless you later regionalize namespaces. Timed windows use regional Redis.
 
 ### Auth behavior
 
@@ -56,7 +81,7 @@ export AFI_JWT_SECRET="..."   # overrides auth.jwt_secret in the file
 
 ## Seed block (YAML only)
 
-Applied when the database is empty (first control-plane start, or `afi seed` / `make seed`).
+Applied when the database is empty (first control-plane start, or `afi seed` / `make seed` ).
 
 | YAML key | Default | Purpose |
 |----------|---------|---------|
@@ -68,7 +93,7 @@ Applied when the database is empty (first control-plane start, or `afi seed` / `
 | `seed.openai_api_key_env` | `OPENAI_API_KEY` | **Name** of the env var the gateway should read (not the secret itself) |
 | `seed.default_model` | `gpt-4o-mini` | Default chat route model id |
 
-Also seeded in code (not YAML-configurable): Anthropic, Gemini, Ollama (`openai_compatible` → `http://127.0.0.1:11434/v1`), TTS/STT routes, echo provider/route. Customize further via the platform UI/API after first boot.
+Also seeded in code (not YAML-configurable): Anthropic, Gemini, Ollama ( `openai_compatible` → `http://127.0.0.1:11434/v1` ), TTS/STT routes, echo provider/route. Customize further via the platform UI/API after first boot.
 
 ---
 
@@ -98,20 +123,20 @@ Details: [Platform domain events](../development/platform-events.md).
 
 ### OpenTelemetry
 
-See [Observability](observability.md) for OTLP / Prometheus / local Grafana (`make obs-up`).
+See [Observability](observability.md) for OTLP / Prometheus / local Grafana ( `make obs-up` ).
 
 ---
 
 ## Upstream provider secrets (gateway process)
 
-Provider rows store an **environment variable name** (`api_key_env`), not the secret. The gateway resolves secrets at runtime via `os.Getenv`.
+Provider rows store an **environment variable name** ( `api_key_env` ), not the secret. The gateway resolves secrets at runtime via `os.Getenv` .
 
-Default env names come from the provider-type catalog (`internal/providercatalog`). Typical values:
+Default env names come from the provider-type catalog ( `internal/providercatalog` ). Typical values:
 
 | Typical env var | Default for provider type | When needed |
 |-----------------|---------------------------|-------------|
 | `OPENAI_API_KEY` | `openai` | OpenAI / compatible routes |
-| `AZURE_OPENAI_API_KEY` | `azure_openai` | Azure OpenAI routes (`api-key` header) |
+| `AZURE_OPENAI_API_KEY` | `azure_openai` | Azure OpenAI routes ( `api-key` header) |
 | `ANTHROPIC_API_KEY` | `anthropic` | Anthropic routes |
 | `GEMINI_API_KEY` | `gemini` | Gemini routes |
 | `OLLAMA_API_KEY` | `openai_compatible` | Any non-empty value if the backend ignores auth |
@@ -120,7 +145,7 @@ Default env names come from the provider-type catalog (`internal/providercatalog
 | `ECHO_UNUSED` | `echo` | Echo extension (unused) |
 | *custom* | whatever you set on the provider | Must exist in the **gateway** environment |
 
-You can rename `api_key_env` per provider in the UI/API; inject that exact name into the gateway container/process. List catalog defaults via `GET /api/v1/platform/provider-types`.
+You can rename `api_key_env` per provider in the UI/API; inject that exact name into the gateway container/process. List catalog defaults via `GET /api/v1/platform/provider-types` .
 
 ---
 
@@ -134,7 +159,7 @@ These are compiled into the static bundle. Changing them requires a **rebuild** 
 | `VITE_GATEWAY_API_URL` | `http://localhost:8080` | Gateway base URL for playground |
 | `VITE_GATEWAY_API_KEY` | seed virtual key | Default playground key |
 
-Example: [`web/.env.example`](../../web/.env.example). In Compose, set these in `deploy/.env` before `make deploy-up` / `build-images`.
+Example: [ `web/.env.example` ](../../web/.env.example). In Compose, set these in `deploy/.env` before `make deploy-up` / `build-images` .
 
 Use public hostnames or published host ports — **not** Docker service names like `http://controlplane:8081` (browsers cannot resolve those).
 
@@ -142,7 +167,7 @@ Use public hostnames or published host ports — **not** Docker service names li
 
 ## Compose / infra customization
 
-From [`deploy/env.example`](../../deploy/env.example):
+From [ `deploy/env.example` ](../../deploy/env.example):
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
@@ -154,7 +179,7 @@ From [`deploy/env.example`](../../deploy/env.example):
 | `GATEWAY_HOST_PORT` | `8080` | Published gateway port |
 | `WEB_HOST_PORT` | `3000` | Published web UI port |
 
-Root [`docker-compose.yml`](../../docker-compose.yml) (dev infra only) uses Postgres host port **5433** and includes Adminer on **5050**.
+Root [ `docker-compose.yml` ](../../docker-compose.yml) (dev infra only) uses Postgres host port **5433** and includes Adminer on **5050**.
 
 ---
 
@@ -162,7 +187,7 @@ Root [`docker-compose.yml`](../../docker-compose.yml) (dev infra only) uses Post
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `AFI_CONTROLPLANE_URL` | `http://localhost:8081` | `scripts/verify-local.sh`, `scripts/deploy-health.sh` |
+| `AFI_CONTROLPLANE_URL` | `http://localhost:8081` | `scripts/verify-local.sh` , `scripts/deploy-health.sh` |
 | `AFI_GATEWAY_URL` | `http://localhost:8080` | same |
 | `AFI_WEB_URL` | _(empty)_ | Optional web check in `deploy-health.sh` |
 | `AFI_INTERNAL_TOKEN` | `afi-local-internal-token` | verify script internal calls |
@@ -173,10 +198,10 @@ Release builds:
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `GOOS` / `GOARCH` | `linux` / `amd64` | Single-target `scripts/build-release.sh` (ignored when `TARGETS` is set) |
-| `TARGETS` | _(empty)_ | Comma-separated `goos/goarch` list (e.g. `linux/amd64,darwin/arm64`) |
-| `VERSION` | git describe | Embedded in CLI (`afi version`) and archive names |
-| `PACKAGE` | `0` | Set to `1` to write `dist/afi-*.tar.gz` (+ `.sha256`) including `afi.example.yaml` |
-| `OUT_DIR` | `bin/release` | Per-target binary root (`<OUT_DIR>/<os>-<arch>/`) |
+| `TARGETS` | _(empty)_ | Comma-separated `goos/goarch` list (e.g. `linux/amd64,darwin/arm64` ) |
+| `VERSION` | git describe | Embedded in CLI ( `afi version` ) and archive names |
+| `PACKAGE` | `0` | Set to `1` to write `dist/afi-*.tar.gz` (+ `.sha256` ) including `afi.example.yaml` |
+| `OUT_DIR` | `bin/release` | Per-target binary root ( `<OUT_DIR>/<os>-<arch>/` ) |
 | `DIST_DIR` | `dist` | Archive output directory when `PACKAGE=1` |
 
 ---
@@ -188,12 +213,12 @@ These are **not** env vars — configure them after deploy via the control plane
 | Area | Customizable fields |
 |------|---------------------|
 | **Organizations / members** | Orgs; roles `owner` / `admin` / `member` (invite by existing email — no SMTP) |
-| **API keys** | `personal` or `service_account`; project scope optional |
-| **Providers** | type, base URL, `api_key_env`, health |
-| **Routes** | model id, provider, target model, modality, ordered `fallbacks`, optional `retry` (`fixed` / `exponential` backoff) |
+| **API keys** | `personal` or `service_account` ; project scope optional |
+| **Providers** | type, base URL, `api_key_env` , health |
+| **Routes** | model id, provider, target model, modality, ordered `fallbacks` , optional `retry` ( `fixed` / `exponential` backoff) |
 | **Org default retry** | optional org-wide retry used when a route has no `retry` |
-| **Quotas** | scope (`organization`/`project`/`user`/`api_key`), metric (`requests`/`tokens`), window (`total`/`minute`/`hour`/`day`), `limit_value` |
-| **CEL policies** | `expression`, `priority`, `enabled` |
+| **Quotas** | scope ( `organization` / `project` / `user` / `api_key` ), metric ( `requests` / `tokens` ), window ( `total` / `minute` / `hour` / `day` ), `limit_value` |
+| **CEL policies** | `expression` , `priority` , `enabled` |
 | **Model prices** | DB overrides for usage `cost_usd` (else embedded catalog) |
 
 API surface summary: [Config reference](../development/config-reference.md).
@@ -264,4 +289,4 @@ events:
     subject_prefix: afi.platform
 ```
 
-Prefer putting secrets in the process environment (`AFI_JWT_SECRET`, `AFI_DATABASE_URL`, `OPENAI_API_KEY`, …) rather than committing them to the YAML file.
+Prefer putting secrets in the process environment ( `AFI_JWT_SECRET` , `AFI_DATABASE_URL` , `OPENAI_API_KEY` , …) rather than committing them to the YAML file.
