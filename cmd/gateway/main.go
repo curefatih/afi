@@ -26,6 +26,7 @@ import (
 	"github.com/curefatih/afi/internal/snapshot"
 	"github.com/curefatih/afi/internal/telemetry"
 	"github.com/curefatih/afi/internal/workers"
+	"github.com/curefatih/afi/sdk/chatir"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -162,9 +163,16 @@ func main() {
 			log.Error("wasm before_chat adapter", "err", err)
 			os.Exit(1)
 		}
-		wasmMods = append(wasmMods, mod)
-		hooks = hooks.Register(hook)
-		log.Info("wasm before_chat loaded", "path", path)
+		// Probe the guest once so a legacy body_b64 module fails at startup instead of
+		// silently emptying chat messages on every request.
+		if _, err := hook.BeforeChat(ctx, chatir.Request{Model: "abi-probe", Messages: []chatir.Message{{Role: "user", Content: "ping"}}}); err != nil {
+			_ = mod.Close(ctx)
+			log.Error("wasm before_chat ABI probe failed; not registering hook (rebuild with make -C extensions/wasmhook build)", "path", path, "err", err)
+		} else {
+			wasmMods = append(wasmMods, mod)
+			hooks = hooks.Register(hook)
+			log.Info("wasm before_chat loaded", "path", path)
+		}
 	}
 
 	pipeline := dataplane.NewPipelineWithRegistry(holder, reg, log)

@@ -3,6 +3,7 @@ package wasm
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 
 	"github.com/curefatih/afi/sdk/chatir"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
@@ -166,6 +167,15 @@ func encodeBeforeChatIn(req chatir.Request, config json.RawMessage) ([]byte, err
 }
 
 func decodeBeforeChatOut(raw []byte) (*chatir.Request, error) {
+	var probe map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &probe); err != nil {
+		return nil, err
+	}
+	if _, ok := probe["request"]; !ok {
+		// Legacy guests returned {"body_b64":...}. Decoding that as typed IR yields an
+		// empty Request and would silently strip messages before the upstream call.
+		return nil, fmt.Errorf("wasm before_chat returned incompatible ABI (missing request); rebuild the module for typed chat IR")
+	}
 	var out beforeChatWire
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return nil, err

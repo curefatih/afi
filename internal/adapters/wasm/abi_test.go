@@ -1,8 +1,11 @@
 package wasm
 
 import (
+	"context"
 	"encoding/json"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/curefatih/afi/sdk/chatir"
 	sdkhook "github.com/curefatih/afi/sdk/hook"
@@ -113,5 +116,51 @@ func TestBeforeChatOmitsEmptyConfig(t *testing.T) {
 func TestDecodeBeforeChatOutRejectsInvalidJSON(t *testing.T) {
 	if _, err := decodeBeforeChatOut([]byte(`{"request":`)); err == nil {
 		t.Fatal("expected error")
+	}
+}
+
+func TestDecodeBeforeChatOutRejectsLegacyBodyB64ABI(t *testing.T) {
+	_, err := decodeBeforeChatOut([]byte(`{"body_b64":""}`))
+	if err == nil {
+		t.Fatal("expected error for legacy ABI")
+	}
+	if !strings.Contains(err.Error(), "incompatible ABI") {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestBeforeChatRejectsLegacyGuestOutput(t *testing.T) {
+	ctx := context.Background()
+	mod, err := CompileFile(ctx, exampleWASMPath(t), Config{Name: "wasmhook", Timeout: time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mod.Close(ctx)
+
+	raw, err := mod.invokeJSON(ctx, "before_chat", []byte(`{"request":{"model":"m","messages":[{"role":"user","content":"hi"}]}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var probe map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &probe); err != nil {
+		t.Fatal(err)
+	}
+	if _, hasRequest := probe["request"]; hasRequest {
+		t.Skip("extensions/wasmhook/hook.wasm already speaks typed before_chat ABI")
+	}
+
+	hook, err := NewBeforeChat(mod)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = hook.BeforeChat(ctx, chatir.Request{
+		Model:    "m",
+		Messages: []chatir.Message{{Role: "user", Content: "hi"}},
+	})
+	if err == nil {
+		t.Fatal("expected incompatible ABI error")
+	}
+	if !strings.Contains(err.Error(), "incompatible ABI") {
+		t.Fatalf("err=%v", err)
 	}
 }

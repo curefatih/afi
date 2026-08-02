@@ -9,9 +9,11 @@ gateway:
   snapshot_poll_interval: "2s"
   # Local TinyGo example (extensions/wasmhook). Paths are relative to process cwd (repo root).
   # before_call: deny when X-AFI-Tags includes plan:blocked; stamps metadata.wasm_hook.
-  # before_chat: prefixes last user message with "[wasm] ".
+  # before_chat: prefixes last user message with "[wasm] " (typed {"request":...} ABI).
+  # Re-enable after `make -C extensions/wasmhook build` — the committed hook.wasm may
+  # still speak the legacy body_b64 before_chat ABI and must not be loaded until rebuilt.
   wasm_before_call: "extensions/wasmhook/hook.wasm"
-  wasm_before_chat: "extensions/wasmhook/hook.wasm"
+  # wasm_before_chat: "extensions/wasmhook/hook.wasm"
   # Optional S3-compatible store for snapshot wasm_hooks module_uri=s3://bucket/key.
   # Leave endpoint empty to disable. Example MinIO:
   # wasm_s3:
