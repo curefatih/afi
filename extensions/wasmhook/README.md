@@ -20,6 +20,16 @@ tinygo build -o hook.wasm -scheduler=none -target=wasip1 -buildmode=c-shared .
 
 A prebuilt `hook.wasm` is committed for tests and local demos.
 
+> **Important:** the checked-in `hook.wasm` may predate the typed `before_chat`
+> ABI (`{"request":{...}}`). Loading a legacy module as `wasm_before_chat`
+> empties chat messages (the host used to decode `{"body_b64":""}` as an empty
+> request). Rebuild before enabling `AFI_WASM_BEFORE_CHAT` /
+> `gateway.wasm_before_chat`:
+>
+> ```bash
+> make -C extensions/wasmhook build
+> ```
+
 ## Run with the gateway
 
 ```bash

@@ -1,0 +1,52 @@
+# Local-only defaults for the federation lab. Copy to .env (gitignored) via ./up.sh.
+# Do NOT use these values on a public host.
+
+COMPOSE_PROJECT_NAME=afi-federation
+
+HUB_POSTGRES_PASSWORD=afi-federation-hub
+REGIONAL_POSTGRES_PASSWORD=afi-federation-regional
+HUB_POSTGRES_HOST_PORT=5434
+REGIONAL_POSTGRES_HOST_PORT=5435
+HUB_REDIS_HOST_PORT=6380
+REGIONAL_REDIS_HOST_PORT=6381
+
+HUB_CONTROLPLANE_HOST_PORT=8081
+HUB_GATEWAY_HOST_PORT=8080
+REGIONAL_CONTROLPLANE_HOST_PORT=8181
+REGIONAL_GATEWAY_HOST_PORT=8180
+WEB_HOST_PORT=3000
+REGIONAL_WEB_HOST_PORT=3100
+
+AFI_JWT_SECRET=afi-federation-jwt-secret
+AFI_INTERNAL_TOKEN=afi-federation-internal-token
+REGIONAL_INTERNAL_TOKEN=afi-federation-regional-internal
+
+HUB_REGION_SLUG=us-east
+REGIONAL_REGION_SLUG=eu-west
+AFI_FEDERATION_PULL_INTERVAL=10s
+
+# Filled by ./bootstrap.sh (also written to regional.secrets.env)
+AFI_FEDERATION_JOIN_TOKEN=
+HUB_DEPLOYMENT_ID=
+HUB_DEPLOYMENT_JOIN_TOKEN=
+REGIONAL_DEPLOYMENT_ID=
+REGIONAL_DEPLOYMENT_JOIN_TOKEN=
+
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
+
+VITE_PLATFORM_API_URL=http://localhost:8081
+VITE_GATEWAY_API_URL=http://localhost:8080
+VITE_GATEWAY_API_KEY=
+
+# Baked into regional-web (browser → regional CP / gateway host ports)
+VITE_REGIONAL_PLATFORM_API_URL=http://localhost:8181
+VITE_REGIONAL_GATEWAY_API_URL=http://localhost:8180
+
+AFI_MAIL_PUBLIC_APP_URL=http://localhost:3000
+
+# Bootstrap defaults (hub seed admin)
+HUB_ADMIN_EMAIL=admin@afi.local
+HUB_ADMIN_PASSWORD=admin
+HUB_BASE_URL=http://localhost:8081
